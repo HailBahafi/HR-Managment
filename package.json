@@ -2,6 +2,11 @@
   "name": "nawa-hr",
   "version": "1.0.0",
   "private": true,
+  "author": "HailBahafi <d.hailbahafi@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HailBahafi/HR-Managment.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
