@@ -1,0 +1,214 @@
+'use client';
+
+import * as React from 'react';
+import { ChevronDown, ListChecks, ListX, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+export type MultiSelectOption = {
+  value: string;
+  label: string;
+  subtitle?: string;
+  disabled?: boolean;
+};
+
+export interface MultiSelectProps {
+  options: MultiSelectOption[];
+  value: string[];
+  onChange: (next: string[]) => void;
+  /** Trigger label when nothing selected */
+  placeholder?: string;
+  searchPlaceholder?: string;
+  emptyMessage?: string;
+  disabled?: boolean;
+  className?: string;
+  triggerClassName?: string;
+  selectAllLabel?: string;
+  deselectAllLabel?: string;
+  id?: string;
+  /** Scrollable list max height */
+  listMaxHeight?: string;
+  /** Optional label above trigger */
+  label?: string;
+  /**
+   * When used inside a modal Radix Dialog, pass the dialog content element so the popover
+   * portals there; otherwise react-remove-scroll blocks wheel events on the list.
+   */
+  popoverPortalContainer?: HTMLElement | DocumentFragment | null;
+}
+
+export function MultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = 'اختر عناصر…',
+  searchPlaceholder = 'بحث في القائمة…',
+  emptyMessage = 'لا توجد نتائج',
+  disabled,
+  className,
+  triggerClassName,
+  selectAllLabel = 'تحديد الكل',
+  deselectAllLabel = 'إلغاء التحديد',
+  id,
+  listMaxHeight = 'min(240px,40vh)',
+  label,
+  popoverPortalContainer,
+}: MultiSelectProps) {
+  const [open, setOpen] = React.useState(false);
+  const [q, setQ] = React.useState('');
+
+  React.useEffect(() => {
+    if (!open) setQ('');
+  }, [open]);
+
+  const filtered = React.useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return options;
+    return options.filter((o) => {
+      const hay = `${o.label} ${o.subtitle ?? ''}`.toLowerCase();
+      return hay.includes(t);
+    });
+  }, [options, q]);
+
+  const enabledAll = React.useMemo(() => options.filter((o) => !o.disabled), [options]);
+
+  const selectedSet = React.useMemo(() => new Set(value), [value]);
+
+  const toggle = (v: string, checked: boolean) => {
+    const opt = options.find((o) => o.value === v);
+    if (opt?.disabled) return;
+    if (checked) onChange([...value, v]);
+    else onChange(value.filter((x) => x !== v));
+  };
+
+  const selectAll = () => {
+    onChange(enabledAll.map((o) => o.value));
+  };
+
+  const deselectAll = () => {
+    onChange([]);
+  };
+
+  const summary =
+    value.length === 0 ? (
+      <span className="text-muted-foreground">{placeholder}</span>
+    ) : (
+      <span className="font-medium text-foreground">
+        <span className="number-ar">{value.length}</span> محدد
+      </span>
+    );
+
+  return (
+    <div className={cn('space-y-2', className)}>
+      {label ? <Label htmlFor={id}>{label}</Label> : null}
+      <Popover open={open} onOpenChange={setOpen} modal={false}>
+        <PopoverTrigger asChild>
+          <Button
+            id={id}
+            type="button"
+            variant="outline"
+            disabled={disabled}
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            className={cn(
+              'h-11 w-full justify-between rounded-md border-input bg-background px-4 py-2 text-sm font-normal shadow-none hover:bg-accent/40',
+              'ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+              triggerClassName,
+            )}
+          >
+            <span className="truncate text-right">{summary}</span>
+            <ChevronDown className={cn('h-4 w-4 shrink-0 opacity-60 transition-transform', open && 'rotate-180')} />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          container={popoverPortalContainer ?? undefined}
+          className="min-w-[min(100%,280px)] max-w-[calc(100vw-2rem)] border-border p-0 shadow-luxe"
+          style={{ width: 'var(--radix-popover-trigger-width)' }}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <div className="border-b border-border bg-muted/30 px-3 py-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="h-9 border-border/80 bg-background pr-9 text-sm"
+              />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5 text-xs text-primary hover:bg-primary/10"
+                onClick={selectAll}
+              >
+                <ListChecks className="h-3.5 w-3.5" />
+                {selectAllLabel}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                onClick={deselectAll}
+                disabled={value.length === 0}
+              >
+                <ListX className="h-3.5 w-3.5" />
+                {deselectAllLabel}
+              </Button>
+            </div>
+          </div>
+          <Separator />
+          <div
+            className="overflow-y-auto overscroll-contain p-1"
+            style={{ maxHeight: listMaxHeight }}
+            role="listbox"
+            aria-multiselectable
+          >
+            {filtered.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+            ) : (
+              filtered.map((opt) => {
+                const checked = selectedSet.has(opt.value);
+                return (
+                  <label
+                    key={opt.value}
+                    role="option"
+                    aria-selected={checked}
+                    className={cn(
+                      'flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-right text-sm transition-colors',
+                      opt.disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-accent/70',
+                      checked && 'bg-primary/8',
+                    )}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      disabled={opt.disabled}
+                      onCheckedChange={(v) => toggle(opt.value, v === true)}
+                    />
+                    <div className="min-w-0 flex-1 text-right">
+                      <p className="truncate font-medium leading-tight">{opt.label}</p>
+                      {opt.subtitle ? (
+                        <p className="truncate font-mono text-[11px] text-muted-foreground" dir="ltr">
+                          {opt.subtitle}
+                        </p>
+                      ) : null}
+                    </div>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}

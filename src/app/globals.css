@@ -1,0 +1,298 @@
+@import 'tailwindcss';
+@config '../../tailwind.config.mts';
+@import 'react-day-picker/style.css';
+
+/* ── Radix UI enter/exit animation system ───────────────────────────────────
+   Defined as plain CSS — no Tailwind @utility directives — so Tailwind never
+   generates data-[state=...] variant selectors that corrupt in Turbopack.
+   ─────────────────────────────────────────────────────────────────────────── */
+@keyframes enter {
+  from {
+    opacity: var(--_enter-opacity, 1);
+    transform:
+      translate3d(var(--_enter-tx, 0), var(--_enter-ty, 0), 0)
+      scale3d(var(--_enter-scale, 1), var(--_enter-scale, 1), var(--_enter-scale, 1));
+  }
+}
+@keyframes exit {
+  to {
+    opacity: var(--_exit-opacity, 1);
+    transform:
+      translate3d(var(--_exit-tx, 0), var(--_exit-ty, 0), 0)
+      scale3d(var(--_exit-scale, 1), var(--_exit-scale, 1), var(--_exit-scale, 1));
+  }
+}
+
+.radix-fade[data-state="open"] {
+  --_enter-opacity: 0;
+  animation: enter 0.15s ease forwards;
+}
+.radix-fade[data-state="closed"] {
+  --_exit-opacity: 0;
+  animation: exit 0.15s ease forwards;
+}
+
+.radix-fade-zoom[data-state="open"] {
+  --_enter-opacity: 0;
+  --_enter-scale: 0.95;
+  animation: enter 0.15s ease forwards;
+}
+.radix-fade-zoom[data-state="closed"] {
+  --_exit-opacity: 0;
+  --_exit-scale: 0.95;
+  animation: exit 0.15s ease forwards;
+}
+
+.radix-slide-left[data-state="open"] {
+  --_enter-tx: -100%;
+  animation: enter 0.3s ease forwards;
+}
+.radix-slide-left[data-state="closed"] {
+  --_exit-tx: -100%;
+  animation: exit 0.3s ease forwards;
+}
+
+@layer base {
+  :root {
+    /* ═══════════════════════════════════════════════════
+       NAWA HR — Design Tokens
+       Aesthetic: Refined editorial enterprise.
+       Deep forest teal + warm gold + ivory parchment.
+       ═══════════════════════════════════════════════════ */
+
+    --background: 38 30% 97%;           /* ivory parchment */
+    --foreground: 180 25% 10%;          /* deep forest ink */
+
+    --card: 0 0% 100%;
+    --card-foreground: 180 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 180 25% 10%;
+
+    /* Primary: Deep forest teal */
+    --primary: 175 55% 18%;
+    --primary-foreground: 38 30% 97%;
+    --primary-50: 175 40% 96%;
+    --primary-100: 175 38% 90%;
+    --primary-200: 175 35% 80%;
+    --primary-500: 175 50% 30%;
+    --primary-700: 175 55% 22%;
+    --primary-900: 175 60% 12%;
+
+    /* Accent: Warm burnished gold */
+    --gold: 38 62% 52%;
+    --gold-foreground: 180 25% 10%;
+
+    --accent: 175 30% 92%;
+    --accent-foreground: 175 55% 18%;
+
+    --secondary: 38 20% 92%;
+    --secondary-foreground: 180 25% 10%;
+
+    --muted: 38 15% 94%;
+    --muted-foreground: 180 10% 40%;
+
+    --destructive: 6 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 55% 32%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 32 90% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 38 20% 88%;
+    --input: 38 20% 88%;
+    --ring: 175 55% 30%;
+
+    --sidebar: 175 55% 12%;
+    --sidebar-foreground: 38 30% 92%;
+    --sidebar-border: 175 40% 18%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 180 25% 7%;
+    --foreground: 38 30% 94%;
+
+    --card: 180 24% 10%;
+    --card-foreground: 38 30% 94%;
+
+    --popover: 180 24% 10%;
+    --popover-foreground: 38 30% 94%;
+
+    --primary: 38 62% 56%;
+    --primary-foreground: 180 25% 10%;
+    --primary-50: 180 20% 14%;
+    --primary-100: 180 22% 18%;
+    --primary-200: 175 25% 26%;
+    --primary-500: 38 62% 56%;
+    --primary-700: 38 70% 48%;
+    --primary-900: 38 80% 40%;
+
+    --gold: 38 70% 60%;
+    --gold-foreground: 180 25% 10%;
+
+    --accent: 175 30% 18%;
+    --accent-foreground: 38 30% 94%;
+
+    --secondary: 180 20% 14%;
+    --secondary-foreground: 38 30% 94%;
+
+    --muted: 180 18% 14%;
+    --muted-foreground: 38 15% 65%;
+
+    --destructive: 6 62% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 45% 48%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 32 85% 58%;
+    --warning-foreground: 180 25% 10%;
+
+    --border: 180 20% 18%;
+    --input: 180 20% 18%;
+    --ring: 38 62% 56%;
+
+    --sidebar: 180 30% 5%;
+    --sidebar-foreground: 38 30% 90%;
+    --sidebar-border: 180 25% 12%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    direction: rtl;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+    background-image:
+      radial-gradient(circle at 0% 0%, hsl(var(--primary) / 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, hsl(var(--gold) / 0.04) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.2);
+    color: hsl(var(--primary));
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); background-clip: padding-box; border: 2px solid transparent; }
+}
+
+@layer components {
+  .font-arabic-display {
+    font-family: var(--font-display), serif;
+    font-feature-settings: 'ss01', 'cv01';
+    letter-spacing: -0.01em;
+  }
+
+  .glass-card {
+    background: linear-gradient(135deg, hsl(var(--card) / 0.95), hsl(var(--card) / 0.85));
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 2px hsl(var(--primary) / 0.04), 0 4px 20px -4px hsl(var(--primary) / 0.06);
+  }
+
+  .luxe-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow:
+      0 1px 2px hsl(var(--primary) / 0.04),
+      0 8px 24px -8px hsl(var(--primary) / 0.08);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .luxe-card:hover {
+    box-shadow:
+      0 2px 4px hsl(var(--primary) / 0.06),
+      0 16px 40px -12px hsl(var(--primary) / 0.12);
+  }
+
+  .grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+    opacity: 0.08;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  .gold-accent-line {
+    background: linear-gradient(90deg, transparent, hsl(var(--gold)), transparent);
+  }
+
+  .dotted-bg {
+    background-image: radial-gradient(hsl(var(--border)) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, hsl(var(--muted)) 0%, hsl(var(--muted-foreground) / 0.1) 50%, hsl(var(--muted)) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* react-day-picker — only design tokens (see :root / .dark) */
+  .nawa-rdp-calendar.rdp-root {
+    --rdp-accent-color: hsl(var(--primary));
+    --rdp-accent-background-color: hsl(var(--primary) / 0.14);
+    --rdp-day-height: 2.25rem;
+    --rdp-day-width: 2.25rem;
+    --rdp-day_button-height: 2.125rem;
+    --rdp-day_button-width: 2.125rem;
+    --rdp-day_button-border-radius: var(--radius);
+    --rdp-nav_button-height: 2.25rem;
+    --rdp-nav_button-width: 2.25rem;
+    --rdp-today-color: hsl(var(--primary));
+    margin: 0;
+  }
+
+  .dark .nawa-rdp-calendar.rdp-root {
+    --rdp-accent-background-color: hsl(var(--primary) / 0.22);
+  }
+
+  .nawa-rdp-calendar .rdp-day_button:not([disabled]):hover {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  .nawa-rdp-calendar .rdp-caption_label {
+    @apply text-foreground;
+  }
+
+  .nawa-rdp-calendar .rdp-weekday {
+    @apply text-muted-foreground;
+  }
+
+  .nawa-rdp-calendar .rdp-outside {
+    @apply text-muted-foreground;
+  }
+
+  .nawa-rdp-calendar .rdp-disabled {
+    @apply text-muted-foreground opacity-50;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .number-ar { font-feature-settings: 'tnum', 'lnum'; }
+}

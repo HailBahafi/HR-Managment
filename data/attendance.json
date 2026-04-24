@@ -1,0 +1,28 @@
+{
+  "attendanceToday": [
+    { "id": "at1", "employeeId": "e1", "date": "2026-04-21", "checkIn": "2026-04-21T07:55:00", "checkOut": null, "status": "present", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g1" },
+    { "id": "at2", "employeeId": "e2", "date": "2026-04-21", "checkIn": "2026-04-21T08:02:00", "checkOut": null, "status": "present", "lateMinutes": 2, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g1" },
+    { "id": "at3", "employeeId": "e3", "date": "2026-04-21", "checkIn": "2026-04-21T07:48:00", "checkOut": null, "status": "present", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g1" },
+    { "id": "at4", "employeeId": "e4", "date": "2026-04-21", "checkIn": "2026-04-21T08:25:00", "checkOut": null, "status": "late", "lateMinutes": 25, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g1" },
+    { "id": "at5", "employeeId": "e5", "date": "2026-04-21", "checkIn": "2026-04-21T07:52:00", "checkOut": null, "status": "present", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g1" },
+    { "id": "at6", "employeeId": "e6", "date": "2026-04-21", "checkIn": "2026-04-21T08:14:00", "checkOut": null, "status": "late", "lateMinutes": 14, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g2" },
+    { "id": "at7", "employeeId": "e7", "date": "2026-04-21", "checkIn": "2026-04-21T07:50:00", "checkOut": null, "status": "present", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g1" },
+    { "id": "at8", "employeeId": "e8", "date": "2026-04-21", "checkIn": null, "checkOut": null, "status": "absent", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1" },
+    { "id": "at9", "employeeId": "e9", "date": "2026-04-21", "checkIn": "2026-04-21T07:58:00", "checkOut": null, "status": "present", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g1" },
+    { "id": "at10", "employeeId": "e10", "date": "2026-04-21", "checkIn": "2026-04-21T08:03:00", "checkOut": null, "status": "present", "lateMinutes": 3, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g2" },
+    { "id": "at11", "employeeId": "e11", "date": "2026-04-21", "checkIn": "2026-04-21T08:30:00", "checkOut": null, "status": "late", "lateMinutes": 30, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g3" },
+    { "id": "at12", "employeeId": "e12", "date": "2026-04-21", "checkIn": "2026-04-21T07:55:00", "checkOut": null, "status": "present", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g3" },
+    { "id": "at13", "employeeId": "e13", "date": "2026-04-21", "checkIn": null, "checkOut": null, "status": "on-leave", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1" },
+    { "id": "at14", "employeeId": "e14", "date": "2026-04-21", "checkIn": "2026-04-21T08:05:00", "checkOut": null, "status": "present", "lateMinutes": 5, "earlyLeaveMinutes": 0, "shiftId": "s2", "geoPointId": "g1" },
+    { "id": "at15", "employeeId": "e16", "date": "2026-04-21", "checkIn": "2026-04-21T07:59:00", "checkOut": null, "status": "present", "lateMinutes": 0, "earlyLeaveMinutes": 0, "shiftId": "s1", "geoPointId": "g4" }
+  ],
+  "attendanceTrend": [
+    { "date": "2026-04-15", "present": 798, "late": 32, "absent": 12 },
+    { "date": "2026-04-16", "present": 805, "late": 28, "absent": 9 },
+    { "date": "2026-04-17", "present": 812, "late": 22, "absent": 8 },
+    { "date": "2026-04-18", "present": 789, "late": 41, "absent": 12 },
+    { "date": "2026-04-19", "present": 820, "late": 18, "absent": 4 },
+    { "date": "2026-04-20", "present": 815, "late": 23, "absent": 4 },
+    { "date": "2026-04-21", "present": 810, "late": 27, "absent": 5 }
+  ]
+}

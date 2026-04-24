@@ -1,0 +1,143 @@
+{
+  "requests": [
+    {
+      "id": "req1",
+      "requestNumber": "REQ-2026-0142",
+      "employeeId": "e6",
+      "type": "leave",
+      "title": "إجازة اعتيادية",
+      "description": "إجازة اعتيادية لمدة 5 أيام لحضور مناسبة عائلية",
+      "status": "pending",
+      "submittedAt": "2026-04-21T09:15:00",
+      "fromDate": "2026-05-10",
+      "toDate": "2026-05-14",
+      "daysCount": 5,
+      "timeline": [
+        { "id": "t1", "action": "تقديم الطلب", "by": "هدى العمري", "byRole": "مقدم الطلب", "at": "2026-04-21T09:15:00" },
+        { "id": "t2", "action": "قيد المراجعة", "by": "ريم الشهراني", "byRole": "المدير المباشر", "at": "2026-04-21T10:00:00", "note": "جاري مراجعة جدول الإجازات للفريق" }
+      ]
+    },
+    {
+      "id": "req2",
+      "requestNumber": "REQ-2026-0141",
+      "employeeId": "e8",
+      "type": "advance",
+      "title": "طلب سلفة مالية",
+      "description": "طلب سلفة بقيمة 5,000 ريال للحاجة الماسة",
+      "status": "approved",
+      "submittedAt": "2026-04-19T14:20:00",
+      "amount": 5000,
+      "timeline": [
+        { "id": "t1", "action": "تقديم الطلب", "by": "مها السبيعي", "byRole": "مقدم الطلب", "at": "2026-04-19T14:20:00" },
+        { "id": "t2", "action": "موافقة المدير المباشر", "by": "لينا الحربي", "byRole": "مدير التسويق", "at": "2026-04-19T15:00:00" },
+        { "id": "t3", "action": "موافقة المالية", "by": "فهد العنزي", "byRole": "المدير المالي", "at": "2026-04-19T16:45:00", "note": "تمت الموافقة، سيتم الإيداع في الراتب القادم" }
+      ]
+    },
+    {
+      "id": "req3",
+      "requestNumber": "REQ-2026-0140",
+      "employeeId": "e7",
+      "type": "salary-letter",
+      "title": "خطاب تعريف بالراتب",
+      "description": "خطاب تعريف بالراتب للبنك لأغراض القرض",
+      "status": "approved",
+      "submittedAt": "2026-04-18T11:30:00",
+      "timeline": [
+        { "id": "t1", "action": "تقديم الطلب", "by": "يوسف الزهراني", "byRole": "مقدم الطلب", "at": "2026-04-18T11:30:00" },
+        { "id": "t2", "action": "إصدار الخطاب", "by": "عبدالرحمن المالكي", "byRole": "مدير الموارد البشرية", "at": "2026-04-18T13:15:00" }
+      ]
+    },
+    {
+      "id": "req4",
+      "requestNumber": "REQ-2026-0139",
+      "employeeId": "e11",
+      "type": "permission",
+      "title": "استئذان ساعتين",
+      "description": "استئذان لحضور موعد طبي",
+      "status": "approved",
+      "submittedAt": "2026-04-17T08:00:00",
+      "fromDate": "2026-04-18",
+      "toDate": "2026-04-18",
+      "timeline": [
+        { "id": "t1", "action": "تقديم الطلب", "by": "بدر الشمراني", "byRole": "مقدم الطلب", "at": "2026-04-17T08:00:00" },
+        { "id": "t2", "action": "موافقة المدير", "by": "ريم الشهراني", "byRole": "مدير تقنية المعلومات", "at": "2026-04-17T09:30:00" }
+      ]
+    },
+    {
+      "id": "req5",
+      "requestNumber": "REQ-2026-0138",
+      "employeeId": "e14",
+      "type": "equipment",
+      "title": "طلب جهاز كمبيوتر محمول",
+      "description": "طلب جهاز MacBook Pro للعمل على مشاريع التصميم",
+      "status": "in-review",
+      "submittedAt": "2026-04-16T15:45:00",
+      "timeline": [
+        { "id": "t1", "action": "تقديم الطلب", "by": "رانيا الغامدي", "byRole": "مقدم الطلب", "at": "2026-04-16T15:45:00" },
+        { "id": "t2", "action": "موافقة المدير", "by": "لينا الحربي", "byRole": "مدير التسويق", "at": "2026-04-17T09:00:00" },
+        { "id": "t3", "action": "قيد مراجعة تقنية المعلومات", "by": "ريم الشهراني", "byRole": "مدير IT", "at": "2026-04-17T11:00:00", "note": "جاري التحقق من توفر الجهاز في المخزون" }
+      ]
+    },
+    {
+      "id": "req6",
+      "requestNumber": "REQ-2026-0137",
+      "employeeId": "e9",
+      "type": "leave",
+      "title": "إجازة طارئة",
+      "description": "إجازة طارئة ليوم واحد لظرف صحي",
+      "status": "rejected",
+      "submittedAt": "2026-04-15T07:30:00",
+      "fromDate": "2026-04-15",
+      "toDate": "2026-04-15",
+      "daysCount": 1,
+      "timeline": [
+        { "id": "t1", "action": "تقديم الطلب", "by": "ماجد البقمي", "byRole": "مقدم الطلب", "at": "2026-04-15T07:30:00" },
+        { "id": "t2", "action": "رفض الطلب", "by": "سلطان الدوسري", "byRole": "مدير المبيعات", "at": "2026-04-15T09:00:00", "note": "رصيد الإجازات مستنفد، يرجى تقديم طلب إجازة بدون راتب" }
+      ]
+    },
+    {
+      "id": "req7",
+      "requestNumber": "REQ-2026-0136",
+      "employeeId": "e12",
+      "type": "attendance-correction",
+      "title": "تصحيح بصمة حضور",
+      "description": "نسيت تسجيل الخروج يوم الأحد الماضي",
+      "status": "pending",
+      "submittedAt": "2026-04-14T10:00:00",
+      "timeline": [
+        { "id": "t1", "action": "تقديم الطلب", "by": "نوف العنزي", "byRole": "مقدم الطلب", "at": "2026-04-14T10:00:00" }
+      ]
+    },
+    {
+      "id": "req8",
+      "requestNumber": "REQ-2026-0135",
+      "employeeId": "e16",
+      "type": "leave",
+      "title": "إجازة اعتيادية",
+      "description": "إجازة لمدة أسبوع للسفر",
+      "status": "pending",
+      "submittedAt": "2026-04-13T16:20:00",
+      "fromDate": "2026-06-01",
+      "toDate": "2026-06-07",
+      "daysCount": 7,
+      "timeline": [
+        { "id": "t1", "action": "تقديم الطلب", "by": "جود المطيري", "byRole": "مقدم الطلب", "at": "2026-04-13T16:20:00" }
+      ]
+    }
+  ],
+  "stats": {
+    "total": 142,
+    "pending": 18,
+    "approved": 98,
+    "rejected": 12,
+    "inReview": 14,
+    "byType": {
+      "leave": 62,
+      "permission": 28,
+      "advance": 15,
+      "salary-letter": 22,
+      "equipment": 10,
+      "attendance-correction": 5
+    }
+  }
+}
