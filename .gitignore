@@ -39,6 +39,10 @@ Thumbs.db
 *.swo
 .idea/
 .vscode/
+.claude/
+
+# Cursor
+.cursor/
 
 # TypeScript (optional cache)
 *.pem

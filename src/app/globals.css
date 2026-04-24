@@ -2,6 +2,14 @@
 @config '../../tailwind.config.mts';
 @import 'react-day-picker/style.css';
 
+/* Match popover/dropdown width to their trigger buttons */
+.popover-match-trigger { width: var(--radix-popover-trigger-width); }
+.select-match-trigger {
+  height: var(--radix-select-trigger-height);
+  width: 100%;
+  min-width: var(--radix-select-trigger-width);
+}
+
 /* ── Radix UI enter/exit animation system ───────────────────────────────────
    Defined as plain CSS — no Tailwind @utility directives — so Tailwind never
    generates data-[state=...] variant selectors that corrupt in Turbopack.

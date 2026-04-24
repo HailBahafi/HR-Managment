@@ -48,9 +48,8 @@ export function MinimalDropdown({ value, onChange, options, placeholder = 'اخ�
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          className="z-50 max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-elevated"
+          className="popover-match-trigger z-50 max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-elevated"
           sideOffset={4}
-          style={{ width: 'var(--radix-popover-trigger-width)' }}
         >
           {options.map(opt => (
             <button
@@ -121,9 +120,8 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          className="z-50 overflow-hidden rounded-md border border-border bg-popover shadow-elevated"
+          className="popover-match-trigger z-50 overflow-hidden rounded-md border border-border bg-popover shadow-elevated"
           sideOffset={4}
-          style={{ width: 'var(--radix-popover-trigger-width)' }}
         >
           <div className="border-b border-border p-2">
             <div className="relative">

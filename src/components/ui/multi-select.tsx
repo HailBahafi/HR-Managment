@@ -128,8 +128,7 @@ export function MultiSelect({
         <PopoverContent
           align="end"
           container={popoverPortalContainer ?? undefined}
-          className="min-w-[min(100%,280px)] max-w-[calc(100vw-2rem)] border-border p-0 shadow-luxe"
-          style={{ width: 'var(--radix-popover-trigger-width)' }}
+          className="popover-match-trigger min-w-[min(100%,280px)] max-w-[calc(100vw-2rem)] border-border p-0 shadow-luxe"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <div className="border-b border-border bg-muted/30 px-3 py-2">
