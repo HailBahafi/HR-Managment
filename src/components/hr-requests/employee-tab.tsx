@@ -1,31 +1,30 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Search, RefreshCw, Pencil, Trash2, Eye, ChevronRight, ChevronDown, User } from 'lucide-react';
+import { Plus, Search, RefreshCw, Pencil, Trash2, Eye, ChevronRight, ChevronDown, User, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { useHREmployeeDirectoryStore, type HREmployeeDirectoryRow, type HREmployeeStatus, type HREmployeeHierarchyRole } from '@/lib/hr-requests/employee-directory-store';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import { buildEmployeeForest, HIERARCHY_ROLE_LABELS, STATUS_LABELS, STATUS_COLORS, type EmpTreeNode } from '@/lib/hr-requests/hierarchy-utils';
-import { MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, Pagination, ActiveBadge } from './shared-ui';
+import { MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, Pagination } from './shared-ui';
 import { cn } from '@/lib/utils';
 
 const LS_VIEW = 'hr_employees_list_view_mode';
 const LS_PAGE = 'hr_employees_list_page';
-const LS_PER = 'hr_employees_list_per';
+const LS_PER  = 'hr_employees_list_per';
 
 const ROLE_OPTIONS: { value: HREmployeeHierarchyRole; label: string }[] = [
-  { value: 'ceo', label: 'الرئيس التنفيذي' },
+  { value: 'ceo',       label: 'الرئيس التنفيذي' },
   { value: 'executive', label: 'تنفيذي' },
-  { value: 'gm', label: 'مدير عام' },
+  { value: 'gm',        label: 'مدير عام' },
   { value: 'dept_head', label: 'رئيس قسم' },
-  { value: 'supervisor', label: 'مشرف' },
-  { value: 'staff', label: 'موظف' },
+  { value: 'supervisor',label: 'مشرف' },
+  { value: 'staff',     label: 'موظف' },
 ];
 const STATUS_OPTIONS: { value: HREmployeeStatus; label: string }[] = [
-  { value: 'active', label: 'نشط' },
+  { value: 'active',    label: 'نشط' },
   { value: 'probation', label: 'تحت التجربة' },
   { value: 'suspended', label: 'موقوف' },
 ];
@@ -47,7 +46,7 @@ function OrgNode({ node, onSelect, depth = 0 }: { node: EmpTreeNode; onSelect: (
   const [expanded, setExpanded] = React.useState(true);
   const hasChildren = node.children.length > 0;
   return (
-    <div className={cn('relative', depth > 0 && 'border-r border-dashed border-border/60 mr-6 pr-4')}>
+    <div className={cn('relative', depth > 0 && 'border-r border-dashed border-border/60 mr-4 sm:mr-6 pr-3 sm:pr-4')}>
       <div
         className="group mb-1 flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-soft hover:border-primary/30 hover:bg-primary/5 transition-all"
         onClick={() => onSelect(node.emp)}
@@ -66,10 +65,56 @@ function OrgNode({ node, onSelect, depth = 0 }: { node: EmpTreeNode; onSelect: (
         )}
       </div>
       {expanded && hasChildren && (
-        <div className="mt-1 space-y-1 pr-4">
+        <div className="mt-1 space-y-1 pr-3 sm:pr-4">
           {node.children.map(child => <OrgNode key={child.emp.id} node={child} onSelect={onSelect} depth={depth + 1} />)}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: HREmployeeStatus }) {
+  return (
+    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[status])}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+// ─── Employee card (mobile) ───────────────────────────────────────────────────
+function EmployeeCard({ emp, getDeptName, onView, onEdit, onDelete }: {
+  emp: HREmployeeDirectoryRow;
+  getDeptName: (id: string) => string;
+  onView: () => void; onEdit: () => void; onDelete: () => void;
+}) {
+  return (
+    <div
+      className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-soft hover:border-primary/20 transition-colors cursor-pointer"
+      onClick={onView}
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+        {emp.nameAr.split(' ').map(w => w[0]).slice(0, 2).join('')}
+      </div>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-sm">{emp.nameAr}</p>
+            <p className="text-[11px] text-muted-foreground" dir="ltr">{emp.bridgeId}</p>
+          </div>
+          <StatusBadge status={emp.status} />
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          <span>{getDeptName(emp.departmentId)}</span>
+          <span>·</span>
+          <span>{emp.jobTitleAr}</span>
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-1" onClick={e => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}><Pencil className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete}><Trash2 className="h-3.5 w-3.5" /></Button>
+      </div>
     </div>
   );
 }
@@ -81,19 +126,20 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   const { employees, addEmployee, updateEmployee, deleteEmployee } = useHREmployeeDirectoryStore();
   const { departments } = useHRConfigurationStore();
 
-  const [view, setView] = React.useState<'list' | 'chart'>(() => (typeof window !== 'undefined' ? localStorage.getItem(LS_VIEW) as 'list' | 'chart' : null) ?? 'list');
-  const [search, setSearch] = React.useState('');
-  const [filterDept, setFilterDept] = React.useState('all');
+  const [view, setView]           = React.useState<'list' | 'chart'>(() => (typeof window !== 'undefined' ? localStorage.getItem(LS_VIEW) as 'list' | 'chart' : null) ?? 'list');
+  const [search, setSearch]       = React.useState('');
+  const [filterDept, setFilterDept]     = React.useState('all');
   const [filterStatus, setFilterStatus] = React.useState('all');
-  const [refreshing, setRefreshing] = React.useState(false);
-  const [page, setPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PAGE) ?? '1') : 1);
+  const [filtersOpen, setFiltersOpen]   = React.useState(false);
+  const [refreshing, setRefreshing]     = React.useState(false);
+  const [page, setPage]       = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PAGE) ?? '1') : 1);
   const [perPage, setPerPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PER) ?? '15') : 15);
 
   const [sidebarMode, setSidebarMode] = React.useState<'view' | 'edit' | 'create' | null>(null);
-  const [selected, setSelected] = React.useState<HREmployeeDirectoryRow | null>(null);
-  const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
-  const [formError, setFormError] = React.useState<string | null>(null);
-  const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [selected, setSelected]       = React.useState<HREmployeeDirectoryRow | null>(null);
+  const [draft, setDraft]             = React.useState<DraftForm>(EMPTY);
+  const [formError, setFormError]     = React.useState<string | null>(null);
+  const [deleteId, setDeleteId]       = React.useState<string | null>(null);
 
   // Deep link
   React.useEffect(() => {
@@ -122,8 +168,8 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
 
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
-  const openView = (emp: HREmployeeDirectoryRow) => { setSelected(emp); setSidebarMode('view'); };
-  const openEdit = (emp: HREmployeeDirectoryRow) => {
+  const openView   = (emp: HREmployeeDirectoryRow) => { setSelected(emp); setSidebarMode('view'); };
+  const openEdit   = (emp: HREmployeeDirectoryRow) => {
     setSelected(emp);
     setDraft({ bridgeId: emp.bridgeId, nameAr: emp.nameAr, nameEn: emp.nameEn, nationalId: emp.nationalId, departmentId: emp.departmentId, jobTitleAr: emp.jobTitleAr, jobTitleEn: emp.jobTitleEn, hireDate: emp.hireDate, status: emp.status, email: emp.email ?? '', mobile: emp.mobile ?? '', notes: emp.notes ?? '', reportsToId: emp.reportsToId ?? '', hierarchyRole: emp.hierarchyRole });
     setFormError(null);
@@ -146,96 +192,141 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   };
 
   const patch = <K extends keyof DraftForm>(k: K, v: DraftForm[K]) => setDraft(d => ({ ...d, [k]: v }));
-
   const empOptions = employees.filter(e => e.id !== selected?.id).map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
-  const forest = React.useMemo(() => buildEmployeeForest(filtered), [filtered]);
+  const forest     = React.useMemo(() => buildEmployeeForest(filtered), [filtered]);
   const getDeptName = (id: string) => departments.find(d => d.id === id)?.nameAr ?? id;
 
+  const hasActiveFilters = filterDept !== 'all' || filterStatus !== 'all' || search !== '';
+
   return (
-    <div className="flex gap-4">
-      {/* Sidebar filters */}
-      <div className="w-56 shrink-0 space-y-4 rounded-xl border border-border bg-card p-4 shadow-soft self-start">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">الفلاتر</p>
-          <span className="text-xs text-muted-foreground">{filtered.length} موظف</span>
+    <div className="w-full min-w-0 space-y-3">
+
+      {/* ── Top toolbar ── */}
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+        {/* View toggle */}
+        <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1">
+          {(['list', 'chart'] as const).map(v => (
+            <button key={v} type="button" onClick={() => setView(v)}
+              className={cn('rounded-lg px-3 py-1.5 text-xs font-medium transition-all', view === v ? 'bg-background shadow-soft text-foreground' : 'text-muted-foreground hover:text-foreground')}>
+              {v === 'list' ? 'قائمة' : 'مخطط'}
+            </button>
+          ))}
         </div>
-        <div className="relative">
-          <Search className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="بحث…" className="pr-7 h-8 text-xs" />
+
+        {/* Search — hidden on mobile when filter panel open */}
+        <div className="relative hidden sm:block">
+          <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="بحث عن موظف…" className="pr-9 h-9 w-48 text-xs"
+          />
         </div>
-        <div className="space-y-1.5">
-          <p className="text-[11px] text-muted-foreground font-medium">القسم</p>
-          <MinimalDropdown value={filterDept} onChange={v => { setFilterDept(v); setPage(1); }} options={deptOptions} />
-        </div>
-        <div className="space-y-1.5">
-          <p className="text-[11px] text-muted-foreground font-medium">الحالة</p>
-          <MinimalDropdown value={filterStatus} onChange={v => { setFilterStatus(v); setPage(1); }} options={[{ value: 'all', label: 'الكل' }, ...STATUS_OPTIONS]} />
-        </div>
-        <Separator />
-        <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={() => setRefreshing(true)} disabled={refreshing}>
-          <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> تحديث
+
+        {/* Filter toggle (mobile) */}
+        <Button
+          variant="outline" size="sm"
+          className={cn('gap-1.5 sm:hidden', hasActiveFilters && 'border-primary/50 text-primary')}
+          onClick={() => setFiltersOpen(v => !v)}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          فلترة
+          {hasActiveFilters && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">!</span>}
         </Button>
-        {refreshing && setTimeout(() => setRefreshing(false), 700) && null}
+
+        {/* Dept + Status filters — desktop inline */}
+        <div className="hidden sm:flex items-center gap-2">
+          <MinimalDropdown value={filterDept} onChange={v => { setFilterDept(v); setPage(1); }} options={deptOptions} className="h-9 text-xs w-36" />
+          <MinimalDropdown value={filterStatus} onChange={v => { setFilterStatus(v); setPage(1); }} options={[{ value: 'all', label: 'جميع الحالات' }, ...STATUS_OPTIONS]} className="h-9 text-xs w-32" />
+        </div>
+
+        <div className="hidden min-w-0 flex-1 sm:block" aria-hidden />
+
+        {/* Count */}
+        <span className="hidden sm:block text-xs text-muted-foreground">{filtered.length} موظف</span>
+
+        {/* Refresh */}
+        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 700); }} disabled={refreshing}>
+          <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+        </Button>
+
+        <Button variant="luxe" size="sm" className="shrink-0 gap-1.5" onClick={openCreate}>
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">موظف جديد</span>
+          <span className="sm:hidden">جديد</span>
+        </Button>
       </div>
 
-      <div className="flex-1 space-y-3">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1">
-            {(['list', 'chart'] as const).map(v => (
-              <button key={v} type="button" onClick={() => setView(v)}
-                className={cn('rounded-lg px-3 py-1.5 text-xs font-medium transition-all', view === v ? 'bg-background shadow-soft text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-                {v === 'list' ? 'قائمة' : 'مخطط'}
+      {/* ── Mobile filter panel ── */}
+      {filtersOpen && (
+        <div className="sm:hidden rounded-xl border border-border bg-card p-4 shadow-soft space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">الفلاتر</span>
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <button type="button" className="text-xs text-muted-foreground underline" onClick={() => { setSearch(''); setFilterDept('all'); setFilterStatus('all'); setPage(1); }}>
+                  مسح الكل
+                </button>
+              )}
+              <button type="button" onClick={() => setFiltersOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
               </button>
-            ))}
+            </div>
           </div>
-          <Button variant="luxe" className="gap-2" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> موظف جديد
-          </Button>
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="بحث عن موظف…" className="pr-9 h-9 text-xs" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <MinimalDropdown value={filterDept} onChange={v => { setFilterDept(v); setPage(1); }} options={deptOptions} placeholder="القسم" />
+            <MinimalDropdown value={filterStatus} onChange={v => { setFilterStatus(v); setPage(1); }} options={[{ value: 'all', label: 'جميع الحالات' }, ...STATUS_OPTIONS]} placeholder="الحالة" />
+          </div>
+          <p className="text-xs text-muted-foreground">{filtered.length} موظف</p>
         </div>
+      )}
 
-        {/* Table */}
-        {view === 'list' ? (
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-            {paginated.length === 0 ? <EmptyState icon={User} title="لا يوجد موظفون" /> : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+      {/* ── Content ── */}
+      {view === 'list' ? (
+        <div className="w-full min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+          {paginated.length === 0 ? (
+            <EmptyState icon={User} title="لا يوجد موظفون" />
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden min-w-0 md:block md:overflow-x-auto">
+                <table className="w-full min-w-0 table-fixed text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <th className="px-4 py-3 text-right">الموظف</th>
-                      <th className="px-4 py-3 text-right">القسم</th>
-                      <th className="px-4 py-3 text-right">المستوى</th>
-                      <th className="px-4 py-3 text-right">المسمى</th>
-                      <th className="px-4 py-3 text-right">تاريخ التعيين</th>
-                      <th className="px-4 py-3 text-right">الحالة</th>
-                      <th className="w-24 px-4 py-3" />
+                      <th className="w-[22%] px-3 py-3 text-right lg:px-4">الموظف</th>
+                      <th className="w-[14%] px-3 py-3 text-right lg:px-4">القسم</th>
+                      <th className="w-[12%] px-3 py-3 text-right lg:px-4">المستوى</th>
+                      <th className="w-[18%] px-3 py-3 text-right lg:px-4">المسمى</th>
+                      <th className="w-[14%] px-3 py-3 text-right lg:px-4">تاريخ التعيين</th>
+                      <th className="w-[12%] px-3 py-3 text-right lg:px-4">الحالة</th>
+                      <th className="w-16 px-2 py-3 lg:w-20 lg:px-4" />
                     </tr>
                   </thead>
                   <tbody>
                     {paginated.map(emp => (
                       <tr key={emp.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openView(emp)}>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
+                        <td className="px-3 py-3 lg:px-4">
+                          <div className="flex min-w-0 items-center gap-2.5">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                               {emp.nameAr.split(' ').map(w => w[0]).slice(0, 2).join('')}
                             </div>
-                            <div>
-                              <p className="font-semibold text-sm">{emp.nameAr}</p>
-                              <p className="text-[11px] text-muted-foreground" dir="ltr">{emp.bridgeId}</p>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold">{emp.nameAr}</p>
+                              <p className="truncate text-[11px] text-muted-foreground" dir="ltr">{emp.bridgeId}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{getDeptName(emp.departmentId)}</td>
-                        <td className="px-4 py-3 text-xs">{HIERARCHY_ROLE_LABELS[emp.hierarchyRole]}</td>
-                        <td className="px-4 py-3 text-xs">{emp.jobTitleAr}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{emp.hireDate ? new Date(emp.hireDate).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[emp.status])}>
-                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                            {STATUS_LABELS[emp.status]}
-                          </span>
+                        <td className="px-3 py-3 text-xs text-muted-foreground lg:px-4"><span className="line-clamp-2">{getDeptName(emp.departmentId)}</span></td>
+                        <td className="px-3 py-3 text-xs lg:px-4"><span className="line-clamp-2">{HIERARCHY_ROLE_LABELS[emp.hierarchyRole]}</span></td>
+                        <td className="px-3 py-3 text-xs lg:px-4"><span className="line-clamp-2">{emp.jobTitleAr}</span></td>
+                        <td className="px-3 py-3 text-xs text-muted-foreground lg:px-4">
+                          {emp.hireDate ? new Date(emp.hireDate).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
                         </td>
-                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        <td className="px-3 py-3 lg:px-4"><StatusBadge status={emp.status} /></td>
+                        <td className="px-2 py-3 lg:px-4" onClick={e => e.stopPropagation()}>
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(emp)}><Pencil className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteId(emp.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
@@ -246,21 +337,36 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
                   </tbody>
                 </table>
               </div>
-            )}
-            <Pagination page={page} perPage={perPage} total={filtered.length} onPage={setPage} onPerPage={p => { setPerPage(p); setPage(1); }} />
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
-            {forest.length === 0 ? <EmptyState icon={User} title="لا يوجد موظفون" /> : (
-              <div className="space-y-2">
-                {forest.map(n => <OrgNode key={n.emp.id} node={n} onSelect={openView} />)}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
-      {/* Create / Edit drawer */}
+              {/* Mobile card list */}
+              <div className="md:hidden divide-y divide-border/60">
+                {paginated.map(emp => (
+                  <div key={emp.id} className="p-3">
+                    <EmployeeCard
+                      emp={emp}
+                      getDeptName={getDeptName}
+                      onView={() => openView(emp)}
+                      onEdit={() => openEdit(emp)}
+                      onDelete={() => setDeleteId(emp.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <Pagination page={page} perPage={perPage} total={filtered.length} onPage={setPage} onPerPage={p => { setPerPage(p); setPage(1); }} />
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-6 shadow-soft overflow-x-auto">
+          {forest.length === 0 ? <EmptyState icon={User} title="لا يوجد موظفون" /> : (
+            <div className="space-y-2 min-w-[280px]">
+              {forest.map(n => <OrgNode key={n.emp.id} node={n} onSelect={openView} />)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Create / Edit drawer ── */}
       <HRSettingsFormDrawer
         open={sidebarMode === 'create' || sidebarMode === 'edit'}
         onOpenChange={v => { if (!v) setSidebarMode(null); }}
@@ -293,50 +399,61 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
         </div>
       </HRSettingsFormDrawer>
 
-      {/* View modal */}
+      {/* ── View modal ── */}
       {sidebarMode === 'view' && selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSidebarMode(null)}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setSidebarMode(null)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-luxe space-y-4" onClick={e => e.stopPropagation()}>
+          <div
+            className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-luxe space-y-4 max-h-[90dvh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle bar (mobile) */}
+            <div className="sm:hidden mx-auto mb-1 h-1 w-10 rounded-full bg-border" />
+
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
                 {selected.nameAr.split(' ').map(w => w[0]).slice(0, 2).join('')}
               </div>
-              <div>
-                <p className="font-display text-xl font-bold">{selected.nameAr}</p>
-                <p className="text-sm text-muted-foreground" dir="ltr">{selected.nameEn}</p>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-xl font-bold truncate">{selected.nameAr}</p>
+                <p className="text-sm text-muted-foreground truncate" dir="ltr">{selected.nameEn}</p>
               </div>
-              <span className={cn('mr-auto inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[selected.status])}>
-                {STATUS_LABELS[selected.status]}
-              </span>
+              <StatusBadge status={selected.status} />
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {[
-                ['القسم', getDeptName(selected.departmentId)],
-                ['المسمى', selected.jobTitleAr],
-                ['المستوى', HIERARCHY_ROLE_LABELS[selected.hierarchyRole]],
+
+            <div className="grid grid-cols-2 gap-2.5 text-sm">
+              {([
+                ['القسم',        getDeptName(selected.departmentId)],
+                ['المسمى',       selected.jobTitleAr],
+                ['المستوى',      HIERARCHY_ROLE_LABELS[selected.hierarchyRole]],
                 ['تاريخ التعيين', selected.hireDate ? new Date(selected.hireDate).toLocaleDateString('ar-SA') : '—'],
-                ['الهوية', selected.nationalId],
-                ['الجوال', selected.mobile ?? '—'],
-                ['البريد', selected.email ?? '—', true],
-              ].map(([label, value, full]) => (
-                <div key={label as string} className={cn('rounded-lg bg-muted/30 p-2.5', full && 'col-span-2')}>
+                ['الهوية',       selected.nationalId],
+                ['الجوال',       selected.mobile ?? '—'],
+                ['البريد',       selected.email ?? '—', true],
+              ] as [string, string, boolean?][]).map(([label, value, full]) => (
+                <div key={label} className={cn('rounded-lg bg-muted/30 p-2.5', full && 'col-span-2')}>
                   <p className="text-[11px] text-muted-foreground">{label}</p>
                   <p className="font-medium truncate" dir={label === 'البريد' || label === 'الجوال' ? 'ltr' : undefined}>{value}</p>
                 </div>
               ))}
             </div>
-            <div className="flex gap-2 pt-2">
+
+            <div className="flex gap-2 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => setSidebarMode(null)}>إغلاق</Button>
-              <Button variant="luxe" className="flex-1 gap-1.5" onClick={() => openEdit(selected)}><Pencil className="h-3.5 w-3.5" />تعديل</Button>
+              <Button variant="luxe" className="flex-1 gap-1.5" onClick={() => openEdit(selected)}>
+                <Pencil className="h-3.5 w-3.5" />تعديل
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} title="حذف الموظف"
+      <ConfirmationModal
+        open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}
+        title="حذف الموظف"
         description="سيتم حذف الموظف وإزالته من هيكل التقارير لمن يتبع له."
-        onConfirm={() => { if (deleteId) deleteEmployee(deleteId); setDeleteId(null); }} />
+        onConfirm={() => { if (deleteId) deleteEmployee(deleteId); setDeleteId(null); }}
+      />
     </div>
   );
 }

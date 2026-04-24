@@ -36,7 +36,7 @@ function HREmployeesContent() {
   }, [employeeId, router, pathname]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="w-full min-w-0 space-y-6 animate-fade-in">
       <div>
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
           <div className="h-px w-6 bg-gold" />

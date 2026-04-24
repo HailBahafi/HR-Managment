@@ -2,8 +2,11 @@
 @config '../../tailwind.config.mts';
 @import 'react-day-picker/style.css';
 
-/* Match popover/dropdown width to their trigger buttons */
-.popover-match-trigger { width: var(--radix-popover-trigger-width); }
+/* Match popover width to trigger, but never wider than the viewport */
+.popover-match-trigger {
+  width: var(--radix-popover-trigger-width);
+  max-width: min(var(--radix-popover-trigger-width), calc(100vw - 2rem));
+}
 .select-match-trigger {
   height: var(--radix-select-trigger-height);
   width: 100%;

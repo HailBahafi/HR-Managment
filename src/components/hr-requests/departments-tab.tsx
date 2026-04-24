@@ -112,9 +112,9 @@ export function DepartmentsTab() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1">
+    <div className="w-full min-w-0 space-y-4">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex w-fit gap-1 rounded-xl border border-border bg-muted/30 p-1">
           {(['list', 'chart'] as const).map(v => (
             <button key={v} type="button" onClick={() => setView(v)}
               className={cn('rounded-lg px-3 py-1.5 text-xs font-medium transition-all', view === v ? 'bg-background shadow-soft text-foreground' : 'text-muted-foreground hover:text-foreground')}>
@@ -122,23 +122,23 @@ export function DepartmentsTab() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-1 basis-[10rem] sm:flex-none sm:basis-auto">
             <Search className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث…" className="pr-7 h-8 w-44 text-xs" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث…" className="h-8 w-full min-w-0 pr-7 text-xs sm:w-44" />
           </div>
-          <label className="flex items-center gap-1.5 text-xs cursor-pointer text-muted-foreground">
+          <label className="flex shrink-0 items-center gap-1.5 text-xs cursor-pointer text-muted-foreground">
             <Checkbox checked={filterActive} onCheckedChange={v => setFilterActive(v === true)} />
             نشط فقط
           </label>
-          <Button variant="luxe" className="gap-2" onClick={openCreate}>
+          <Button variant="luxe" className="shrink-0 gap-2" onClick={openCreate}>
             <Plus className="h-4 w-4" /> قسم جديد
           </Button>
         </div>
       </div>
 
       {view === 'list' ? (
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+        <div className="w-full min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
           {filtered.length === 0 ? <EmptyState icon={Building2} title="لا توجد أقسام" /> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
