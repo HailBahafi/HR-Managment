@@ -21,7 +21,7 @@ import { data, getBranch, getDepartment } from '@/lib/data';
 import { formatCurrency, getInitials } from '@/lib/utils';
 
 export default function EmployeesPage() {
-  useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', icon: Users });
+  useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
   const [view, setView] = React.useState<'table' | 'grid'>('table');
   const [search, setSearch] = React.useState('');
   const [branchFilter, setBranchFilter] = React.useState('all');

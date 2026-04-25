@@ -58,7 +58,7 @@ function buildTree(): TreeNode {
 }
 
 export default function OrganizationPage() {
-  useSetPageTitle({ titleAr: 'خريطة المنظمة', descriptionAr: 'استكشف هيكل الشركة التفاعلي', icon: Building2 });
+  useSetPageTitle({ titleAr: 'خريطة المنظمة', descriptionAr: 'استكشف هيكل الشركة التفاعلي', iconName: 'Building2' });
   const tree = React.useMemo(buildTree, []);
   const [search, setSearch] = React.useState('');
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set(['company', ...data.branches.map((b) => b.id)]));

@@ -3,7 +3,6 @@
 import type { HRDisciplineSection } from '@/lib/hr-discipline/types';
 import { ShieldAlert } from 'lucide-react';
 import { useSetPageTitle } from '@/components/page-title-context';
-import { DisciplineNav } from './discipline-nav';
 import { ViolationTypesClient } from './violation-types-client';
 import { DisciplineApprovalClient } from './discipline-approval-client';
 import { ViolationCasesClient } from './violation-cases-client';
@@ -21,10 +20,9 @@ interface Props {
 }
 
 export function HRDisciplineSectionRoot({ section, titleAr }: Props) {
-  useSetPageTitle({ titleAr, descriptionAr: 'الانضباط الوظيفي وإدارة المخالفات', icon: ShieldAlert });
+  useSetPageTitle({ titleAr, descriptionAr: 'الانضباط الوظيفي وإدارة المخالفات', iconName: 'ShieldAlert' });
   return (
     <div className="space-y-6">
-      <DisciplineNav />
       {section === 'violation-types' && <ViolationTypesClient />}
       {section === 'approval-assignment' && <DisciplineApprovalClient />}
       {section === 'violation-cases' && <ViolationCasesClient />}

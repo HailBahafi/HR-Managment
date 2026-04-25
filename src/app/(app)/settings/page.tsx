@@ -25,7 +25,7 @@ const actions = ['view', 'create', 'edit', 'delete', 'approve'] as const;
 const actionLabels: Record<string, string> = { view: 'عرض', create: 'إنشاء', edit: 'تعديل', delete: 'حذف', approve: 'موافقة' };
 
 export default function SettingsPage() {
-  useSetPageTitle({ titleAr: 'إعدادات النظام', descriptionAr: 'إدارة الأدوار والصلاحيات والسياسات', icon: Settings });
+  useSetPageTitle({ titleAr: 'إعدادات النظام', descriptionAr: 'إدارة الأدوار والصلاحيات والسياسات', iconName: 'Settings' });
   return (
     <div className="space-y-6 animate-fade-in">
       <Tabs defaultValue="roles">

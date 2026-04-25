@@ -5,7 +5,7 @@ import * as React from 'react';
 export interface PageTitleMeta {
   titleAr: string;
   descriptionAr?: string;
-  icon?: React.ElementType;
+  iconName?: string;
 }
 
 interface PageTitleContextValue {
@@ -33,5 +33,5 @@ export function usePageTitle() {
 
 export function useSetPageTitle(m: PageTitleMeta) {
   const { setMeta } = usePageTitle();
-  React.useEffect(() => { setMeta(m); }, [m.titleAr, m.descriptionAr]);  // eslint-disable-line
+  React.useEffect(() => { setMeta(m); }, [m.titleAr, m.descriptionAr, m.iconName, setMeta]);
 }

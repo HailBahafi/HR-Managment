@@ -1,7 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { Bell, Moon, Sun, LogOut, User, Settings, Menu } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  Bell, Moon, Sun, LogOut, User, Settings, Menu,
+  LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
+  ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
+  LayoutGrid, MapPin, Link2, CalendarRange,
+  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList,
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,117 +20,314 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import Link from 'next/link';
 import { useSidebar } from '@/components/sidebar-context';
 import { usePageTitle } from '@/components/page-title-context';
+import { Logo } from '@/components/logo';
+import { cn } from '@/lib/utils';
+import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
 
+/* ── Icon registry (string → component) ─────────────────────────────── */
+export const PAGE_ICONS: Record<string, React.ElementType> = {
+  LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
+  ShieldAlert, Wallet, BarChart3, Building2, Settings,
+};
+
+/* ── Nav data ──────────────────────────────────────────────────────────── */
+type SubItem  = { label: string; href: string; icon?: React.ElementType };
+type NavGroup = { labelAr?: string; items: SubItem[] };
+type NavItem  = {
+  key: string; label: string; href?: string;
+  icon: React.ElementType; groups?: NavGroup[];
+};
+
+const navConfig: NavItem[] = [
+  { key: 'dashboard', label: 'الرئيسية', href: '/dashboard', icon: LayoutDashboard },
+  {
+    key: 'employees', label: 'الموظفين', icon: Users,
+    groups: [{ items: [
+      { label: 'الموظفين والأقسام', href: '/hr/employees',  icon: Users },
+      { label: 'سجل الموظفين',     href: '/employees',      icon: Users },
+      { label: 'الهيكل التنظيمي', href: '/organization',   icon: Building2 },
+    ]}],
+  },
+  {
+    key: 'attendance', label: 'الحضور', icon: Clock,
+    groups: [{ items: [
+      { label: 'قوالب الشفت',         href: '/attendance?section=templates',         icon: LayoutGrid },
+      { label: 'تعيين القوالب',       href: '/attendance?section=assignment',        icon: ClipboardList },
+      { label: 'الحضور اليومي',       href: '/attendance?section=daily',             icon: CalendarRange },
+      { label: 'نقاط التسجيل',        href: '/attendance?section=checkpoints',       icon: MapPin },
+      { label: 'ربط النقاط بالموظفين',href: '/attendance?section=checkpoint-links',  icon: Link2 },
+    ]}],
+  },
+  {
+    key: 'leaves', label: 'الإجازات', icon: CalendarDays,
+    groups: [{ items: [
+      { label: 'التحليلات',     href: '/hr/leaves/analytics',          icon: BarChart3 },
+      { label: 'إدارة الطلبات',href: '/hr/leaves/unified-management',  icon: LayoutList },
+      { label: 'أنواع الإجازات',href: '/hr/leaves/leave-types',        icon: ListChecks },
+      { label: 'العطل الرسمية', href: '/hr/leaves/public-holidays',    icon: CalendarDays },
+    ]}],
+  },
+  {
+    key: 'requests', label: 'الطلبات', icon: ClipboardList,
+    groups: [{ items: [
+      { label: 'الطلبات العامة',  href: '/hr/requests/general',             icon: InboxIcon },
+      { label: 'أنواع الطلبات',   href: '/hr/requests/request-types',       icon: ListChecks },
+      { label: 'قوالب النماذج',   href: '/hr/requests/form-templates',      icon: FileText },
+      { label: 'قوالب الموافقة',  href: '/hr/requests/approval-assignment', icon: ShieldCheck },
+    ]}],
+  },
+  {
+    key: 'discipline', label: 'الانضباط', icon: ShieldAlert,
+    groups: hrDisciplineNavGroups.map(g => ({
+      labelAr: g.labelAr,
+      items: g.items.map(item => ({ label: item.labelAr, href: `/hr/discipline/${item.slug}` })),
+    })),
+  },
+  { key: 'payroll',  label: 'الرواتب',   href: '/payroll',  icon: Wallet },
+  { key: 'reports',  label: 'التقارير',  href: '/reports',  icon: BarChart3 },
+  { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
+];
+
+/* ── Helpers ─────────────────────────────────────────────────────────── */
+function parentIsActive(pathname: string, item: NavItem) {
+  if (item.href) return pathname === item.href || pathname.startsWith(item.href + '/');
+  return item.groups?.some(g =>
+    g.items.some(s => {
+      const base = s.href.split('?')[0];
+      return pathname === base || pathname.startsWith(base + '/');
+    }),
+  ) ?? false;
+}
+
+function subIsActive(pathname: string, href: string) {
+  const base = href.split('?')[0];
+  return pathname === base || pathname.startsWith(base + '/');
+}
+
+/* ── Dropdown panel ─────────────────────────────────────────────────── */
+function NavDropdown({
+  groups, itemKey, onOpen, onClose,
+}: {
+  groups: NavGroup[];
+  itemKey: string;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  const pathname = usePathname();
+  const multiGroup = groups.length > 1;
+
+  return (
+    <div
+      className={cn(
+        'nav-dropdown absolute right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-border/60 bg-popover/95 p-2 shadow-elevated backdrop-blur-xl',
+        multiGroup ? 'flex gap-1 min-w-[480px]' : 'min-w-[220px]',
+      )}
+      onMouseEnter={onOpen}
+      onMouseLeave={onClose}
+    >
+      {groups.map((group, gi) => (
+        <div key={gi} className={cn('flex flex-col gap-0.5', multiGroup && 'flex-1')}>
+          {group.labelAr && (
+            <p className="mb-1 px-3 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/50">
+              {group.labelAr}
+            </p>
+          )}
+          {group.items.map(sub => {
+            const SubIcon = sub.icon;
+            const active = subIsActive(pathname, sub.href);
+            return (
+              <Link
+                key={sub.href}
+                href={sub.href}
+                className={cn(
+                  'group/sub relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-150',
+                  active
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'text-foreground/70 hover:bg-muted/70 hover:text-foreground',
+                )}
+              >
+                {active && (
+                  <span className="absolute end-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+                )}
+                {SubIcon && (
+                  <span className={cn(
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
+                    active ? 'bg-primary/15 text-primary' : 'bg-muted/60 text-muted-foreground group-hover/sub:bg-primary/10 group-hover/sub:text-primary',
+                  )}>
+                    <SubIcon className="h-3.5 w-3.5" />
+                  </span>
+                )}
+                <span className="flex-1 leading-tight">{sub.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Main navbar ────────────────────────────────────────────────────── */
 export function Topbar() {
   const [dark, setDark] = React.useState(false);
   const { toggle } = useSidebar();
   const { meta } = usePageTitle();
-  const Icon = meta.icon;
+  const pathname = usePathname();
+
+  const [activeMenu, setActiveMenu] = React.useState<string | null>(null);
+  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openMenu  = (key: string) => { if (closeTimer.current) clearTimeout(closeTimer.current); setActiveMenu(key); };
+  const delayClose = () => { closeTimer.current = setTimeout(() => setActiveMenu(null), 150); };
 
   React.useEffect(() => {
-    if (dark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    document.documentElement.classList.toggle('dark', dark);
   }, [dark]);
 
+  React.useEffect(() => { setActiveMenu(null); }, [pathname]);
+
+  const PageIcon = meta.iconName ? PAGE_ICONS[meta.iconName] : null;
+
   return (
-    <header className="sticky top-0 z-20 flex h-16 min-w-0 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-30 flex flex-col border-b border-border/60 bg-background/90 backdrop-blur-2xl">
 
-      {/* Hamburger — mobile only */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9 shrink-0 lg:hidden"
-        onClick={toggle}
-        aria-label="فتح القائمة"
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
+      {/* ── Row 1: logo + nav + actions ─────────────────────────────── */}
+      <div className="flex h-[54px] items-center gap-2 px-4 sm:px-5">
 
-      {/* Page title + description */}
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        {Icon && (
-          <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Icon className="h-4.5 w-4.5 text-primary" />
+        {/* Logo */}
+        <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50">
+          <Logo size={28} />
+          <div className="hidden flex-col leading-none sm:flex">
+            <span className="font-display text-[15px] font-bold tracking-tight">نواة</span>
+            <span className="text-[9px] font-medium tracking-[0.22em] text-muted-foreground uppercase">NAWA HR</span>
           </div>
-        )}
-        <div className="min-w-0">
-          {meta.titleAr ? (
-            <>
-              <h1 className="truncate font-display text-base font-bold leading-none tracking-tight sm:text-lg">
-                {meta.titleAr}
-              </h1>
-              {meta.descriptionAr && (
-                <p className="mt-0.5 hidden truncate text-[11px] text-muted-foreground sm:block">
-                  {meta.descriptionAr}
-                </p>
-              )}
-            </>
-          ) : (
-            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-          )}
+        </Link>
+
+        <div className="mx-0.5 hidden h-5 w-px bg-border/70 lg:block" />
+
+        {/* Desktop nav */}
+        <nav className="hidden flex-1 items-center gap-0.5 lg:flex" aria-label="التنقل الرئيسي">
+          {navConfig.map(item => {
+            const active  = parentIsActive(pathname, item);
+            const isOpen  = activeMenu === item.key;
+            const hasDrop = !!item.groups;
+
+            const btnClass = cn(
+              'relative flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-[13px] font-medium outline-none',
+              'transition-all duration-200 ease-out',
+              active
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-foreground/65 hover:bg-muted/70 hover:text-foreground',
+              isOpen && !active && 'bg-muted/70 text-foreground',
+            );
+
+            return (
+              <div
+                key={item.key}
+                className="relative"
+                onMouseEnter={() => { if (hasDrop) openMenu(item.key); }}
+                onMouseLeave={() => { if (hasDrop) delayClose(); }}
+              >
+                {item.href && !hasDrop ? (
+                  <Link href={item.href} className={btnClass}>
+                    <item.icon className="h-[14px] w-[14px] shrink-0" />
+                    {item.label}
+                  </Link>
+                ) : (
+                  <button type="button" className={btnClass}>
+                    <item.icon className="h-[14px] w-[14px] shrink-0" />
+                    {item.label}
+                    <ChevronDown className={cn(
+                      'h-3 w-3 opacity-60 transition-transform duration-200',
+                      isOpen && 'rotate-180',
+                    )} />
+                  </button>
+                )}
+
+                {isOpen && hasDrop && (
+                  <NavDropdown
+                    groups={item.groups!}
+                    itemKey={item.key}
+                    onOpen={() => openMenu(item.key)}
+                    onClose={delayClose}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        <div className="flex-1 lg:hidden" />
+
+        {/* Actions */}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setDark(d => !d)}>
+            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+
+          <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-xl">
+            <Bell className="h-4 w-4" />
+            <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold/70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
+            </span>
+          </Button>
+
+          <div className="mx-1 h-5 w-px bg-border/70" />
+
+          {/* User dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted/60">
+                <Avatar className="h-7 w-7 ring-2 ring-gold/40">
+                  <AvatarImage src="https://i.pravatar.cc/100?img=12" />
+                  <AvatarFallback>ع</AvatarFallback>
+                </Avatar>
+                <div className="hidden flex-col text-right leading-tight md:flex">
+                  <span className="text-[12px] font-semibold">عبدالرحمن المالكي</span>
+                  <span className="text-[10px] text-muted-foreground">مدير الموارد البشرية</span>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold">عبدالرحمن المالكي</span>
+                  <span className="text-xs font-normal text-muted-foreground">abdulrahman.m@nawa.sa</span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem><User className="h-4 w-4" /><span>الملف الشخصي</span></DropdownMenuItem>
+              <DropdownMenuItem><Settings className="h-4 w-4" /><span>الإعدادات</span></DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
+                <Link href="/login"><LogOut className="h-4 w-4" /><span>تسجيل الخروج</span></Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Mobile hamburger */}
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl lg:hidden" onClick={toggle} aria-label="القائمة">
+            <Menu className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        {/* Dark mode */}
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setDark(!dark)}>
-          {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
-        </Button>
-
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative h-9 w-9">
-          <Bell className="h-[18px] w-[18px]" />
-          <span className="absolute left-2 top-1.5 flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold/60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
-          </span>
-        </Button>
-
-        <div className="mx-0.5 h-7 w-px bg-border" />
-
-        {/* User menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2.5 rounded-full p-1 transition-colors hover:bg-muted/60">
-              <Avatar className="h-8 w-8 ring-2 ring-gold/30">
-                <AvatarImage src="https://i.pravatar.cc/100?img=12" />
-                <AvatarFallback>ع</AvatarFallback>
-              </Avatar>
-              <div className="hidden flex-col text-right leading-tight md:flex">
-                <span className="text-sm font-semibold">عبدالرحمن المالكي</span>
-                <span className="text-[11px] text-muted-foreground">مدير الموارد البشرية</span>
-              </div>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-semibold">عبدالرحمن المالكي</span>
-                <span className="text-xs font-normal text-muted-foreground">abdulrahman.m@nawa.sa</span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="h-4 w-4" />
-              <span>الملف الشخصي</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="h-4 w-4" />
-              <span>الإعدادات</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
-              <Link href="/login">
-                <LogOut className="h-4 w-4" />
-                <span>تسجيل الخروج</span>
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      {/* ── Row 2: page title breadcrumb ────────────────────────────── */}
+      <div className="flex h-8 items-center gap-2 border-t border-border/30 bg-muted/10 px-4 sm:px-5">
+        {PageIcon && <PageIcon className="h-3.5 w-3.5 shrink-0 text-primary/80" />}
+        {meta.titleAr ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="text-[12px] font-semibold text-foreground/80 leading-none">{meta.titleAr}</span>
+            {meta.descriptionAr && (
+              <span className="hidden text-[11px] text-muted-foreground/70 sm:block">· {meta.descriptionAr}</span>
+            )}
+          </div>
+        ) : (
+          <div className="h-2.5 w-28 animate-pulse rounded-full bg-muted" />
+        )}
       </div>
     </header>
   );

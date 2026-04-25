@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Calendar, Download, RotateCcw, Clock as ClockIcon } from 'lucide-react';
 import { useSetPageTitle } from '@/components/page-title-context';
 import { Button } from '@/components/ui/button';
-import { AttendanceSectionNav, getAttendanceSectionFromParams } from '@/components/attendance/attendance-section-nav';
+import { getAttendanceSectionFromParams } from '@/components/attendance/attendance-section-nav';
 import { ShiftTemplatesPanel } from '@/components/attendance/shift-templates-panel';
 import { AssignmentsPanel } from '@/components/attendance/assignments-panel';
 import { DailyAttendancePanel } from '@/components/attendance/daily-attendance-panel';
@@ -44,7 +44,7 @@ export function AttendanceClient() {
   }, [daySummaries, t]);
 
   const copy = SECTION_COPY[section];
-  useSetPageTitle({ titleAr: 'إدارة الحضور', descriptionAr: copy.desc, icon: ClockIcon });
+  useSetPageTitle({ titleAr: 'إدارة الحضور', descriptionAr: copy.desc, iconName: 'Clock' });
 
   if (!mounted) {
     return (
@@ -88,8 +88,6 @@ export function AttendanceClient() {
         <MiniStat label="غائب" value={todayStats.absent} />
         <MiniStat label="آخر" value={todayStats.other} />
       </div>
-
-      <AttendanceSectionNav />
 
       <div className="rounded-lg border border-border bg-card/50 p-1 shadow-soft">
         <div className="rounded-md border border-border/60 bg-card p-4 sm:p-6">

@@ -49,7 +49,7 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export default function DashboardPage() {
-  useSetPageTitle({ titleAr: 'لوحة التحكم', descriptionAr: 'نظرة عامة على أداء المنظمة', icon: LayoutDashboard });
+  useSetPageTitle({ titleAr: 'لوحة التحكم', descriptionAr: 'نظرة عامة على أداء المنظمة', iconName: 'LayoutDashboard' });
   const totalEmployees = data.company.totalEmployees;
   const presentCount = data.attendanceToday.filter((a) => a.status === 'present').length;
   const lateCount = data.attendanceToday.filter((a) => a.status === 'late').length;

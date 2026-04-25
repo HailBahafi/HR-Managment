@@ -14,7 +14,7 @@ import { data, getEmployee } from '@/lib/data';
 import { formatCurrency, formatNumber, getInitials, cn } from '@/lib/utils';
 
 export default function PayrollPage() {
-  useSetPageTitle({ titleAr: 'الرواتب والمستحقات', descriptionAr: 'تشغيل وإدارة رواتب الموظفين الشهرية', icon: Wallet });
+  useSetPageTitle({ titleAr: 'الرواتب والمستحقات', descriptionAr: 'تشغيل وإدارة رواتب الموظفين الشهرية', iconName: 'Wallet' });
   const current = data.payrollCurrent;
   const progress = 68;
 

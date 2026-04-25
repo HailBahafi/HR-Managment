@@ -16,7 +16,7 @@ const TABS = [
 type TabKey = typeof TABS[number]['key'];
 
 function HREmployeesContent() {
-  useSetPageTitle({ titleAr: 'الموظفين والأقسام', descriptionAr: 'دليل الموظفين والهيكل التنظيمي في مكان واحد', icon: Users });
+  useSetPageTitle({ titleAr: 'الموظفين والأقسام', descriptionAr: 'دليل الموظفين والهيكل التنظيمي في مكان واحد', iconName: 'Users' });
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();

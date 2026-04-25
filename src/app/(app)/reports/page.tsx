@@ -35,7 +35,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 const colors = ['#0f766e', '#ca8a04', '#be185d', '#7c3aed', '#0891b2', '#c2410c'];
 
 export default function ReportsPage() {
-  useSetPageTitle({ titleAr: 'رؤى وتحليلات', descriptionAr: 'تقارير متعمقة عن أداء المنظمة', icon: BarChart3 });
+  useSetPageTitle({ titleAr: 'رؤى وتحليلات', descriptionAr: 'تقارير متعمقة عن أداء المنظمة', iconName: 'BarChart3' });
   // Derived data
   const byDept = data.departments.map((d) => ({
     name: d.name.substring(0, 10),

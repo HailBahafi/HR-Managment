@@ -40,7 +40,7 @@ const requestTypes = [
 ];
 
 export default function RequestsPage() {
-  useSetPageTitle({ titleAr: 'الطلبات والموافقات', descriptionAr: 'متابعة الطلبات وإجراءات الموافقة', icon: ClipboardList });
+  useSetPageTitle({ titleAr: 'الطلبات والموافقات', descriptionAr: 'متابعة الطلبات وإجراءات الموافقة', iconName: 'ClipboardList' });
   const [selected, setSelected] = React.useState<string | null>(null);
   const [openNew, setOpenNew] = React.useState(false);
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<RequestForm>({
