@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Users, Building2 } from 'lucide-react';
+import { useSetPageTitle } from '@/components/page-title-context';
 import { EmployeeTab } from '@/components/hr-requests/employee-tab';
 import { DepartmentsTab } from '@/components/hr-requests/departments-tab';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,7 @@ const TABS = [
 type TabKey = typeof TABS[number]['key'];
 
 function HREmployeesContent() {
+  useSetPageTitle({ titleAr: 'الموظفين والأقسام', descriptionAr: 'دليل الموظفين والهيكل التنظيمي في مكان واحد', icon: Users });
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,15 +39,6 @@ function HREmployeesContent() {
 
   return (
     <div className="w-full min-w-0 space-y-6 animate-fade-in">
-      <div>
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-          <div className="h-px w-6 bg-gold" />
-          الموارد البشرية
-        </div>
-        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">الموظفين والأقسام</h1>
-        <p className="mt-1 text-muted-foreground">دليل الموظفين والهيكل التنظيمي في مكان واحد</p>
-      </div>
-
       <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1">
         {TABS.map(tab => (
           <button key={tab.key} type="button" onClick={() => switchTab(tab.key)}

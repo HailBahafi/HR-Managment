@@ -19,6 +19,7 @@ import {
   UserPlus,
   Settings,
   FileText,
+  LayoutDashboard,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -41,12 +42,14 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/status-badge';
 import { data, getEmployee } from '@/lib/data';
 import { formatCurrency, relativeTime, getInitials } from '@/lib/utils';
+import { useSetPageTitle } from '@/components/page-title-context';
 
 const iconMap: Record<string, React.ElementType> = {
   FileText, Clock, UserPlus, Wallet, CheckCircle2, Settings,
 };
 
 export default function DashboardPage() {
+  useSetPageTitle({ titleAr: 'لوحة التحكم', descriptionAr: 'نظرة عامة على أداء المنظمة', icon: LayoutDashboard });
   const totalEmployees = data.company.totalEmployees;
   const presentCount = data.attendanceToday.filter((a) => a.status === 'present').length;
   const lateCount = data.attendanceToday.filter((a) => a.status === 'late').length;

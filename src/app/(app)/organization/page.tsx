@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Search, Building2, Users, ChevronDown, ChevronLeft, Network, ZoomIn, ZoomOut } from 'lucide-react';
+import { useSetPageTitle } from '@/components/page-title-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +58,7 @@ function buildTree(): TreeNode {
 }
 
 export default function OrganizationPage() {
+  useSetPageTitle({ titleAr: 'خريطة المنظمة', descriptionAr: 'استكشف هيكل الشركة التفاعلي', icon: Building2 });
   const tree = React.useMemo(buildTree, []);
   const [search, setSearch] = React.useState('');
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set(['company', ...data.branches.map((b) => b.id)]));
@@ -70,16 +72,7 @@ export default function OrganizationPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-            <div className="h-px w-6 bg-gold" />
-            الهيكل التنظيمي
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">خريطة المنظمة</h1>
-          <p className="mt-1 text-muted-foreground">استكشف هيكل الشركة التفاعلي</p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end gap-2">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -89,7 +82,6 @@ export default function OrganizationPage() {
               className="w-64 pr-10"
             />
           </div>
-        </div>
       </div>
 
       {/* Stats strip */}

@@ -13,6 +13,7 @@ import {
   LifeBuoy,
   CalendarDays,
   ClipboardList,
+  ShieldAlert,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const nav: { href: string; label: string; icon: React.ElementType; badge?: strin
   { href: '/attendance', label: 'الحضور والانصراف', icon: Clock },
   { href: '/hr/leaves', label: 'الإجازات', icon: CalendarDays },
   { href: '/hr/requests', label: 'إدارة الطلبات', icon: ClipboardList },
+  { href: '/hr/discipline', label: 'الانضباط الوظيفي', icon: ShieldAlert },
   { href: '/payroll', label: 'الرواتب', icon: Wallet },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
   { href: '/settings', label: 'الإعدادات', icon: Settings },

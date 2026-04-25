@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Wallet, Play, Download, Printer, CheckCircle2, Clock, FileSpreadsheet, Users, TrendingUp, Sparkles } from 'lucide-react';
+import { useSetPageTitle } from '@/components/page-title-context';
 import { BarChart, Bar, LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,21 +14,12 @@ import { data, getEmployee } from '@/lib/data';
 import { formatCurrency, formatNumber, getInitials, cn } from '@/lib/utils';
 
 export default function PayrollPage() {
+  useSetPageTitle({ titleAr: 'الرواتب والمستحقات', descriptionAr: 'تشغيل وإدارة رواتب الموظفين الشهرية', icon: Wallet });
   const current = data.payrollCurrent;
   const progress = 68;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-            <div className="h-px w-6 bg-gold" />
-            إدارة الرواتب
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">الرواتب والمستحقات</h1>
-          <p className="mt-1 text-muted-foreground">تشغيل وإدارة رواتب الموظفين الشهرية</p>
-        </div>
-      </div>
 
       {/* Current run hero */}
       <div className="relative overflow-hidden rounded-xl border border-gold/30 bg-gradient-to-br from-primary via-primary to-primary-700 p-8 text-primary-foreground shadow-luxe">

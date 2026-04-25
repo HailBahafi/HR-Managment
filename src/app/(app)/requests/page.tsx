@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { FileCheck2, Plus, CheckCircle, XCircle, Clock, Eye, FileText, CalendarDays, Wallet, Mail, Package, Filter, Search } from 'lucide-react';
+import { FileCheck2, Plus, CheckCircle, XCircle, Clock, Eye, FileText, CalendarDays, Wallet, Mail, Package, Filter, Search, ClipboardList } from 'lucide-react';
+import { useSetPageTitle } from '@/components/page-title-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,7 @@ const requestTypes = [
 ];
 
 export default function RequestsPage() {
+  useSetPageTitle({ titleAr: 'الطلبات والموافقات', descriptionAr: 'متابعة الطلبات وإجراءات الموافقة', icon: ClipboardList });
   const [selected, setSelected] = React.useState<string | null>(null);
   const [openNew, setOpenNew] = React.useState(false);
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<RequestForm>({
@@ -69,18 +71,7 @@ export default function RequestsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-            <div className="h-px w-6 bg-gold" />
-            مركز الطلبات
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">الطلبات والموافقات</h1>
-          <p className="mt-1 text-muted-foreground">
-            <span className="font-semibold text-foreground number-ar">{pendingRequests.length}</span> طلب بانتظار مراجعتك
-          </p>
-        </div>
-
+      <div className="flex justify-end">
         <Dialog open={openNew} onOpenChange={setOpenNew}>
           <DialogTrigger asChild>
             <Button variant="luxe" className="gap-2">

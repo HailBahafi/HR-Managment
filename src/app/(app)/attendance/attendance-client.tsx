@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Download, RotateCcw } from 'lucide-react';
+import { Calendar, Download, RotateCcw, Clock as ClockIcon } from 'lucide-react';
+import { useSetPageTitle } from '@/components/page-title-context';
 import { Button } from '@/components/ui/button';
 import { AttendanceSectionNav, getAttendanceSectionFromParams } from '@/components/attendance/attendance-section-nav';
 import { ShiftTemplatesPanel } from '@/components/attendance/shift-templates-panel';
@@ -43,6 +44,7 @@ export function AttendanceClient() {
   }, [daySummaries, t]);
 
   const copy = SECTION_COPY[section];
+  useSetPageTitle({ titleAr: 'إدارة الحضور', descriptionAr: copy.desc, icon: ClockIcon });
 
   if (!mounted) {
     return (
@@ -56,16 +58,7 @@ export function AttendanceClient() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-            <div className="h-px w-6 bg-gold" />
-            الحضور والانصراف
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">إدارة الحضور</h1>
-          <p className="mt-1 text-muted-foreground">{copy.desc}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 justify-end">
           <Button
             variant="outline"
             className="gap-2"
@@ -87,7 +80,6 @@ export function AttendanceClient() {
             <Download className="h-4 w-4" />
             تصدير عام
           </Button>
-        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

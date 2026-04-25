@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Download, Calendar, Filter, TrendingUp, TrendingDown } from 'lucide-react';
+import { Download, Calendar, Filter, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
+import { useSetPageTitle } from '@/components/page-title-context';
 import {
   LineChart,
   Line,
@@ -34,6 +35,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 const colors = ['#0f766e', '#ca8a04', '#be185d', '#7c3aed', '#0891b2', '#c2410c'];
 
 export default function ReportsPage() {
+  useSetPageTitle({ titleAr: 'رؤى وتحليلات', descriptionAr: 'تقارير متعمقة عن أداء المنظمة', icon: BarChart3 });
   // Derived data
   const byDept = data.departments.map((d) => ({
     name: d.name.substring(0, 10),
@@ -65,16 +67,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-            <div className="h-px w-6 bg-gold" />
-            التقارير والتحليلات
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">رؤى وتحليلات</h1>
-          <p className="mt-1 text-muted-foreground">تقارير متعمقة عن أداء المنظمة</p>
-        </div>
-
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex gap-2">
           <Select defaultValue="month">
             <SelectTrigger className="w-40">

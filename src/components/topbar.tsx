@@ -1,11 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Bell, Search, Moon, Sun, LogOut, User, Settings, Menu } from 'lucide-react';
+import { Bell, Moon, Sun, LogOut, User, Settings, Menu } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,10 +14,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { useSidebar } from '@/components/sidebar-context';
+import { usePageTitle } from '@/components/page-title-context';
 
 export function Topbar() {
   const [dark, setDark] = React.useState(false);
   const { toggle } = useSidebar();
+  const { meta } = usePageTitle();
+  const Icon = meta.icon;
 
   React.useEffect(() => {
     if (dark) document.documentElement.classList.add('dark');
@@ -33,23 +34,36 @@ export function Topbar() {
       <Button
         variant="ghost"
         size="icon"
-        className="h-10 w-10 shrink-0 lg:hidden"
+        className="h-9 w-9 shrink-0 lg:hidden"
         onClick={toggle}
         aria-label="فتح القائمة"
       >
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Search */}
-      <div className="relative min-w-0 flex-1">
-        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="ابحث…"
-          className="h-10 w-full border-border/80 bg-muted/40 pr-10 text-sm focus-visible:bg-background sm:placeholder:content-['ابحث_عن_موظف،_طلب،_تقرير…']"
-        />
-        <kbd className="pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:flex">
-          ⌘ K
-        </kbd>
+      {/* Page title + description */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {Icon && (
+          <div className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <Icon className="h-4.5 w-4.5 text-primary" />
+          </div>
+        )}
+        <div className="min-w-0">
+          {meta.titleAr ? (
+            <>
+              <h1 className="truncate font-display text-base font-bold leading-none tracking-tight sm:text-lg">
+                {meta.titleAr}
+              </h1>
+              {meta.descriptionAr && (
+                <p className="mt-0.5 hidden truncate text-[11px] text-muted-foreground sm:block">
+                  {meta.descriptionAr}
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+          )}
+        </div>
       </div>
 
       {/* Actions */}

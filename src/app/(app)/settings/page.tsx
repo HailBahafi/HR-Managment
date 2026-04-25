@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Shield, Users, Building2, Clock, MapPin, Plus, Edit, Trash2, Check } from 'lucide-react';
+import { Shield, Users, Building2, Clock, MapPin, Plus, Edit, Trash2, Check, Settings } from 'lucide-react';
+import { useSetPageTitle } from '@/components/page-title-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,17 +25,9 @@ const actions = ['view', 'create', 'edit', 'delete', 'approve'] as const;
 const actionLabels: Record<string, string> = { view: 'عرض', create: 'إنشاء', edit: 'تعديل', delete: 'حذف', approve: 'موافقة' };
 
 export default function SettingsPage() {
+  useSetPageTitle({ titleAr: 'إعدادات النظام', descriptionAr: 'إدارة الأدوار والصلاحيات والسياسات', icon: Settings });
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-          <div className="h-px w-6 bg-gold" />
-          الإعدادات والصلاحيات
-        </div>
-        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">إعدادات النظام</h1>
-        <p className="mt-1 text-muted-foreground">إدارة الأدوار والصلاحيات والسياسات</p>
-      </div>
-
       <Tabs defaultValue="roles">
         <TabsList>
           <TabsTrigger value="roles">الأدوار والصلاحيات</TabsTrigger>

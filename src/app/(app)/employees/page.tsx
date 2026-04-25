@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Search, Plus, Filter, Download, LayoutGrid, List, Mail, Phone, Building2 } from 'lucide-react';
+import { Search, Plus, Filter, Download, LayoutGrid, List, Mail, Phone, Building2, Users } from 'lucide-react';
+import { useSetPageTitle } from '@/components/page-title-context';
 import { NewEmployeeDrawer } from '@/components/employees/new-employee-drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import { data, getBranch, getDepartment } from '@/lib/data';
 import { formatCurrency, getInitials } from '@/lib/utils';
 
 export default function EmployeesPage() {
+  useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', icon: Users });
   const [view, setView] = React.useState<'table' | 'grid'>('table');
   const [search, setSearch] = React.useState('');
   const [branchFilter, setBranchFilter] = React.useState('all');
@@ -38,19 +40,7 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <NewEmployeeDrawer open={newEmpOpen} onOpenChange={setNewEmpOpen} />
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-            <div className="h-px w-6 bg-gold" />
-            إدارة الموظفين
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">الموظفين</h1>
-          <p className="mt-1 text-muted-foreground">
-            <span className="font-semibold text-foreground number-ar">{data.employees.length}</span> موظف مسجل في النظام
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end gap-2">
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
             تصدير
@@ -59,7 +49,6 @@ export default function EmployeesPage() {
             <Plus className="h-4 w-4" />
             موظف جديد
           </Button>
-        </div>
       </div>
 
       {/* Toolbar */}
