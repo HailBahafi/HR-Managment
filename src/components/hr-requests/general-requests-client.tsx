@@ -3,8 +3,8 @@
 import * as React from 'react';
 import { Eye, Trash2, Plus, RefreshCw, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { usePageFilters } from '@/components/filter-panel-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer,
@@ -39,13 +39,6 @@ export function GeneralRequestsClient() {
   const { submissions, addSubmission, deleteSubmission } = useHRRequestSubmissionsStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  // Filters
-  const [search, setSearch] = React.useState('');
-  const [filterDept, setFilterDept] = React.useState('all');
-  const [filterEmp, setFilterEmp] = React.useState('');
-  const [appliedSearch, setAppliedSearch] = React.useState('');
-  const [appliedDept, setAppliedDept] = React.useState('all');
-  const [appliedEmp, setAppliedEmp] = React.useState('');
   const [refreshing, setRefreshing] = React.useState(false);
 
   // Pagination
@@ -68,6 +61,15 @@ export function GeneralRequestsClient() {
   const activeDepts = departments.filter(d => d.isActive);
   const deptOptions = [{ value: 'all', label: 'جميع الأقسام' }, ...activeDepts.map(d => ({ value: d.id, label: d.nameAr }))];
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
+
+  const { values } = usePageFilters([
+    { key: 'search', label: 'بحث', type: 'text', placeholder: 'اسم الموظف، القسم، أو نوع الطلب…' },
+    { key: 'dept', label: 'القسم', type: 'select', options: activeDepts.map(d => ({ value: d.id, label: d.nameAr })) },
+    { key: 'emp', label: 'الموظف', type: 'select', options: empOptions.map(e => ({ value: e.value, label: e.label })) },
+  ]);
+  const appliedSearch = (values.search as string) ?? '';
+  const appliedDept = (values.dept as string) ?? 'all';
+  const appliedEmp = (values.emp as string) ?? '';
 
   const formDeptTypes = requestTypes.filter(rt =>
     rt.isActive && (rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID || rt.departmentId === formDeptId)
@@ -94,7 +96,6 @@ export function GeneralRequestsClient() {
 
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
-  const applyFilters = () => { setAppliedSearch(search); setAppliedDept(filterDept); setAppliedEmp(filterEmp); setPage(1); };
 
   const refresh = () => {
     setRefreshing(true);
@@ -118,9 +119,9 @@ export function GeneralRequestsClient() {
     const emp = activeEmployees.find(e => e.id === formEmpId);
     if (!dept || !rt || !emp) return;
     addSubmission({
-      employeeId: emp.id, employeeNameAr: emp.nameAr, employeeNameEn: emp.nameEn,
-      requestTypeId: rt.id, requestTypeNameAr: rt.nameAr, requestTypeNameEn: rt.nameEn,
-      departmentId: dept.id, departmentNameAr: dept.nameAr, departmentNameEn: dept.nameEn,
+      employeeId: emp.id, employeeNameAr: emp.nameAr, employeeNameEn: emp.nameAr,
+      requestTypeId: rt.id, requestTypeNameAr: rt.nameAr, requestTypeNameEn: rt.nameAr,
+      departmentId: dept.id, departmentNameAr: dept.nameAr, departmentNameEn: dept.nameAr,
       templateId: resolvedTemplate?.id ?? null,
       fieldValues: formValues,
     });
@@ -135,33 +136,13 @@ export function GeneralRequestsClient() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="rounded-xl border border-border bg-card p-4 shadow-soft space-y-3">
-        <div className="grid gap-3 sm:grid-cols-[1fr_200px_200px]">
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="بحث في الطلبات…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applyFilters()}
-              className="pr-10"
-            />
-          </div>
-          <MinimalDropdown value={filterDept} onChange={setFilterDept} options={deptOptions} placeholder="القسم" />
-          <SearchableDropdown value={filterEmp} onChange={setFilterEmp} options={empOptions} placeholder="الموظف" allowClear />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="luxe" size="sm" onClick={applyFilters}>تطبيق</Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={refresh} disabled={refreshing}>
-            <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> تحديث
-          </Button>
-          <div className="mr-auto">
-            <Button variant="luxe" className="gap-2" onClick={() => { resetCreate(); setCreateOpen(true); }}>
-              <Plus className="h-4 w-4" /> طلب جديد
-            </Button>
-          </div>
-        </div>
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={refresh} disabled={refreshing}>
+          <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> تحديث
+        </Button>
+        <Button variant="luxe" className="gap-2" onClick={() => { resetCreate(); setCreateOpen(true); }}>
+          <Plus className="h-4 w-4" /> طلب جديد
+        </Button>
       </div>
 
       {/* Table */}

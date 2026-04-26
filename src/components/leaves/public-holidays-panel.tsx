@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, RefreshCw, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { usePageFilters } from '@/components/filter-panel-context';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -30,7 +31,8 @@ function formatDate(date: string) {
 
 export function PublicHolidaysPanel() {
   const { items, add, update, remove } = useHolidaysStore();
-  const [search, setSearch] = React.useState('');
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالرمز أو الاسم…' }]);
+  const search = (values.q as string) ?? '';
   const [open, setOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftState>(EMPTY_DRAFT);
@@ -41,7 +43,7 @@ export function PublicHolidaysPanel() {
     [...items]
       .filter((x) => {
         const q = search.toLowerCase();
-        return !q || x.code.toLowerCase().includes(q) || x.nameAr.includes(q) || x.nameEn.toLowerCase().includes(q);
+        return !q || x.code.toLowerCase().includes(q) || x.nameAr.includes(q);
       })
       .sort((a, b) => a.sortOrder - b.sortOrder),
     [items, search],
@@ -71,7 +73,7 @@ export function PublicHolidaysPanel() {
   const save = () => {
     const err = validate();
     if (err) { setError(err); return; }
-    const payload = { ...draft, code: draft.code.trim().toUpperCase(), nameAr: draft.nameAr.trim() };
+    const payload = { ...draft, code: draft.code.trim().toUpperCase(), nameAr: draft.nameAr.trim(), nameEn: draft.nameAr.trim() };
     if (editId) update(editId, payload);
     else add(payload);
     setOpen(false);
@@ -82,11 +84,8 @@ export function PublicHolidaysPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Input placeholder="بحث بالرمز أو الاسم…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <Button variant="luxe" className="gap-2 shrink-0" onClick={openCreate}>
+      <div className="flex justify-end">
+        <Button variant="luxe" className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           إضافة عطلة رسمية
         </Button>
@@ -120,7 +119,6 @@ export function PublicHolidaysPanel() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{item.nameAr}</p>
-                      {item.nameEn && <p className="text-xs text-muted-foreground" dir="ltr">{item.nameEn}</p>}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{item.code}</td>
                     <td className="px-4 py-3">
@@ -187,10 +185,6 @@ export function PublicHolidaysPanel() {
               <div className="space-y-2 sm:col-span-2">
                 <Label>الاسم بالعربية <span className="text-destructive">*</span></Label>
                 <Input value={draft.nameAr} onChange={(e) => patch('nameAr', e.target.value)} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>الاسم بالإنجليزية</Label>
-                <Input dir="ltr" value={draft.nameEn} onChange={(e) => patch('nameEn', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>الترتيب</Label>

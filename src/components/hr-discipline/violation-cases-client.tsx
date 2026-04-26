@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Search, Eye, Trash2, Send } from 'lucide-react';
+import { Plus, Eye, Trash2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -30,7 +31,8 @@ export function ViolationCasesClient() {
   const { types } = useHRViolationTypesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  const [q, setQ] = React.useState('');
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو الموظف…' }]);
+  const q = (values.q as string) ?? '';
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(10);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -65,7 +67,7 @@ export function ViolationCasesClient() {
     const result = add({
       employeeId: emp.id,
       employeeNameAr: emp.nameAr,
-      employeeNameEn: emp.nameEn ?? '',
+      employeeNameEn: emp.nameAr,
       date: draft.date,
       description: draft.description,
       notes: draft.notes,
@@ -95,15 +97,10 @@ export function ViolationCasesClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="قضايا المخالفات" description="سجل قضايا الانضباط الوظيفي">
+      <div className="flex justify-end">
         <Button variant="luxe" size="sm" onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
           <Plus className="h-4 w-4 ml-1" />قضية جديدة
         </Button>
-      </PageHeader>
-
-      <div className="relative max-w-sm">
-        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={q} onChange={e => setQ(e.target.value)} placeholder="بحث برقم القضية أو الموظف…" className="pr-9" />
       </div>
 
       {/* Desktop table */}

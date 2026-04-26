@@ -1,11 +1,5 @@
 'use client';
 
-/**
- * MapPicker — OpenStreetMap circle-area picker using react-leaflet.
- * Renders a draggable marker + resizable circle.
- * The user clicks to move the center, drags the marker, or uses the radius slider.
- */
-
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';

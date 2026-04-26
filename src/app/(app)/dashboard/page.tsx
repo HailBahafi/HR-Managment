@@ -374,7 +374,7 @@ export default function DashboardPage() {
             { label: 'تشغيل رواتب', icon: Wallet, href: '/payroll', accent: 'success' },
             { label: 'تقرير حضور', icon: Clock, href: '/attendance', accent: 'warning' },
             { label: 'هيكل تنظيمي', icon: Building2, href: '/organization', accent: 'primary' },
-            { label: 'التحليلات', icon: TrendingUp, href: '/reports', accent: 'gold' },
+            { label: 'التحليلات', icon: TrendingUp, href: '/hr/leaves/analytics', accent: 'gold' },
           ].map((a) => (
             <Link
               key={a.label}

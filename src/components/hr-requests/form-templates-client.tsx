@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  PageHeader, EmptyState, Pagination, ActiveBadge,
+  EmptyState, Pagination, ActiveBadge,
 } from './shared-ui';
 import { HRRequestTypeTemplateFieldsEditor } from './template-fields-editor';
 import { HRRequestTemplateFieldsForm } from './template-fields-form';
@@ -22,20 +22,25 @@ const LS_PAGE = 'hr_form_templates_currentPage';
 const LS_PER = 'hr_form_templates_itemsPerPage';
 
 interface DraftForm {
-  nameAr: string; nameEn: string; sortOrder: number; isActive: boolean;
+  nameAr: string; sortOrder: number; isActive: boolean;
   isUniversalDefault: boolean; formFields: HRRequestFieldDefinition[];
 }
 
-const EMPTY: DraftForm = { nameAr: '', nameEn: '', sortOrder: 1, isActive: true, isUniversalDefault: false, formFields: [] };
+const EMPTY: DraftForm = { nameAr: '', sortOrder: 1, isActive: true, isUniversalDefault: false, formFields: [] };
 
 type FilterKind = 'all' | 'universal' | 'custom';
 
 export function FormTemplatesClient() {
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useHRConfigurationStore();
 
-  const [search, setSearch] = React.useState('');
-  const [filterActive, setFilterActive] = React.useState(false);
-  const [filterKind, setFilterKind] = React.useState<FilterKind>('all');
+  const { values } = usePageFilters([
+    { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' },
+    { key: 'kind', label: 'النوع', type: 'select', options: [{ value: 'universal', label: 'شامل' }, { value: 'custom', label: 'مخصص' }] },
+    { key: 'active', label: 'الحالة', type: 'select', options: [{ value: 'active', label: 'نشط فقط' }] },
+  ]);
+  const search = (values.q as string) ?? '';
+  const filterKind = ((values.kind as FilterKind) || 'all');
+  const filterActive = (values.active as string) === 'active';
   const [page, setPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PAGE) ?? '1') : 1);
   const [perPage, setPerPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PER) ?? '10') : 10);
 
@@ -56,7 +61,7 @@ export function FormTemplatesClient() {
       if (filterActive && !t.isActive) return false;
       if (filterKind === 'universal' && !t.isUniversalDefault) return false;
       if (filterKind === 'custom' && t.isUniversalDefault) return false;
-      if (q && !t.nameAr.toLowerCase().includes(q) && !t.nameEn.toLowerCase().includes(q)) return false;
+      if (q && !t.nameAr.toLowerCase().includes(q)) return false;
       return true;
     }).sort((a, b) => a.sortOrder - b.sortOrder);
   }, [templates, search, filterActive, filterKind]);
@@ -72,14 +77,14 @@ export function FormTemplatesClient() {
 
   const openEdit = (t: HRRequestTemplateEntity) => {
     setEditId(t.id);
-    setDraft({ nameAr: t.nameAr, nameEn: t.nameEn, sortOrder: t.sortOrder, isActive: t.isActive, isUniversalDefault: !!t.isUniversalDefault, formFields: t.formFields });
+    setDraft({ nameAr: t.nameAr, sortOrder: t.sortOrder, isActive: t.isActive, isUniversalDefault: !!t.isUniversalDefault, formFields: t.formFields });
     setError(null);
     setDrawerOpen(true);
   };
 
   const handleSave = () => {
     if (!draft.nameAr.trim()) { setError('اسم القالب مطلوب'); return; }
-    const payload = { ...draft, nameAr: draft.nameAr.trim(), nameEn: draft.nameEn.trim() || draft.nameAr.trim() };
+    const payload = { ...draft, nameAr: draft.nameAr.trim(), nameEn: draft.nameAr.trim() };
     if (editId) updateTemplate(editId, payload);
     else addTemplate(payload);
     setDrawerOpen(false);
@@ -87,35 +92,12 @@ export function FormTemplatesClient() {
 
   const patch = <K extends keyof DraftForm>(k: K, v: DraftForm[K]) => setDraft(d => ({ ...d, [k]: v }));
 
-  const KIND_TABS: { value: FilterKind; label: string }[] = [
-    { value: 'all', label: 'الكل' },
-    { value: 'universal', label: 'افتراضي عالمي' },
-    { value: 'custom', label: 'مخصص' },
-  ];
-
   return (
     <div className="space-y-4">
-      <PageHeader title="قوالب النماذج" description="إنشاء وإدارة قوالب الحقول المرتبطة بأنواع الطلبات">
+      <div className="flex justify-end">
         <Button variant="luxe" className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> قالب جديد
         </Button>
-      </PageHeader>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="بحث بالاسم…" className="max-w-xs" />
-        <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1">
-          {KIND_TABS.map(tab => (
-            <button key={tab.value} type="button" onClick={() => { setFilterKind(tab.value); setPage(1); }}
-              className={cn('rounded-lg px-3 py-1.5 text-xs font-medium transition-all', filterKind === tab.value ? 'bg-background shadow-soft text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <Checkbox checked={filterActive} onCheckedChange={v => { setFilterActive(v === true); setPage(1); }} />
-          نشط فقط
-        </label>
       </div>
 
       {/* Table */}
@@ -139,7 +121,6 @@ export function FormTemplatesClient() {
                   <tr key={t.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3">
                       <p className="font-medium">{t.nameAr}</p>
-                      {t.nameEn && <p className="text-xs text-muted-foreground" dir="ltr">{t.nameEn}</p>}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{t.formFields.length} حقل</td>
                     <td className="px-4 py-3">
@@ -181,9 +162,6 @@ export function FormTemplatesClient() {
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="الاسم بالعربية" required span2>
             <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="القالب العام" />
-          </FormField>
-          <FormField label="الاسم بالإنجليزية">
-            <Input dir="ltr" value={draft.nameEn} onChange={e => patch('nameEn', e.target.value)} placeholder="General Template" />
           </FormField>
           <FormField label="الترتيب">
             <Input type="number" min={0} value={draft.sortOrder} onChange={e => patch('sortOrder', Number(e.target.value))} />

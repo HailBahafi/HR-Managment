@@ -1,14 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Pencil, Trash2, AlertTriangle, Search, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  PageHeader, EmptyState, ActiveBadge, MinimalDropdown, Pagination,
+  EmptyState, ActiveBadge, MinimalDropdown, Pagination,
 } from '@/components/hr-requests/shared-ui';
 import { useHRViolationTypesStore } from '@/lib/hr-discipline/violation-types-store';
 import { useHRDisciplineApprovalAssignmentTemplatesStore } from '@/lib/hr-discipline/discipline-approval-store';
@@ -19,14 +20,14 @@ import { cn } from '@/lib/utils';
 const DEDUCTION_KIND_OPTIONS = (Object.entries(DEDUCTION_KIND_LABELS) as [HRViolationDeductionKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 
 interface DraftForm {
-  code: string; nameAr: string; nameEn: string; sortOrder: number; isActive: boolean;
+  code: string; nameAr: string; sortOrder: number; isActive: boolean;
   hasDeduction: boolean; deductionKind: HRViolationDeductionKind; deductionValue: number;
   needsWarning: boolean; needsInvestigation: boolean; needsApproval: boolean;
   approvalTemplateId: string | null;
 }
 
 const EMPTY: DraftForm = {
-  code: '', nameAr: '', nameEn: '', sortOrder: 1, isActive: true,
+  code: '', nameAr: '', sortOrder: 1, isActive: true,
   hasDeduction: false, deductionKind: 'none', deductionValue: 0,
   needsWarning: false, needsInvestigation: false, needsApproval: false,
   approvalTemplateId: null,
@@ -36,7 +37,8 @@ export function ViolationTypesClient() {
   const { types, add, update, remove } = useHRViolationTypesStore();
   const { templates } = useHRDisciplineApprovalAssignmentTemplatesStore();
 
-  const [q, setQ] = React.useState('');
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث…' }]);
+  const q = (values.q as string) ?? '';
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(10);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -46,16 +48,15 @@ export function ViolationTypesClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
   const filtered = types.filter(t =>
-    t.nameAr.includes(q) || t.code.toLowerCase().includes(q.toLowerCase()) || t.nameEn.toLowerCase().includes(q.toLowerCase())
+    t.nameAr.includes(q) || t.code.toLowerCase().includes(q.toLowerCase())
   );
   const total = filtered.length;
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  React.useEffect(() => { setPage(1); }, [q]);
 
   const openCreate = () => { setDraft(EMPTY); setEditId(null); setFormError(null); setDrawerOpen(true); };
   const openEdit = (t: HRViolationTypeRecord) => {
-    setDraft({ code:t.code, nameAr:t.nameAr, nameEn:t.nameEn, sortOrder:t.sortOrder, isActive:t.isActive, hasDeduction:t.hasDeduction, deductionKind:t.deductionKind, deductionValue:t.deductionValue, needsWarning:t.needsWarning, needsInvestigation:t.needsInvestigation, needsApproval:t.needsApproval, approvalTemplateId:t.approvalTemplateId });
+    setDraft({ code:t.code, nameAr:t.nameAr, sortOrder:t.sortOrder, isActive:t.isActive, hasDeduction:t.hasDeduction, deductionKind:t.deductionKind, deductionValue:t.deductionValue, needsWarning:t.needsWarning, needsInvestigation:t.needsInvestigation, needsApproval:t.needsApproval, approvalTemplateId:t.approvalTemplateId });
     setEditId(t.id); setFormError(null); setDrawerOpen(true);
   };
 
@@ -65,6 +66,7 @@ export function ViolationTypesClient() {
     setFormError(null);
     const payload = {
       ...draft,
+      nameEn: draft.nameAr.trim(),
       deductionKind: draft.hasDeduction ? draft.deductionKind : 'none' as HRViolationDeductionKind,
       deductionValue: draft.hasDeduction ? draft.deductionValue : 0,
       approvalTemplateId: draft.needsApproval ? draft.approvalTemplateId : null,
@@ -86,15 +88,8 @@ export function ViolationTypesClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="أنواع المخالفات" description="تعريف أنواع المخالفات الوظيفية وإعداداتها">
+      <div className="flex justify-end">
         <Button variant="luxe" size="sm" onClick={openCreate}><Plus className="h-4 w-4 ml-1" />إضافة نوع</Button>
-      </PageHeader>
-
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={e => setQ(e.target.value)} placeholder="بحث…" className="pr-9" />
-        </div>
       </div>
 
       {/* Desktop table */}
@@ -119,7 +114,6 @@ export function ViolationTypesClient() {
                 <td className="px-4 py-3 font-mono text-xs font-semibold">{t.code}</td>
                 <td className="px-4 py-3">
                   <div className="font-medium">{t.nameAr}</div>
-                  <div className="text-xs text-muted-foreground">{t.nameEn}</div>
                 </td>
                 <td className="px-4 py-3 text-sm">
                   {t.hasDeduction ? `${DEDUCTION_KIND_LABELS[t.deductionKind]} (${t.deductionValue})` : <span className="text-muted-foreground">—</span>}
@@ -157,7 +151,6 @@ export function ViolationTypesClient() {
                   <ActiveBadge active={t.isActive} />
                 </div>
                 <div className="mt-1 font-medium">{t.nameAr}</div>
-                <div className="text-xs text-muted-foreground">{t.nameEn}</div>
               </div>
               <div className="flex gap-1 shrink-0">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -190,9 +183,6 @@ export function ViolationTypesClient() {
           </FormField>
           <FormField label="الاسم بالعربية" required span2>
             <Input value={draft.nameAr} onChange={e => set({ nameAr: e.target.value })} placeholder="أدخل الاسم…" />
-          </FormField>
-          <FormField label="الاسم بالإنجليزية" span2>
-            <Input value={draft.nameEn} onChange={e => set({ nameEn: e.target.value })} placeholder="Enter name…" dir="ltr" />
           </FormField>
         </div>
 

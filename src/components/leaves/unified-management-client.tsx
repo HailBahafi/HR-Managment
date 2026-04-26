@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import {
-  Plus, ChevronLeft, ChevronRight, CalendarDays, List, Filter,
-  CheckCircle2, XCircle, Clock, Search, X,
+  Plus, ChevronLeft, ChevronRight, CalendarDays, List,
+  CheckCircle2, XCircle, Clock,
 } from 'lucide-react';
 import { format, addMonths, subMonths, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, getDay, isValid } from 'date-fns';
 import { arSA } from 'date-fns/locale';
@@ -13,8 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MultiSelect } from '@/components/ui/multi-select';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -45,10 +45,6 @@ const STATUS_STYLE: Record<LeaveStatus, { color: string; dot: string; label: str
 
 // ─── Default filter state ─────────────────────────────────────────────────────
 
-const DEFAULT_FILTERS: UnifiedFilterState = {
-  branchId: 'all', departmentId: 'all', employeeIds: [], status: 'all', type: 'all', approvalStage: 'all',
-};
-
 // ─── Working days helper ──────────────────────────────────────────────────────
 
 function wDays(start: string, end: string): number {
@@ -63,17 +59,27 @@ export function UnifiedManagementClient() {
   const [leaves, setLeaves] = React.useState<UnifiedLeaveRecord[]>(() =>
     MOCK_UNIFIED_LEAVES.map((l) => ({ ...l })),
   );
+  const { values } = usePageFilters([
+    { key: 'branch', label: 'الفرع', type: 'select', options: [{ value: 'all', label: 'جميع الفروع' }, ...MOCK_BRANCHES.map(b => ({ value: b.id, label: b.nameAr }))] },
+    { key: 'dept', label: 'القسم', type: 'select', options: [{ value: 'all', label: 'جميع الأقسام' }, ...MOCK_DEPARTMENTS.map(d => ({ value: d.id, label: d.nameAr }))] },
+    { key: 'status', label: 'الحالة', type: 'select', options: [{ value: 'all', label: 'جميع الحالات' }, { value: 'pending', label: 'قيد الانتظار' }, { value: 'approved', label: 'موافق عليه' }, { value: 'rejected', label: 'مرفوض' }, { value: 'cancelled', label: 'ملغاة' }] },
+    { key: 'type', label: 'نوع الإجازة', type: 'select', options: [{ value: 'all', label: 'جميع الأنواع' }, { value: 'annual', label: 'سنوية' }, { value: 'sick', label: 'مرضية' }, { value: 'emergency', label: 'طارئة' }, { value: 'unpaid', label: 'بدون راتب' }, { value: 'maternity', label: 'أمومة' }] },
+    { key: 'stage', label: 'مرحلة الاعتماد', type: 'select', options: [{ value: 'all', label: 'الكل' }, { value: 'fully_approved', label: 'مكتمل' }, { value: 'awaiting_first', label: 'بانتظار الأول' }, { value: 'awaiting_second', label: 'بانتظار الثاني' }, { value: 'awaiting_third', label: 'بانتظار الثالث' }] },
+  ]);
+  const filters: UnifiedFilterState = {
+    branchId: (values.branch as string) || 'all',
+    departmentId: (values.dept as string) || 'all',
+    status: (values.status as UnifiedFilterState['status']) || 'all',
+    type: (values.type as UnifiedFilterState['type']) || 'all',
+    approvalStage: (values.stage as UnifiedFilterState['approvalStage']) || 'all',
+    employeeIds: [],
+  };
+
   const [view, setView] = React.useState<'table' | 'calendar'>('table');
-  const [filters, setFilters] = React.useState<UnifiedFilterState>(DEFAULT_FILTERS);
   const [calMonth, setCalMonth] = React.useState(() => new Date());
   const [detailLeave, setDetailLeave] = React.useState<UnifiedLeaveRecord | null>(null);
   const [addOpen, setAddOpen] = React.useState(false);
   const [editLeave, setEditLeave] = React.useState<UnifiedLeaveRecord | null>(null);
-  const [showFilters, setShowFilters] = React.useState(false);
-  const [empSearch, setEmpSearch] = React.useState('');
-
-  const patchFilter = <K extends keyof UnifiedFilterState>(k: K, v: UnifiedFilterState[K]) =>
-    setFilters((f) => ({ ...f, [k]: v }));
 
   // Apply filters
   const filtered = React.useMemo(() => {
@@ -108,58 +114,10 @@ export function UnifiedManagementClient() {
     if (detailLeave?.id === updated.id) setDetailLeave(updated);
   };
 
-  const empOptions = MOCK_UNIFIED_EMPLOYEES
-    .filter((e) => {
-      if (filters.branchId !== 'all' && e.homeBranchId !== filters.branchId) return false;
-      if (filters.departmentId !== 'all' && e.departmentId !== filters.departmentId) return false;
-      return true;
-    })
-    .map((e) => ({ value: e.id, label: e.nameAr, subtitle: e.nameEn }));
-
-  const activeFilterCount = [
-    filters.branchId !== 'all', filters.departmentId !== 'all',
-    filters.employeeIds.length > 0, filters.status !== 'all',
-    filters.type !== 'all', filters.approvalStage !== 'all',
-  ].filter(Boolean).length;
-
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-            <div className="h-px w-6 bg-gold" />
-            إدارة الإجازات
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">الإجازات الموحدة</h1>
-          <p className="mt-1 text-muted-foreground">تصفح وأدر طلبات الإجازات وقرارات الاعتماد.</p>
-        </div>
-        <Button variant="luxe" className="gap-2 shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
-          <Plus className="h-4 w-4" />
-          إضافة إجازة
-        </Button>
-      </div>
-
-      {/* Stats strip */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: 'إجمالي', value: filtered.length, color: 'text-foreground', bg: 'bg-muted/40' },
-          { label: 'قيد الانتظار', value: filtered.filter(l => l.status === 'pending').length, color: 'text-gold', bg: 'bg-gold/10' },
-          { label: 'موافق عليه', value: filtered.filter(l => l.status === 'approved').length, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
-          { label: 'مرفوض', value: filtered.filter(l => l.status === 'rejected').length, color: 'text-destructive', bg: 'bg-destructive/10' },
-        ].map((s) => (
-          <div key={s.label} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-soft">
-            <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-lg number-ar', s.bg, s.color)}>
-              {s.value}
-            </div>
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* View toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
           <button type="button" onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all', view === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
             <List className="h-3.5 w-3.5" />
@@ -170,100 +128,11 @@ export function UnifiedManagementClient() {
             تقويم
           </button>
         </div>
-
-        {/* Filter toggle */}
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowFilters(!showFilters)}>
-          <Filter className="h-3.5 w-3.5" />
-          الفلاتر
-          {activeFilterCount > 0 && (
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{activeFilterCount}</span>
-          )}
+        <Button variant="luxe" className="gap-2 shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
+          <Plus className="h-4 w-4" />
+          إضافة إجازة
         </Button>
-
-        {activeFilterCount > 0 && (
-          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => setFilters(DEFAULT_FILTERS)}>
-            <X className="h-3.5 w-3.5" />
-            مسح الفلاتر
-          </Button>
-        )}
       </div>
-
-      {/* Filter bar */}
-      {showFilters && (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">الفرع</Label>
-              <Select value={filters.branchId} onValueChange={(v) => patchFilter('branchId', v)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الفروع</SelectItem>
-                  {MOCK_BRANCHES.map((b) => <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">القسم</Label>
-              <Select value={filters.departmentId} onValueChange={(v) => patchFilter('departmentId', v)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الأقسام</SelectItem>
-                  {MOCK_DEPARTMENTS.map((d) => <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">الحالة</Label>
-              <Select value={filters.status} onValueChange={(v) => patchFilter('status', v)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الحالات</SelectItem>
-                  <SelectItem value="pending">قيد الانتظار</SelectItem>
-                  <SelectItem value="approved">موافق عليه</SelectItem>
-                  <SelectItem value="rejected">مرفوض</SelectItem>
-                  <SelectItem value="cancelled">ملغاة</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">نوع الإجازة</Label>
-              <Select value={filters.type} onValueChange={(v) => patchFilter('type', v)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع الأنواع</SelectItem>
-                  <SelectItem value="annual">سنوية</SelectItem>
-                  <SelectItem value="sick">مرضية</SelectItem>
-                  <SelectItem value="emergency">طارئة</SelectItem>
-                  <SelectItem value="unpaid">بدون راتب</SelectItem>
-                  <SelectItem value="maternity">أمومة</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">مرحلة الاعتماد</Label>
-              <Select value={filters.approvalStage} onValueChange={(v) => patchFilter('approvalStage', v as UnifiedFilterState['approvalStage'])}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">الكل</SelectItem>
-                  <SelectItem value="fully_approved">مكتمل</SelectItem>
-                  <SelectItem value="awaiting_first">بانتظار الأول</SelectItem>
-                  <SelectItem value="awaiting_second">بانتظار الثاني</SelectItem>
-                  <SelectItem value="awaiting_third">بانتظار الثالث</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">الموظفون</Label>
-              <MultiSelect
-                options={empOptions}
-                value={filters.employeeIds}
-                onChange={(v) => patchFilter('employeeIds', v)}
-                placeholder="جميع الموظفين"
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Content */}
       {view === 'table'
@@ -667,7 +536,7 @@ function AddLeaveDialog({ open, editLeave, onClose, onSave }: {
     onSave(record);
   };
 
-  const empOptions = MOCK_UNIFIED_EMPLOYEES.map((e) => ({ value: e.id, label: e.nameAr, subtitle: e.nameEn }));
+  const empOptions = MOCK_UNIFIED_EMPLOYEES.map((e) => ({ value: e.id, label: e.nameAr }));
   const selEmp = MOCK_UNIFIED_EMPLOYEES.find(e => e.id === empId);
 
   return (

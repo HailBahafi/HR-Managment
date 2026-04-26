@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Check, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { usePageFilters } from '@/components/filter-panel-context';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -25,7 +26,8 @@ const EMPTY_DRAFT: DraftState = {
 
 export function LeaveTypesPanel() {
   const { items, add, update, remove } = useLeaveTypesStore();
-  const [search, setSearch] = React.useState('');
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالرمز أو الاسم…' }]);
+  const search = (values.q as string) ?? '';
   const [open, setOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftState>(EMPTY_DRAFT);
@@ -36,7 +38,7 @@ export function LeaveTypesPanel() {
     [...items]
       .filter((x) => {
         const q = search.toLowerCase();
-        return !q || x.code.toLowerCase().includes(q) || x.nameAr.includes(q) || x.nameEn.toLowerCase().includes(q);
+        return !q || x.code.toLowerCase().includes(q) || x.nameAr.includes(q);
       })
       .sort((a, b) => a.sortOrder - b.sortOrder),
     [items, search],
@@ -70,7 +72,7 @@ export function LeaveTypesPanel() {
   const save = () => {
     const err = validate();
     if (err) { setError(err); return; }
-    const payload = { ...draft, code: draft.code.trim().toUpperCase(), nameAr: draft.nameAr.trim() };
+    const payload = { ...draft, code: draft.code.trim().toUpperCase(), nameAr: draft.nameAr.trim(), nameEn: draft.nameAr.trim() };
     if (editId) update(editId, payload);
     else add(payload);
     setOpen(false);
@@ -81,17 +83,8 @@ export function LeaveTypesPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Input
-            placeholder="بحث بالرمز أو الاسم…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pr-4"
-          />
-        </div>
-        <Button variant="luxe" className="gap-2 shrink-0" onClick={openCreate}>
+      <div className="flex justify-end">
+        <Button variant="luxe" className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           إضافة نوع إجازة
         </Button>
@@ -125,7 +118,6 @@ export function LeaveTypesPanel() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{item.nameAr}</p>
-                      {item.nameEn && <p className="text-xs text-muted-foreground" dir="ltr">{item.nameEn}</p>}
                     </td>
                     <td className="px-4 py-3">
                       {item.paid ? <Check className="h-4 w-4 text-emerald-600" /> : <Minus className="h-4 w-4 text-muted-foreground/40" />}
@@ -190,10 +182,6 @@ export function LeaveTypesPanel() {
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="lt-name-ar">الاسم بالعربية <span className="text-destructive">*</span></Label>
                 <Input id="lt-name-ar" value={draft.nameAr} onChange={(e) => patch('nameAr', e.target.value)} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="lt-name-en">الاسم بالإنجليزية</Label>
-                <Input id="lt-name-en" dir="ltr" value={draft.nameEn} onChange={(e) => patch('nameEn', e.target.value)} />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="lt-max">الحد الأقصى للطلب الواحد (أيام) — اتركه فارغاً لعدم وجود حد</Label>

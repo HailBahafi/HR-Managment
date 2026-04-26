@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   Bell, Moon, Sun, LogOut, User, Settings, Menu,
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
@@ -22,11 +22,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSidebar } from '@/components/sidebar-context';
 import { usePageTitle } from '@/components/page-title-context';
+import { FilterTrigger } from '@/components/filter-panel';
 import { Logo } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
 
-/* ── Icon registry (string → component) ─────────────────────────────── */
+/* ── Icon registry ────────────────────────────────────────────────────── */
 export const PAGE_ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
@@ -40,33 +41,33 @@ type NavItem  = {
   icon: React.ElementType; groups?: NavGroup[];
 };
 
-const navConfig: NavItem[] = [
+export const navConfig: NavItem[] = [
   { key: 'dashboard', label: 'الرئيسية', href: '/dashboard', icon: LayoutDashboard },
   {
     key: 'employees', label: 'الموظفين', icon: Users,
     groups: [{ items: [
-      { label: 'الموظفين والأقسام', href: '/hr/employees',  icon: Users },
       { label: 'سجل الموظفين',     href: '/employees',      icon: Users },
+      { label: 'الأقسام',          href: '/departments',    icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/organization',   icon: Building2 },
     ]}],
   },
   {
     key: 'attendance', label: 'الحضور', icon: Clock,
     groups: [{ items: [
-      { label: 'قوالب الشفت',         href: '/attendance?section=templates',         icon: LayoutGrid },
-      { label: 'تعيين القوالب',       href: '/attendance?section=assignment',        icon: ClipboardList },
-      { label: 'الحضور اليومي',       href: '/attendance?section=daily',             icon: CalendarRange },
-      { label: 'نقاط التسجيل',        href: '/attendance?section=checkpoints',       icon: MapPin },
-      { label: 'ربط النقاط بالموظفين',href: '/attendance?section=checkpoint-links',  icon: Link2 },
+      { label: 'قوالب الشفت',          href: '/attendance?section=templates',        icon: LayoutGrid },
+      { label: 'تعيين القوالب',        href: '/attendance?section=assignment',       icon: ClipboardList },
+      { label: 'الحضور اليومي',        href: '/attendance?section=daily',            icon: CalendarRange },
+      { label: 'نقاط التسجيل',         href: '/attendance?section=checkpoints',      icon: MapPin },
+      { label: 'ربط النقاط بالموظفين', href: '/attendance?section=checkpoint-links', icon: Link2 },
     ]}],
   },
   {
     key: 'leaves', label: 'الإجازات', icon: CalendarDays,
     groups: [{ items: [
-      { label: 'التحليلات',     href: '/hr/leaves/analytics',          icon: BarChart3 },
-      { label: 'إدارة الطلبات',href: '/hr/leaves/unified-management',  icon: LayoutList },
-      { label: 'أنواع الإجازات',href: '/hr/leaves/leave-types',        icon: ListChecks },
-      { label: 'العطل الرسمية', href: '/hr/leaves/public-holidays',    icon: CalendarDays },
+      { label: 'التحليلات',     href: '/hr/leaves/analytics',         icon: BarChart3 },
+      { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList },
+      { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types',       icon: ListChecks },
+      { label: 'العطل الرسمية',  href: '/hr/leaves/public-holidays',   icon: CalendarDays },
     ]}],
   },
   {
@@ -85,8 +86,6 @@ const navConfig: NavItem[] = [
       items: g.items.map(item => ({ label: item.labelAr, href: `/hr/discipline/${item.slug}` })),
     })),
   },
-  { key: 'payroll',  label: 'الرواتب',   href: '/payroll',  icon: Wallet },
-  { key: 'reports',  label: 'التقارير',  href: '/reports',  icon: BarChart3 },
   { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
 ];
 
@@ -101,13 +100,8 @@ function parentIsActive(pathname: string, item: NavItem) {
   ) ?? false;
 }
 
-function subIsActive(pathname: string, href: string) {
-  const base = href.split('?')[0];
-  return pathname === base || pathname.startsWith(base + '/');
-}
-
-/* ── Dropdown panel ─────────────────────────────────────────────────── */
-function NavDropdown({
+/* ── NavDropdown — needs useSearchParams for query-aware active state ── */
+function NavDropdownContent({
   groups, itemKey, onOpen, onClose,
 }: {
   groups: NavGroup[];
@@ -116,13 +110,26 @@ function NavDropdown({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const multiGroup = groups.length > 1;
+
+  function subIsActive(href: string) {
+    const [hrefPath, hrefQuery] = href.split('?');
+    const base = hrefPath;
+    if (pathname !== base && !pathname.startsWith(base + '/')) return false;
+    if (!hrefQuery) return true;
+    const params = new URLSearchParams(hrefQuery);
+    for (const [k, v] of params) {
+      if (searchParams.get(k) !== v) return false;
+    }
+    return true;
+  }
 
   return (
     <div
       className={cn(
         'nav-dropdown absolute right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-border/60 bg-popover/95 p-2 shadow-elevated backdrop-blur-xl',
-        multiGroup ? 'flex gap-1 min-w-[480px]' : 'min-w-[220px]',
+        multiGroup ? 'flex gap-1 min-w-[500px]' : 'min-w-[220px]',
       )}
       onMouseEnter={onOpen}
       onMouseLeave={onClose}
@@ -136,7 +143,7 @@ function NavDropdown({
           )}
           {group.items.map(sub => {
             const SubIcon = sub.icon;
-            const active = subIsActive(pathname, sub.href);
+            const active  = subIsActive(sub.href);
             return (
               <Link
                 key={sub.href}
@@ -154,7 +161,9 @@ function NavDropdown({
                 {SubIcon && (
                   <span className={cn(
                     'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
-                    active ? 'bg-primary/15 text-primary' : 'bg-muted/60 text-muted-foreground group-hover/sub:bg-primary/10 group-hover/sub:text-primary',
+                    active
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-muted/60 text-muted-foreground group-hover/sub:bg-primary/10 group-hover/sub:text-primary',
                   )}>
                     <SubIcon className="h-3.5 w-3.5" />
                   </span>
@@ -169,7 +178,7 @@ function NavDropdown({
   );
 }
 
-/* ── Main navbar ────────────────────────────────────────────────────── */
+/* ── Main Topbar ─────────────────────────────────────────────────────── */
 export function Topbar() {
   const [dark, setDark] = React.useState(false);
   const { toggle } = useSidebar();
@@ -178,22 +187,28 @@ export function Topbar() {
 
   const [activeMenu, setActiveMenu] = React.useState<string | null>(null);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const openMenu  = (key: string) => { if (closeTimer.current) clearTimeout(closeTimer.current); setActiveMenu(key); };
+  const openMenu   = (key: string) => { if (closeTimer.current) clearTimeout(closeTimer.current); setActiveMenu(key); };
   const delayClose = () => { closeTimer.current = setTimeout(() => setActiveMenu(null), 150); };
 
-  React.useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-  }, [dark]);
-
+  React.useEffect(() => { document.documentElement.classList.toggle('dark', dark); }, [dark]);
   React.useEffect(() => { setActiveMenu(null); }, [pathname]);
 
   const PageIcon = meta.iconName ? PAGE_ICONS[meta.iconName] : null;
 
   return (
-    <header className="sticky top-0 z-30 flex flex-col border-b border-border/60 bg-background/90 backdrop-blur-2xl">
+    <header
+      className={cn(
+        'sticky top-0 z-30 flex flex-col border-b backdrop-blur-xl',
+        'border-border/60',
+        /* Light: crisp glass bar — cool white → parchment → whisper of primary teal */
+        'bg-gradient-to-b from-card via-background to-primary-50/35',
+        'shadow-[inset_0_1px_0_0_rgb(255_255_255_/0.92),0_10px_40px_-18px_hsl(var(--primary)_/_0.09)]',
+        /* Dark: flat frosted surface (unchanged character) */
+        'dark:bg-none dark:bg-background/95 dark:shadow-none dark:backdrop-blur-2xl',
+      )}
+    >
 
-      {/* ── Row 1: logo + nav + actions ─────────────────────────────── */}
+      {/* ── Row 1: logo + nav + actions ── */}
       <div className="flex h-[54px] items-center gap-2 px-4 sm:px-5">
 
         {/* Logo */}
@@ -217,9 +232,8 @@ export function Topbar() {
             const btnClass = cn(
               'relative flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-[13px] font-medium outline-none',
               'transition-all duration-200 ease-out',
-              active
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-foreground/65 hover:bg-muted/70 hover:text-foreground',
+              active  ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-foreground/65 hover:bg-muted/70 hover:text-foreground',
               isOpen && !active && 'bg-muted/70 text-foreground',
             );
 
@@ -246,13 +260,16 @@ export function Topbar() {
                   </button>
                 )}
 
+                {/* Dropdown — wrapped in Suspense so useSearchParams is safe */}
                 {isOpen && hasDrop && (
-                  <NavDropdown
-                    groups={item.groups!}
-                    itemKey={item.key}
-                    onOpen={() => openMenu(item.key)}
-                    onClose={delayClose}
-                  />
+                  <React.Suspense fallback={null}>
+                    <NavDropdownContent
+                      groups={item.groups!}
+                      itemKey={item.key}
+                      onOpen={() => openMenu(item.key)}
+                      onClose={delayClose}
+                    />
+                  </React.Suspense>
                 )}
               </div>
             );
@@ -262,14 +279,18 @@ export function Topbar() {
         <div className="flex-1 lg:hidden" />
 
         {/* Actions */}
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+
+          {/* Filter trigger */}
+          <FilterTrigger />
+
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setDark(d => !d)}>
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
           <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-xl">
             <Bell className="h-4 w-4" />
-            <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
+            <span className="absolute right-1.5 top-1 flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold/70" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
             </span>
@@ -277,7 +298,7 @@ export function Topbar() {
 
           <div className="mx-1 h-5 w-px bg-border/70" />
 
-          {/* User dropdown */}
+          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted/60">
@@ -315,8 +336,13 @@ export function Topbar() {
         </div>
       </div>
 
-      {/* ── Row 2: page title breadcrumb ────────────────────────────── */}
-      <div className="flex h-8 items-center gap-2 border-t border-border/30 bg-muted/10 px-4 sm:px-5">
+      {/* ── Row 2: page title ── */}
+      <div
+        className={cn(
+          'flex h-8 items-center gap-2.5 border-t px-4 sm:px-5',
+          'border-border/25 bg-white/45 backdrop-blur-sm dark:border-border/30 dark:bg-muted/10',
+        )}
+      >
         {PageIcon && <PageIcon className="h-3.5 w-3.5 shrink-0 text-primary/80" />}
         {meta.titleAr ? (
           <div className="flex min-w-0 items-center gap-2">

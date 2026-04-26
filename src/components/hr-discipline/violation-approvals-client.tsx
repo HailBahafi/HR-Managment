@@ -1,14 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { CheckCircle2, XCircle, Edit3, ChevronDown } from 'lucide-react';
+import { CheckCircle2, XCircle, Edit3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { EmptyState, MinimalDropdown, PageHeader } from '@/components/hr-requests/shared-ui';
+import { usePageFilters } from '@/components/filter-panel-context';
+import { EmptyState } from '@/components/hr-requests/shared-ui';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
 import type { HRApproverRole, HRViolationCaseRecord } from '@/lib/hr-discipline/types';
 import { CASE_STATUS_COLORS, CASE_STATUS_LABELS } from '@/lib/hr-discipline/types';
@@ -22,7 +23,10 @@ const ROLE_OPTIONS: { value: HRApproverRole; label: string }[] = [
 
 export function ViolationApprovalsClient() {
   const { cases, approve, reject, requestEdit } = useHRViolationCasesStore();
-  const [role, setRole] = React.useState<HRApproverRole>('manager');
+  const { values } = usePageFilters([
+    { key: 'role', label: 'الدور', type: 'select', options: ROLE_OPTIONS },
+  ]);
+  const role = ((values.role as HRApproverRole) || 'manager');
   const [editModal, setEditModal] = React.useState<{ caseId: string; caseNumber: string } | null>(null);
   const [editNote, setEditNote] = React.useState('');
   const [rejectModal, setRejectModal] = React.useState<{ caseId: string; caseNumber: string } | null>(null);
@@ -57,15 +61,6 @@ export function ViolationApprovalsClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="قائمة الاعتماد" description="القضايا المنتظرة للاعتماد حسب الدور">
-        <MinimalDropdown
-          value={role}
-          onChange={v => setRole(v as HRApproverRole)}
-          options={ROLE_OPTIONS}
-          className="w-40"
-        />
-      </PageHeader>
-
       {queue.length === 0 ? (
         <EmptyState title="لا توجد قضايا منتظرة" description={`لا يوجد قضايا بانتظار اعتماد دور: ${ROLE_OPTIONS.find(r => r.value === role)?.label}`} />
       ) : (

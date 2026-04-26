@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface NewEmployeeForm {
-  nameAr: string; nameEn: string;
+  nameAr: string;
   email: string; phone: string;
   nationalId: string; nationality: string;
   gender: string; birthDate: string; maritalStatus: string;
@@ -31,7 +31,7 @@ interface NewEmployeeForm {
 }
 
 const EMPTY_FORM: NewEmployeeForm = {
-  nameAr: '', nameEn: '', email: '', phone: '',
+  nameAr: '', email: '', phone: '',
   nationalId: '', nationality: 'سعودي', gender: 'male', birthDate: '', maritalStatus: 'single',
   position: '', departmentId: '', branchId: '', managerId: 'none',
   contractType: 'permanent', startDate: '',
@@ -149,9 +149,6 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
                   placeholder="عبدالرحمن المالكي"
                 />
                 {errors.nameAr && <p className="text-[11px] text-destructive">{errors.nameAr}</p>}
-              </Field>
-              <Field label="الاسم بالإنجليزية">
-                <Input dir="ltr" value={form.nameEn} onChange={(e) => patch('nameEn', e.target.value)} placeholder="Abdulrahman Al-Malki" />
               </Field>
               <Field label="الجنس">
                 <Select value={form.gender} onValueChange={(v) => patch('gender', v)}>

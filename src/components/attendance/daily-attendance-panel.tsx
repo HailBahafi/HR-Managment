@@ -4,13 +4,11 @@ import * as React from 'react';
 import { format, subDays, parseISO, eachDayOfInterval, isValid } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import {
-  LayoutList, Clock3, Download, Search,
+  LayoutList, Clock3,
   TrendingUp, Users, Timer, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { SingleDatePicker } from '@/components/ui/single-date-picker';
-import { Label } from '@/components/ui/label';
+import { usePageFilters } from '@/components/filter-panel-context';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import type { AttendanceDaySummary, AttendanceEvent, DaySummaryStatus } from '@/lib/attendance/types';
 import { enumerateDates, minutesFromMidnight, todayIso } from '@/lib/attendance/utils';
@@ -46,17 +44,33 @@ export function DailyAttendancePanel() {
   const events       = useAttendanceStore((s) => s.events);
 
   const [preset, setPreset] = React.useState<Preset>('week');
-  const [from,   setFrom]   = React.useState(() => format(subDays(new Date(), 6), 'yyyy-MM-dd'));
-  const [to,     setTo]     = React.useState(todayIso);
-  const [q,      setQ]      = React.useState('');
-  const [view,   setView]   = React.useState<ViewMode>('timeline');
+  const [view, setView] = React.useState<ViewMode>('timeline');
+
+  const defaultFrom = format(subDays(new Date(), 6), 'yyyy-MM-dd');
+  const defaultTo = todayIso();
+
+  const { values, setValue } = usePageFilters([
+    { key: 'date', label: 'نطاق التاريخ', type: 'daterange' },
+    { key: 'q', label: 'بحث الموظف', type: 'text', placeholder: 'اسم الموظف أو الرقم…' },
+  ]);
+
+  const from = (values.date_from as string) || defaultFrom;
+  const to   = (values.date_to   as string) || defaultTo;
+  const q    = (values.q as string) ?? '';
+
+  React.useEffect(() => {
+    setValue('date_from', defaultFrom);
+    setValue('date_to', defaultTo);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const applyPreset = (p: Preset) => {
     setPreset(p);
     const t = todayIso();
-    if (p === 'day')   { setFrom(t); setTo(t); }
-    if (p === 'week')  { setFrom(format(subDays(new Date(), 6),  'yyyy-MM-dd')); setTo(t); }
-    if (p === 'month') { setFrom(format(subDays(new Date(), 29), 'yyyy-MM-dd')); setTo(t); }
+    if (p === 'day')   { setValue('date_from', t); setValue('date_to', t); }
+    if (p === 'week')  { setValue('date_from', format(subDays(new Date(), 6),  'yyyy-MM-dd')); setValue('date_to', t); }
+    if (p === 'month') { setValue('date_from', format(subDays(new Date(), 29), 'yyyy-MM-dd')); setValue('date_to', t); }
+    if (p === 'custom') setPreset('custom');
   };
 
   const dates = React.useMemo(() => enumerateDates(from, to), [from, to]);
@@ -80,19 +94,6 @@ export function DailyAttendancePanel() {
     avgWork: filtered.length ? Math.round(filtered.reduce((a, s) => a + s.workedMinutes, 0) / filtered.length) : 0,
   }), [filtered]);
 
-  const exportCsv = () => {
-    const header = ['employeeId','employeeName','date','status','late','early','ot','workedMin','notes'];
-    const lines = [header.join(',')].concat(
-      filtered.map((s) =>
-        [s.employeeId,`"${s.employeeName}"`,s.date,s.status,s.lateMinutes,s.earlyLeaveMinutes,s.overtimeMinutes,s.workedMinutes,`"${s.notes??''}"`].join(','),
-      ),
-    );
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `attendance-${from}-${to}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="space-y-5">
       {/* ── Top controls ── */}
@@ -102,7 +103,7 @@ export function DailyAttendancePanel() {
           {(['day','week','month','custom'] as Preset[]).map((p) => (
             <button key={p} type="button" onClick={() => applyPreset(p)}
               className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
-                preset === p ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                preset === p ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {p === 'day' ? 'اليوم' : p === 'week' ? 'أسبوع' : p === 'month' ? 'شهر' : 'مخصص'}
@@ -110,67 +111,25 @@ export function DailyAttendancePanel() {
           ))}
         </div>
 
-        {/* View toggle + export */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
-            <button type="button" onClick={() => setView('grid')}
-              className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
-                view === 'grid' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <LayoutList className="h-3.5 w-3.5" />
-              جدول
-            </button>
-            <button type="button" onClick={() => setView('timeline')}
-              className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
-                view === 'timeline' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Clock3 className="h-3.5 w-3.5" />
-              خط زمني
-            </button>
-          </div>
-          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={exportCsv}>
-            <Download className="h-3.5 w-3.5" />
-            CSV
-          </Button>
+        {/* View toggle */}
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
+          <button type="button" onClick={() => setView('grid')}
+            className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
+              view === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <LayoutList className="h-3.5 w-3.5" />
+            جدول
+          </button>
+          <button type="button" onClick={() => setView('timeline')}
+            className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
+              view === 'timeline' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Clock3 className="h-3.5 w-3.5" />
+            خط زمني
+          </button>
         </div>
-      </div>
-
-      {/* ── Filters ── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">من</Label>
-          <SingleDatePicker
-            value={from}
-            onChange={(v) => { setFrom(v); setPreset('custom'); }}
-            placeholder="تاريخ البداية"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">إلى</Label>
-          <SingleDatePicker
-            value={to}
-            onChange={(v) => { setTo(v); setPreset('custom'); }}
-            placeholder="تاريخ النهاية"
-            min={from}
-          />
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label className="text-xs text-muted-foreground">بحث</Label>
-          <div className="relative">
-            <Search className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input className="pr-8 text-sm" value={q} onChange={(e) => setQ(e.target.value)} placeholder="اسم الموظف أو الرقم…" />
-          </div>
-        </div>
-      </div>
-
-      {/* ── Stats ── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard icon={Users}    label="حاضر"           value={stats.present} color="text-emerald-600" bg="bg-emerald-500/10" />
-        <StatCard icon={Timer}    label="متأخر"           value={stats.late}    color="text-amber-600"   bg="bg-amber-500/10" />
-        <StatCard icon={TrendingUp} label="غائب"         value={stats.absent}  color="text-destructive" bg="bg-destructive/10" />
-        <StatCard icon={Clock3}   label="متوسط العمل (د)" value={stats.avgWork} color="text-primary"     bg="bg-primary/10" />
       </div>
 
       {/* ── Content ── */}
@@ -194,7 +153,7 @@ function StatCard({ icon: Icon, label, value, color, bg }: {
   icon: React.ElementType; label: string; value: number; color: string; bg: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-soft">
+    <div className="flex items-center gap-3 rounded-xl px-4 py-3 shadow-soft">
       <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', bg)}>
         <Icon className={cn('h-4 w-4', color)} />
       </div>
@@ -218,25 +177,25 @@ function GridView({ rows }: { rows: AttendanceDaySummary[] }) {
     );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <th className="px-4 py-3 text-right">الموظف</th>
-              <th className="px-4 py-3 text-right">التاريخ</th>
-              <th className="px-4 py-3 text-right">الحالة</th>
-              <th className="px-4 py-3 text-right">تأخير (د)</th>
-              <th className="px-4 py-3 text-right">العمل (د)</th>
-              <th className="px-4 py-3 text-right">ملاحظات</th>
+              <th className="px-6 py-4 text-right">الموظف</th>
+              <th className="px-6 py-4 text-right">التاريخ</th>
+              <th className="px-6 py-4 text-right">الحالة</th>
+              <th className="px-6 py-4 text-right">تأخير (د)</th>
+              <th className="px-6 py-4 text-right">العمل (د)</th>
+              <th className="px-6 py-4 text-right">ملاحظات</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((s) => {
               const cfg = STATUS[s.status];
               return (
-                <tr key={s.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="px-4 py-3">
+                <tr key={s.id} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                         {s.employeeName.charAt(0)}
@@ -247,23 +206,23 @@ function GridView({ rows }: { rows: AttendanceDaySummary[] }) {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4">
                     <p className="font-mono text-xs" dir="ltr">{s.date}</p>
                     <p className="text-[10px] text-muted-foreground">{fmtFull(s.date)}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4">
                     <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', cfg.color)}>
                       <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dot)} />
                       {cfg.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4">
                     {s.lateMinutes > 0
                       ? <span className="font-mono text-xs text-amber-600">{s.lateMinutes}</span>
                       : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs">{s.workedMinutes}</td>
-                  <td className="max-w-[180px] px-4 py-3 text-xs text-muted-foreground truncate">{s.notes ?? '—'}</td>
+                  <td className="px-6 py-4 font-mono text-xs">{s.workedMinutes}</td>
+                  <td className="max-w-[180px] px-6 py-4 text-xs text-muted-foreground truncate">{s.notes ?? '—'}</td>
                 </tr>
               );
             })}
@@ -338,7 +297,7 @@ function GanttTimeline({
     return <EmptyTimeline />;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+    <div className="overflow-hidden rounded-xl shadow-soft">
       {/* Hour ruler */}
       <div className="border-b border-border bg-muted/30 px-4 py-2" dir="ltr">
         <div className="flex items-center" style={{ paddingRight: '11rem' }}>
@@ -459,14 +418,14 @@ function WeekGrid({
   if (byEmployee.length === 0) return <EmptyTimeline />;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/40">
-              <th className="sticky right-0 z-10 bg-muted/40 px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">الموظف</th>
+            <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="sticky right-0 z-10 bg-muted/40 px-6 py-4 text-right">الموظف</th>
               {dates.map((d) => (
-                <th key={d} className="min-w-[80px] px-2 py-2.5 text-center">
+                <th key={d} className="min-w-[80px] px-3 py-4 text-center">
                   <div className="flex flex-col items-center">
                     <span className="text-[10px] text-muted-foreground">{fmtDayName(d)}</span>
                     <span className={cn('mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
@@ -477,10 +436,10 @@ function WeekGrid({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/60">
+          <tbody>
             {byEmployee.map(({ name, byDate }, idx) => (
-              <tr key={idx} className="hover:bg-muted/10 transition-colors">
-                <td className="sticky right-0 z-10 bg-card px-4 py-2.5">
+              <tr key={idx} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
+                <td className="sticky right-0 z-10 bg-card px-6 py-4">
                   <div className="flex items-center gap-2">
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                       {name.charAt(0)}
@@ -491,13 +450,13 @@ function WeekGrid({
                 {dates.map((d) => {
                   const s = byDate.get(d);
                   if (!s) return (
-                    <td key={d} className="px-2 py-2.5">
+                    <td key={d} className="px-3 py-4">
                       <div className="mx-auto h-8 w-16 rounded-lg bg-muted/30" />
                     </td>
                   );
                   const cfg = STATUS[s.status];
                   return (
-                    <td key={d} className="px-2 py-2.5">
+                    <td key={d} className="px-3 py-4">
                       <div
                         title={`${s.employeeName} · ${d} · ${cfg.label}`}
                         className={cn('mx-auto flex w-16 flex-col items-center justify-center rounded-lg border px-1 py-1.5 cursor-default transition-transform hover:scale-105', cfg.color)}
@@ -518,7 +477,7 @@ function WeekGrid({
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 border-t border-border bg-muted/20 px-4 py-3">
+      <div className="flex flex-wrap gap-3 border-t border-border bg-muted/20 px-6 py-3 text-sm text-muted-foreground">
         {(Object.entries(STATUS) as [DaySummaryStatus, typeof STATUS[DaySummaryStatus]][]).map(([, cfg]) => (
           <span key={cfg.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className={cn('h-2 w-2 rounded-full', cfg.dot)} />
@@ -574,14 +533,14 @@ function MonthHeatmap({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="sticky right-0 z-10 bg-muted/40 px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground min-w-[140px]">الموظف</th>
+              <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="sticky right-0 z-10 bg-muted/40 px-6 py-4 text-right min-w-[140px]">الموظف</th>
                 {visibleDates.map((d) => (
-                  <th key={d} className="min-w-[56px] px-1 py-2.5 text-center">
+                  <th key={d} className="min-w-[56px] px-2 py-4 text-center">
                     <div className="flex flex-col items-center gap-0.5">
                       <span className="text-[9px] text-muted-foreground">{fmtDayName(d)}</span>
                       <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold',
@@ -591,10 +550,10 @@ function MonthHeatmap({
                   </th>
                 ))}
                 {/* Totals column */}
-                <th className="px-3 py-2.5 text-center text-[10px] text-muted-foreground">ملخص</th>
+                <th className="px-4 py-4 text-center text-[10px] text-muted-foreground">ملخص</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody>
               {byEmployee.map(({ name, byDate }) => {
                 const allRows = [...byDate.values()];
                 const presentCount = allRows.filter(s => s.status === 'present').length;
@@ -602,8 +561,8 @@ function MonthHeatmap({
                 const absentCount  = allRows.filter(s => s.status === 'absent').length;
 
                 return (
-                  <tr key={name} className="hover:bg-muted/10 transition-colors">
-                    <td className="sticky right-0 z-10 bg-card px-4 py-2">
+                  <tr key={name} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
+                    <td className="sticky right-0 z-10 bg-card px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                           {name.charAt(0)}
@@ -614,13 +573,13 @@ function MonthHeatmap({
                     {visibleDates.map((d) => {
                       const s = byDate.get(d);
                       if (!s) return (
-                        <td key={d} className="px-1 py-2">
+                        <td key={d} className="px-2 py-4">
                           <div className="mx-auto h-7 w-10 rounded-md bg-muted/20" />
                         </td>
                       );
                       const cfg = STATUS[s.status];
                       return (
-                        <td key={d} className="px-1 py-2">
+                        <td key={d} className="px-2 py-4">
                           <div
                             title={`${name} · ${d} · ${cfg.label}`}
                             className={cn('mx-auto flex h-7 w-10 items-center justify-center rounded-md border cursor-default transition-transform hover:scale-110', cfg.color)}
@@ -631,7 +590,7 @@ function MonthHeatmap({
                       );
                     })}
                     {/* Row totals */}
-                    <td className="px-3 py-2">
+                    <td className="px-4 py-4">
                       <div className="flex flex-col items-center gap-0.5 text-center">
                         <span className="text-[10px] text-emerald-600">{presentCount}✓</span>
                         {lateCount > 0 && <span className="text-[10px] text-amber-600">{lateCount}⏱</span>}
@@ -646,7 +605,7 @@ function MonthHeatmap({
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-3 border-t border-border bg-muted/20 px-4 py-3">
+        <div className="flex flex-wrap gap-3 border-t border-border bg-muted/20 px-6 py-3 text-sm text-muted-foreground">
           {(Object.entries(STATUS) as [DaySummaryStatus, typeof STATUS[DaySummaryStatus]][]).map(([, cfg]) => (
             <span key={cfg.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className={cn('h-2 w-2 rounded-full', cfg.dot)} />

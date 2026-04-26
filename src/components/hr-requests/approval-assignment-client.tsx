@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  PageHeader, EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
+  EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
 } from './shared-ui';
 import { useHRApprovalAssignmentTemplatesStore } from '@/lib/hr-requests/approval-assignment-store';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
@@ -99,7 +100,8 @@ function StageEditor({ stage, index, total, onChange, onRemove }: {
 export function ApprovalAssignmentClient() {
   const { templates, add, update, remove } = useHRApprovalAssignmentTemplatesStore();
 
-  const [search, setSearch] = React.useState('');
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' }]);
+  const search = (values.q as string) ?? '';
   const [page, setPage] = React.useState(1);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -136,16 +138,10 @@ export function ApprovalAssignmentClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="قوالب التفويض والموافقة" description="مكتبة من سلاسل الموافقة الجاهزة للربط بأنواع الطلبات لاحقاً">
+      <div className="flex justify-end">
         <Button variant="luxe" className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> قالب جديد
         </Button>
-      </PageHeader>
-
-      {/* Search + count */}
-      <div className="flex items-center gap-3">
-        <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="بحث بالاسم…" className="max-w-xs" />
-        <span className="text-sm text-muted-foreground">{filtered.length} قالب</span>
       </div>
 
       {filtered.length === 0 ? (

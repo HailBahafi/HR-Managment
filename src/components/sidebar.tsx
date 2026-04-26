@@ -28,8 +28,8 @@ const mobileNav: MobileNavItem[] = [
   {
     key: 'employees', label: 'الموظفين', icon: Users,
     children: [
-      { label: 'الموظفين والأقسام', href: '/hr/employees', icon: Users },
       { label: 'سجل الموظفين', href: '/employees', icon: Users },
+      { label: 'الأقسام', href: '/departments', icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/organization', icon: Building2 },
     ],
   },
@@ -71,7 +71,6 @@ const mobileNav: MobileNavItem[] = [
     ),
   },
   { key: 'payroll', label: 'الرواتب', href: '/payroll', icon: Wallet },
-  { key: 'reports', label: 'التقارير', href: '/reports', icon: BarChart3 },
   { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
 ];
 

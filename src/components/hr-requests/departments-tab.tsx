@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Pencil, Trash2, Search, ChevronRight, ChevronDown, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronRight, ChevronDown, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
+import { usePageFilters } from '@/components/filter-panel-context';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import { buildDepartmentForest, flattenDepartmentsTree, getDescendantDepartmentIds } from '@/lib/hr-requests/hierarchy-utils';
 import type { DeptTreeNode } from '@/lib/hr-requests/hierarchy-utils';
@@ -17,9 +17,9 @@ import { cn } from '@/lib/utils';
 const LS_VIEW = 'hr_departments_view_mode';
 
 interface DraftForm {
-  nameAr: string; nameEn: string; parentId: string; sortOrder: number; isActive: boolean;
+  nameAr: string; parentId: string; sortOrder: number; isActive: boolean;
 }
-const EMPTY: DraftForm = { nameAr: '', nameEn: '', parentId: '', sortOrder: 1, isActive: true };
+const EMPTY: DraftForm = { nameAr: '', parentId: '', sortOrder: 1, isActive: true };
 
 // ─── Dept tree node (chart view) ──────────────────────────────────────────────
 function DeptOrgNode({ node, depth = 0 }: { node: DeptTreeNode; depth?: number }) {
@@ -30,7 +30,6 @@ function DeptOrgNode({ node, depth = 0 }: { node: DeptTreeNode; depth?: number }
         <Building2 className="h-4 w-4 shrink-0 text-primary/60" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{node.dept.nameAr}</p>
-          <p className="truncate text-[11px] text-muted-foreground" dir="ltr">{node.dept.nameEn}</p>
         </div>
         {!node.dept.isActive && <span className="text-[10px] text-muted-foreground border border-border rounded-full px-2 py-0.5">موقوف</span>}
         {node.children.length > 0 && (
@@ -53,9 +52,14 @@ export function DepartmentsTab() {
   const { departments, addDepartment, updateDepartment, deleteDepartment } = useHRConfigurationStore();
 
   const [view, setView] = React.useState<'list' | 'chart'>(() => (typeof window !== 'undefined' ? localStorage.getItem(LS_VIEW) as 'list' | 'chart' : null) ?? 'list');
-  const [search, setSearch] = React.useState('');
-  const [filterActive, setFilterActive] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+  const { values } = usePageFilters([
+    { key: 'search', label: 'بحث', type: 'text', placeholder: 'اسم القسم…' },
+    { key: 'active', label: 'الحالة', type: 'select', options: [{ value: 'active', label: 'نشط فقط' }] },
+  ]);
+  const search = (values.search as string) ?? '';
+  const filterActive = (values.active as string) === 'active';
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -70,7 +74,7 @@ export function DepartmentsTab() {
   const filtered = flat.filter(n => {
     if (filterActive && !n.dept.isActive) return false;
     const q = search.toLowerCase();
-    if (q && !n.dept.nameAr.includes(q) && !n.dept.nameEn.toLowerCase().includes(q)) return false;
+    if (q && !n.dept.nameAr.includes(q)) return false;
     return true;
   });
 
@@ -83,14 +87,14 @@ export function DepartmentsTab() {
 
   const openEdit = (dept: HRDepartmentEntity) => {
     setEditId(dept.id);
-    setDraft({ nameAr: dept.nameAr, nameEn: dept.nameEn, parentId: dept.parentId ?? '', sortOrder: dept.sortOrder, isActive: dept.isActive });
+    setDraft({ nameAr: dept.nameAr, parentId: dept.parentId ?? '', sortOrder: dept.sortOrder, isActive: dept.isActive });
     setFormError(null);
     setDrawerOpen(true);
   };
 
   const handleSave = () => {
     if (!draft.nameAr.trim()) { setFormError('اسم القسم مطلوب'); return; }
-    const payload = { ...draft, parentId: draft.parentId || undefined };
+    const payload = { ...draft, nameEn: draft.nameAr.trim(), parentId: draft.parentId || undefined };
     const result = editId ? updateDepartment(editId, payload) : addDepartment({ ...payload, isActive: draft.isActive });
     if (!result.ok) { setFormError(result.error ?? 'خطأ'); return; }
     setDrawerOpen(false);
@@ -113,28 +117,10 @@ export function DepartmentsTab() {
 
   return (
     <div className="w-full min-w-0 space-y-4">
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-fit gap-1 rounded-xl border border-border bg-muted/30 p-1">
-          {(['list', 'chart'] as const).map(v => (
-            <button key={v} type="button" onClick={() => setView(v)}
-              className={cn('rounded-lg px-3 py-1.5 text-xs font-medium transition-all', view === v ? 'bg-background shadow-soft text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-              {v === 'list' ? 'قائمة' : 'مخطط'}
-            </button>
-          ))}
-        </div>
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 basis-[10rem] sm:flex-none sm:basis-auto">
-            <Search className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث…" className="h-8 w-full min-w-0 pr-7 text-xs sm:w-44" />
-          </div>
-          <label className="flex shrink-0 items-center gap-1.5 text-xs cursor-pointer text-muted-foreground">
-            <Checkbox checked={filterActive} onCheckedChange={v => setFilterActive(v === true)} />
-            نشط فقط
-          </label>
-          <Button variant="luxe" className="shrink-0 gap-2" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> قسم جديد
-          </Button>
-        </div>
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="luxe" className="shrink-0 gap-2" onClick={openCreate}>
+          <Plus className="h-4 w-4" /> قسم جديد
+        </Button>
       </div>
 
       {view === 'list' ? (
@@ -163,7 +149,6 @@ export function DepartmentsTab() {
                             <Building2 className="h-4 w-4 shrink-0 text-primary/50" />
                             <div>
                               <p className="font-semibold">{dept.nameAr}</p>
-                              <p className="text-xs text-muted-foreground" dir="ltr">{dept.nameEn}</p>
                             </div>
                           </div>
                         </td>
@@ -206,9 +191,6 @@ export function DepartmentsTab() {
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="الاسم بالعربية" required span2>
             <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="الموارد البشرية" />
-          </FormField>
-          <FormField label="الاسم بالإنجليزية" span2>
-            <Input dir="ltr" value={draft.nameEn} onChange={e => patch('nameEn', e.target.value)} placeholder="Human Resources" />
           </FormField>
           <FormField label="القسم الأصل" span2>
             <MinimalDropdown value={draft.parentId} onChange={v => patch('parentId', v)} options={parentOptions} />

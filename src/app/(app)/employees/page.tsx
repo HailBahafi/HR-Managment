@@ -2,32 +2,33 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Search, Plus, Filter, Download, LayoutGrid, List, Mail, Phone, Building2, Users } from 'lucide-react';
+import { Plus, Download, LayoutGrid, List, Mail, Building2 } from 'lucide-react';
 import { useSetPageTitle } from '@/components/page-title-context';
+import { usePageFilters } from '@/components/filter-panel-context';
 import { NewEmployeeDrawer } from '@/components/employees/new-employee-drawer';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { StatusBadge, ContractTypeLabel } from '@/components/status-badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { data, getBranch, getDepartment } from '@/lib/data';
 import { formatCurrency, getInitials } from '@/lib/utils';
 
 export default function EmployeesPage() {
   useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
+
+  const { values } = usePageFilters([
+    { key: 'search', label: 'بحث', type: 'text', placeholder: 'الاسم، رقم الموظف، أو المنصب…' },
+    { key: 'branch', label: 'الفرع', type: 'select', options: data.branches.map(b => ({ value: b.id, label: b.name })) },
+    { key: 'dept', label: 'القسم', type: 'select', options: data.departments.map(d => ({ value: d.id, label: d.name })) },
+    { key: 'status', label: 'الحالة', type: 'select', options: [{ value: 'active', label: 'نشط' }, { value: 'suspended', label: 'موقوف' }, { value: 'ended', label: 'منتهي' }] },
+  ]);
+
   const [view, setView] = React.useState<'table' | 'grid'>('table');
-  const [search, setSearch] = React.useState('');
-  const [branchFilter, setBranchFilter] = React.useState('all');
-  const [deptFilter, setDeptFilter] = React.useState('all');
-  const [statusFilter, setStatusFilter] = React.useState('all');
   const [newEmpOpen, setNewEmpOpen] = React.useState(false);
+
+  const search = (values.search as string) ?? '';
+  const branchFilter = (values.branch as string) ?? 'all';
+  const deptFilter = (values.dept as string) ?? 'all';
+  const statusFilter = (values.status as string) ?? 'all';
 
   const filtered = data.employees.filter((e) => {
     if (search && !e.name.includes(search) && !e.employeeCode.includes(search) && !e.position.includes(search)) return false;
@@ -40,86 +41,22 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <NewEmployeeDrawer open={newEmpOpen} onOpenChange={setNewEmpOpen} />
-      <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            تصدير
-          </Button>
-          <Button variant="luxe" className="gap-2" onClick={() => setNewEmpOpen(true)}>
-            <Plus className="h-4 w-4" />
-            موظف جديد
-          </Button>
-      </div>
 
-      {/* Toolbar */}
-      <div className="rounded-lg border border-border bg-card p-4 shadow-soft">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="ابحث بالاسم، رقم الموظف، أو المنصب..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pr-10"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={branchFilter} onValueChange={setBranchFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="الفرع" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الفروع</SelectItem>
-                {data.branches.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={deptFilter} onValueChange={setDeptFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="القسم" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الأقسام</SelectItem>
-                {data.departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="الحالة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                <SelectItem value="active">نشط</SelectItem>
-                <SelectItem value="suspended">موقوف</SelectItem>
-                <SelectItem value="ended">منتهي</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="flex items-center rounded-md border border-border bg-muted/40 p-0.5">
-              <button
-                onClick={() => setView('table')}
-                className={`rounded-sm p-1.5 transition ${view === 'table' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setView('grid')}
-                className={`rounded-sm p-1.5 transition ${view === 'grid' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
+          <button onClick={() => setView('table')} className={`rounded-lg p-1.5 transition ${view === 'table' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}>
+            <List className="h-4 w-4" />
+          </button>
+          <button onClick={() => setView('grid')} className={`rounded-lg p-1.5 transition ${view === 'grid' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}>
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2"><Download className="h-4 w-4" />تصدير</Button>
+          <Button variant="luxe" className="gap-2" onClick={() => setNewEmpOpen(true)}><Plus className="h-4 w-4" />موظف جديد</Button>
         </div>
       </div>
 
-      {/* Results */}
       {view === 'table' ? (
         <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
           <div className="overflow-x-auto">
@@ -132,7 +69,7 @@ export default function EmployeesPage() {
                   <th className="px-6 py-4 text-right">تاريخ الالتحاق</th>
                   <th className="px-6 py-4 text-right">الراتب الأساسي</th>
                   <th className="px-6 py-4 text-right">الحالة</th>
-                  <th className="px-6 py-4"></th>
+                  <th className="px-6 py-4" />
                 </tr>
               </thead>
               <tbody>
@@ -155,32 +92,21 @@ export default function EmployeesPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          {dept && (
-                            <div className="h-6 w-1 rounded-full" style={{ background: dept.color }} />
-                          )}
+                          {dept && <div className="h-6 w-1 rounded-full" style={{ background: dept.color }} />}
                           <div>
                             <p className="text-sm font-medium">{dept?.name}</p>
                             <p className="text-xs text-muted-foreground">{branch?.city}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <ContractTypeLabel type={emp.contractType} />
-                      </td>
+                      <td className="px-6 py-4 text-sm"><ContractTypeLabel type={emp.contractType} /></td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">
                         {new Date(emp.startDate).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })}
                       </td>
                       <td className="px-6 py-4 font-semibold number-ar">{formatCurrency(emp.baseSalary)}</td>
+                      <td className="px-6 py-4"><StatusBadge status={emp.contractStatus} /></td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={emp.contractStatus} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Link
-                          href={`/employees/${emp.id}`}
-                          className="text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100"
-                        >
-                          عرض →
-                        </Link>
+                        <Link href={`/employees/${emp.id}`} className="text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">عرض →</Link>
                       </td>
                     </tr>
                   );
@@ -188,27 +114,14 @@ export default function EmployeesPage() {
               </tbody>
             </table>
           </div>
-
           {filtered.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-                <Search className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="font-display text-lg font-semibold">لا توجد نتائج</h3>
-              <p className="mt-1 text-sm text-muted-foreground">جرّب تعديل معايير البحث أو الفلاتر</p>
+              <p className="text-sm text-muted-foreground">لا توجد نتائج — جرّب تعديل الفلاتر من اللوحة الجانبية</p>
             </div>
           )}
-
           {filtered.length > 0 && (
             <div className="flex items-center justify-between border-t border-border bg-muted/20 px-6 py-3 text-sm text-muted-foreground">
-              <span>
-                عرض <span className="font-semibold text-foreground number-ar">{filtered.length}</span> من أصل{' '}
-                <span className="font-semibold text-foreground number-ar">{data.employees.length}</span> موظف
-              </span>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled>السابق</Button>
-                <Button variant="outline" size="sm">التالي</Button>
-              </div>
+              <span>عرض <span className="font-semibold text-foreground number-ar">{filtered.length}</span> من أصل <span className="font-semibold text-foreground number-ar">{data.employees.length}</span> موظف</span>
             </div>
           )}
         </div>
@@ -218,14 +131,9 @@ export default function EmployeesPage() {
             const dept = getDepartment(emp.departmentId);
             const branch = getBranch(emp.branchId);
             return (
-              <Link
-                key={emp.id}
-                href={`/employees/${emp.id}`}
-                className="group relative overflow-hidden rounded-lg border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated"
-              >
-                <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-30"
-                  style={{ background: dept?.color ?? '#0f766e' }}
-                />
+              <Link key={emp.id} href={`/employees/${emp.id}`}
+                className="group relative overflow-hidden rounded-lg border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated">
+                <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity group-hover:opacity-30" style={{ background: dept?.color ?? '#0f766e' }} />
                 <div className="relative flex items-start justify-between">
                   <Avatar className="h-14 w-14 ring-2 ring-border">
                     <AvatarImage src={emp.avatar} />

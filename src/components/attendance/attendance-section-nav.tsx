@@ -34,7 +34,7 @@ export function AttendanceSectionNav() {
               'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all',
               active
                 ? 'border-primary bg-primary text-primary-foreground shadow-soft'
-                : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent/60 hover:text-foreground',
+                : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-accent/60 hover:text-foreground',
             )}
           >
             <Icon className="h-4 w-4 shrink-0 opacity-90" />

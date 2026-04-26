@@ -1,16 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Pencil, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   MinimalDropdown, ConfirmationModal, HRSettingsFormDrawer,
-  FormField, PageHeader, EmptyState, Pagination, ActiveBadge,
+  FormField, EmptyState, Pagination, ActiveBadge,
 } from './shared-ui';
 import { HRRequestApprovalFlowEditor } from './approval-flow-editor';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
@@ -38,9 +37,13 @@ const EMPTY: DraftForm = {
 export function RequestTypesClient() {
   const { departments, requestTypes, templates, addRequestType, updateRequestType, deleteRequestType } = useHRConfigurationStore();
 
-  const [search, setSearch] = React.useState('');
-  const [filterDepts, setFilterDepts] = React.useState<string[]>([]);
-  const [filterActive, setFilterActive] = React.useState(false);
+  const { values } = usePageFilters([
+    { key: 'q', label: 'بحث', type: 'text', placeholder: 'الاسم…' },
+    { key: 'active', label: 'الحالة', type: 'select', options: [{ value: 'active', label: 'نشط فقط' }] },
+  ]);
+  const search = (values.q as string) ?? '';
+  const filterDepts: string[] = [];
+  const filterActive = (values.active as string) === 'active';
   const [page, setPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PAGE) ?? '1') : 1);
   const [perPage, setPerPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PER) ?? '10') : 10);
 
@@ -125,46 +128,14 @@ export function RequestTypesClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="أنواع الطلبات" description="تعريف أنواع الطلبات لكل قسم أو لجميع الأقسام">
+      <div className="flex justify-end">
         <Button variant="luxe" className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> نوع جديد
         </Button>
-      </PageHeader>
-
-      <div className="flex flex-col gap-3 sm:flex-row">
-        {/* Sidebar filters */}
-        <div className="w-full shrink-0 sm:w-56 space-y-4 rounded-xl border border-border bg-card p-4 shadow-soft self-start">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">الفلاتر</p>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">بحث</Label>
-            <div className="relative">
-              <Search className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="الاسم…" className="pr-7 h-8 text-xs" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">الأقسام</Label>
-            {activeDepts.map(d => (
-              <label key={d.id} className="flex items-center gap-2 cursor-pointer text-sm">
-                <Checkbox
-                  checked={filterDepts.includes(d.id)}
-                  onCheckedChange={v => {
-                    setFilterDepts(prev => v ? [...prev, d.id] : prev.filter(id => id !== d.id));
-                    setPage(1);
-                  }}
-                />
-                {d.nameAr}
-              </label>
-            ))}
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer text-sm">
-            <Checkbox checked={filterActive} onCheckedChange={v => { setFilterActive(v === true); setPage(1); }} />
-            نشط فقط
-          </label>
-        </div>
+      </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
           {paginated.length === 0 ? (
             <EmptyState icon={Filter} title="لا توجد أنواع" description="أضف نوعاً جديداً أو عدّل الفلاتر" />
           ) : (
@@ -212,7 +183,6 @@ export function RequestTypesClient() {
           )}
           <Pagination page={page} perPage={perPage} total={filtered.length} onPage={setPage} onPerPage={p => { setPerPage(p); setPage(1); }} />
         </div>
-      </div>
 
       {/* Drawer */}
       <HRSettingsFormDrawer

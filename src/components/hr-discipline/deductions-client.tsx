@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   PageHeader, EmptyState, Pagination,
 } from '@/components/hr-requests/shared-ui';
@@ -20,7 +19,8 @@ const STATUS_COLORS: Record<HRDeductionStatus, string> = {
 
 export function DeductionsClient() {
   const { deductions } = useHRDisciplinePayrollDeductionsStore();
-  const [q, setQ] = React.useState('');
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو الموظف…' }]);
+  const q = (values.q as string) ?? '';
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(10);
 
@@ -34,12 +34,6 @@ export function DeductionsClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="الاستقطاعات" description="استقطاعات الرواتب المرتبطة بقضايا الانضباط (للاطلاع فقط)" />
-
-      <div className="relative max-w-sm">
-        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={q} onChange={e => setQ(e.target.value)} placeholder="بحث برقم القضية أو الموظف…" className="pr-9" />
-      </div>
 
       {/* Desktop */}
       <div className="hidden md:block rounded-xl border border-border overflow-hidden">

@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { MapPin, Pencil, Plus, Search, Trash2, Navigation2, Radio, Loader2, ChevronLeft } from 'lucide-react';
+import { MapPin, Pencil, Plus, Trash2, Navigation2, Radio, Loader2, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { usePageFilters } from '@/components/filter-panel-context';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -21,6 +22,11 @@ import type { AttendanceCheckInPoint } from '@/lib/attendance/types';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import { genId } from '@/lib/attendance/utils';
 import { cn } from '@/lib/utils';
+
+type GeoSuggestion = { lat: string; lon: string; display_name: string };
+
+const GEO_DEBOUNCE_MS = 450;
+const GEO_MIN_QUERY_LEN = 2;
 
 function validate(draft: AttendanceCheckInPoint): string | null {
   if (!draft.nameAr.trim()) return 'اسم النقطة بالعربية مطلوب';
@@ -39,10 +45,15 @@ export function CheckpointsPanel() {
   const [draft, setDraft] = React.useState<AttendanceCheckInPoint | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<string | null>(null);
-  const [listQ, setListQ] = React.useState('');
   const [geoQuery, setGeoQuery] = React.useState('');
+
+  const { values } = usePageFilters([
+    { key: 'q', label: 'بحث النقاط', type: 'text', placeholder: 'الاسم أو الإحداثيات…' },
+  ]);
+  const listQ = (values.q as string) ?? '';
   const [geoLoading, setGeoLoading] = React.useState(false);
   const [geoError, setGeoError] = React.useState<string | null>(null);
+  const [geoSuggestions, setGeoSuggestions] = React.useState<GeoSuggestion[]>([]);
 
   const visibleCheckpoints = React.useMemo(() => {
     const t = listQ.trim().toLowerCase();
@@ -50,7 +61,6 @@ export function CheckpointsPanel() {
     return checkpoints.filter((p) => {
       const blob = [
         p.nameAr,
-        p.nameEn ?? '',
         String(p.latitude),
         String(p.longitude),
         String(p.radiusMeters),
@@ -74,6 +84,7 @@ export function CheckpointsPanel() {
     setError(null);
     setGeoQuery('');
     setGeoError(null);
+    setGeoSuggestions([]);
     setOpen(true);
   };
 
@@ -82,44 +93,78 @@ export function CheckpointsPanel() {
     setError(null);
     setGeoQuery('');
     setGeoError(null);
+    setGeoSuggestions([]);
     setOpen(true);
   };
 
-  const searchPlace = async () => {
+  const pickSuggestion = React.useCallback((row: GeoSuggestion) => {
+    setDraft((d) => {
+      if (!d) return d;
+      const la = Number(row.lat);
+      const lo = Number(row.lon);
+      if (!Number.isFinite(la) || !Number.isFinite(lo)) return d;
+      return { ...d, latitude: la, longitude: lo };
+    });
+    setGeoSuggestions([]);
+    setGeoError(null);
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) {
+      setGeoSuggestions([]);
+      setGeoLoading(false);
+      setGeoError(null);
+      return;
+    }
     const q = geoQuery.trim();
-    if (!q || !draft) return;
+    if (q.length < GEO_MIN_QUERY_LEN) {
+      setGeoSuggestions([]);
+      setGeoError(null);
+      setGeoLoading(false);
+      return;
+    }
+
+    const ac = new AbortController();
     setGeoLoading(true);
     setGeoError(null);
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`;
-      const res = await fetch(url, {
-        headers: { Accept: 'application/json', 'Accept-Language': 'ar,en' },
-      });
-      if (!res.ok) throw new Error('network');
-      const rows = (await res.json()) as { lat: string; lon: string }[];
-      if (!Array.isArray(rows) || rows.length === 0) {
-        setGeoError('لم يُعثر على مكان مطابق.');
-        return;
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=8&addressdetails=0`;
+        const res = await fetch(url, {
+          signal: ac.signal,
+          headers: { Accept: 'application/json', 'Accept-Language': 'ar,en' },
+        });
+        if (!res.ok) throw new Error('network');
+        const rows = (await res.json()) as GeoSuggestion[];
+        if (!Array.isArray(rows)) {
+          setGeoSuggestions([]);
+          setGeoError('لم يُعثر على نتائج.');
+          return;
+        }
+        setGeoSuggestions(rows);
+        if (rows.length === 0) setGeoError('لم يُعثر على نتائج.');
+        else setGeoError(null);
+      } catch (e) {
+        if (ac.signal.aborted || (e as Error).name === 'AbortError') return;
+        setGeoSuggestions([]);
+        setGeoError('تعذر البحث. تحقق من الاتصال.');
+      } finally {
+        if (!ac.signal.aborted) setGeoLoading(false);
       }
-      const la = Number(rows[0].lat);
-      const lo = Number(rows[0].lon);
-      if (!Number.isFinite(la) || !Number.isFinite(lo)) {
-        setGeoError('استجابة غير صالحة من خدمة البحث.');
-        return;
-      }
-      setDraft({ ...draft, latitude: la, longitude: lo });
-    } catch {
-      setGeoError('تعذر البحث. تحقق من الاتصال وحاول مرة أخرى.');
-    } finally {
-      setGeoLoading(false);
-    }
-  };
+    }, GEO_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      ac.abort();
+    };
+  }, [geoQuery, open]);
 
   const save = () => {
     if (!draft) return;
     const err = validate(draft);
     if (err) { setError(err); return; }
-    upsertCheckpoint(draft);
+    upsertCheckpoint({ ...draft, nameEn: draft.nameAr.trim() });
     setOpen(false);
     setDraft(null);
   };
@@ -133,8 +178,7 @@ export function CheckpointsPanel() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">نقاط التسجيل الجغرافية ونطاق القبول بالأمتار.</p>
+      <div className="flex items-center justify-end">
         <Button variant="luxe" className="gap-2 shrink-0" type="button" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           نقطة جديدة
@@ -142,17 +186,6 @@ export function CheckpointsPanel() {
       </div>
 
       <div className="space-y-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={listQ}
-            onChange={(e) => setListQ(e.target.value)}
-            placeholder="تصفية البطاقات بالاسم أو الإحداثيات…"
-            className="h-10 pr-10"
-            aria-label="تصفية قائمة النقاط"
-          />
-        </div>
-
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           النقاط (
           <span className="number-ar">{visibleCheckpoints.length}</span>
@@ -192,7 +225,7 @@ export function CheckpointsPanel() {
                 }
               }}
               className={cn(
-                'group flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border bg-card px-4 py-3 text-right shadow-soft transition-all outline-none hover:border-primary/40 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                'group flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-transparent bg-background px-4 py-3 text-right shadow-soft transition-all outline-none hover:border-primary/40 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
                 selected === p.id ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20' : 'border-border',
               )}
             >
@@ -252,7 +285,7 @@ export function CheckpointsPanel() {
         ) : null}
 
         {selectedPoint ? (
-          <div className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-soft">
+          <div className="space-y-4 rounded-xl p-4 shadow-soft">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -261,11 +294,6 @@ export function CheckpointsPanel() {
                     {selectedPoint.isActive ? 'نشط' : 'موقوف'}
                   </Badge>
                 </div>
-                {selectedPoint.nameEn ? (
-                  <p className="mt-1 truncate text-sm text-muted-foreground" dir="ltr">
-                    {selectedPoint.nameEn}
-                  </p>
-                ) : null}
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button variant="outline" size="sm" type="button" className="gap-1.5" onClick={() => openEdit(selectedPoint)}>
@@ -328,7 +356,7 @@ export function CheckpointsPanel() {
                 {draft && checkpoints.some((c) => c.id === draft.id) ? 'تعديل نقطة التسجيل' : 'نقطة تسجيل جديدة'}
               </DialogTitle>
               <DialogDescription>
-                ابحث عن عنوان أو مكان للانتقال إليه، أو انقر على الخريطة واسحب الدبوس. تظهر أدوات نطاق القبول أثناء التعديل فقط أسفل يمين الخريطة.
+                اكتب اسم المكان لعرض اقتراحات من خدمات الخرائط أو انقر على الخريطة واسحب الدبوس. تظهر أدوات نطاق القبول أثناء التعديل فقط أسفل يمين الخريطة.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -337,31 +365,46 @@ export function CheckpointsPanel() {
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-6 pb-2">
               <div className="min-w-0 space-y-5">
                 <div className="space-y-2">
-                  <Label>بحث عن مكان (OpenStreetMap)</Label>
-                  <div className="flex flex-col gap-2 sm:flex-row">
+                  <Label>بحث عن مكان  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                  اكتب حرفين على الأقل؛ تظهر الاقتراحات تلقائياً اثناء الكتابة.
+                  </p>
+                  <div className="relative">
                     <Input
                       value={geoQuery}
                       onChange={(e) => setGeoQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          void searchPlace();
-                        }
-                      }}
+                      autoComplete="off"
                       placeholder="مثال: برج المملكة الرياض، أو حي الملز…"
-                      className="font-sans sm:flex-1"
+                      className={cn('font-sans pe-9', geoLoading && 'opacity-90')}
                       dir="rtl"
                     />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="shrink-0 gap-2 sm:w-auto"
-                      disabled={geoLoading || !geoQuery.trim()}
-                      onClick={() => void searchPlace()}
-                    >
-                      {geoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                      بحث
-                    </Button>
+                    {geoLoading ? (
+                      <Loader2 className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-hidden />
+                    ) : null}
+                    {geoSuggestions.length > 0 ? (
+                      <ul
+                        className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-popover py-1 text-sm text-popover-foreground shadow-md"
+                        role="listbox"
+                        aria-label="اقتراحات الأماكن"
+                      >
+                        {geoSuggestions.map((s, i) => (
+                          <li key={`${s.lat}-${s.lon}-${i}`}>
+                            <button
+                              type="button"
+                              role="option"
+                              className="flex w-full items-start gap-2 px-3 py-2 text-right transition-colors hover:bg-accent hover:text-accent-foreground"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                pickSuggestion(s);
+                              }}
+                            >
+                              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                              <span className="min-w-0 flex-1 leading-snug">{s.display_name}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                   {geoError ? <p className="text-xs text-destructive">{geoError}</p> : null}
                 </div>
@@ -379,13 +422,9 @@ export function CheckpointsPanel() {
 
                 {/* Fields */}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label>الاسم بالعربية</Label>
                     <Input value={draft.nameAr} onChange={(e) => setDraft({ ...draft, nameAr: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>الاسم بالإنجليزية (اختياري)</Label>
-                    <Input dir="ltr" value={draft.nameEn ?? ''} onChange={(e) => setDraft({ ...draft, nameEn: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label>خط العرض</Label>

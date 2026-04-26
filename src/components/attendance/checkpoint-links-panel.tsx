@@ -56,7 +56,6 @@ function employeeSearchHaystack(e: DataEmployee): string {
   const ct = e.contractType as ContractType;
   return [
     e.name,
-    e.nameEn,
     e.employeeCode,
     e.email,
     e.phone,
@@ -69,7 +68,6 @@ function employeeSearchHaystack(e: DataEmployee): string {
     e.contractType,
     CONTRACT_TYPE_AR[ct] ?? '',
     branch?.name,
-    branch?.nameEn,
     branch?.city,
     dept?.name,
     ext.openStream,
@@ -168,15 +166,14 @@ export function CheckpointLinksPanel() {
     const q = cq.trim().toLowerCase();
     if (!q) return checkpoints;
     return checkpoints.filter((c) => {
-      const blob = [c.nameAr, c.nameEn ?? '', String(c.latitude), String(c.longitude)].join(' ').toLowerCase();
+      const blob = [c.nameAr, String(c.latitude), String(c.longitude)].join(' ').toLowerCase();
       return blob.includes(q);
     });
   }, [checkpoints, cq]);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">ربط الموظفين بنقاط التسجيل على شكل دفعات (جدول كامل بين المحددين).</p>
+      <div className="flex items-center justify-end">
         <Button variant="luxe" className="gap-2" type="button" onClick={openBatchDialog}>
           <Plus className="h-4 w-4" />
           دفعة ربط
@@ -188,31 +185,31 @@ export function CheckpointLinksPanel() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 text-right">الدفعة</th>
-                <th className="px-4 py-3 text-right">ساري من</th>
-                <th className="px-4 py-3 text-right">عدد الروابط</th>
-                <th className="w-24 px-4 py-3 text-right">إجراء</th>
+                <th className="px-6 py-4 text-right">الدفعة</th>
+                <th className="px-6 py-4 text-right">ساري من</th>
+                <th className="px-6 py-4 text-right">عدد الروابط</th>
+                <th className="w-24 px-6 py-4 text-right">إجراء</th>
               </tr>
             </thead>
             <tbody>
               {batches.map(({ batchId, rows, eff: efd }) => (
-                <tr key={batchId} className="border-b border-border/60 last:border-0 hover:bg-muted/20">
-                  <td className="px-4 py-3">
+                <tr key={batchId} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground" dir="ltr">
                       <Link2 className="h-3.5 w-3.5" />
                       {batchId.slice(0, 20)}…
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs" dir="ltr">
+                  <td className="px-6 py-4 font-mono text-xs" dir="ltr">
                     {efd ?? '—'}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4">
                     <Badge variant="subtle" className="gap-1">
                       <Users className="h-3 w-3" />
                       <span className="number-ar">{rows.length}</span>
                     </Badge>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4">
                     <Button
                       variant="ghost"
                       size="icon"

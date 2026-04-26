@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   PageHeader, EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
@@ -67,7 +68,8 @@ function StageEditor({ stage, index, onChange, onRemove }: {
 
 export function DisciplineApprovalClient() {
   const { templates, add, update, remove } = useHRDisciplineApprovalAssignmentTemplatesStore();
-  const [search, setSearch] = React.useState('');
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' }]);
+  const search = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -94,11 +96,9 @@ export function DisciplineApprovalClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="قوالب الاعتماد للانضباط" description="سلاسل موافقة خاصة بقضايا الانضباط الوظيفي">
+      <div className="flex justify-end">
         <Button variant="luxe" size="sm" onClick={openCreate}><Plus className="h-4 w-4 ml-1" />قالب جديد</Button>
-      </PageHeader>
-
-      <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="بحث بالاسم…" className="max-w-sm" />
+      </div>
 
       {filtered.length === 0 ? (
         <EmptyState title="لا توجد قوالب" description="أضف قالباً لتعريف سلسلة موافقة" />

@@ -119,8 +119,7 @@ export function AssignmentsPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">تعيين قوالب الشفت لموظفين أو أقسام أو فروع مع تجميع دفعات.</p>
+      <div className="flex items-center justify-end">
         <Button variant="luxe" className="gap-2" type="button" onClick={openNew}>
           <Plus className="h-4 w-4" />
           تعيين دفعة
@@ -132,37 +131,37 @@ export function AssignmentsPanel() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 text-right">الدفعة</th>
-                <th className="px-4 py-3 text-right">القالب</th>
-                <th className="px-4 py-3 text-right">ساري من</th>
-                <th className="px-4 py-3 text-right">عدد العناصر</th>
-                <th className="w-24 px-4 py-3 text-right">إجراء</th>
+                <th className="px-6 py-4 text-right">الدفعة</th>
+                <th className="px-6 py-4 text-right">القالب</th>
+                <th className="px-6 py-4 text-right">ساري من</th>
+                <th className="px-6 py-4 text-right">عدد العناصر</th>
+                <th className="w-24 px-6 py-4 text-right">إجراء</th>
               </tr>
             </thead>
             <tbody>
               {batches.map(({ batchId, rows, templateId: tid, effectiveFrom: ef }) => {
                 const tpl = shiftTemplates.find((t) => t.id === tid);
                 return (
-                  <tr key={batchId} className="border-b border-border/60 last:border-0 hover:bg-muted/20">
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground" dir="ltr">
+                  <tr key={batchId} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
+                    <td className="px-6 py-4 font-mono text-xs text-muted-foreground" dir="ltr">
                       {batchId.slice(0, 18)}…
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {tpl && <span className="h-2 w-2 rounded-full" style={{ background: tpl.colorHex }} />}
                         <span className="font-medium">{tpl?.nameAr ?? tid}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs" dir="ltr">
+                    <td className="px-6 py-4 font-mono text-xs" dir="ltr">
                       {ef}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4">
                       <Badge variant="subtle" className="gap-1">
                         <Users className="h-3 w-3" />
                         <span className="number-ar">{rows.length}</span>
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4">
                       <Button
                         variant="ghost"
                         size="icon"

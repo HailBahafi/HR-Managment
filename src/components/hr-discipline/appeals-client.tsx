@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   PageHeader, EmptyState, MinimalDropdown, SearchableDropdown, Pagination,
@@ -40,7 +41,8 @@ export function AppealsClient() {
   const { appeals, add, update, remove } = useHRDisciplineAppealsStore();
   const { cases } = useHRViolationCasesStore();
 
-  const [q, setQ] = React.useState('');
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو الموظف…' }]);
+  const q = (values.q as string) ?? '';
   const [page, setPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(10);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -77,15 +79,10 @@ export function AppealsClient() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="التظلمات" description="تظلمات الموظفين ضد قرارات الانضباط">
+      <div className="flex justify-end">
         <Button variant="luxe" size="sm" onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
           <Plus className="h-4 w-4 ml-1" />إضافة تظلم
         </Button>
-      </PageHeader>
-
-      <div className="relative max-w-sm">
-        <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={q} onChange={e => setQ(e.target.value)} placeholder="بحث برقم القضية أو الموظف…" className="pr-9" />
       </div>
 
       {/* Desktop */}

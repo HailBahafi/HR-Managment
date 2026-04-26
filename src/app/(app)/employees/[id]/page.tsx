@@ -77,7 +77,6 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                 </div>
                 <h1 className="font-display text-3xl font-bold tracking-tight">{employee.name}</h1>
                 <p className="text-lg text-muted-foreground">{employee.position}</p>
-                <p className="text-sm text-muted-foreground" dir="ltr">{employee.nameEn}</p>
               </div>
             </div>
 
@@ -148,7 +147,6 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <InfoCard title="المعلومات الأساسية" icon={Shield}>
               <InfoRow label="الاسم الكامل" value={employee.name} />
-              <InfoRow label="الاسم بالإنجليزية" value={employee.nameEn} dir="ltr" />
               <InfoRow label="رقم الهوية" value={employee.nationalId} dir="ltr" />
               <InfoRow label="الجنسية" value={employee.nationality} />
               <InfoRow label="تاريخ الميلاد" value={formatDate(employee.birthDate)} />

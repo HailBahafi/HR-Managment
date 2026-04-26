@@ -72,21 +72,9 @@ export default function OrganizationPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-end gap-2">
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="ابحث عن موظف أو قسم..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-64 pr-10"
-            />
-          </div>
-      </div>
 
       {/* Stats strip */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatBlock label="الشركة" value="نواة" icon={Building2} accent="primary" />
         <StatBlock label="الفروع" value={data.branches.length.toString()} icon={Network} accent="gold" />
         <StatBlock label="الأقسام" value={data.departments.length.toString()} icon={Users} accent="success" />
         <StatBlock label="إجمالي الموظفين" value={data.company.totalEmployees.toString()} icon={Users} accent="warning" />
@@ -132,9 +120,20 @@ function TreeNodeRender({
   return (
     <div className="relative" style={{ marginRight: level > 0 ? '2rem' : 0 }}>
       <div
+        role={hasChildren ? 'button' : undefined}
+        tabIndex={hasChildren ? 0 : undefined}
+        onClick={() => hasChildren && onToggle(node.id)}
+        onKeyDown={(e) => {
+          if (!hasChildren) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle(node.id);
+          }
+        }}
         className={cn(
           'group relative inline-flex min-w-[280px] items-center gap-3 rounded-lg border bg-card p-3 shadow-soft transition-all hover:shadow-elevated',
           level === 0 && 'border-gold/40 bg-gradient-to-l from-primary to-primary-700 text-primary-foreground shadow-elevated',
+          hasChildren && 'cursor-pointer select-none',
         )}
         style={level > 0 ? containerStyle : undefined}
       >
@@ -166,13 +165,18 @@ function TreeNodeRender({
         </div>
         {hasChildren && (
           <button
-            onClick={() => onToggle(node.id)}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(node.id);
+            }}
             className={cn(
               'flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors',
               level === 0
                 ? 'bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20'
                 : 'hover:bg-muted',
             )}
+            aria-label={isOpen ? 'طي' : 'توسيع'}
           >
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>

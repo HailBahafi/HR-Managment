@@ -30,13 +30,13 @@ const STATUS_OPTIONS: { value: HREmployeeStatus; label: string }[] = [
 ];
 
 interface DraftForm {
-  bridgeId: string; nameAr: string; nameEn: string; nationalId: string;
+  bridgeId: string; nameAr: string; nationalId: string;
   departmentId: string; jobTitleAr: string; jobTitleEn: string; hireDate: string;
   status: HREmployeeStatus; email: string; mobile: string; notes: string;
   reportsToId: string; hierarchyRole: HREmployeeHierarchyRole;
 }
 const EMPTY: DraftForm = {
-  bridgeId: '', nameAr: '', nameEn: '', nationalId: '', departmentId: '',
+  bridgeId: '', nameAr: '', nationalId: '', departmentId: '',
   jobTitleAr: '', jobTitleEn: '', hireDate: '', status: 'active',
   email: '', mobile: '', notes: '', reportsToId: '', hierarchyRole: 'staff',
 };
@@ -161,7 +161,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
     return employees.filter(e => {
       if (filterDept !== 'all' && e.departmentId !== filterDept) return false;
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
-      if (q && !e.nameAr.includes(q) && !e.nameEn.toLowerCase().includes(q) && !e.bridgeId.toLowerCase().includes(q) && !e.jobTitleAr.includes(q)) return false;
+      if (q && !e.nameAr.includes(q) && !e.bridgeId.toLowerCase().includes(q) && !e.jobTitleAr.includes(q)) return false;
       return true;
     });
   }, [employees, search, filterDept, filterStatus]);
@@ -171,7 +171,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   const openView   = (emp: HREmployeeDirectoryRow) => { setSelected(emp); setSidebarMode('view'); };
   const openEdit   = (emp: HREmployeeDirectoryRow) => {
     setSelected(emp);
-    setDraft({ bridgeId: emp.bridgeId, nameAr: emp.nameAr, nameEn: emp.nameEn, nationalId: emp.nationalId, departmentId: emp.departmentId, jobTitleAr: emp.jobTitleAr, jobTitleEn: emp.jobTitleEn, hireDate: emp.hireDate, status: emp.status, email: emp.email ?? '', mobile: emp.mobile ?? '', notes: emp.notes ?? '', reportsToId: emp.reportsToId ?? '', hierarchyRole: emp.hierarchyRole });
+    setDraft({ bridgeId: emp.bridgeId, nameAr: emp.nameAr, nationalId: emp.nationalId, departmentId: emp.departmentId, jobTitleAr: emp.jobTitleAr, jobTitleEn: emp.jobTitleEn, hireDate: emp.hireDate, status: emp.status, email: emp.email ?? '', mobile: emp.mobile ?? '', notes: emp.notes ?? '', reportsToId: emp.reportsToId ?? '', hierarchyRole: emp.hierarchyRole });
     setFormError(null);
     setSidebarMode('edit');
   };
@@ -185,7 +185,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   const handleSave = () => {
     if (!draft.nameAr.trim()) { setFormError('الاسم بالعربية مطلوب'); return; }
     if (!draft.departmentId) { setFormError('القسم مطلوب'); return; }
-    const payload = { ...draft, reportsToId: draft.reportsToId || null, email: draft.email || undefined, mobile: draft.mobile || undefined, notes: draft.notes || undefined };
+    const payload = { ...draft, nameEn: draft.nameAr.trim(), reportsToId: draft.reportsToId || null, email: draft.email || undefined, mobile: draft.mobile || undefined, notes: draft.notes || undefined };
     if (sidebarMode === 'create') addEmployee(payload);
     else if (sidebarMode === 'edit' && selected) updateEmployee(selected.id, payload);
     setSidebarMode(null);
@@ -379,7 +379,6 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
             <MinimalDropdown value={draft.departmentId} onChange={v => patch('departmentId', v)} options={departments.filter(d => d.isActive).map(d => ({ value: d.id, label: d.nameAr }))} placeholder="اختر القسم" />
           </FormField>
           <FormField label="الاسم بالعربية" required span2><Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} /></FormField>
-          <FormField label="الاسم بالإنجليزية" span2><Input dir="ltr" value={draft.nameEn} onChange={e => patch('nameEn', e.target.value)} /></FormField>
           <FormField label="رقم الهوية" required><Input value={draft.nationalId} onChange={e => patch('nationalId', e.target.value)} dir="ltr" /></FormField>
           <FormField label="تاريخ التعيين"><Input type="date" dir="ltr" value={draft.hireDate} onChange={e => patch('hireDate', e.target.value)} /></FormField>
           <FormField label="المسمى بالعربية" span2><Input value={draft.jobTitleAr} onChange={e => patch('jobTitleAr', e.target.value)} /></FormField>
@@ -416,7 +415,6 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-display text-xl font-bold truncate">{selected.nameAr}</p>
-                <p className="text-sm text-muted-foreground truncate" dir="ltr">{selected.nameEn}</p>
               </div>
               <StatusBadge status={selected.status} />
             </div>
