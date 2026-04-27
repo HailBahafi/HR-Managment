@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   ArrowRight, CalendarRange, Check, FileCheck, Eye, Shield,
   Users, Wallet, TrendingDown, BadgeCheck, ChevronRight,
-  Sparkles, BarChart3,
+  Sparkles, BarChart3, Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,13 +18,63 @@ import {
   PERIOD_STATUS_LABELS,
   type HRPayrollCompensationReviewStatus,
   type HRPayrollPeriodRecord,
+  type HRPayrollMonthlyInput,
 } from '@/lib/contracts/payroll-periods-store';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
 import { useHRAllowanceTypesStore } from '@/lib/contracts/allowance-types-store';
 import {
   buildCompensationPreviews, lineNetFromVisibleColumns, formatLatinNumber,
   type CompensationColumnVisibility,
+  type PayrollLineCompensationPreview,
 } from '@/lib/contracts/compensation-preview';
+
+/* ── Inline-edit cell ──────────────────────────────────────────────────────── */
+type EditRow = { overtime: string; bonus: string; absenceSar: string; late: string; penalties: string; admin: string };
+
+function rowToEdits(row: PayrollLineCompensationPreview): EditRow {
+  return {
+    overtime:   String(row.entitlementOvertimeSar),
+    bonus:      String(row.entitlementBonusSar),
+    absenceSar: String(row.dedAbsenceSar),
+    late:       String(row.dedLateSar),
+    penalties:  String(row.dedPenaltiesSar),
+    admin:      String(row.dedAdminSar),
+  };
+}
+
+function EditCell({
+  value, onChange, onCommit, colorClass, disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+  colorClass?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="relative flex items-center justify-center">
+      <input
+        type="number"
+        min={0}
+        step="any"
+        value={value}
+        disabled={disabled}
+        onChange={e => onChange(e.target.value)}
+        onBlur={onCommit}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className={cn(
+          'w-22 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-center font-mono tabular-nums text-[11.5px] transition-all duration-150',
+          'hover:border-border focus:border-primary/50 focus:bg-primary/5 focus:outline-none focus:ring-0',
+          disabled ? 'pointer-events-none opacity-50' : 'cursor-text',
+          colorClass,
+        )}
+      />
+      {!disabled && (
+        <Pencil className="absolute inset-e-0.5 top-0.5 h-2.5 w-2.5 text-muted-foreground/30 pointer-events-none" />
+      )}
+    </div>
+  );
+}
 
 const REVIEW_STEPS: { key: HRPayrollCompensationReviewStatus; ar: string; icon: React.ElementType }[] = [
   { key: 'draft',        ar: 'مسودة',        icon: FileCheck },
@@ -63,15 +113,17 @@ const PERIOD_STATUS_BADGE: Record<string, string> = {
 };
 
 export function CompensationReportPanel({ periodId }: { periodId: string }) {
-  const periods             = useHRPayrollPeriodsStore(s => s.periods);
+  const periods               = useHRPayrollPeriodsStore(s => s.periods);
   const setCompensationStatus = useHRPayrollPeriodsStore(s => s.setCompensationStatus);
-  const contracts           = useHRContractsStore(s => s.contracts);
-  const allowanceTypes      = useHRAllowanceTypesStore(s => s.items);
+  const setMonthlyInputs      = useHRPayrollPeriodsStore(s => s.setMonthlyInputs);
+  const contracts             = useHRContractsStore(s => s.contracts);
+  const allowanceTypes        = useHRAllowanceTypesStore(s => s.items);
 
   const [cols, setCols] = React.useState<CompensationColumnVisibility>({
     colOvertime: true, colBonus: true,
     colDedAbsence: true, colDedLate: true, colDedPenalties: true, colDedAdmin: true,
   });
+  const [edits, setEdits] = React.useState<Record<string, EditRow>>({});
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => { setMounted(true); }, []);
 
@@ -85,6 +137,50 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
     if (!period) return [];
     return buildCompensationPreviews(period, getContract, getAlloType);
   }, [period, getContract, getAlloType]);
+
+  /* ── init edit state from previews ── */
+  React.useEffect(() => {
+    setEdits(prev => {
+      const next: Record<string, EditRow> = { ...prev };
+      previews.forEach(row => {
+        if (!next[row.lineId]) next[row.lineId] = rowToEdits(row);
+      });
+      return next;
+    });
+  }, [previews]);
+
+  const handleChange = (lineId: string, field: keyof EditRow, val: string) =>
+    setEdits(e => ({ ...e, [lineId]: { ...e[lineId], [field]: val } }));
+
+  const handleSave = React.useCallback((lineId: string, baseSalary: number) => {
+    const editRow = edits[lineId];
+    if (!editRow || !period) return;
+    const existing = period.employmentLineMonthlyInputs?.[lineId] ?? [];
+    const advanceRecovery = existing.filter(x => x.kind === 'advance_recovery');
+
+    const p = (s: string) => Math.max(0, parseFloat(s) || 0);
+    const overtime   = p(editRow.overtime);
+    const bonus      = p(editRow.bonus);
+    const absenceSar = p(editRow.absenceSar);
+    const late       = p(editRow.late);
+    const penalties  = p(editRow.penalties);
+    const admin      = p(editRow.admin);
+
+    const dailyRate   = baseSalary / 30;
+    const absenceDays = dailyRate > 0 ? Math.round((absenceSar / dailyRate) * 1000) / 1000 : 0;
+
+    const inputs: HRPayrollMonthlyInput[] = [
+      ...advanceRecovery,
+      ...(overtime    > 0 ? [{ kind: 'overtime_hours'    as const, value: overtime,    note: '' }] : []),
+      ...(bonus       > 0 ? [{ kind: 'allowance_amount'  as const, value: bonus,       note: '' }] : []),
+      ...(absenceDays > 0 ? [{ kind: 'absence_days'      as const, value: absenceDays, note: '' }] : []),
+      ...(late        > 0 ? [{ kind: 'late_minutes'      as const, value: late,        note: '' }] : []),
+      ...(penalties   > 0 ? [{ kind: 'deduction_amount'  as const, value: penalties,   note: '' }] : []),
+      ...(admin       > 0 ? [{ kind: 'other'             as const, value: admin,        note: 'إداري' }] : []),
+    ];
+
+    setMonthlyInputs(periodId, lineId, inputs);
+  }, [edits, period, periodId, setMonthlyInputs]);
 
   const fmt = (n: number, f = 2) => formatLatinNumber(n, f);
   const backHref = '/hr/contracts/payroll-periods';
@@ -422,18 +518,21 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
                 <tbody>
                   {previews.map((row, i) => {
                     const net = lineNetFromVisibleColumns(row, cols);
+                    const e   = edits[row.lineId] ?? rowToEdits(row);
+                    const chg = (f: keyof EditRow) => (v: string) => handleChange(row.lineId, f, v);
+                    const sav = () => handleSave(row.lineId, row.baseSalary);
                     return (
                       <tr
                         key={row.lineId}
                         className="group border-b border-border/50 last:border-0 even:bg-muted/15 hover:bg-primary/4 transition-colors duration-150"
                       >
-                        <td className="border-e border-border/40 px-2 py-2.5 text-center font-mono text-[10px] text-muted-foreground tabular-nums">
+                        <td className="border-e border-border/40 px-2 py-2 text-center font-mono text-[10px] text-muted-foreground tabular-nums">
                           {fmt(i + 1, 0)}
                         </td>
-                        <td className="border-e border-border/40 px-3 py-2.5 text-right">
+                        <td className="border-e border-border/40 px-3 py-2 text-right">
                           <span className="font-semibold text-foreground">{row.namePrimary}</span>
                         </td>
-                        <td className="border-e border-border/40 px-3 py-2.5 text-right">
+                        <td className="border-e border-border/40 px-3 py-2 text-right">
                           {row.allowanceLines.length === 0 ? (
                             <span className="text-muted-foreground text-[10px]">—</span>
                           ) : (
@@ -450,17 +549,17 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
                             </div>
                           )}
                         </td>
-                        <td className="border-e border-border/40 px-3 py-2.5 text-center font-mono font-semibold tabular-nums">
+                        <td className="border-e border-border/40 px-3 py-2 text-center font-mono font-semibold tabular-nums">
                           {fmt(row.baseSalary)}
                         </td>
-                        {cols.colOvertime    && <td className="border-e border-border/40 px-3 py-2.5 text-center font-mono tabular-nums text-primary">{fmt(row.entitlementOvertimeSar)}</td>}
-                        {cols.colBonus       && <td className="border-e border-border/40 px-3 py-2.5 text-center font-mono tabular-nums text-primary">{fmt(row.entitlementBonusSar)}</td>}
-                        {cols.colDedAbsence  && <td className="border-e border-border/40 px-3 py-2.5 text-center font-mono tabular-nums text-warning">{fmt(row.dedAbsenceSar)}</td>}
-                        {cols.colDedLate     && <td className="border-e border-border/40 px-3 py-2.5 text-center font-mono tabular-nums text-destructive">{fmt(row.dedLateSar)}</td>}
-                        {cols.colDedPenalties&& <td className="border-e border-border/40 px-3 py-2.5 text-center font-mono tabular-nums text-destructive">{fmt(row.dedPenaltiesSar)}</td>}
-                        {cols.colDedAdmin    && <td className="border-e border-border/40 px-3 py-2.5 text-center font-mono tabular-nums text-muted-foreground">{fmt(row.dedAdminSar)}</td>}
+                        {cols.colOvertime    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.overtime}   onChange={chg('overtime')}   onCommit={sav} colorClass="text-primary"           disabled={isApproved} /></td>}
+                        {cols.colBonus       && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.bonus}      onChange={chg('bonus')}      onCommit={sav} colorClass="text-primary"           disabled={isApproved} /></td>}
+                        {cols.colDedAbsence  && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.absenceSar} onChange={chg('absenceSar')} onCommit={sav} colorClass="text-warning"           disabled={isApproved} /></td>}
+                        {cols.colDedLate     && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.late}       onChange={chg('late')}       onCommit={sav} colorClass="text-destructive"       disabled={isApproved} /></td>}
+                        {cols.colDedPenalties&& <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.penalties}  onChange={chg('penalties')}  onCommit={sav} colorClass="text-destructive"       disabled={isApproved} /></td>}
+                        {cols.colDedAdmin    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.admin}      onChange={chg('admin')}      onCommit={sav} colorClass="text-muted-foreground" disabled={isApproved} /></td>}
                         <td className={cn(
-                          'bg-primary/5 px-3 py-2.5 text-center font-mono font-bold tabular-nums',
+                          'bg-primary/5 px-3 py-2 text-center font-mono font-bold tabular-nums',
                           net < 0 ? 'text-destructive' : 'text-foreground',
                         )}>
                           {fmt(net)}

@@ -80,7 +80,8 @@ export function buildCompensationPreviews(
     const dedLateSar = round2(sum('late_minutes'));
     const dedLateMinutes = round2(sum('late_minutes'));
     const dedPenaltiesSar = round2(sum('deduction_amount'));
-    const lineNetSar = round2(line.baseSalarySnapshot + allowancesMonthlyTotal + entitlementOvertimeSar + entitlementBonusSar - dedAbsenceSar - dedLateSar - dedPenaltiesSar);
+    const dedAdminSar     = round2(sum('other'));
+    const lineNetSar = round2(line.baseSalarySnapshot + allowancesMonthlyTotal + entitlementOvertimeSar + entitlementBonusSar - dedAbsenceSar - dedLateSar - dedPenaltiesSar - dedAdminSar);
 
     return {
       lineId: line.id,
@@ -97,7 +98,7 @@ export function buildCompensationPreviews(
       dedLateSar,
       dedLateMinutes,
       dedPenaltiesSar,
-      dedAdminSar: 0,
+      dedAdminSar,
       lineNetSar,
     };
   });
