@@ -1,4 +1,4 @@
-# نواة — Nawa HR Management System
+# روز — rose HR Management System
 
 منصة متكاملة لإدارة الموارد البشرية، مصممة بعناية للمؤسسات متعددة الفروع.
 A complete, production-grade HR Management System built with a distinctive editorial enterprise aesthetic.
@@ -71,7 +71,7 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). You'll be redirected to the login page.
-Credentials are pre-filled: `admin@nawa.sa` / `nawa2026` — just click **تسجيل الدخول**.
+Credentials are pre-filled: `admin@rose.sa` / `rose2026` — just click **تسجيل الدخول**.
 
 ## 📄 Pages
 
@@ -98,4 +98,4 @@ Credentials are pre-filled: `admin@nawa.sa` / `nawa2026` — just click **تسج
 
 ---
 
-© 2026 نواة. Built with care.
+© 2026 روز. Built with care.

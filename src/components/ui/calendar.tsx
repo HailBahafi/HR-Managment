@@ -14,7 +14,7 @@ function Calendar({ className, classNames, locale = arSA, showOutsideDays = true
     <DayPicker
       locale={locale}
       showOutsideDays={showOutsideDays}
-      className={cn('nawa-rdp-calendar', className)}
+      className={cn('rose-rdp-calendar', className)}
       classNames={{ ...defaults, ...classNames }}
       {...props}
     />

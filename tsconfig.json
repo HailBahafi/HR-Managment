@@ -22,7 +22,6 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"
@@ -31,7 +30,6 @@
   },
   "include": [
     "next-env.d.ts",
-    "tailwind.config.mts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",

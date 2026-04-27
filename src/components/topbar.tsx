@@ -9,7 +9,7 @@ import {
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList,
-  Banknote, FileSignature, BookOpen,
+  Banknote, FileSignature, BookOpen, FileSpreadsheet,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
 export const PAGE_ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
-  CalendarRange, Banknote, FileSignature, BookOpen,
+  CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */
@@ -95,6 +95,7 @@ export const navConfig: NavItem[] = [
       { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
       { label: 'عقود العمل',   href: '/hr/contracts/employment',        icon: FileSignature },
       { label: 'مواد العقود',  href: '/hr/contracts/articles',          icon: BookOpen },
+      { label: 'التقارير والنماذج', href: '/hr/contracts/reports',         icon: FileSpreadsheet },
     ]}],
   },
   { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
@@ -167,7 +168,7 @@ function NavDropdownContent({
                 )}
               >
                 {active && (
-                  <span className="absolute end-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+                  <span className="absolute inset-e-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
                 )}
                 {SubIcon && (
                   <span className={cn(
@@ -212,8 +213,8 @@ export function Topbar() {
         'sticky top-0 z-30 flex flex-col border-b backdrop-blur-xl',
         'border-border/60',
         /* Light: crisp glass bar — cool white → parchment → whisper of primary teal */
-        'bg-gradient-to-b from-card via-background to-primary-50/35',
-        'shadow-[inset_0_1px_0_0_rgb(255_255_255_/0.92),0_10px_40px_-18px_hsl(var(--primary)_/_0.09)]',
+        'bg-linear-to-b from-card via-background to-primary-50/35',
+        'shadow-[inset_0_1px_0_0_rgb(255_255_255_/0.92),0_10px_40px_-18px_hsl(var(--primary)/0.09)]',
         /* Dark: flat frosted surface (unchanged character) */
         'dark:bg-none dark:bg-background/95 dark:shadow-none dark:backdrop-blur-2xl',
       )}
@@ -226,8 +227,8 @@ export function Topbar() {
         <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50">
           <Logo size={28} />
           <div className="hidden flex-col leading-none sm:flex">
-            <span className="font-display text-[15px] font-bold tracking-tight">نواة</span>
-            <span className="text-[9px] font-medium tracking-[0.22em] text-muted-foreground uppercase">NAWA HR</span>
+            <span className="font-display text-[15px] font-bold tracking-tight">روز</span>
+            <span className="text-[9px] font-medium tracking-[0.22em] text-muted-foreground uppercase">rose HR</span>
           </div>
         </Link>
 
@@ -327,7 +328,7 @@ export function Topbar() {
               <DropdownMenuLabel>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-sm font-semibold">عبدالرحمن المالكي</span>
-                  <span className="text-xs font-normal text-muted-foreground">abdulrahman.m@nawa.sa</span>
+                  <span className="text-xs font-normal text-muted-foreground">abdulrahman.m@rose.sa</span>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

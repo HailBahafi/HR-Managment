@@ -8,7 +8,7 @@ import {
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList,
-  ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen,
+  ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen, FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
@@ -77,6 +77,7 @@ const mobileNav: MobileNavItem[] = [
       { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
       { label: 'عقود العمل', href: '/hr/contracts/employment', icon: FileSignature },
       { label: 'مواد العقود', href: '/hr/contracts/articles', icon: BookOpen },
+      { label: 'التقارير والنماذج', href: '/hr/contracts/reports', icon: FileSpreadsheet },
     ],
   },
   { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
@@ -122,8 +123,8 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
         <div className="flex items-center gap-2.5">
           <Logo size={30} />
           <div className="flex flex-col leading-none">
-            <span className="font-display text-base font-bold tracking-tight">نواة</span>
-            <span className="text-[9px] text-sidebar-foreground/60 tracking-[0.2em] uppercase">NAWA HR</span>
+            <span className="font-display text-base font-bold tracking-tight">روز</span>
+            <span className="text-[9px] text-sidebar-foreground/60 tracking-[0.2em] uppercase">rose HR</span>
           </div>
         </div>
         <button

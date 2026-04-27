@@ -32,7 +32,7 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: 'admin@nawa.sa', password: 'nawa2026' },
+    defaultValues: { email: 'admin@rose.sa', password: 'rose2026' },
   });
 
   const onSubmit = async (_values: FormValues) => {
@@ -63,8 +63,8 @@ export default function LoginPage() {
           <div className="relative z-10 flex items-center gap-3">
             <Logo size={44} />
             <div>
-              <div className="font-display text-2xl font-bold tracking-tight">نواة</div>
-              <div className="text-[10px] tracking-[0.25em] text-primary-foreground/60">NAWA · HR PLATFORM</div>
+              <div className="font-display text-2xl font-bold tracking-tight">روز</div>
+              <div className="text-[10px] tracking-[0.25em] text-primary-foreground/60">rose · HR PLATFORM</div>
             </div>
           </div>
 
@@ -82,7 +82,7 @@ export default function LoginPage() {
               <span className="italic text-gold">فناً،</span> لا مجرد إجراء.
             </h1>
             <p className="max-w-md text-lg leading-relaxed text-primary-foreground/70">
-              منصة نواة تجمع الحضور والرواتب والهيكل التنظيمي وتحليلات الأداء في تجربة واحدة
+              منصة روز تجمع الحضور والرواتب والهيكل التنظيمي وتحليلات الأداء في تجربة واحدة
               مصممة بعناية لفرق العمل المتنامية.
             </p>
 
@@ -212,7 +212,7 @@ export default function LoginPage() {
             </form>
 
             <p className="mt-8 text-center text-xs text-muted-foreground">
-              © 2026 نواة. جميع الحقوق محفوظة.
+              © 2026 روز. جميع الحقوق محفوظة.
             </p>
           </div>
         </div>

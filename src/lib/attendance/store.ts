@@ -12,7 +12,7 @@ import type {
 } from './types';
 import { genId } from './utils';
 
-const STORAGE_KEY = 'nawa-hr-attendance-v1';
+const STORAGE_KEY = 'rose-hr-attendance-v1';
 
 export type AssignmentBatchItem = {
   targetType: AssignmentTargetType;

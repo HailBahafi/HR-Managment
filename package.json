@@ -1,5 +1,5 @@
 {
-  "name": "nawa-hr",
+  "name": "rose-hr",
   "version": "1.0.0",
   "private": true,
   "author": "HailBahafi <d.hailbahafi@gmail.com>",
@@ -30,6 +30,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@react-pdf/renderer": "^4.5.1",
     "@tanstack/react-query": "^5.99.2",
     "@tanstack/react-table": "^8.21.3",
     "@types/leaflet": "^1.9.21",
@@ -55,6 +56,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@fontsource/cairo": "^5.2.7",
     "@tailwindcss/postcss": "^4.2.4",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",

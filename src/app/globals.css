@@ -1,5 +1,10 @@
 @import 'tailwindcss';
-@config '../../tailwind.config.mts';
+@config '../../tailwind.config.js';
+
+@theme {
+  --color-gold: hsl(38 62% 52%);
+  --color-gold-foreground: hsl(180 25% 10%);
+}
 @import 'react-day-picker/style.css';
 
 /* Match popover width to trigger, but never wider than the viewport */
@@ -74,7 +79,7 @@
 @layer base {
   :root {
     /* ═══════════════════════════════════════════════════
-       NAWA HR — Design Tokens
+       rose HR — Design Tokens
        Aesthetic: Refined editorial enterprise.
        Deep forest teal + warm gold + ivory parchment.
        ═══════════════════════════════════════════════════ */
@@ -101,6 +106,8 @@
     /* Accent: Warm burnished gold */
     --gold: 38 62% 52%;
     --gold-foreground: 180 25% 10%;
+    --color-gold: hsl(38 62% 52%);
+    --color-gold-foreground: hsl(180 25% 10%);
 
     --accent: 175 30% 92%;
     --accent-foreground: 175 55% 18%;
@@ -152,6 +159,8 @@
 
     --gold: 38 70% 60%;
     --gold-foreground: 180 25% 10%;
+    --color-gold: hsl(38 70% 60%);
+    --color-gold-foreground: hsl(180 25% 10%);
 
     --accent: 175 30% 18%;
     --accent-foreground: 38 30% 94%;
@@ -250,7 +259,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjAwIDIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZmlsdGVyIGlkPSJuIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMC44NSIgLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjbikiIG9wYWNpdHk9IjAuMzUiLz48L3N2Zz4=");
     opacity: 0.08;
     pointer-events: none;
     mix-blend-mode: overlay;
@@ -272,7 +281,7 @@
   }
 
   /* react-day-picker — only design tokens (see :root / .dark) */
-  .nawa-rdp-calendar.rdp-root {
+  .rose-rdp-calendar.rdp-root {
     --rdp-accent-color: hsl(var(--primary));
     --rdp-accent-background-color: hsl(var(--primary) / 0.14);
     --rdp-day-height: 2.25rem;
@@ -286,27 +295,27 @@
     margin: 0;
   }
 
-  .dark .nawa-rdp-calendar.rdp-root {
+  .dark .rose-rdp-calendar.rdp-root {
     --rdp-accent-background-color: hsl(var(--primary) / 0.22);
   }
 
-  .nawa-rdp-calendar .rdp-day_button:not([disabled]):hover {
+  .rose-rdp-calendar .rdp-day_button:not([disabled]):hover {
     @apply bg-accent text-accent-foreground;
   }
 
-  .nawa-rdp-calendar .rdp-caption_label {
+  .rose-rdp-calendar .rdp-caption_label {
     @apply text-foreground;
   }
 
-  .nawa-rdp-calendar .rdp-weekday {
+  .rose-rdp-calendar .rdp-weekday {
     @apply text-muted-foreground;
   }
 
-  .nawa-rdp-calendar .rdp-outside {
+  .rose-rdp-calendar .rdp-outside {
     @apply text-muted-foreground;
   }
 
-  .nawa-rdp-calendar .rdp-disabled {
+  .rose-rdp-calendar .rdp-disabled {
     @apply text-muted-foreground opacity-50;
   }
 }
