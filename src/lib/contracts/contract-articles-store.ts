@@ -41,6 +41,31 @@ const SEED: HRContractArticle[] = [
     body: 'يجوز للموظف العمل عن بُعد بموافقة مكتوبة من مديره وبما لا يتعارض مع متطلبات العمل.',
     isBasic: false, isActive: true, updatedAt: nowIso(),
   },
+  {
+    id: 'art-seed-6', code: 'A-05', title: 'التدريب والتطوير المهني',
+    body: 'تلتزم الجهة بتوفير فرص التدريب اللازمة لتحسين كفاءة الموظف.\nيلتزم الموظف بحضور الدورات التدريبية التي تُحددها الجهة خلال ساعات العمل الرسمية.',
+    isBasic: true, isActive: true, updatedAt: nowIso(),
+  },
+  {
+    id: 'art-seed-7', code: 'A-06', title: 'السلوك المهني وآداب العمل',
+    body: 'يلتزم الموظف بمعايير السلوك المهني وفقاً للائحة الداخلية المعتمدة.\nأي تصرف مخل بالنظام أو سمعة الجهة يعرض صاحبه للجزاءات التأديبية المنصوص عليها في نظام العمل.',
+    isBasic: true, isActive: true, updatedAt: nowIso(),
+  },
+  {
+    id: 'art-seed-8', code: 'B-02', title: 'بدل السكن والمواصلات',
+    body: 'تتحمل الجهة تكاليف السكن والمواصلات وفقاً للبدلات المنصوص عليها في جدول الراتب.\nيحق للجهة تعديل قيمة البدلات سنويّاً بحسب مستوى المعيشة.',
+    isBasic: false, isActive: true, updatedAt: nowIso(),
+  },
+  {
+    id: 'art-seed-9', code: 'B-03', title: 'تأمين السفر والتأشيرات',
+    body: 'تتحمل الجهة تكاليف تأمين السفر واستخراج التأشيرات اللازمة للمهام الرسمية خارج المملكة.\nيلتزم الموظف باستكمال تقارير المهام خلال خمسة أيام عمل من تاريخ العودة.',
+    isBasic: false, isActive: true, updatedAt: nowIso(),
+  },
+  {
+    id: 'art-seed-10', code: 'A-07', title: 'حل النزاعات',
+    body: 'تُحل الخلافات الناجمة عن هذا العقد وديّاً بالتفاوض بين الطرفين في البداية.\nعند تعذّر الوصول إلى تسوية يُحال النزاع إلى الجهات المختصة وفقاً لنظام العمل السعودي.',
+    isBasic: true, isActive: true, updatedAt: nowIso(),
+  },
 ];
 
 type State = {
@@ -93,7 +118,7 @@ export const useHRContractArticlesStore = create<State>()(
       getById: (id) => get().articles.find(x => x.id === id),
     }),
     {
-      name: 'hr_contract_articles_v1',
+      name: 'hr_contract_articles_v2',
       partialize: s => ({ articles: s.articles, userChoseEmptyList: s.userChoseEmptyList }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;

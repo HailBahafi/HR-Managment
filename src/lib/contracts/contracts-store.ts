@@ -41,9 +41,10 @@ function newId() { return `ctr_${Date.now().toString(36)}_${Math.random().toStri
 
 /** Fixed timestamps so SSR and client sort order match (avoid `nowIso()` in seed). */
 const SEED_UPDATED_AT = [
-  '2026-04-01T12:00:07.000Z', '2026-04-01T12:00:06.000Z', '2026-04-01T12:00:05.000Z',
-  '2026-04-01T12:00:04.000Z', '2026-04-01T12:00:03.000Z', '2026-04-01T12:00:02.000Z',
-  '2026-04-01T12:00:01.000Z',
+  '2026-04-01T12:00:12.000Z', '2026-04-01T12:00:11.000Z', '2026-04-01T12:00:10.000Z',
+  '2026-04-01T12:00:09.000Z', '2026-04-01T12:00:08.000Z', '2026-04-01T12:00:07.000Z',
+  '2026-04-01T12:00:06.000Z', '2026-04-01T12:00:05.000Z', '2026-04-01T12:00:04.000Z',
+  '2026-04-01T12:00:03.000Z', '2026-04-01T12:00:02.000Z', '2026-04-01T12:00:01.000Z',
 ] as const;
 
 const SEED: HRContractRecord[] = [
@@ -114,6 +115,56 @@ const SEED: HRContractRecord[] = [
     allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-seed-2',
     earlyTerminationReason: 'انتهاء تلقائي', articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
     updatedAt: SEED_UPDATED_AT[6],
+  },
+  {
+    id: 'ctr-seed-8', employeeId: 'e4', contractNumber: 'CL-2025-004',
+    contractType: 'part_time', startDate: '2025-01-01', endDate: '2026-12-31',
+    probationDays: 30, baseSalary: 5500, currency: 'SAR', status: 'active',
+    templateId: 'hct-part',
+    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 600 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-4'], annualLeaveDays: 15,
+    updatedAt: SEED_UPDATED_AT[7],
+  },
+  {
+    id: 'ctr-seed-9', employeeId: 'e5', contractNumber: 'CL-2025-005',
+    contractType: 'full_time', startDate: '2025-01-01', endDate: '2026-12-31',
+    probationDays: null, baseSalary: 6500, currency: 'SAR', status: 'active',
+    templateId: 'hct-standard',
+    allowanceLines: [{ allowanceTypeId: 'halt-food', amount: 600 }, { allowanceTypeId: 'halt-transport', amount: 500 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
+    updatedAt: SEED_UPDATED_AT[8],
+  },
+  {
+    id: 'ctr-seed-10', employeeId: 'e6', contractNumber: 'CL-2025-006',
+    contractType: 'full_time', startDate: '2025-02-01', endDate: '2027-01-31',
+    probationDays: 60, baseSalary: 8500, currency: 'SAR', status: 'active',
+    templateId: 'hct-standard',
+    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 2000 }, { allowanceTypeId: 'halt-transport', amount: 800 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 21,
+    updatedAt: SEED_UPDATED_AT[9],
+  },
+  {
+    id: 'ctr-seed-11', employeeId: 'e7', contractNumber: 'CL-2025-007',
+    contractType: 'full_time', startDate: '2025-03-01', endDate: '2027-02-28',
+    probationDays: 60, baseSalary: 7200, currency: 'SAR', status: 'active',
+    templateId: 'hct-standard',
+    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 700 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
+    updatedAt: SEED_UPDATED_AT[10],
+  },
+  {
+    id: 'ctr-seed-12', employeeId: 'e8', contractNumber: 'CL-2025-008',
+    contractType: 'full_time', startDate: '2025-01-15', endDate: '2027-01-14',
+    probationDays: 60, baseSalary: 6800, currency: 'SAR', status: 'active',
+    templateId: 'hct-field',
+    allowanceLines: [{ allowanceTypeId: 'halt-field', amount: 1000 }, { allowanceTypeId: 'halt-transport', amount: 600 }, { allowanceTypeId: 'halt-risk', amount: 400 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3', 'art-seed-4'], annualLeaveDays: 21,
+    updatedAt: SEED_UPDATED_AT[11],
   },
 ];
 
@@ -213,23 +264,15 @@ export const useHRContractsStore = create<HRContractsState>()(
     }),
     {
       name: 'hr_contracts_v1',
-      version: 3,
+      version: 4,
       skipHydration: true,
       partialize: s => ({ contracts: s.contracts }),
-      migrate: (p: unknown) => {
-        const ps = p as { contracts?: HRContractRecord[] };
-        return {
-          contracts: (ps?.contracts ?? []).map(c => {
-            const row = c as HRContractRecord & { annualLeaveDays?: number | null };
-            return {
-              ...c,
-              templateId: c.templateId ?? null,
-              allowanceLines: Array.isArray(c.allowanceLines) ? c.allowanceLines : [],
-              articleIds: Array.isArray(c.articleIds) ? c.articleIds : [],
-              annualLeaveDays: typeof row.annualLeaveDays === 'number' ? row.annualLeaveDays : null,
-            };
-          }),
-        };
+      migrate: (_p: unknown, fromVersion: number) => {
+        if ((fromVersion ?? 0) >= 4) {
+          const ps = _p as { contracts?: HRContractRecord[] };
+          return { contracts: ps?.contracts ?? SEED.map(c => ({ ...c })) };
+        }
+        return { contracts: SEED.map(c => ({ ...c })) };
       },
     },
   ),

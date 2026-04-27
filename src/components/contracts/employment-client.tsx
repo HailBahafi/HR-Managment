@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, FileText, Trash2, LayoutGrid, List, User, CalendarRange, Coins, ChevronRight } from 'lucide-react';
+import { Plus, FileText, Trash2, LayoutGrid, List, User, CalendarRange, Coins, ChevronRight, BarChart2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -399,6 +400,11 @@ export function EmploymentContractsClient() {
       <div className="mb-4 flex items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">{total} عقد</span>
         <div className="flex items-center gap-2">
+          <Link href="/hr/contracts/payroll-periods">
+            <Button variant="outline" className="gap-1.5 h-9">
+              <BarChart2 className="h-4 w-4" />تقارير المستحقات
+            </Button>
+          </Link>
           <div className="flex items-center rounded-xl border border-border bg-card p-0.5 shadow-soft">
             <button
               onClick={() => setViewMode('cards')}
