@@ -9,6 +9,7 @@ import {
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList,
+  Banknote, FileSignature, BookOpen,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
 export const PAGE_ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
+  CalendarRange, Banknote, FileSignature, BookOpen,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */
@@ -85,6 +87,15 @@ export const navConfig: NavItem[] = [
       labelAr: g.labelAr,
       items: g.items.map(item => ({ label: item.labelAr, href: `/hr/discipline/${item.slug}` })),
     })),
+  },
+  {
+    key: 'contracts', label: 'الراتب والعقود', icon: Wallet,
+    groups: [{ items: [
+      { label: 'فترات الراتب',  href: '/hr/contracts/payroll-periods',  icon: CalendarRange },
+      { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
+      { label: 'عقود العمل',   href: '/hr/contracts/employment',        icon: FileSignature },
+      { label: 'مواد العقود',  href: '/hr/contracts/articles',          icon: BookOpen },
+    ]}],
   },
   { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
 ];

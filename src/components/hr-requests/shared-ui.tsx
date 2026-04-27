@@ -223,7 +223,9 @@ export function HRSettingsFormDrawer({ open, onOpenChange, title, description, s
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">{title}</DialogTitle>
-            {description && <DialogDescription>{description}</DialogDescription>}
+            <DialogDescription className={cn(!description && 'sr-only')}>
+              {description ?? 'املأ الحقول ثم اضغط حفظ لتطبيق التغييرات.'}
+            </DialogDescription>
           </DialogHeader>
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">

@@ -8,7 +8,7 @@ import {
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList,
-  ChevronDown, X, LifeBuoy,
+  ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
@@ -70,7 +70,15 @@ const mobileNav: MobileNavItem[] = [
       }))
     ),
   },
-  { key: 'payroll', label: 'الرواتب', href: '/payroll', icon: Wallet },
+  {
+    key: 'contracts', label: 'الراتب والعقود', icon: Wallet,
+    children: [
+      { label: 'فترات الراتب', href: '/hr/contracts/payroll-periods', icon: CalendarRange },
+      { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
+      { label: 'عقود العمل', href: '/hr/contracts/employment', icon: FileSignature },
+      { label: 'مواد العقود', href: '/hr/contracts/articles', icon: BookOpen },
+    ],
+  },
   { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
 ];
 
