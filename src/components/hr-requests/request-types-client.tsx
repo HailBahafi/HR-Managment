@@ -155,7 +155,7 @@ export function RequestTypesClient() {
                   {paginated.map(rt => {
                     const tpl = templates.find(t => t.id === rt.templateId);
                     return (
-                      <tr key={rt.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors">
+                      <tr key={rt.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(rt)}>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{getDeptLabel(rt.departmentId)}</td>
                         <td className="px-4 py-3 font-medium">{rt.nameAr}</td>
                         <td className="px-4 py-3 text-xs">
@@ -168,8 +168,8 @@ export function RequestTypesClient() {
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{rt.approvalStages?.length ?? 0} مرحلة</td>
                         <td className="px-4 py-3"><ActiveBadge active={rt.isActive} /></td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1">
+                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button variant="ghost" size="icon" type="button" onClick={() => openEdit(rt)}><Pencil className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" type="button" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(rt.id)}><Trash2 className="h-4 w-4" /></Button>
                           </div>
@@ -208,11 +208,8 @@ export function RequestTypesClient() {
               <MinimalDropdown value={draft.departmentId} onChange={v => patch('departmentId', v)} options={activeDepts.map(d => ({ value: d.id, label: d.nameAr }))} placeholder="اختر القسم" />
             </FormField>
           )}
-          <FormField label="الاسم بالعربية" required span2>
+          <FormField label="الاسم" required span2>
             <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="طلب إجازة" />
-          </FormField>
-          <FormField label="الترتيب">
-            <Input type="number" min={0} value={draft.sortOrder} onChange={e => patch('sortOrder', Number(e.target.value))} />
           </FormField>
           <FormField label="القالب">
             <MinimalDropdown

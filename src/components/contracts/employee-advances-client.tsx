@@ -272,7 +272,7 @@ export function EmployeeAdvancesClient() {
               </thead>
               <tbody>
                 {paged.map(x => (
-                  <tr key={x.id} className="border-b border-border/50 last:border-0 even:bg-muted/10 hover:bg-primary/4 transition-colors duration-150">
+                  <tr key={x.id} className="group border-b border-border/50 last:border-0 even:bg-muted/10 hover:bg-primary/4 transition-colors duration-150 cursor-pointer" onClick={() => openEdit(x.id)}>
                     <td className="border-e border-border/40 px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -300,8 +300,8 @@ export function EmployeeAdvancesClient() {
                     <td className="border-e border-border/40 px-4 py-3 hidden lg:table-cell max-w-[200px]">
                       <p className="truncate text-xs text-muted-foreground">{x.note || '—'}</p>
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1 justify-end">
+                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(x.id)}>تعديل</Button>
                         <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => setConfirmId(x.id)}>حذف</Button>
                       </div>

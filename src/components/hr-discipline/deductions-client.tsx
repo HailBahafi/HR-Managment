@@ -52,7 +52,7 @@ export function DeductionsClient() {
           <tbody className="divide-y divide-border">
             {paged.length === 0 && <tr><td colSpan={7}><EmptyState title="لا توجد استقطاعات" /></td></tr>}
             {paged.map(d => (
-              <tr key={d.id} className="hover:bg-muted/20 transition-colors">
+              <tr key={d.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => { /* Optional: open view modal */ }}>
                 <td className="px-4 py-3 font-mono text-xs font-semibold">{d.caseNumber}</td>
                 <td className="px-4 py-3 font-medium">{d.employeeNameAr}</td>
                 <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{d.reasonAr}</td>

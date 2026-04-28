@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2, Users } from 'lucide-react';
+import { Plus, Trash2, Users, Building2, MapPin, CalendarDays, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { Label } from '@/components/ui/label';
@@ -122,66 +122,86 @@ export function AssignmentsPanel() {
       <div className="flex items-center justify-end">
         <Button variant="luxe" className="gap-2" type="button" onClick={openNew}>
           <Plus className="h-4 w-4" />
-          تعيين دفعة
+          ربط قالب جديد
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <th className="px-6 py-4 text-right">الدفعة</th>
-                <th className="px-6 py-4 text-right">القالب</th>
-                <th className="px-6 py-4 text-right">ساري من</th>
-                <th className="px-6 py-4 text-right">عدد العناصر</th>
-                <th className="w-24 px-6 py-4 text-right">إجراء</th>
-              </tr>
-            </thead>
-            <tbody>
-              {batches.map(({ batchId, rows, templateId: tid, effectiveFrom: ef }) => {
-                const tpl = shiftTemplates.find((t) => t.id === tid);
-                return (
-                  <tr key={batchId} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
-                    <td className="px-6 py-4 font-mono text-xs text-muted-foreground" dir="ltr">
-                      {batchId.slice(0, 18)}…
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {tpl && <span className="h-2 w-2 rounded-full" style={{ background: tpl.colorHex }} />}
-                        <span className="font-medium">{tpl?.nameAr ?? tid}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-xs" dir="ltr">
-                      {ef}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="subtle" className="gap-1">
-                        <Users className="h-3 w-3" />
-                        <span className="number-ar">{rows.length}</span>
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        type="button"
-                        aria-label="حذف الدفعة"
-                        onClick={() => {
-                          if (window.confirm('حذف كل عناصر هذه الدفعة؟')) removeAssignmentBatch(batchId);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {batches.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
+          <Users className="mb-3 h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">لا توجد دفعات تعيين بعد</p>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {batches.map(({ batchId, rows, templateId: tid, effectiveFrom: ef }) => {
+            const tpl = shiftTemplates.find((t) => t.id === tid);
+            const targetType = rows[0]?.targetType;
+            const TypeIcon = targetType === 'department' ? Building2 : targetType === 'location' ? MapPin : Users;
+            const typeLabel = targetType === 'department' ? 'أقسام' : targetType === 'location' ? 'فروع' : 'موظفين';
+            const names = rows.map((r) => r.targetLabel).filter(Boolean);
+            const visibleNames = names.slice(0, 3);
+            const remaining = names.length - visibleNames.length;
+            return (
+              <div
+                key={batchId}
+                className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated"
+              >
+                <div className="p-5">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <TypeIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">{rows.length} {typeLabel}</span>
+                    </div>
+                  </div>
+
+                  {/* Template name */}
+                  <h3 className="font-display text-base font-bold leading-snug mb-0.5 group-hover:text-primary transition-colors truncate">
+                    {tpl?.nameAr ?? 'قالب محذوف'}
+                  </h3>
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-3">
+                    <CalendarDays className="h-3 w-3 shrink-0" />
+                    <span dir="ltr">{ef}</span>
+                  </div>
+
+                  {/* Target names */}
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {visibleNames.map((name, i) => (
+                      <span key={i} className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground max-w-[140px] truncate">
+                        {name}
+                      </span>
+                    ))}
+                    {remaining > 0 && (
+                      <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                        +{remaining} آخرين
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div
+                    className="flex items-center justify-end border-t border-border/60 pt-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
+                      onClick={() => { if (window.confirm('حذف كل عناصر هذه الدفعة؟')) removeAssignmentBatch(batchId); }}
+                    >
+                      <Trash2 className="h-3 w-3" /> حذف الربط
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
@@ -190,13 +210,13 @@ export function AssignmentsPanel() {
         >
           <div className="shrink-0 space-y-2 border-b border-border px-6 pb-4 pt-6">
             <DialogHeader className="space-y-2 text-right">
-              <DialogTitle className="font-display text-lg">تعيين دفعة جديدة</DialogTitle>
-              <DialogDescription>اختر القالب وتاريخ السريان ثم حدد الأهداف.</DialogDescription>
+              <DialogTitle className="font-display text-lg">ربط قالب بالموظفين</DialogTitle>
+              <DialogDescription>اختر قالب الحضور وتاريخ التطبيق، ثم حدد الموظفين أو الأقسام المراد ربطهم.</DialogDescription>
             </DialogHeader>
           </div>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>القالب</Label>
+              <Label>قالب الحضور</Label>
               <Select value={templateId} onValueChange={setTemplateId}>
                 <SelectTrigger>
                   <SelectValue placeholder="قالب" />
@@ -211,11 +231,11 @@ export function AssignmentsPanel() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>ساري من</Label>
+              <Label>تاريخ التطبيق</Label>
               <SingleDatePicker value={effectiveFrom} onChange={setEffectiveFrom} />
             </div>
             <div className="space-y-2">
-              <Label>نوع الهدف</Label>
+              <Label>تطبيق على</Label>
               <Select
                 value={targetType}
                 onValueChange={(v) => {
@@ -229,15 +249,15 @@ export function AssignmentsPanel() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="employee">موظف</SelectItem>
-                  <SelectItem value="department">قسم</SelectItem>
-                  <SelectItem value="location">فرع</SelectItem>
+                  <SelectItem value="employee">موظفين</SelectItem>
+                  <SelectItem value="department">أقسام</SelectItem>
+                  <SelectItem value="location">فروع</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {targetType === 'employee' ? (
               <div className="space-y-2">
-                <Label>تصفية حسب القسم</Label>
+                <Label>تصفية الموظفين حسب القسم</Label>
                 <Select value={employeeDepartmentFilter} onValueChange={setEmployeeDepartmentFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="كل الأقسام" />
@@ -267,7 +287,7 @@ export function AssignmentsPanel() {
               }
               searchPlaceholder={
                 targetType === 'employee'
-                  ? 'بحث بالاسم أو الرمز أو القسم…'
+                  ? 'بحث بالاسم أو القسم…'
                   : 'بحث بالاسم…'
               }
               emptyMessage="لا توجد عناصر مطابقة"
@@ -282,7 +302,7 @@ export function AssignmentsPanel() {
               إلغاء
             </Button>
             <Button variant="luxe" type="button" onClick={submit} disabled={!templateId || selectedIds.size === 0}>
-              تأكيد التعيين
+              تأكيد الربط
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -475,96 +475,86 @@ export function ShiftTemplatesPanel() {
         </Button>
       </div>
 
-      {/* Templates table */}
-      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-        {shiftTemplates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-14 text-center">
-            <Clock className="mb-3 h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">لا توجد قوالب بعد</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-6 py-4 text-right">القالب</th>
-                  <th className="px-6 py-4 text-right">اللون</th>
-                  <th className="px-6 py-4 text-right">ساري من</th>
-                  <th className="px-6 py-4 text-right">الحالة</th>
-                  <th className="px-6 py-4 text-right">ملخص</th>
-                  <th className="px-6 py-4 text-right">أيام الأسبوع</th>
-                  <th className="w-24 px-6 py-4" />
-                </tr>
-              </thead>
-              <tbody>
-                {shiftTemplates.map((t) => (
-                  <tr key={t.id} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
-                    <td className="px-6 py-4">
-                      <p className="font-semibold">{t.nameAr}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="h-5 w-5 rounded-md border border-border shadow-sm" style={{ background: t.colorHex }} />
-                        <span className="font-mono text-[11px] text-muted-foreground" dir="ltr">{t.colorHex}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-mono text-xs" dir="ltr">{t.effectiveFrom}</td>
-                    <td className="px-6 py-4">
-                      <span className={cn(
-                        'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
-                        t.isActive
-                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                          : 'border-border bg-muted text-muted-foreground',
-                      )}>
-                        <span className={cn('h-1.5 w-1.5 rounded-full', t.isActive ? 'bg-emerald-500' : 'bg-muted-foreground')} />
-                        {t.isActive ? 'نشط' : 'موقوف'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-muted-foreground">{summarizeTemplate(t)}</td>
-                    <td className="px-6 py-4">
-                      {/* 7-day mini indicator */}
-                      <div className="flex gap-0.5" dir="rtl">
-                        {t.weekDays.map((wd) => (
-                          <div
-                            key={wd.day}
-                            title={DAY_LABELS[wd.day]}
-                            className={cn(
-                              'flex h-6 w-6 items-center justify-center rounded text-[9px] font-semibold',
-                              wd.isRest
-                                ? 'bg-muted text-muted-foreground/50'
-                                : 'text-white',
-                            )}
-                            style={!wd.isRest ? { background: t.colorHex } : undefined}
-                          >
-                            {DAY_SHORT[wd.day].charAt(0)}
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" type="button" onClick={() => openEdit(t)} aria-label="تعديل">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          type="button"
-                          className="text-destructive hover:text-destructive"
-                          aria-label="حذف"
-                          onClick={() => { if (typeof window !== 'undefined' && window.confirm('حذف القالب؟')) removeTemplate(t.id); }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {shiftTemplates.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
+          <Clock className="mb-3 h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">لا توجد قوالب بعد</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {shiftTemplates.map((t) => (
+            <div
+              key={t.id}
+              className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated cursor-pointer"
+              onClick={() => openEdit(t)}
+            >
+              <div className="p-5">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <span className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                    t.isActive
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      : 'border-border bg-muted text-muted-foreground',
+                  )}>
+                    <span className={cn('h-1.5 w-1.5 rounded-full', t.isActive ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+                    {t.isActive ? 'نشط' : 'موقوف'}
+                  </span>
+                </div>
+
+                {/* Name + summary */}
+                <h3 className="font-display text-base font-bold leading-snug mb-1 group-hover:text-primary transition-colors">
+                  {t.nameAr}
+                </h3>
+                <p className="text-xs text-muted-foreground mb-4">{summarizeTemplate(t)}</p>
+
+                {/* 7-day strip */}
+                <div className="flex gap-1 mb-4" dir="rtl">
+                  {t.weekDays.map((wd) => (
+                    <div
+                      key={wd.day}
+                      title={DAY_LABELS[wd.day]}
+                      className={cn(
+                        'flex h-6 flex-1 items-center justify-center rounded text-[9px] font-bold',
+                        wd.isRest
+                          ? 'bg-muted text-muted-foreground/40'
+                          : 'bg-primary/15 text-primary font-semibold',
+                      )}
+                    >
+                      {DAY_SHORT[wd.day].charAt(0)}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer: date + actions */}
+                <div
+                  className="flex items-center justify-between border-t border-border/60 pt-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span className="font-mono text-[11px] text-muted-foreground" dir="ltr">{t.effectiveFrom}</span>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" type="button" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(t)}>
+                      <Pencil className="h-3 w-3" /> تعديل
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
+                      onClick={() => { if (typeof window !== 'undefined' && window.confirm('حذف القالب؟')) removeTemplate(t.id); }}
+                    >
+                      <Trash2 className="h-3 w-3" /> حذف
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -585,7 +575,7 @@ export function ShiftTemplatesPanel() {
               {/* Meta fields */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="nameAr">الاسم بالعربية</Label>
+                  <Label htmlFor="nameAr">الاسم</Label>
                   <Input id="nameAr" value={draft.nameAr} onChange={(e) => setDraft({ ...draft, nameAr: e.target.value })} />
                 </div>
                 <div className="space-y-2">

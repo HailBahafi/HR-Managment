@@ -166,7 +166,7 @@ export function GeneralRequestsClient() {
                 {paginated.map(r => {
                   const tpl = getTemplateById(r.templateId);
                   return (
-                    <tr key={r.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors">
+                    <tr key={r.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setViewRecord(r)}>
                       <td className="px-4 py-3">
                         <span className="font-medium text-xs">{r.departmentNameAr}</span>
                       </td>
@@ -181,8 +181,8 @@ export function GeneralRequestsClient() {
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(r.createdAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" type="button" onClick={() => setViewRecord(r)}>
                             <Eye className="h-4 w-4" />
                           </Button>

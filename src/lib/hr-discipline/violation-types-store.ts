@@ -27,7 +27,7 @@ export const useHRViolationTypesStore = create<VTState>()(
       add: (d) => {
         const code = d.code.toUpperCase().trim();
         if (!code) return { ok:false, error:'الرمز مطلوب' };
-        if (!d.nameAr.trim()) return { ok:false, error:'الاسم بالعربية مطلوب' };
+        if (!d.nameAr.trim()) return { ok:false, error:'الاسم مطلوب' };
         if (get().types.find(t => t.code === code)) return { ok:false, error:'الرمز مستخدم مسبقاً' };
         set(s => ({ types: [...s.types, { ...d, code, id:uid(), updatedAt:now() }] }));
         return { ok:true };

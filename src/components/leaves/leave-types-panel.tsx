@@ -18,6 +18,10 @@ import { cn } from '@/lib/utils';
 
 type DraftState = Omit<HRLeaveTypeRecord, 'id' | 'updatedAt'>;
 
+function makeLeaveTypeCode() {
+  return `LT-${Date.now().toString(36).toUpperCase()}`;
+}
+
 const EMPTY_DRAFT: DraftState = {
   code: '', nameAr: '', nameEn: '',
   paid: true, deductsFromBalance: true, requiresApproval: true,
@@ -26,7 +30,7 @@ const EMPTY_DRAFT: DraftState = {
 
 export function LeaveTypesPanel() {
   const { items, add, update, remove } = useLeaveTypesStore();
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالرمز أو الاسم…' }]);
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' }]);
   const search = (values.q as string) ?? '';
   const [open, setOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -38,7 +42,7 @@ export function LeaveTypesPanel() {
     [...items]
       .filter((x) => {
         const q = search.toLowerCase();
-        return !q || x.code.toLowerCase().includes(q) || x.nameAr.includes(q);
+        return !q || x.nameAr.toLowerCase().includes(q);
       })
       .sort((a, b) => a.sortOrder - b.sortOrder),
     [items, search],
@@ -64,15 +68,20 @@ export function LeaveTypesPanel() {
   };
 
   const validate = (): string | null => {
-    if (!draft.code.trim()) return 'رمز نوع الإجازة مطلوب';
-    if (!draft.nameAr.trim()) return 'الاسم بالعربية مطلوب';
+    if (!draft.nameAr.trim()) return 'الاسم مطلوب';
     return null;
   };
 
   const save = () => {
     const err = validate();
     if (err) { setError(err); return; }
-    const payload = { ...draft, code: draft.code.trim().toUpperCase(), nameAr: draft.nameAr.trim(), nameEn: draft.nameAr.trim() };
+    const payload = {
+      ...draft,
+      code: editId ? draft.code : makeLeaveTypeCode(),
+      sortOrder: editId ? draft.sortOrder : items.length + 1,
+      nameAr: draft.nameAr.trim(),
+      nameEn: draft.nameAr.trim(),
+    };
     if (editId) update(editId, payload);
     else add(payload);
     setOpen(false);
@@ -101,7 +110,6 @@ export function LeaveTypesPanel() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3 text-right">الرمز</th>
                   <th className="px-4 py-3 text-right">الاسم</th>
                   <th className="px-4 py-3 text-right">مدفوع</th>
                   <th className="px-4 py-3 text-right">يخصم من الرصيد</th>
@@ -112,10 +120,7 @@ export function LeaveTypesPanel() {
               </thead>
               <tbody>
                 {sorted.map((item) => (
-                  <tr key={item.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-xs font-semibold text-primary">{item.code}</span>
-                    </td>
+                  <tr key={item.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(item)}>
                     <td className="px-4 py-3">
                       <p className="font-medium">{item.nameAr}</p>
                     </td>
@@ -139,8 +144,8 @@ export function LeaveTypesPanel() {
                         {item.isActive ? 'نشط' : 'موقوف'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="icon" type="button" onClick={() => openEdit(item)} aria-label="تعديل">
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -171,16 +176,8 @@ export function LeaveTypesPanel() {
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="lt-code">الرمز <span className="text-destructive">*</span></Label>
-                <Input id="lt-code" placeholder="ANNUAL" dir="ltr" className="font-mono uppercase" value={draft.code} onChange={(e) => patch('code', e.target.value.toUpperCase())} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lt-sort">الترتيب</Label>
-                <Input id="lt-sort" type="number" min={0} value={draft.sortOrder} onChange={(e) => patch('sortOrder', Number(e.target.value) || 0)} />
-              </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="lt-name-ar">الاسم بالعربية <span className="text-destructive">*</span></Label>
+                <Label htmlFor="lt-name-ar">الاسم <span className="text-destructive">*</span></Label>
                 <Input id="lt-name-ar" value={draft.nameAr} onChange={(e) => patch('nameAr', e.target.value)} />
               </div>
               <div className="space-y-2 sm:col-span-2">

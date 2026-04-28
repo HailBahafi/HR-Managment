@@ -157,14 +157,6 @@ export default function RequestsPage() {
         </Dialog>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <RequestStatCard label="قيد الانتظار" value={pendingRequests.length} icon={Clock} accent="warning" />
-        <RequestStatCard label="قيد المراجعة" value={inReviewRequests.length} icon={Eye} accent="gold" />
-        <RequestStatCard label="تمت الموافقة" value={approvedRequests.length} icon={CheckCircle} accent="success" />
-        <RequestStatCard label="مرفوض" value={rejectedRequests.length} icon={XCircle} accent="destructive" />
-      </div>
-
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* List */}
         <div className="lg:col-span-2">

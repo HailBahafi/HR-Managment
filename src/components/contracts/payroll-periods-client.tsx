@@ -244,7 +244,7 @@ export function PayrollPeriodsClient() {
               </thead>
               <tbody>
                 {paged.map(p => (
-                  <tr key={p.id} className="border-b border-border/50 last:border-0 even:bg-muted/10 hover:bg-primary/4 transition-colors duration-150">
+                  <tr key={p.id} className="group border-b border-border/50 last:border-0 even:bg-muted/10 hover:bg-primary/4 transition-colors duration-150 cursor-pointer" onClick={() => openEdit(p.id)}>
                     <td className="border-e border-border/40 px-4 py-3">
                       <span className="font-mono text-xs text-muted-foreground">{p.code}</span>
                     </td>
@@ -268,8 +268,10 @@ export function PayrollPeriodsClient() {
                         {COMPENSATION_STATUS_LABELS[p.compensationReviewStatus]}
                       </span>
                     </td>
-                    <td className="px-3 py-3">
-                      <PeriodActions p={p} />
+                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <PeriodActions p={p} />
+                      </div>
                     </td>
                   </tr>
                 ))}

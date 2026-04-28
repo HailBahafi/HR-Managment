@@ -19,6 +19,10 @@ import { cn } from '@/lib/utils';
 
 const DEDUCTION_KIND_OPTIONS = (Object.entries(DEDUCTION_KIND_LABELS) as [HRViolationDeductionKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 
+function makeViolationTypeCode() {
+  return `VT-${Date.now().toString(36).toUpperCase()}`;
+}
+
 interface DraftForm {
   code: string; nameAr: string; sortOrder: number; isActive: boolean;
   hasDeduction: boolean; deductionKind: HRViolationDeductionKind; deductionValue: number;
@@ -48,7 +52,7 @@ export function ViolationTypesClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
   const filtered = types.filter(t =>
-    t.nameAr.includes(q) || t.code.toLowerCase().includes(q.toLowerCase())
+    t.nameAr.toLowerCase().includes(q.toLowerCase())
   );
   const total = filtered.length;
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
@@ -66,6 +70,8 @@ export function ViolationTypesClient() {
     setFormError(null);
     const payload = {
       ...draft,
+      code: editId ? draft.code : makeViolationTypeCode(),
+      sortOrder: editId ? draft.sortOrder : types.length + 1,
       nameEn: draft.nameAr.trim(),
       deductionKind: draft.hasDeduction ? draft.deductionKind : 'none' as HRViolationDeductionKind,
       deductionValue: draft.hasDeduction ? draft.deductionValue : 0,
@@ -97,7 +103,6 @@ export function ViolationTypesClient() {
         <table className="w-full text-sm">
           <thead className="bg-muted/40 border-b border-border">
             <tr>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الرمز</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">الاسم</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">الاستقطاع</th>
               <th className="px-4 py-3 text-center font-medium text-muted-foreground">علامات</th>
@@ -107,11 +112,10 @@ export function ViolationTypesClient() {
           </thead>
           <tbody className="divide-y divide-border">
             {paged.length === 0 && (
-              <tr><td colSpan={6}><EmptyState icon={AlertTriangle} title="لا توجد أنواع مخالفات" /></td></tr>
+              <tr><td colSpan={5}><EmptyState icon={AlertTriangle} title="لا توجد أنواع مخالفات" /></td></tr>
             )}
             {paged.map(t => (
-              <tr key={t.id} className="hover:bg-muted/20 transition-colors">
-                <td className="px-4 py-3 font-mono text-xs font-semibold">{t.code}</td>
+              <tr key={t.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(t)}>
                 <td className="px-4 py-3">
                   <div className="font-medium">{t.nameAr}</div>
                 </td>
@@ -126,8 +130,8 @@ export function ViolationTypesClient() {
                   </div>
                 </td>
                 <td className="px-4 py-3"><ActiveBadge active={t.isActive} /></td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1 justify-end">
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
@@ -147,7 +151,6 @@ export function ViolationTypesClient() {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold bg-muted px-1.5 py-0.5 rounded">{t.code}</span>
                   <ActiveBadge active={t.isActive} />
                 </div>
                 <div className="mt-1 font-medium">{t.nameAr}</div>
@@ -175,13 +178,7 @@ export function ViolationTypesClient() {
         error={formError}
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="الرمز" required>
-            <Input value={draft.code} onChange={e => set({ code: e.target.value })} placeholder="مثال: LATE" className="uppercase" />
-          </FormField>
-          <FormField label="الترتيب">
-            <Input type="number" value={draft.sortOrder} onChange={e => set({ sortOrder: Number(e.target.value) })} min={1} />
-          </FormField>
-          <FormField label="الاسم بالعربية" required span2>
+          <FormField label="الاسم" required span2>
             <Input value={draft.nameAr} onChange={e => set({ nameAr: e.target.value })} placeholder="أدخل الاسم…" />
           </FormField>
         </div>

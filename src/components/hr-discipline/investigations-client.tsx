@@ -94,14 +94,16 @@ export function InvestigationsClient() {
           <tbody className="divide-y divide-border">
             {paged.length === 0 && <tr><td colSpan={6}><EmptyState title="لا توجد تحقيقات" /></td></tr>}
             {paged.map(inv => (
-              <tr key={inv.id} className="hover:bg-muted/20 transition-colors">
+              <tr key={inv.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => { /* Optional: open view modal */ }}>
                 <td className="px-4 py-3 font-mono text-xs font-semibold">{inv.caseNumber}</td>
                 <td className="px-4 py-3 font-medium">{inv.employeeNameAr}</td>
                 <td className="px-4 py-3 text-muted-foreground">{inv.investigatorName}</td>
                 <td className="px-4 py-3 text-muted-foreground">{inv.date}</td>
                 <td className="px-4 py-3">{INVESTIGATION_RESULT_LABELS[inv.result]}</td>
-                <td className="px-4 py-3 text-left">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <td className="px-4 py-3 text-left" onClick={e => e.stopPropagation()}>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
                 </td>
               </tr>
             ))}

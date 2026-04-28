@@ -12,6 +12,7 @@ export interface ColumnDef<T> {
   className?: string;
   headerClassName?: string;
   hideOnMobile?: boolean;
+  isActions?: boolean;
   render(row: T, index: number): React.ReactNode;
 }
 
@@ -70,10 +71,12 @@ export function DataTable<T>({
           </thead>
           <tbody className="divide-y divide-border/40">
             {data.map((row, i) => (
-              <tr key={keyExtractor(row)} className="transition-colors hover:bg-muted/20">
+              <tr key={keyExtractor(row)} className="group transition-colors hover:bg-muted/20">
                 {columns.map(col => (
                   <td key={col.key} className={cn('px-4 py-3', col.className)}>
-                    {col.render(row, i)}
+                    <div className={cn(col.isActions && 'opacity-0 group-hover:opacity-100 transition-opacity')}>
+                      {col.render(row, i)}
+                    </div>
                   </td>
                 ))}
               </tr>

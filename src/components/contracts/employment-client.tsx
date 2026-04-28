@@ -496,7 +496,7 @@ export function EmploymentContractsClient() {
                 {paged.map(c => (
                   <tr
                     key={c.id}
-                    className="border-b border-border/50 last:border-0 even:bg-muted/10 hover:bg-primary/4 transition-colors duration-150 cursor-pointer"
+                    className="group border-b border-border/50 last:border-0 even:bg-muted/10 hover:bg-primary/4 transition-colors duration-150 cursor-pointer"
                     onClick={() => openView(c)}
                   >
                     <td className="border-e border-border/40 px-4 py-3">
@@ -529,8 +529,10 @@ export function EmploymentContractsClient() {
                         {CONTRACT_STATUS_LABELS[c.status]}
                       </Badge>
                     </td>
-                    <td className="px-3 py-3">
-                      <ContractActions c={c} />
+                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ContractActions c={c} />
+                      </div>
                     </td>
                   </tr>
                 ))}

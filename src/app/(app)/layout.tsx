@@ -14,7 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Topbar />
             <Sidebar />
             <FilterPanel />
-            <main className="min-w-0 overflow-x-hidden p-4 sm:p-6 lg:p-8">{children}</main>
+            <main className="min-w-0 overflow-x-hidden p-4 sm:px-6 sm:py-0">{children}</main>
           </div>
         </FilterPanelProvider>
       </PageTitleProvider>

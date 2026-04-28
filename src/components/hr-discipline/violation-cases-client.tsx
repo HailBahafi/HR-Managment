@@ -119,7 +119,7 @@ export function ViolationCasesClient() {
           <tbody className="divide-y divide-border">
             {paged.length === 0 && <tr><td colSpan={6}><EmptyState title="لا توجد قضايا" /></td></tr>}
             {paged.map(c => (
-              <tr key={c.id} className="hover:bg-muted/20 transition-colors">
+              <tr key={c.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setViewCase(c)}>
                 <td className="px-4 py-3 font-mono text-xs font-semibold">{c.caseNumber}</td>
                 <td className="px-4 py-3 font-medium">{c.employeeNameAr}</td>
                 <td className="px-4 py-3 text-muted-foreground">{c.typeNameAr}</td>
@@ -129,8 +129,8 @@ export function ViolationCasesClient() {
                     {CASE_STATUS_LABELS[c.status]}
                   </span>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1 justify-end">
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewCase(c)}><Eye className="h-3.5 w-3.5" /></Button>
                     {c.status === 'draft' && (
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => { submit(c.id); toast.success('تم تقديم القضية'); }} title="تقديم"><Send className="h-3.5 w-3.5" /></Button>

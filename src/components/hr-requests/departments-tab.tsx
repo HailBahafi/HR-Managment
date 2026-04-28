@@ -1,57 +1,27 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Pencil, Trash2, ChevronRight, ChevronDown, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronRight, Building2, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { usePageFilters } from '@/components/filter-panel-context';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import { buildDepartmentForest, flattenDepartmentsTree, getDescendantDepartmentIds } from '@/lib/hr-requests/hierarchy-utils';
-import type { DeptTreeNode } from '@/lib/hr-requests/hierarchy-utils';
 import type { HRDepartmentEntity } from '@/lib/hr-requests/types';
-import { slugify } from '@/lib/hr-requests/types';
-import { MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, ActiveBadge, PageHeader } from './shared-ui';
+import { MinimalDropdown, ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, ActiveBadge } from './shared-ui';
 import { cn } from '@/lib/utils';
 
-const LS_VIEW = 'hr_departments_view_mode';
 
 interface DraftForm {
   nameAr: string; parentId: string; sortOrder: number; isActive: boolean;
 }
 const EMPTY: DraftForm = { nameAr: '', parentId: '', sortOrder: 1, isActive: true };
 
-// ─── Dept tree node (chart view) ──────────────────────────────────────────────
-function DeptOrgNode({ node, depth = 0 }: { node: DeptTreeNode; depth?: number }) {
-  const [expanded, setExpanded] = React.useState(true);
-  return (
-    <div className={cn('relative', depth > 0 && 'border-r border-dashed border-border/60 mr-6 pr-4')}>
-      <div className="group mb-1 flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-soft">
-        <Building2 className="h-4 w-4 shrink-0 text-primary/60" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{node.dept.nameAr}</p>
-        </div>
-        {!node.dept.isActive && <span className="text-[10px] text-muted-foreground border border-border rounded-full px-2 py-0.5">موقوف</span>}
-        {node.children.length > 0 && (
-          <button type="button" className="shrink-0 text-muted-foreground" onClick={() => setExpanded(v => !v)}>
-            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-        )}
-      </div>
-      {expanded && node.children.length > 0 && (
-        <div className="mt-1 space-y-1 pr-4">
-          {node.children.map(c => <DeptOrgNode key={c.dept.id} node={c} depth={depth + 1} />)}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function DepartmentsTab() {
   const { departments, addDepartment, updateDepartment, deleteDepartment } = useHRConfigurationStore();
 
-  const [view, setView] = React.useState<'list' | 'chart'>(() => (typeof window !== 'undefined' ? localStorage.getItem(LS_VIEW) as 'list' | 'chart' : null) ?? 'list');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
   const { values } = usePageFilters([
@@ -65,8 +35,6 @@ export function DepartmentsTab() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [deleteWarning, setDeleteWarning] = React.useState('');
-
-  React.useEffect(() => { localStorage.setItem(LS_VIEW, view); }, [view]);
 
   const forest = React.useMemo(() => buildDepartmentForest(departments), [departments]);
   const flat = React.useMemo(() => flattenDepartmentsTree(forest), [forest]);
@@ -116,70 +84,79 @@ export function DepartmentsTab() {
   ];
 
   return (
-    <div className="w-full min-w-0 space-y-4">
+    <div className="w-full min-w-0 space-y-4 pt-2">
       <div className="flex items-center justify-end gap-2">
         <Button variant="luxe" className="shrink-0 gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> قسم جديد
         </Button>
       </div>
 
-      {view === 'list' ? (
-        <div className="w-full min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-          {filtered.length === 0 ? <EmptyState icon={Building2} title="لا توجد أقسام" /> : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="px-4 py-3 text-right">الاسم</th>
-                    <th className="px-4 py-3 text-right">القسم الأصل</th>
-                    <th className="px-4 py-3 text-right">الرمز</th>
-                    <th className="px-4 py-3 text-right">الترتيب</th>
-                    <th className="px-4 py-3 text-right">الحالة</th>
-                    <th className="w-20 px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(({ dept, depth }) => {
-                    const parent = departments.find(d => d.id === dept.parentId);
-                    return (
-                      <tr key={dept.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2" style={{ paddingRight: depth * 16 }}>
-                            {depth > 0 && <span className="h-px w-4 shrink-0 bg-border" />}
-                            <Building2 className="h-4 w-4 shrink-0 text-primary/50" />
-                            <div>
-                              <p className="font-semibold">{dept.nameAr}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{parent?.nameAr ?? '—'}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{dept.slug}</td>
-                        <td className="px-4 py-3 text-xs">{dept.sortOrder}</td>
-                        <td className="px-4 py-3"><ActiveBadge active={dept.isActive} /></td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(dept)}><Pencil className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => confirmDelete(dept.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div className="border-t border-border bg-muted/20 px-4 py-2.5 text-xs text-muted-foreground">
-            {filtered.length} من {departments.length} قسم
-          </div>
-        </div>
+      {filtered.length === 0 ? (
+        <EmptyState icon={Building2} title="لا توجد أقسام" />
       ) : (
-        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
-          {forest.length === 0 ? <EmptyState icon={Building2} title="لا توجد أقسام" /> : (
-            <div className="space-y-2">
-              {forest.map(n => <DeptOrgNode key={n.dept.id} node={n} />)}
-            </div>
-          )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {filtered.map(({ dept, depth }) => {
+            const parent = departments.find(d => d.id === dept.parentId);
+            const subDepts = departments.filter(d => d.parentId === dept.id);
+            return (
+              <div
+                key={dept.id}
+                className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated cursor-pointer"
+                onClick={() => openEdit(dept)}
+              >
+                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary opacity-0 blur-2xl transition-opacity group-hover:opacity-10" />
+
+                <div className="relative flex items-start justify-between mb-4">
+                  <div className={cn(
+                    'flex h-11 w-11 items-center justify-center rounded-xl',
+                    dept.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground/60',
+                  )}>
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <ActiveBadge active={dept.isActive} />
+                </div>
+
+                <div className="relative mb-4">
+                  {parent && (
+                    <div className="mb-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Building2 className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{parent.nameAr}</span>
+                    </div>
+                  )}
+                  <h3 className="font-display text-base font-bold leading-snug group-hover:text-primary transition-colors">
+                    {dept.nameAr}
+                  </h3>
+                </div>
+
+                <div className="relative flex items-center gap-3 pt-1 pb-2 text-xs text-muted-foreground">
+                  {subDepts.length > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Network className="h-3.5 w-3.5" />
+                      {subDepts.length} فرعي
+                    </span>
+                  )}
+                  {depth > 0 && (
+                    <span className="flex items-center gap-1">
+                      <ChevronRight className="h-3.5 w-3.5" />
+                      مستوى {depth + 1}
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className="relative flex items-center gap-1 border-t border-border/60 pt-2"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(dept)}>
+                    <Pencil className="h-3 w-3" /> تعديل
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive" onClick={() => confirmDelete(dept.id)}>
+                    <Trash2 className="h-3 w-3" /> حذف
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -189,14 +166,11 @@ export function DepartmentsTab() {
         onSave={handleSave} error={formError}
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="الاسم بالعربية" required span2>
+          <FormField label="الاسم" required span2>
             <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="الموارد البشرية" />
           </FormField>
           <FormField label="القسم الأصل" span2>
             <MinimalDropdown value={draft.parentId} onChange={v => patch('parentId', v)} options={parentOptions} />
-          </FormField>
-          <FormField label="الترتيب">
-            <Input type="number" min={0} value={draft.sortOrder} onChange={e => patch('sortOrder', Number(e.target.value))} />
           </FormField>
           <FormField label="الحالة">
             <label className={cn('flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all h-10', draft.isActive ? 'border-primary/30 bg-primary/5' : 'border-border')}>

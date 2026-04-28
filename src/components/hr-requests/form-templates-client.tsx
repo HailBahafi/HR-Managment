@@ -118,7 +118,7 @@ export function FormTemplatesClient() {
               </thead>
               <tbody>
                 {paginated.map(t => (
-                  <tr key={t.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors">
+                  <tr key={t.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(t)}>
                     <td className="px-4 py-3">
                       <p className="font-medium">{t.nameAr}</p>
                     </td>
@@ -131,8 +131,8 @@ export function FormTemplatesClient() {
                       )}
                     </td>
                     <td className="px-4 py-3"><ActiveBadge active={t.isActive} /></td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="icon" type="button" onClick={() => { setPreviewTpl(t); setPreviewValues({}); }}>
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -160,11 +160,8 @@ export function FormTemplatesClient() {
         onSave={handleSave} error={error} size="xl"
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="الاسم بالعربية" required span2>
+          <FormField label="الاسم" required span2>
             <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="القالب العام" />
-          </FormField>
-          <FormField label="الترتيب">
-            <Input type="number" min={0} value={draft.sortOrder} onChange={e => patch('sortOrder', Number(e.target.value))} />
           </FormField>
           <FormField label="الإعدادات" span2>
             <div className="space-y-2">

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Plus, Download, LayoutGrid, List, Mail, Building2 } from 'lucide-react';
 import { useSetPageTitle } from '@/components/page-title-context';
 import { usePageFilters } from '@/components/filter-panel-context';
@@ -14,6 +15,7 @@ import { formatCurrency, getInitials } from '@/lib/utils';
 
 export default function EmployeesPage() {
   useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
+  const router = useRouter();
 
   const { values } = usePageFilters([
     { key: 'search', label: 'بحث', type: 'text', placeholder: 'الاسم، رقم الموظف، أو المنصب…' },
@@ -77,7 +79,7 @@ export default function EmployeesPage() {
                   const dept = getDepartment(emp.departmentId);
                   const branch = getBranch(emp.branchId);
                   return (
-                    <tr key={emp.id} className="group border-b border-border/60 transition-colors hover:bg-muted/20 last:border-b-0">
+                    <tr key={emp.id} className="group border-b border-border/60 transition-colors hover:bg-muted/20 last:border-b-0 cursor-pointer" onClick={() => router.push(`/employees/${emp.id}`)}>
                       <td className="px-6 py-4">
                         <Link href={`/employees/${emp.id}`} className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 ring-2 ring-border">

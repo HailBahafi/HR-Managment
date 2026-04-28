@@ -183,7 +183,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   };
 
   const handleSave = () => {
-    if (!draft.nameAr.trim()) { setFormError('الاسم بالعربية مطلوب'); return; }
+    if (!draft.nameAr.trim()) { setFormError('الاسم مطلوب'); return; }
     if (!draft.departmentId) { setFormError('القسم مطلوب'); return; }
     const payload = { ...draft, nameEn: draft.nameAr.trim(), reportsToId: draft.reportsToId || null, email: draft.email || undefined, mobile: draft.mobile || undefined, notes: draft.notes || undefined };
     if (sidebarMode === 'create') addEmployee(payload);
@@ -378,7 +378,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
           <FormField label="القسم" required>
             <MinimalDropdown value={draft.departmentId} onChange={v => patch('departmentId', v)} options={departments.filter(d => d.isActive).map(d => ({ value: d.id, label: d.nameAr }))} placeholder="اختر القسم" />
           </FormField>
-          <FormField label="الاسم بالعربية" required span2><Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} /></FormField>
+          <FormField label="الاسم" required span2><Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} /></FormField>
           <FormField label="رقم الهوية" required><Input value={draft.nationalId} onChange={e => patch('nationalId', e.target.value)} dir="ltr" /></FormField>
           <FormField label="تاريخ التعيين"><Input type="date" dir="ltr" value={draft.hireDate} onChange={e => patch('hireDate', e.target.value)} /></FormField>
           <FormField label="المسمى بالعربية" span2><Input value={draft.jobTitleAr} onChange={e => patch('jobTitleAr', e.target.value)} /></FormField>

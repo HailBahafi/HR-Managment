@@ -30,11 +30,15 @@ type DraftForm = {
 
 const EMPTY_FORM: DraftForm = { code: '', title: '', body: '', isBasic: false, isActive: true };
 
+function makeArticleCode() {
+  return `ART-${Date.now().toString(36).toUpperCase()}`;
+}
+
 export function ContractArticlesClient() {
   const { articles, add, update, remove } = useHRContractArticlesStore();
 
   const { values } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالرمز أو العنوان…' },
+    { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالعنوان…' },
     {
       key: 'kind', label: 'النوع', type: 'select',
       options: [
@@ -64,7 +68,7 @@ export function ContractArticlesClient() {
   const filtered = React.useMemo(() =>
     articles
       .filter(a => {
-        const matchQ = !q || a.code.toLowerCase().includes(q) || a.title.includes(q);
+        const matchQ = !q || a.title.toLowerCase().includes(q);
         const matchK = kindFilter === 'all' || (kindFilter === 'basic' ? a.isBasic : !a.isBasic);
         const matchA = !activeOnly || a.isActive;
         return matchQ && matchK && matchA;
@@ -87,13 +91,13 @@ export function ContractArticlesClient() {
   };
 
   const handleSave = () => {
-    if (!form.code.trim()) { setError('الرمز مطلوب'); return; }
     if (!form.title.trim()) { setError('العنوان مطلوب'); return; }
     if (!form.body.trim()) { setError('نص المادة مطلوب'); return; }
+    const payload = { ...form, code: editId ? form.code : makeArticleCode() };
     if (editId) {
-      update(editId, form);
+      update(editId, payload);
     } else {
-      add(form);
+      add(payload);
     }
     setDrawerOpen(false);
   };
@@ -152,11 +156,8 @@ export function ContractArticlesClient() {
               <CardContent className="p-4 pe-5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0 space-y-2">
-                    {/* Code + badges row */}
+                    {/* Badges row */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-muted/70 px-2 py-0.5 font-mono text-[11px] font-semibold text-foreground/70 border border-border/60">
-                        <Hash className="h-2.5 w-2.5" />{a.code}
-                      </span>
                       {a.isBasic ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/8 px-2 py-0.5 text-[10px] font-semibold text-primary">
                           <Star className="h-2.5 w-2.5" />أساسية
@@ -241,9 +242,6 @@ export function ContractArticlesClient() {
             )}>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 font-mono text-xs font-semibold text-foreground/70 border border-border/60">
-                    <Hash className="h-3 w-3" />{preview.code}
-                  </span>
                   {preview.isBasic ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-primary/25 bg-primary/8 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
                       <Star className="h-3 w-3" />مادة أساسية
@@ -290,9 +288,6 @@ export function ContractArticlesClient() {
         title={editId ? 'تعديل المادة' : 'مادة جديدة'}
         onSave={handleSave} error={error}
       >
-        <FormField label="الرمز" required>
-          <Input value={form.code} onChange={e => patch({ code: e.target.value })} placeholder="A-01" />
-        </FormField>
         <FormField label="العنوان" required span2>
           <Input value={form.title} onChange={e => patch({ title: e.target.value })} placeholder="عنوان المادة…" />
         </FormField>

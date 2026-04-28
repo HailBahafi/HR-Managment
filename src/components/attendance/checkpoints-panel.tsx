@@ -211,7 +211,7 @@ export function CheckpointsPanel() {
           </p>
         )}
 
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {visibleCheckpoints.map((p) => (
             <div
               key={p.id}
@@ -225,52 +225,69 @@ export function CheckpointsPanel() {
                 }
               }}
               className={cn(
-                'group flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-transparent bg-background px-4 py-3 text-right shadow-soft transition-all outline-none hover:border-primary/40 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-                selected === p.id ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20' : 'border-border',
+                'group relative overflow-hidden rounded-xl border bg-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                selected === p.id
+                  ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
+                  : 'border-border',
               )}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span
-                  className={cn(
-                    'inline-flex h-2 w-2 shrink-0 rounded-full',
-                    p.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/40',
-                  )}
-                />
-                <p className="truncate font-semibold">{p.nameAr}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-0.5">
-                <ChevronLeft
-                  className={cn(
-                    'h-4 w-4 text-muted-foreground transition-transform',
-                    selected === p.id && '-rotate-90 text-primary',
-                  )}
-                />
-                <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEdit(p);
-                    }}
-                    aria-label="تعديل"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary opacity-0 blur-2xl transition-opacity group-hover:opacity-10" />
+
+              <div className="relative p-5">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-xl',
+                    p.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground/60',
+                  )}>
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  <span className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                    p.isActive
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      : 'border-border bg-muted text-muted-foreground',
+                  )}>
+                    <span className={cn('h-1.5 w-1.5 rounded-full', p.isActive ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+                    {p.isActive ? 'نشط' : 'موقوف'}
+                  </span>
+                </div>
+
+                {/* Name */}
+                <h3 className="font-display text-base font-bold leading-snug mb-3 group-hover:text-primary transition-colors truncate">
+                  {p.nameAr}
+                </h3>
+
+                {/* Coords + radius */}
+                <div className="space-y-1.5 mb-4">
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Navigation2 className="h-3 w-3 shrink-0" />
+                    <span className="font-mono truncate" dir="ltr">
+                      {p.latitude.toFixed(4)}, {p.longitude.toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Radio className="h-3 w-3 shrink-0" />
+                    <span>نطاق القبول: <span className="font-mono font-medium text-foreground">{p.radiusMeters}</span> م</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div
+                  className="flex items-center gap-1 border-t border-border/60 pt-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button variant="ghost" size="sm" type="button" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(p)}>
+                    <Pencil className="h-3 w-3" /> تعديل
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="sm"
                     type="button"
-                    className="h-8 w-8 text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (window.confirm('حذف النقطة؟')) removeCheckpoint(p.id);
-                    }}
-                    aria-label="حذف"
+                    className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
+                    onClick={() => { if (window.confirm('حذف النقطة؟')) removeCheckpoint(p.id); }}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3 w-3" /> حذف
                   </Button>
                 </div>
               </div>
@@ -423,7 +440,7 @@ export function CheckpointsPanel() {
                 {/* Fields */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2 sm:col-span-2">
-                    <Label>الاسم بالعربية</Label>
+                    <Label>الاسم</Label>
                     <Input value={draft.nameAr} onChange={(e) => setDraft({ ...draft, nameAr: e.target.value })} />
                   </div>
                   <div className="space-y-2">

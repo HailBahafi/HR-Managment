@@ -2,32 +2,198 @@
 
 import * as React from 'react';
 import { use } from 'react';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import {
-  ArrowRight,
-  Mail,
+  Check,
+  X,
+  ChevronLeft,
   Phone,
   MapPin,
   Calendar,
   Building2,
   Briefcase,
   CreditCard,
-  Heart,
-  Shield,
-  Edit,
+  Edit3,
   FileText,
-  Download,
   Clock,
   CheckCircle2,
+  AlertTriangle,
+  Wallet,
+  FileSignature,
+  MapPinned,
+  ExternalLink,
+  UserRound,
+  Receipt,
+  Heart,
+  Plus,
+  User,
+  Hash,
+  AtSign,
+  Globe,
+  CircleDot,
+  Share2,
+  MoreHorizontal,
+  ArrowUpRight,
+  Sparkles,
+  Award,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { StatusBadge, ContractTypeLabel } from '@/components/status-badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StatusBadge, ContractTypeLabel, RequestTypeLabel } from '@/components/status-badge';
 import { getEmployee, getBranch, getDepartment, data } from '@/lib/data';
-import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
+import { useAttendanceStore } from '@/lib/attendance/store';
+import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
+import { useHRContractsStore } from '@/lib/contracts/contracts-store';
+import { cn, formatCurrency, formatDate, getInitials } from '@/lib/utils';
+
+const SECTIONS = [
+  { id: 'personal', label: 'البيانات الشخصية', icon: User },
+  { id: 'employment', label: 'بيانات التوظيف', icon: Briefcase },
+  { id: 'financial', label: 'البيانات المالية', icon: CreditCard },
+  { id: 'attendance', label: 'الحضور والانصراف', icon: Clock },
+  { id: 'leaves', label: 'الإجازات', icon: Calendar },
+  { id: 'requests', label: 'الطلبات', icon: FileText },
+  { id: 'violations', label: 'المخالفات', icon: AlertTriangle },
+  { id: 'contracts', label: 'العقود', icon: FileSignature },
+  { id: 'salary', label: 'كشوف الرواتب', icon: Receipt },
+] as const;
+
+type SectionId = typeof SECTIONS[number]['id'];
+
+function Prop({ icon: Icon, label, children, mono, accent }: {
+  icon: React.ElementType;
+  label: string;
+  children: React.ReactNode;
+  mono?: boolean;
+  accent?: 'primary' | 'gold' | 'success' | 'warning' | 'destructive';
+}) {
+  if (children === null || children === undefined || children === '' || children === false) return null;
+  const accentCls = {
+    primary: 'text-primary',
+    gold: 'text-gold',
+    success: 'text-success',
+    warning: 'text-warning',
+    destructive: 'text-destructive',
+  } as const;
+  return (
+    <div className="group relative flex items-start gap-3 py-3 px-3.5 rounded-xl border border-border/50 bg-card hover:border-primary/30 hover:shadow-xs transition-all">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+        <Icon className="h-3.5 w-3.5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground/80 mb-0.5 font-medium">{label}</div>
+        <div className={cn(
+          "text-sm font-medium truncate min-w-0",
+          mono && "font-mono text-xs",
+          accent ? accentCls[accent] : "text-foreground"
+        )} {...(mono ? { dir: 'ltr' as const } : {})}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionH({ icon: Icon, title, subtitle, action }: {
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between mb-6 pb-4 border-b border-border/40">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="font-arabic-display text-2xl font-semibold text-foreground tracking-tight leading-tight">
+            {title}
+          </h2>
+          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function FieldGroup({ title, hint, children }: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-7 last:mb-0">
+      <div className="flex items-baseline justify-between mb-3">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+          {title}
+        </h3>
+        {hint && <span className="text-[10px] text-muted-foreground/60">{hint}</span>}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ItemRow({ children, href }: {
+  children: React.ReactNode;
+  href?: string;
+}) {
+  const cls = "group flex items-center justify-between gap-3 py-3 px-3 -mx-3 rounded-md border-b border-border/40 last:border-0 hover:bg-muted/40 transition-colors";
+  if (href) return <Link href={href} className={cn(cls, "cursor-pointer")}>{children}</Link>;
+  return <div className={cls}>{children}</div>;
+}
+
+function Stat({ value, label, sub, accent, icon: Icon }: {
+  value: React.ReactNode;
+  label: string;
+  sub?: string;
+  accent?: 'gold' | 'success' | 'destructive' | 'warning' | 'primary';
+  icon?: React.ElementType;
+}) {
+  const accentCls = {
+    gold: 'text-gold border-gold/20 bg-gold/5',
+    success: 'text-success border-success/20 bg-success/5',
+    destructive: 'text-destructive border-destructive/20 bg-destructive/5',
+    warning: 'text-warning border-warning/20 bg-warning/5',
+    primary: 'text-primary border-primary/20 bg-primary/5',
+  } as const;
+  const valueColor = accent ? accentCls[accent].split(' ')[0] : 'text-foreground';
+  const cardBorder = accent ? accentCls[accent].split(' ').slice(1).join(' ') : 'border-border/50 bg-card';
+  return (
+    <div className={cn("relative rounded-xl border p-4 transition-all hover:shadow-xs", cardBorder)}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground font-medium">{label}</div>
+        {Icon && <Icon className={cn("h-3.5 w-3.5", valueColor, "opacity-70")} />}
+      </div>
+      <div className={cn("font-arabic-display text-2xl font-semibold tabular-nums leading-none", valueColor)}>
+        {value}
+      </div>
+      {sub && <div className="mt-1.5 text-[11px] text-muted-foreground">{sub}</div>}
+    </div>
+  );
+}
+
+function Empty({ icon: Icon, text, action }: {
+  icon: React.ElementType;
+  text: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-12 text-center text-muted-foreground border border-dashed border-border/60 rounded-xl bg-muted/20">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80 border border-border/50">
+        <Icon className="h-5 w-5 opacity-60" />
+      </div>
+      <p className="text-sm">{text}</p>
+      {action}
+    </div>
+  );
+}
 
 export default function EmployeeProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,232 +203,729 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   const branch = getBranch(employee.branchId);
   const department = getDepartment(employee.departmentId);
   const manager = employee.managerId ? getEmployee(employee.managerId) : null;
-  const totalSalary = employee.baseSalary + employee.housingAllowance + employee.transportAllowance + employee.otherAllowances;
 
-  const employeeRequests = data.requests.filter((r) => r.employeeId === employee.id);
+  const { events, daySummaries, checkpointLinks, checkpoints } = useAttendanceStore();
+  const { cases: violationCases } = useHRViolationCasesStore();
+  const { contracts } = useHRContractsStore();
+
+  const employeeEvents = events.filter(e => e.employeeId === employee.id);
+  const employeeSummaries = daySummaries.filter(s => s.employeeId === employee.id);
+  const employeeCheckpoints = checkpointLinks.filter(c => c.employeeId === employee.id);
+  const employeeViolations = violationCases.filter(v => v.employeeId === employee.id);
+  const employeeContracts = contracts.filter(c => c.employeeId === employee.id);
+  const employeeRequests = data.requests.filter(r => r.employeeId === employee.id);
+  const employeePayslips = data.payslips?.filter(p => p.employeeId === employee.id) || [];
+
+  const stats = {
+    present: employeeSummaries.filter(s => s.status === 'present').length,
+    absent: employeeSummaries.filter(s => s.status === 'absent').length,
+    late: employeeSummaries.filter(s => s.status === 'late').length,
+    earlyLeave: employeeSummaries.filter(s => s.status === 'early_leave').length,
+    total: employeeSummaries.length,
+  };
+
+  // ─── Edit mode ───────────────────────────────────────────────────────
+  type Draft = typeof employee;
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState<Draft>(() => ({ ...employee }));
+
+  React.useEffect(() => {
+    setDraft({ ...employee });
+  }, [employee.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateField = <K extends keyof Draft>(key: K, value: Draft[K]) => {
+    setDraft(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = () => {
+    Object.assign(employee, draft);
+    setEditing(false);
+  };
+  const handleCancel = () => {
+    setDraft({ ...employee });
+    setEditing(false);
+  };
+
+  // Derived from draft so they update live while editing
+  const totalSalary =
+    draft.baseSalary + draft.housingAllowance + draft.transportAllowance + draft.otherAllowances;
+  const netSalary = totalSalary - draft.gosi;
+
+  const yearsOfService = (() => {
+    const start = new Date(draft.startDate);
+    const now = new Date();
+    const diff = now.getTime() - start.getTime();
+    return (diff / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
+  })();
+
+  const [activeSection, setActiveSection] = React.useState<SectionId>('personal');
+  const contentRef = React.useRef<HTMLElement | null>(null);
+  // Reset scroll on section change
+  React.useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeSection]);
+
+  // Inline Field — renders input when editing, else value via children/format
+  function Field<K extends keyof Draft>({ field, type = 'text', mono, accent, format, icon, label }: {
+    field: K;
+    type?: 'text' | 'email' | 'tel' | 'date' | 'number';
+    mono?: boolean;
+    accent?: 'primary' | 'gold' | 'success' | 'warning' | 'destructive';
+    format?: (v: Draft[K]) => React.ReactNode;
+    icon: React.ElementType;
+    label: string;
+  }) {
+    const value = draft[field];
+    const display: React.ReactNode = format ? format(value) : (value as React.ReactNode);
+
+    if (!editing) {
+      return <Prop icon={icon} label={label} mono={mono} accent={accent}>{display}</Prop>;
+    }
+
+    return (
+      <div className="group relative flex items-start gap-3 py-3 px-3.5 rounded-xl border border-primary/30 bg-card transition-all">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          {React.createElement(icon, { className: 'h-3.5 w-3.5' })}
+        </div>
+        <div className="flex-1 min-w-0">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground/80 mb-1 font-medium block">{label}</label>
+          <input
+            type={type}
+            value={String(value ?? '')}
+            onChange={(e) => {
+              const v = type === 'number' ? Number(e.target.value) : e.target.value;
+              updateField(field, v as Draft[K]);
+            }}
+            dir={mono ? 'ltr' : undefined}
+            className={cn(
+              "w-full bg-transparent text-sm font-medium text-foreground border-0 border-b border-primary/30 px-0 py-0.5 focus:outline-none focus:border-primary transition-colors",
+              mono && "font-mono text-xs"
+            )}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const counts: Partial<Record<SectionId, number>> = {
+    requests: employeeRequests.length,
+    violations: employeeViolations.length,
+    contracts: employeeContracts.length,
+    salary: employeePayslips.length,
+  };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/employees" className="flex items-center gap-1 transition-colors hover:text-foreground">
-          <ArrowRight className="h-4 w-4" />
-          الموظفين
-        </Link>
-        <span>/</span>
-        <span className="text-foreground">{employee.name}</span>
+    <div dir="rtl" className="h-[calc(100vh-86px)] flex flex-col overflow-hidden bg-background -mx-4 sm:-mx-6">
+      {/* Top breadcrumb bar */}
+      <div className="shrink-0 border-b border-border/60 bg-card/50 backdrop-blur-md">
+        <div className="px-6 h-12 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link href="/employees" className="hover:text-foreground transition-colors flex items-center gap-1">
+              <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
+              الموظفون
+            </Link>
+            <span className="text-muted-foreground/40">/</span>
+            <span className="text-foreground font-medium truncate max-w-[200px]">{employee.name}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {editing ? (
+              <>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleCancel}>
+                  <X className="h-3.5 w-3.5" />
+                  إلغاء
+                </Button>
+                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={handleSave}>
+                  <Check className="h-3.5 w-3.5" />
+                  حفظ التغييرات
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
+                  <Share2 className="h-3.5 w-3.5" />
+                  مشاركة
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setEditing(true)}>
+                  <Edit3 className="h-3.5 w-3.5" />
+                  تعديل
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Profile header - editorial hero */}
-      <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-elevated">
-        {/* Banner */}
-        <div className="relative h-40 bg-gradient-to-l from-primary via-primary-700 to-primary-900">
-          <div className="absolute inset-0 bg-noise opacity-10 mix-blend-overlay" />
-          <div className="absolute -left-20 -top-20 h-56 w-56 rounded-full bg-gold/20 blur-3xl" />
-          <div className="absolute bottom-0 left-0 right-0 h-px gold-accent-line opacity-50" />
-        </div>
-
-        <div className="relative px-8 pb-8">
-          <div className="-mt-20 flex flex-col items-start gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
-              <Avatar className="h-32 w-32 border-4 border-card shadow-elevated ring-2 ring-gold/30">
-                <AvatarImage src={employee.avatar} />
-                <AvatarFallback className="text-2xl">{getInitials(employee.name)}</AvatarFallback>
+      {/* Main split layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <aside className="w-80 shrink-0 border-l border-border/60 bg-card/30 flex flex-col overflow-hidden">
+          {/* Identity card */}
+          <div className="p-6 border-b border-border/60">
+            <div className="flex items-start gap-4">
+              <Avatar className="h-16 w-16 ring-2 ring-background shadow-xs">
+                <AvatarImage src={employee.avatar} alt={employee.name} />
+                <AvatarFallback className="text-base font-arabic-display bg-primary text-primary-foreground">
+                  {getInitials(employee.name)}
+                </AvatarFallback>
               </Avatar>
-              <div className="mb-2 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
-                  <span>{employee.employeeCode}</span>
-                  <span>·</span>
+              <div className="flex-1 min-w-0">
+                <h1 className="font-arabic-display text-xl font-semibold tracking-tight text-foreground truncate">
+                  {employee.name}
+                </h1>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">{employee.position}</p>
+                <div className="mt-2 flex items-center gap-1.5">
                   <StatusBadge status={employee.contractStatus} />
                 </div>
-                <h1 className="font-display text-3xl font-bold tracking-tight">{employee.name}</h1>
-                <p className="text-lg text-muted-foreground">{employee.position}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button variant="outline" className="gap-2">
-                <Download className="h-4 w-4" />
-                السيرة الذاتية
-              </Button>
-              <Button variant="luxe" className="gap-2">
-                <Edit className="h-4 w-4" />
-                تعديل الملف
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick contact strip */}
-          <div className="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-muted/30 p-4 sm:grid-cols-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Mail className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">البريد</p>
-                <p className="truncate text-sm font-medium" dir="ltr">{employee.email}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <Phone className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">الجوال</p>
-                <p className="truncate text-sm font-medium" dir="ltr">{employee.phone}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <MapPin className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">الفرع</p>
-                <p className="truncate text-sm font-medium">{branch?.name}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gold/15 text-gold">
-                <Calendar className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">تاريخ الالتحاق</p>
-                <p className="truncate text-sm font-medium">{formatDate(employee.startDate)}</p>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="info" className="w-full">
-        <TabsList>
-          <TabsTrigger value="info">المعلومات الشخصية</TabsTrigger>
-          <TabsTrigger value="employment">بيانات التوظيف</TabsTrigger>
-          <TabsTrigger value="salary">الراتب والمزايا</TabsTrigger>
-          <TabsTrigger value="requests">الطلبات ({employeeRequests.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="info" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <InfoCard title="المعلومات الأساسية" icon={Shield}>
-              <InfoRow label="الاسم الكامل" value={employee.name} />
-              <InfoRow label="رقم الهوية" value={employee.nationalId} dir="ltr" />
-              <InfoRow label="الجنسية" value={employee.nationality} />
-              <InfoRow label="تاريخ الميلاد" value={formatDate(employee.birthDate)} />
-              <InfoRow label="الجنس" value={employee.gender === 'male' ? 'ذكر' : 'أنثى'} />
-              <InfoRow label="الحالة الاجتماعية" value={employee.maritalStatus === 'single' ? 'أعزب' : 'متزوج'} />
-            </InfoCard>
-
-            <InfoCard title="معلومات التواصل" icon={Phone}>
-              <InfoRow label="البريد الإلكتروني" value={employee.email} dir="ltr" />
-              <InfoRow label="رقم الجوال" value={employee.phone} dir="ltr" />
-              <InfoRow label="جهة الاتصال للطوارئ" value={employee.emergencyContact} dir="ltr" />
-              <InfoRow label="العنوان" value={employee.address} />
-            </InfoCard>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="employment" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <InfoCard title="تفاصيل الوظيفة" icon={Briefcase}>
-              <InfoRow label="رقم الموظف" value={employee.employeeCode} />
-              <InfoRow label="المنصب" value={employee.position} />
-              <InfoRow label="القسم" value={department?.name ?? '-'} />
-              <InfoRow label="الفرع" value={branch?.name ?? '-'} />
-              <InfoRow label="المدير المباشر" value={manager?.name ?? 'لا يوجد'} />
-              <InfoRow label="نوع العقد" value={<ContractTypeLabel type={employee.contractType} />} />
-              <InfoRow label="الحالة" value={<StatusBadge status={employee.contractStatus} />} />
-            </InfoCard>
-
-            <InfoCard title="الجدول الزمني" icon={Calendar}>
-              <InfoRow label="تاريخ الالتحاق" value={formatDate(employee.startDate)} />
-              {employee.endDate && <InfoRow label="تاريخ الانتهاء" value={formatDate(employee.endDate)} />}
-              <InfoRow
-                label="مدة الخدمة"
-                value={`${Math.floor((Date.now() - new Date(employee.startDate).getTime()) / (365 * 24 * 60 * 60 * 1000))} سنوات`}
-              />
-            </InfoCard>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="salary" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="relative overflow-hidden rounded-lg border border-gold/40 bg-gradient-to-br from-gold/10 via-card to-card p-6 shadow-soft lg:col-span-1">
-              <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-gold/20 blur-3xl" />
-              <div className="relative">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">إجمالي الراتب الشهري</p>
-                <p className="mt-2 font-display text-4xl font-bold tracking-tight number-ar">{formatCurrency(totalSalary)}</p>
-                <div className="mt-4 h-px gold-accent-line" />
-                <p className="mt-4 text-xs text-muted-foreground">بعد الخصومات المتغيرة</p>
-              </div>
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto p-3">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 mb-2 px-2">
+              الأقسام
             </div>
-
-            <div className="lg:col-span-2">
-              <InfoCard title="التفاصيل" icon={CreditCard}>
-                <InfoRow label="الراتب الأساسي" value={formatCurrency(employee.baseSalary)} />
-                <InfoRow label="بدل السكن" value={formatCurrency(employee.housingAllowance)} />
-                <InfoRow label="بدل المواصلات" value={formatCurrency(employee.transportAllowance)} />
-                <InfoRow label="بدلات أخرى" value={formatCurrency(employee.otherAllowances)} />
-                <InfoRow label="اشتراك التأمينات (GOSI)" value={formatCurrency(employee.gosi)} />
-                <InfoRow label="رقم الحساب البنكي" value={employee.bankAccount} dir="ltr" />
-                <InfoRow label="IBAN" value={employee.iban} dir="ltr" />
-              </InfoCard>
+            <div className="space-y-0.5">
+              {SECTIONS.map(s => {
+                const isActive = activeSection === s.id;
+                const count = counts[s.id];
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setActiveSection(s.id)}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all text-right",
+                      isActive
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <s.icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
+                    <span className="flex-1 truncate text-right">{s.label}</span>
+                    {count !== undefined && count > 0 && (
+                      <Badge
+                        variant={isActive ? 'gold' : 'subtle'}
+                        className="h-5 min-w-5 px-1.5 text-[10px] tabular-nums"
+                      >
+                        {count}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        </TabsContent>
+          </nav>
 
-        <TabsContent value="requests" className="space-y-4">
-          <div className="rounded-lg border border-border bg-card shadow-soft">
-            {employeeRequests.length > 0 ? (
-              <div className="divide-y divide-border">
-                {employeeRequests.map((req) => (
-                  <div key={req.id} className="flex items-center justify-between p-4 transition-colors hover:bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <FileText className="h-4 w-4" />
+        </aside>
+
+        {/* Content area (only this scrolls) */}
+        <main ref={contentRef} className="flex-1 overflow-y-auto">
+          <div className="max-w-5xl mx-auto px-8 py-8">
+            {/* Personal (merged with overview + quick metadata) */}
+            {activeSection === 'personal' && (
+              <section>
+                {/* Hero banner */}
+                <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-bl from-primary/6 via-card to-gold/4 mb-8">
+                  <div className="absolute inset-0 dotted-bg opacity-5" />
+                  <div className="relative p-6 md:p-7">
+                    <div className="flex items-start gap-5 mb-6">
+                      <Avatar className="h-20 w-20 ring-4 ring-background shadow-sm">
+                        <AvatarImage src={employee.avatar} alt={employee.name} />
+                        <AvatarFallback className="text-xl font-arabic-display bg-primary text-primary-foreground">
+                          {getInitials(employee.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                          <h1 className="font-arabic-display text-3xl font-semibold tracking-tight text-foreground">
+                            {employee.name}
+                          </h1>
+                          <StatusBadge status={employee.contractStatus} />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {employee.position}
+                          <span className="text-muted-foreground/40 mx-2">·</span>
+                          {department?.name}
+                          <span className="text-muted-foreground/40 mx-2">·</span>
+                          {branch?.name}
+                        </p>
+                        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
+                          <span className="flex items-center gap-1.5">
+                            <Hash className="h-3 w-3" />
+                            <span className="font-mono">{employee.employeeCode}</span>
+                          </span>
+                          <span className="text-muted-foreground/30">·</span>
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3" />
+                            انضم في {formatDate(employee.startDate)}
+                          </span>
+                          <span className="text-muted-foreground/30">·</span>
+                          <span className="flex items-center gap-1.5 text-gold">
+                            <Sparkles className="h-3 w-3" />
+                            {yearsOfService} سنة
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold">{req.title}</p>
-                        <p className="text-xs text-muted-foreground">{req.requestNumber} · {formatDate(req.submittedAt)}</p>
+                    </div>
+
+                    {/* Inline KPI strip */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <Stat icon={CheckCircle2} value={stats.present} label="أيام حضور" sub={`من ${stats.total} يوم`} accent="success" />
+                      <Stat icon={Clock} value={stats.late} label="تأخيرات" accent={stats.late > 0 ? 'warning' : undefined} />
+                      <Stat icon={AlertTriangle} value={employeeViolations.length} label="مخالفات" accent={employeeViolations.length > 0 ? 'destructive' : undefined} />
+                      <Stat icon={Wallet} value={formatCurrency(netSalary)} label="الراتب الصافي" accent="gold" />
+                    </div>
+                  </div>
+                </div>
+
+                <SectionH icon={User} title="البيانات الشخصية" subtitle="المعلومات الأساسية وبيانات الاتصال للموظف" />
+
+                <FieldGroup title="الهوية">
+                  <Prop icon={Hash} label="رقم الموظف" mono>{draft.employeeCode}</Prop>
+                  <Field icon={User} field="name" label="الاسم" />
+                  <Field icon={User} field="nameEn" label="الاسم بالإنجليزية" />
+                  <Field icon={Hash} field="nationalId" label="رقم الهوية" mono />
+                  <Field icon={Globe} field="nationality" label="الجنسية" />
+                  <Field icon={Calendar} field="birthDate" label="تاريخ الميلاد" type="date" format={(v) => formatDate(v as string)} />
+                  <Prop icon={UserRound} label="الجنس">{draft.gender === 'male' ? 'ذكر' : 'أنثى'}</Prop>
+                  <Prop icon={Heart} label="الحالة الاجتماعية">
+                    {draft.maritalStatus === 'married' ? 'متزوج' : 'أعزب'}
+                  </Prop>
+                </FieldGroup>
+
+                <FieldGroup title="بيانات الاتصال" hint="للتواصل المباشر مع الموظف">
+                  <Field
+                    icon={AtSign}
+                    field="email"
+                    label="البريد الإلكتروني"
+                    type="email"
+                    format={(v) => (
+                      <a href={`mailto:${v as string}`} className="hover:text-primary hover:underline underline-offset-4">
+                        {v as string}
+                      </a>
+                    )}
+                  />
+                  <Field icon={Phone} field="phone" label="رقم الجوال" type="tel" mono />
+                  <Field icon={MapPin} field="address" label="العنوان" />
+                </FieldGroup>
+
+                <FieldGroup title="الموقع الوظيفي">
+                  <Prop icon={Building2} label="الفرع">{branch?.name}</Prop>
+                  <Prop icon={Briefcase} label="القسم">{department?.name}</Prop>
+                  <Prop icon={Sparkles} label="مدة الخدمة" accent="gold">{yearsOfService} سنة</Prop>
+                </FieldGroup>
+              </section>
+            )}
+
+            {/* Employment */}
+            {activeSection === 'employment' && (
+              <section>
+                <SectionH icon={Briefcase} title="بيانات التوظيف" subtitle="تفاصيل الوظيفة والتسلسل الإداري" />
+
+                <FieldGroup title="الوظيفة والتسلسل الإداري">
+                  <Prop icon={Hash} label="رقم الموظف" mono>{draft.employeeCode}</Prop>
+                  <Field icon={Briefcase} field="position" label="المسمى الوظيفي" />
+                  <Prop icon={UserRound} label="المدير المباشر">
+                    {manager ? (
+                      <Link href={`/employees/${manager.id}`} className="hover:text-primary inline-flex items-center gap-1">
+                        {manager.name}<ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                    ) : null}
+                  </Prop>
+                  <Prop icon={Building2} label="الفرع">{branch?.name}</Prop>
+                  <Prop icon={Building2} label="القسم">{department?.name}</Prop>
+                </FieldGroup>
+
+                <FieldGroup title="العقد">
+                  <Field icon={Calendar} field="startDate" label="تاريخ التعيين" type="date" format={(v) => formatDate(v as string)} />
+                  <Prop icon={Sparkles} label="مدة الخدمة" accent="gold">{yearsOfService} سنة</Prop>
+                  <Prop icon={FileSignature} label="نوع العقد">
+                    <ContractTypeLabel type={draft.contractType} />
+                  </Prop>
+                  <Prop icon={CircleDot} label="حالة العقد">
+                    <StatusBadge status={draft.contractStatus} />
+                  </Prop>
+                </FieldGroup>
+              </section>
+            )}
+
+            {/* Financial */}
+            {activeSection === 'financial' && (
+              <section>
+                <SectionH icon={CreditCard} title="البيانات المالية" subtitle="الراتب والبدلات والحساب البنكي" />
+
+                {/* Salary breakdown highlight */}
+                <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-linear-to-bl from-gold/5 via-card to-card mb-8">
+                  <div className="absolute inset-0 dotted-bg opacity-5" />
+                  <div className="relative p-6">
+                    <div className="flex items-baseline justify-between mb-1">
+                      <span className="text-xs uppercase tracking-[0.1em] text-muted-foreground font-medium">
+                        الراتب الصافي الشهري
+                      </span>
+                      <Wallet className="h-4 w-4 text-gold" />
+                    </div>
+                    <div className="font-arabic-display text-4xl font-semibold tabular-nums text-gold mb-4">
+                      {formatCurrency(netSalary)}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>إجمالي: <span className="font-arabic-display font-semibold text-foreground tabular-nums">{formatCurrency(totalSalary)}</span></span>
+                      <span className="text-muted-foreground/30">·</span>
+                      <span>خصومات: <span className="font-arabic-display font-semibold text-destructive tabular-nums">−{formatCurrency(draft.gosi)}</span></span>
+                    </div>
+                  </div>
+                </div>
+
+                <FieldGroup title="مكوّنات الراتب">
+                  <Field icon={Wallet} field="baseSalary" label="الراتب الأساسي" type="number" format={(v) => formatCurrency(v as number)} />
+                  <Field icon={Wallet} field="housingAllowance" label="بدل السكن" type="number" format={(v) => formatCurrency(v as number)} />
+                  <Field icon={Wallet} field="transportAllowance" label="بدل المواصلات" type="number" format={(v) => formatCurrency(v as number)} />
+                  <Field icon={Wallet} field="otherAllowances" label="بدلات أخرى" type="number" format={(v) => formatCurrency(v as number)} />
+                  <Field icon={Wallet} field="gosi" label="التأمينات (GOSI)" type="number" accent="destructive" format={(v) => `−${formatCurrency(v as number)}`} />
+                  <Prop icon={Wallet} label="الصافي" accent="gold">{formatCurrency(netSalary)}</Prop>
+                </FieldGroup>
+
+                <FieldGroup title="الحساب البنكي" hint="تستخدم لتحويل الرواتب">
+                  <Field icon={CreditCard} field="bankAccount" label="رقم الحساب" mono />
+                  <Field icon={CreditCard} field="iban" label="رقم الآيبان (IBAN)" mono />
+                </FieldGroup>
+              </section>
+            )}
+
+            {activeSection === 'attendance' && (
+              <section>
+                <SectionH
+                  icon={Clock}
+                  title="الحضور والانصراف"
+                  subtitle="إحصائيات الحضور ونقاط التسجيل المرتبطة"
+                  action={
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
+                      <Link href="/hr/attendance/daily">
+                        <ExternalLink className="h-3 w-3" />
+                        التقرير الكامل
+                      </Link>
+                    </Button>
+                  }
+                />
+            <div className="grid grid-cols-4 gap-2 mb-5">
+              {[
+                { label: 'حاضر', value: stats.present, color: 'success' as const },
+                { label: 'متأخر', value: stats.late, color: 'warning' as const },
+                { label: 'غائب', value: stats.absent, color: 'destructive' as const },
+                { label: 'خروج مبكر', value: stats.earlyLeave, color: 'warning' as const },
+              ].map(s => (
+                <div key={s.label} className="border border-border/60 rounded-md p-3">
+                  <div className="text-xs text-muted-foreground mb-1">{s.label}</div>
+                  <div className={cn(
+                    "font-arabic-display text-xl font-semibold tabular-nums",
+                    s.value > 0 && (
+                      s.color === 'success' ? 'text-success' :
+                      s.color === 'warning' ? 'text-warning' : 'text-destructive'
+                    )
+                  )}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mb-5">
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">نقاط التسجيل المرتبطة</h3>
+              {employeeCheckpoints.length > 0 ? (
+                <div className="border-y border-border/40">
+                  {employeeCheckpoints.map(link => {
+                    const cp = checkpoints.find(c => c.id === link.checkInPointId);
+                    return (
+                      <ItemRow key={link.id}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <MapPinned className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{cp?.nameAr || 'نقطة تسجيل'}</div>
+                            <div className="text-xs text-muted-foreground font-mono" dir="ltr">
+                              {cp?.latitude?.toFixed(4)}, {cp?.longitude?.toFixed(4)}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant={link.linkActive ? 'success' : 'subtle'} className="text-[10px] shrink-0">
+                          {link.linkActive ? 'نشط' : 'موقوف'}
+                        </Badge>
+                      </ItemRow>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Empty icon={MapPinned} text="لا توجد نقاط تسجيل مرتبطة" />
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">آخر حركات الحضور</h3>
+              {employeeEvents.length > 0 ? (
+                <div className="border-y border-border/40">
+                  {employeeEvents.slice(0, 8).map(evt => (
+                    <ItemRow key={evt.id}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        {evt.type === 'check_in'
+                          ? <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                          : <CircleDot className="h-4 w-4 text-warning shrink-0" />}
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium">{evt.type === 'check_in' ? 'دخول' : 'خروج'}</div>
+                          <div className="text-xs text-muted-foreground">{formatDate(evt.date)}</div>
+                        </div>
+                      </div>
+                      <div className="text-left">
+                        <div className="font-mono text-xs" dir="ltr">{evt.at}</div>
+                        <div className="text-[10px] text-muted-foreground/70">{evt.source}</div>
+                      </div>
+                    </ItemRow>
+                  ))}
+                </div>
+              ) : (
+                <Empty icon={Clock} text="لا توجد حركات حضور حتى الآن" />
+              )}
+            </div>
+              </section>
+            )}
+
+            {activeSection === 'leaves' && (
+              <section>
+                <SectionH
+                  icon={Calendar}
+                  title="الإجازات"
+                  subtitle="رصيد الإجازات والطلبات"
+                  action={
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
+                      <Link href="/hr/leaves"><ExternalLink className="h-3 w-3" />الإجازات</Link>
+                    </Button>
+                  }
+                />
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {[
+                { label: 'سنوية', used: 9, total: 30 },
+                { label: 'مرضية', used: 15, total: 60 },
+                { label: 'أخرى', used: 0, total: 10 },
+              ].map(b => {
+                const pct = (b.used / b.total) * 100;
+                return (
+                  <div key={b.label} className="border border-border/60 rounded-md p-3">
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-xs text-muted-foreground">{b.label}</span>
+                      <span className="font-arabic-display text-base font-semibold tabular-nums">
+                        {b.total - b.used}
+                        <span className="text-xs text-muted-foreground font-normal">/{b.total}</span>
+                      </span>
+                    </div>
+                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {employeeRequests.filter(r => r.type === 'leave').length > 0 ? (
+              <div className="border-y border-border/40">
+                {employeeRequests.filter(r => r.type === 'leave').map(req => (
+                  <ItemRow key={req.id}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{req.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {req.fromDate && formatDate(req.fromDate)}
+                          {req.toDate && ` ← ${formatDate(req.toDate)}`}
+                        </div>
                       </div>
                     </div>
                     <StatusBadge status={req.status} />
-                  </div>
+                  </ItemRow>
                 ))}
               </div>
             ) : (
-              <div className="p-12 text-center text-muted-foreground">
-                <FileText className="mx-auto mb-3 h-8 w-8 opacity-40" />
-                <p>لا توجد طلبات سابقة</p>
+              <Empty icon={Calendar} text="لا توجد طلبات إجازة" />
+            )}
+              </section>
+            )}
+
+            {activeSection === 'requests' && (
+              <section>
+                <SectionH
+                  icon={FileText}
+                  title="الطلبات"
+                  subtitle={`${employeeRequests.length} طلب مسجّل`}
+                />
+            {employeeRequests.length > 0 ? (
+              <div className="border-y border-border/40">
+                {employeeRequests.map(req => (
+                  <ItemRow key={req.id}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          <RequestTypeLabel type={req.type} />
+                          <span className="text-muted-foreground/70 mx-1.5">·</span>
+                          <span className="text-muted-foreground/80">{req.title}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDate(req.submittedAt)}
+                          {req.requestNumber && (
+                            <>
+                              <span className="mx-1.5 text-muted-foreground/40">·</span>
+                              <span className="font-mono">#{req.requestNumber}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <StatusBadge status={req.status} />
+                  </ItemRow>
+                ))}
               </div>
+            ) : (
+              <Empty icon={FileText} text="لا توجد طلبات" />
+            )}
+              </section>
+            )}
+
+            {activeSection === 'violations' && (
+              <section>
+                <SectionH
+                  icon={AlertTriangle}
+                  title="المخالفات"
+                  subtitle="سجل المخالفات والإنذارات"
+                  action={
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
+                      <Link href="/hr/discipline/cases"><ExternalLink className="h-3 w-3" />السجل الكامل</Link>
+                    </Button>
+                  }
+                />
+            {employeeViolations.length > 0 ? (
+              <div className="border-y border-border/40">
+                {employeeViolations.map(v => (
+                  <ItemRow key={v.id}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{v.typeNameAr}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {formatDate(v.date)}
+                          {v.description && <> <span className="mx-1.5 text-muted-foreground/40">·</span> {v.description}</>}
+                        </div>
+                        {v.typeHasDeduction && (
+                          <div className="text-xs text-destructive mt-0.5">
+                            خصم {v.typeDeductionValue}{' '}
+                            {v.typeDeductionKind === 'amount' ? 'ريال' : v.typeDeductionKind === 'day' ? 'يوم' : 'ساعة'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <StatusBadge status={v.status} />
+                  </ItemRow>
+                ))}
+              </div>
+            ) : (
+              <Empty icon={Award} text="سجل نظيف — لا توجد مخالفات" />
+            )}
+              </section>
+            )}
+
+            {activeSection === 'contracts' && (
+              <section>
+                <SectionH
+                  icon={FileSignature}
+                  title="العقود"
+                  subtitle="العقود الحالية والسابقة"
+                  action={
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
+                      <Link href="/hr/employees/contracts"><ExternalLink className="h-3 w-3" />إدارة العقود</Link>
+                    </Button>
+                  }
+                />
+            {employeeContracts.length > 0 ? (
+              <div className="border-y border-border/40">
+                {employeeContracts.map(c => (
+                  <ItemRow key={c.id} href={`/hr/employees/contracts?contractId=${c.id}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileSignature className="h-4 w-4 text-gold shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          عقد <span className="font-mono">#{c.contractNumber}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDate(c.startDate)} ← {formatDate(c.endDate)}
+                          <span className="mx-1.5 text-muted-foreground/40">·</span>
+                          {formatCurrency(c.baseSalary)}
+                          {c.allowanceLines.length > 0 && (
+                            <> <span className="mx-1.5 text-muted-foreground/40">·</span> +{c.allowanceLines.length} بدلات</>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={c.status} />
+                      <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                    </div>
+                  </ItemRow>
+                ))}
+              </div>
+            ) : (
+              <Empty
+                icon={FileSignature}
+                text="لا توجد عقود مسجلة"
+                action={
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/hr/employees/contracts">
+                      <Plus className="h-3.5 w-3.5 ml-1" />
+                      إضافة عقد
+                    </Link>
+                  </Button>
+                }
+              />
+            )}
+              </section>
+            )}
+
+            {activeSection === 'salary' && (
+              <section>
+                <SectionH
+                  icon={Receipt}
+                  title="كشوف الرواتب"
+                  subtitle="كشوف الرواتب الشهرية للموظف"
+                  action={
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
+                      <Link href="/payroll"><ExternalLink className="h-3 w-3" />الرواتب</Link>
+                    </Button>
+                  }
+                />
+            {employeePayslips.length > 0 ? (
+              <div className="border-y border-border/40">
+                {employeePayslips.map(p => (
+                  <ItemRow key={p.id}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Receipt className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium">{p.month} {p.year}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {p.presentDays}/{p.workingDays} يوم
+                          {p.lateDays > 0 && <> <span className="mx-1.5 text-muted-foreground/40">·</span> {p.lateDays} تأخير</>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-left shrink-0">
+                      <div className="font-arabic-display font-semibold text-sm tabular-nums">{formatCurrency(p.net)}</div>
+                      <div className="text-[10px] text-muted-foreground">صافي</div>
+                    </div>
+                  </ItemRow>
+                ))}
+              </div>
+            ) : (
+              <Empty icon={Receipt} text="لا توجد كشوف رواتب" />
+            )}
+              </section>
             )}
           </div>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-
-function InfoCard({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-border bg-card shadow-soft">
-      <div className="flex items-center gap-3 border-b border-border p-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Icon className="h-4 w-4" />
-        </div>
-        <h3 className="font-display font-semibold">{title}</h3>
+        </main>
       </div>
-      <div className="divide-y divide-border/60">{children}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value, dir }: { label: string; value: React.ReactNode; dir?: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-5 py-3">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium" dir={dir}>{value}</span>
     </div>
   );
 }

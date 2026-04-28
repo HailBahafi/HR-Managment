@@ -101,7 +101,7 @@ export function AppealsClient() {
           <tbody className="divide-y divide-border">
             {paged.length === 0 && <tr><td colSpan={6}><EmptyState title="لا توجد تظلمات" /></td></tr>}
             {paged.map(a => (
-              <tr key={a.id} className="hover:bg-muted/20 transition-colors">
+              <tr key={a.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => { /* Optional: open view modal */ }}>
                 <td className="px-4 py-3 font-mono text-xs font-semibold">{a.caseNumber}</td>
                 <td className="px-4 py-3 font-medium">{a.employeeNameAr}</td>
                 <td className="px-4 py-3">{APPEAL_CHANNEL_LABELS[a.channel]}</td>
@@ -114,8 +114,10 @@ export function AppealsClient() {
                     className={cn('h-8 text-xs border-0 shadow-none', STATUS_COLORS[a.status])}
                   />
                 </td>
-                <td className="px-4 py-3 text-left">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(a.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <td className="px-4 py-3 text-left" onClick={e => e.stopPropagation()}>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(a.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
                 </td>
               </tr>
             ))}

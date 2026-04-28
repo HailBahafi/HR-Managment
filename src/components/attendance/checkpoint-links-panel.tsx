@@ -180,62 +180,63 @@ export function CheckpointLinksPanel() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <th className="px-6 py-4 text-right">الدفعة</th>
-                <th className="px-6 py-4 text-right">ساري من</th>
-                <th className="px-6 py-4 text-right">عدد الروابط</th>
-                <th className="w-24 px-6 py-4 text-right">إجراء</th>
-              </tr>
-            </thead>
-            <tbody>
-              {batches.map(({ batchId, rows, eff: efd }) => (
-                <tr key={batchId} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground" dir="ltr">
-                      <Link2 className="h-3.5 w-3.5" />
-                      {batchId.slice(0, 20)}…
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-xs" dir="ltr">
-                    {efd ?? '—'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge variant="subtle" className="gap-1">
-                      <Users className="h-3 w-3" />
-                      <span className="number-ar">{rows.length}</span>
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive"
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm('حذف الدفعة؟')) removeCheckpointLinkBatch(batchId);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {batches.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
+          <Link2 className="mb-3 h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">لا توجد دفعات ربط بعد</p>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {batches.map(({ batchId, rows, eff: efd }) => (
+            <div
+              key={batchId}
+              className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Link2 className="h-5 w-5" />
+                </div>
+                <Badge variant="subtle" className="gap-1 text-xs">
+                  <Users className="h-3 w-3" />
+                  <span className="number-ar">{rows.length}</span>
+                </Badge>
+              </div>
+
+              {/* Batch ID */}
+              <h3 className="font-display text-sm font-bold leading-snug mb-1 group-hover:text-primary transition-colors">
+                دفعة ربط
+              </h3>
+              <p className="font-mono text-[11px] text-muted-foreground mb-4 truncate" dir="ltr">
+                <Link2 className="inline h-3 w-3 ml-1" />
+                {batchId.slice(0, 20)}…
+              </p>
+
+              {/* Footer */}
+              <div
+                className="flex items-center justify-between border-t border-border/60 pt-3"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="font-mono text-[11px] text-muted-foreground" dir="ltr">{efd ?? '—'}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
+                  onClick={() => { if (window.confirm('حذف كل عناصر هذه الدفعة؟')) removeCheckpointLinkBatch(batchId); }}
+                >
+                  <Trash2 className="h-3 w-3" /> حذف
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto border-border sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display text-lg">دفعة ربط</DialogTitle>
-            <DialogDescription>
-              اختر موظفين ونقاطاً: سيتم إنشاء ربط لكل تركيبة (ضرب ديكارتي). مثال: 3 موظفين × 2 نقاط = 6 روابط.
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">

@@ -17,6 +17,10 @@ import { cn } from '@/lib/utils';
 
 type DraftState = Omit<HRPublicHolidayRecord, 'id' | 'updatedAt'>;
 
+function makeHolidayCode() {
+  return `HOL-${Date.now().toString(36).toUpperCase()}`;
+}
+
 const EMPTY_DRAFT: DraftState = {
   code: '', nameAr: '', nameEn: '', date: '', recurring: true, sortOrder: 0, isActive: true,
 };
@@ -31,7 +35,7 @@ function formatDate(date: string) {
 
 export function PublicHolidaysPanel() {
   const { items, add, update, remove } = useHolidaysStore();
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالرمز أو الاسم…' }]);
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' }]);
   const search = (values.q as string) ?? '';
   const [open, setOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -43,7 +47,7 @@ export function PublicHolidaysPanel() {
     [...items]
       .filter((x) => {
         const q = search.toLowerCase();
-        return !q || x.code.toLowerCase().includes(q) || x.nameAr.includes(q);
+        return !q || x.nameAr.toLowerCase().includes(q);
       })
       .sort((a, b) => a.sortOrder - b.sortOrder),
     [items, search],
@@ -64,8 +68,7 @@ export function PublicHolidaysPanel() {
   };
 
   const validate = (): string | null => {
-    if (!draft.code.trim()) return 'الرمز مطلوب';
-    if (!draft.nameAr.trim()) return 'الاسم بالعربية مطلوب';
+    if (!draft.nameAr.trim()) return 'الاسم مطلوب';
     if (!draft.date.match(/^\d{2}-\d{2}$/)) return 'التاريخ يجب أن يكون بصيغة MM-DD (مثال: 09-23)';
     return null;
   };
@@ -73,7 +76,13 @@ export function PublicHolidaysPanel() {
   const save = () => {
     const err = validate();
     if (err) { setError(err); return; }
-    const payload = { ...draft, code: draft.code.trim().toUpperCase(), nameAr: draft.nameAr.trim(), nameEn: draft.nameAr.trim() };
+    const payload = {
+      ...draft,
+      code: editId ? draft.code : makeHolidayCode(),
+      sortOrder: editId ? draft.sortOrder : items.length + 1,
+      nameAr: draft.nameAr.trim(),
+      nameEn: draft.nameAr.trim(),
+    };
     if (editId) update(editId, payload);
     else add(payload);
     setOpen(false);
@@ -104,7 +113,6 @@ export function PublicHolidaysPanel() {
                 <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-3 text-right">التاريخ</th>
                   <th className="px-4 py-3 text-right">الاسم</th>
-                  <th className="px-4 py-3 text-right">الرمز</th>
                   <th className="px-4 py-3 text-right">التكرار</th>
                   <th className="px-4 py-3 text-right">الحالة</th>
                   <th className="w-24 px-4 py-3" />
@@ -112,7 +120,7 @@ export function PublicHolidaysPanel() {
               </thead>
               <tbody>
                 {sorted.map((item) => (
-                  <tr key={item.id} className="border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors">
+                  <tr key={item.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(item)}>
                     <td className="px-4 py-3">
                       <span className="font-mono text-xs font-bold text-primary" dir="ltr">{item.date}</span>
                       <p className="text-[10px] text-muted-foreground">{formatDate(item.date)}</p>
@@ -120,7 +128,6 @@ export function PublicHolidaysPanel() {
                     <td className="px-4 py-3">
                       <p className="font-medium">{item.nameAr}</p>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{item.code}</td>
                     <td className="px-4 py-3">
                       {item.recurring ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
@@ -142,8 +149,8 @@ export function PublicHolidaysPanel() {
                         {item.isActive ? 'نشط' : 'موقوف'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="icon" type="button" onClick={() => openEdit(item)} aria-label="تعديل">
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -174,21 +181,13 @@ export function PublicHolidaysPanel() {
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>الرمز <span className="text-destructive">*</span></Label>
-                <Input placeholder="NATIONAL" dir="ltr" className="font-mono uppercase" value={draft.code} onChange={(e) => patch('code', e.target.value.toUpperCase())} />
-              </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>التاريخ (MM-DD) <span className="text-destructive">*</span></Label>
                 <Input placeholder="09-23" dir="ltr" className="font-mono" value={draft.date} onChange={(e) => patch('date', e.target.value)} />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label>الاسم بالعربية <span className="text-destructive">*</span></Label>
+                <Label>الاسم <span className="text-destructive">*</span></Label>
                 <Input value={draft.nameAr} onChange={(e) => patch('nameAr', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>الترتيب</Label>
-                <Input type="number" min={0} value={draft.sortOrder} onChange={(e) => patch('sortOrder', Number(e.target.value) || 0)} />
               </div>
             </div>
 

@@ -90,13 +90,15 @@ export function PenaltiesClient() {
           <tbody className="divide-y divide-border">
             {paged.length === 0 && <tr><td colSpan={5}><EmptyState title="لا توجد عقوبات" /></td></tr>}
             {paged.map(p => (
-              <tr key={p.id} className="hover:bg-muted/20 transition-colors">
+              <tr key={p.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => { /* Optional: open view modal */ }}>
                 <td className="px-4 py-3 font-medium">{p.employeeNameAr}</td>
                 <td className="px-4 py-3 font-mono text-xs">{p.caseNumber}</td>
                 <td className="px-4 py-3">{PENALTY_TYPE_LABELS[p.penaltyType]}</td>
                 <td className="px-4 py-3 text-muted-foreground">{p.decisionDate}</td>
-                <td className="px-4 py-3 text-left">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <td className="px-4 py-3 text-left" onClick={e => e.stopPropagation()}>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
                 </td>
               </tr>
             ))}

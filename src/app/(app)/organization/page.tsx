@@ -73,13 +73,6 @@ export default function OrganizationPage() {
   return (
     <div className="space-y-6 animate-fade-in">
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatBlock label="الفروع" value={data.branches.length.toString()} icon={Network} accent="gold" />
-        <StatBlock label="الأقسام" value={data.departments.length.toString()} icon={Users} accent="success" />
-        <StatBlock label="إجمالي الموظفين" value={data.company.totalEmployees.toString()} icon={Users} accent="warning" />
-      </div>
-
       {/* Tree visualization */}
       <div className="relative overflow-auto rounded-lg border border-border bg-card p-6 shadow-soft">
         <div className="absolute inset-0 dotted-bg opacity-30" />
