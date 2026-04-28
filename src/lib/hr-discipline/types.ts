@@ -72,8 +72,7 @@ export interface HRDisciplineAppealRecord {
 export const hrDisciplineSections = [
   { slug: 'violation-types',      titleAr: 'أنواع المخالفات',      titleEn: 'Violation Types' },
   { slug: 'approval-assignment',  titleAr: 'إسناد الموافقات',        titleEn: 'Approval Assignment' },
-  { slug: 'violation-cases',      titleAr: 'قضايا المخالفات',      titleEn: 'Violation Cases' },
-  { slug: 'violation-approvals',  titleAr: 'الموافقات',             titleEn: 'Approvals' },
+  { slug: 'violation-cases',      titleAr: 'تسجيل  المخالفات',      titleEn: 'Violation Cases' },
   { slug: 'notices',              titleAr: 'الإنذارات والتحذيرات', titleEn: 'Notices' },
   { slug: 'investigations',       titleAr: 'التحقيقات',            titleEn: 'Investigations' },
   { slug: 'penalties',            titleAr: 'العقوبات',             titleEn: 'Penalties' },
@@ -91,12 +90,7 @@ export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDiscipli
     labelAr: 'الإعدادات', items: [
       { slug: 'violation-types',     labelAr: 'أنواع المخالفات' },
       { slug: 'approval-assignment', labelAr: 'إسناد الموافقات' },
-    ],
-  },
-  {
-    labelAr: 'العمليات', items: [
-      { slug: 'violation-cases',    labelAr: 'قضايا المخالفات' },
-      { slug: 'violation-approvals',labelAr: 'الموافقات' },
+      { slug: 'violation-cases',     labelAr: 'تسجيل المخالفات' },
     ],
   },
   {

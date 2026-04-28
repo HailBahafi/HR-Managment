@@ -46,7 +46,7 @@ export function AttendanceClient() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="rounded-lg">
-        <div className="rounded-md p-4">
+        <div className="rounded-md">
           <div>
             {section === 'templates' && <ShiftTemplatesPanel />}
             {section === 'assignment' && <AssignmentsPanel />}

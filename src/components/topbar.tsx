@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  Bell, Moon, Sun, LogOut, User, Settings, Menu,
+  Bell, Moon, Sun, LogOut, User, Settings, Shield, Menu,
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
@@ -49,6 +49,7 @@ export const navConfig: NavItem[] = [
     key: 'employees', label: 'الموظفين', icon: Users,
     groups: [{ items: [
       { label: 'سجل الموظفين',     href: '/employees',      icon: Users },
+      { label: 'الفروع',           href: '/branches',       icon: Building2 },
       { label: 'الأقسام',          href: '/departments',    icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/organization',   icon: Building2 },
     ]}],
@@ -98,7 +99,7 @@ export const navConfig: NavItem[] = [
       { label: 'التقارير والنماذج', href: '/hr/contracts/reports',         icon: FileSpreadsheet },
     ]}],
   },
-  { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
+  { key: 'permissions', label: 'الصلاحيات', href: '/permissions', icon: Shield },
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
@@ -141,7 +142,9 @@ function NavDropdownContent({
     <div
       className={cn(
         'nav-dropdown absolute right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-border/60 bg-popover/95 p-2 shadow-elevated backdrop-blur-xl',
-        multiGroup ? 'flex gap-1 min-w-[500px]' : 'min-w-[220px]',
+        multiGroup
+          ? cn('flex gap-1', groups.length >= 3 ? 'min-w-[500px]' : 'min-w-[360px]')
+          : 'min-w-[220px]',
       )}
       onMouseEnter={onOpen}
       onMouseLeave={onClose}

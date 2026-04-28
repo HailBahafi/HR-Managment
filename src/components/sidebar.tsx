@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
-  ShieldAlert, Wallet, BarChart3, Building2, Settings,
+  ShieldAlert, Wallet, BarChart3, Building2, Shield,
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList,
   ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen, FileSpreadsheet,
@@ -29,6 +29,7 @@ const mobileNav: MobileNavItem[] = [
     key: 'employees', label: 'الموظفين', icon: Users,
     children: [
       { label: 'سجل الموظفين', href: '/employees', icon: Users },
+      { label: 'الفروع', href: '/branches', icon: Building2 },
       { label: 'الأقسام', href: '/departments', icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/organization', icon: Building2 },
     ],
@@ -80,7 +81,7 @@ const mobileNav: MobileNavItem[] = [
       { label: 'التقارير والنماذج', href: '/hr/contracts/reports', icon: FileSpreadsheet },
     ],
   },
-  { key: 'settings', label: 'الإعدادات', href: '/settings', icon: Settings },
+  { key: 'permissions', label: 'الصلاحيات', href: '/permissions', icon: Shield },
 ];
 
 function MobileDrawer({ onClose }: { onClose: () => void }) {

@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  EmptyState, ActiveBadge, MinimalDropdown, Pagination,
+  EmptyState, ActiveBadge, MinimalDropdown,
 } from '@/components/hr-requests/shared-ui';
 import { useHRViolationTypesStore } from '@/lib/hr-discipline/violation-types-store';
 import { useHRDisciplineApprovalAssignmentTemplatesStore } from '@/lib/hr-discipline/discipline-approval-store';
@@ -43,8 +43,6 @@ export function ViolationTypesClient() {
 
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث…' }]);
   const q = (values.q as string) ?? '';
-  const [page, setPage] = React.useState(1);
-  const [perPage, setPerPage] = React.useState(10);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -54,8 +52,6 @@ export function ViolationTypesClient() {
   const filtered = types.filter(t =>
     t.nameAr.toLowerCase().includes(q.toLowerCase())
   );
-  const total = filtered.length;
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
 
   const openCreate = () => { setDraft(EMPTY); setEditId(null); setFormError(null); setDrawerOpen(true); };
@@ -98,75 +94,46 @@ export function ViolationTypesClient() {
         <Button variant="luxe" size="sm" onClick={openCreate}><Plus className="h-4 w-4 ml-1" />إضافة نوع</Button>
       </div>
 
-      {/* Desktop table */}
-      <div className="hidden md:block rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 border-b border-border">
-            <tr>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الاسم</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الاستقطاع</th>
-              <th className="px-4 py-3 text-center font-medium text-muted-foreground">علامات</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الحالة</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {paged.length === 0 && (
-              <tr><td colSpan={5}><EmptyState icon={AlertTriangle} title="لا توجد أنواع مخالفات" /></td></tr>
-            )}
-            {paged.map(t => (
-              <tr key={t.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(t)}>
-                <td className="px-4 py-3">
-                  <div className="font-medium">{t.nameAr}</div>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  {t.hasDeduction ? `${DEDUCTION_KIND_LABELS[t.deductionKind]} (${t.deductionValue})` : <span className="text-muted-foreground">—</span>}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-center gap-2">
-                    {t.needsWarning ? <CheckCircle2 className="h-4 w-4 text-amber-500" /> : <XCircle className="h-4 w-4 text-muted-foreground/30" />}
-                    {t.needsInvestigation ? <CheckCircle2 className="h-4 w-4 text-blue-500" /> : <XCircle className="h-4 w-4 text-muted-foreground/30" />}
-                    {t.needsApproval ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-muted-foreground/30" />}
-                  </div>
-                </td>
-                <td className="px-4 py-3"><ActiveBadge active={t.isActive} /></td>
-                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {total > 0 && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
-
-      {/* Mobile cards */}
-      <div className="md:hidden space-y-2">
-        {paged.length === 0 && <EmptyState icon={AlertTriangle} title="لا توجد أنواع مخالفات" />}
-        {paged.map(t => (
-          <div key={t.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ActiveBadge active={t.isActive} />
-                </div>
-                <div className="mt-1 font-medium">{t.nameAr}</div>
+      {filtered.length === 0 ? (
+        <EmptyState icon={AlertTriangle} title="لا توجد أنواع مخالفات" />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map(t => (
+            <div
+              key={t.id}
+              className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col cursor-pointer"
+              onClick={() => openEdit(t)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold truncate min-w-0">{t.nameAr}</p>
+                <ActiveBadge active={t.isActive} />
               </div>
-              <div className="flex gap-1 shrink-0">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              {t.hasDeduction && (
+                <p className="text-xs text-muted-foreground">الاستقطاع: {DEDUCTION_KIND_LABELS[t.deductionKind]} ({t.deductionValue})</p>
+              )}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5', t.needsWarning ? 'border-amber-300/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' : 'border-border bg-muted/30 text-muted-foreground/60')}>
+                  {t.needsWarning ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} إنذار
+                </span>
+                <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5', t.needsInvestigation ? 'border-blue-300/50 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' : 'border-border bg-muted/30 text-muted-foreground/60')}>
+                  {t.needsInvestigation ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} تحقيق
+                </span>
+                <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5', t.needsApproval ? 'border-emerald-300/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' : 'border-border bg-muted/30 text-muted-foreground/60')}>
+                  {t.needsApproval ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} اعتماد
+                </span>
+              </div>
+              <div className="mt-auto flex gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="gap-1.5 flex-1" onClick={() => openEdit(t)}>
+                  <Pencil className="h-3.5 w-3.5" /> تعديل
+                </Button>
+                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(t.id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
-            {t.hasDeduction && (
-              <div className="text-xs text-muted-foreground">الاستقطاع: {DEDUCTION_KIND_LABELS[t.deductionKind]} ({t.deductionValue})</div>
-            )}
-          </div>
-        ))}
-        {total > perPage && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Drawer */}
       <HRSettingsFormDrawer

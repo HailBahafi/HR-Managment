@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
-  PageHeader, EmptyState, Pagination,
+  EmptyState,
 } from '@/components/hr-requests/shared-ui';
 import { useHRDisciplinePayrollDeductionsStore } from '@/lib/hr-discipline/payroll-deductions-store';
 import { DEDUCTION_KIND_LABELS, DEDUCTION_STATUS_LABELS } from '@/lib/hr-discipline/types';
@@ -21,79 +21,45 @@ export function DeductionsClient() {
   const { deductions } = useHRDisciplinePayrollDeductionsStore();
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو الموظف…' }]);
   const q = (values.q as string) ?? '';
-  const [page, setPage] = React.useState(1);
-  const [perPage, setPerPage] = React.useState(10);
-
-  React.useEffect(() => { setPage(1); }, [q]);
 
   const filtered = deductions.filter(d =>
     d.caseNumber.includes(q) || d.employeeNameAr.includes(q) || d.reasonAr.includes(q) || d.month.includes(q)
   );
-  const total = filtered.length;
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   return (
     <div className="space-y-4">
-
-      {/* Desktop */}
-      <div className="hidden md:block rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 border-b border-border">
-            <tr>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">رقم القضية</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الموظف</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">السبب</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">النوع</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">المبلغ</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الشهر</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الحالة</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {paged.length === 0 && <tr><td colSpan={7}><EmptyState title="لا توجد استقطاعات" /></td></tr>}
-            {paged.map(d => (
-              <tr key={d.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => { /* Optional: open view modal */ }}>
-                <td className="px-4 py-3 font-mono text-xs font-semibold">{d.caseNumber}</td>
-                <td className="px-4 py-3 font-medium">{d.employeeNameAr}</td>
-                <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{d.reasonAr}</td>
-                <td className="px-4 py-3">{DEDUCTION_KIND_LABELS[d.deductionKind]}</td>
-                <td className="px-4 py-3 font-medium">{d.amount.toLocaleString('ar-SA')} ر.س</td>
-                <td className="px-4 py-3 text-muted-foreground">{d.month}</td>
-                <td className="px-4 py-3">
-                  <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium', STATUS_COLORS[d.status])}>
-                    {DEDUCTION_STATUS_LABELS[d.status]}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {total > 0 && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
-
-      {/* Mobile */}
-      <div className="md:hidden space-y-2">
-        {paged.length === 0 && <EmptyState title="لا توجد استقطاعات" />}
-        {paged.map(d => (
-          <div key={d.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-mono text-xs font-bold">{d.caseNumber}</div>
-                <div className="font-medium">{d.employeeNameAr}</div>
-                <div className="text-xs text-muted-foreground">{d.reasonAr}</div>
+      {filtered.length === 0 ? (
+        <EmptyState title="لا توجد استقطاعات" />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map(d => (
+            <div key={d.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] font-bold text-muted-foreground">{d.caseNumber}</p>
+                  <p className="font-semibold truncate mt-0.5">{d.employeeNameAr}</p>
+                </div>
+                <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', STATUS_COLORS[d.status])}>
+                  {DEDUCTION_STATUS_LABELS[d.status]}
+                </span>
               </div>
-              <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium shrink-0', STATUS_COLORS[d.status])}>
-                {DEDUCTION_STATUS_LABELS[d.status]}
-              </span>
+              {d.reasonAr && <p className="text-xs text-muted-foreground line-clamp-2">{d.reasonAr}</p>}
+              <div className="flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {DEDUCTION_KIND_LABELS[d.deductionKind]}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {d.month}
+                </span>
+              </div>
+              <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
+                <span className="text-[10px] text-muted-foreground">المبلغ</span>
+                <span className="font-semibold">{d.amount.toLocaleString('ar-SA')} ر.س</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-sm pt-1 border-t border-border">
-              <span className="text-muted-foreground">{DEDUCTION_KIND_LABELS[d.deductionKind]} · {d.month}</span>
-              <span className="font-semibold">{d.amount.toLocaleString('ar-SA')} ر.س</span>
-            </div>
-          </div>
-        ))}
-        {total > perPage && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

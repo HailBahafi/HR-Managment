@@ -337,22 +337,14 @@ function DayColumn({
   return (
     <div className={cn('rounded-xl border p-4 space-y-3', wd.isRest ? 'border-dashed border-border bg-muted/20' : 'border-border shadow-soft')}>
       {/* Day header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold', wd.isRest ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary')}>
-            {DAY_SHORT[wd.day]}
-          </div>
-          <span className="font-semibold">{DAY_LABELS[wd.day]}</span>
-          {!wd.isRest && wd.periods.length > 0 && (
-            <Badge variant="secondary" className="h-5 text-[10px]">{wd.periods.length} فترة</Badge>
-          )}
-        </div>
+      <div className="flex items-center justify-end">
+
         <label
           htmlFor={restToggleId}
           className={cn(
             'flex cursor-pointer select-none items-center gap-2 rounded-full border-2 px-3 py-1.5 transition-all duration-200',
             wd.isRest
-              ? 'border-amber-500/45 bg-amber-500/[0.12] shadow-sm shadow-amber-500/10'
+              ? 'border-amber-500/45 bg-amber-500/12 shadow-sm shadow-amber-500/10'
               : 'border-border/70 bg-muted/20 hover:bg-muted/35',
           )}
         >

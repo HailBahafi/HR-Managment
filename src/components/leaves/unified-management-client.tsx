@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { usePageFilters } from '@/components/filter-panel-context';
@@ -176,91 +177,105 @@ function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
   onApprove: (l: UnifiedLeaveRecord) => void;
   onReject: (l: UnifiedLeaveRecord) => void;
 }) {
-  if (leaves.length === 0)
-    return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center">
-        <CalendarDays className="mb-3 h-10 w-10 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">لا توجد إجازات بهذه الفلاتر</p>
-      </div>
-    );
+  const columns: ColumnDef<UnifiedLeaveRecord>[] = [
+    {
+      key: 'employee',
+      title: 'الموظف',
+      render: (l) => {
+        const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+              {emp?.nameAr.charAt(0) ?? '?'}
+            </div>
+            <div>
+              <p className="font-medium">{emp?.nameAr ?? l.employeeId}</p>
+              <p className="text-[10px] text-muted-foreground">{MOCK_DEPARTMENTS.find(d => d.id === emp?.departmentId)?.nameAr}</p>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'type',
+      title: 'النوع',
+      render: (l) => {
+        const typeCfg = TYPE_STYLE[l.type];
+        return (
+          <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', typeCfg.color)}>
+            <span className={cn('h-1.5 w-1.5 rounded-full', typeCfg.dot)} />
+            {LEAVE_TYPE_LABELS[l.type]}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      render: (l) => {
+        const statusCfg = STATUS_STYLE[l.status];
+        return (
+          <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', statusCfg.color)}>
+            <span className={cn('h-1.5 w-1.5 rounded-full', statusCfg.dot)} />
+            {statusCfg.label}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'start',
+      title: 'من',
+      render: (l) => <span className="font-mono text-xs" dir="ltr">{l.start}</span>,
+    },
+    {
+      key: 'end',
+      title: 'إلى',
+      render: (l) => <span className="font-mono text-xs" dir="ltr">{l.end}</span>,
+    },
+    {
+      key: 'days',
+      title: 'أيام',
+      render: (l) => <span className="font-mono text-xs number-ar">{l.workingDays}</span>,
+    },
+    {
+      key: 'branch',
+      title: 'الفرع',
+      hideOnMobile: true,
+      render: (l) => {
+        const branch = MOCK_BRANCHES.find((b) => b.id === l.requestBranchId);
+        return <span className="text-xs text-muted-foreground">{branch?.nameAr}</span>;
+      },
+    },
+    {
+      key: 'actions',
+      title: 'قرار',
+      isActions: true,
+      render: (l) => {
+        const canAct = canActOnLeave(l);
+        return canAct ? (
+          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600" onClick={(e) => { e.stopPropagation(); onApprove(l); }} aria-label="موافقة">
+              <CheckCircle2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={(e) => { e.stopPropagation(); onReject(l); }} aria-label="رفض">
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <span className="text-[10px] text-muted-foreground/50">—</span>
+        );
+      },
+    },
+  ];
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <th className="px-4 py-3 text-right">الموظف</th>
-              <th className="px-4 py-3 text-right">النوع</th>
-              <th className="px-4 py-3 text-right">الحالة</th>
-              <th className="px-4 py-3 text-right">من</th>
-              <th className="px-4 py-3 text-right">إلى</th>
-              <th className="px-4 py-3 text-right">أيام</th>
-              <th className="px-4 py-3 text-right">الفرع</th>
-              <th className="px-4 py-3 text-right">قرار</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaves.map((l) => {
-              const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
-              const branch = MOCK_BRANCHES.find((b) => b.id === l.requestBranchId);
-              const typeCfg = TYPE_STYLE[l.type];
-              const statusCfg = STATUS_STYLE[l.status];
-              const canAct = canActOnLeave(l);
-              return (
-                <tr
-                  key={l.id}
-                  className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors"
-                  onClick={() => onDetail(l)}
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                        {emp?.nameAr.charAt(0) ?? '?'}
-                      </div>
-                      <div>
-                        <p className="font-medium">{emp?.nameAr ?? l.employeeId}</p>
-                        <p className="text-[10px] text-muted-foreground">{MOCK_DEPARTMENTS.find(d => d.id === emp?.departmentId)?.nameAr}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', typeCfg.color)}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full', typeCfg.dot)} />
-                      {LEAVE_TYPE_LABELS[l.type]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', statusCfg.color)}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full', statusCfg.dot)} />
-                      {statusCfg.label}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs" dir="ltr">{l.start}</td>
-                  <td className="px-4 py-3 font-mono text-xs" dir="ltr">{l.end}</td>
-                  <td className="px-4 py-3 font-mono text-xs number-ar">{l.workingDays}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{branch?.nameAr}</td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    {canAct ? (
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600" onClick={() => onApprove(l)} aria-label="موافقة">
-                          <CheckCircle2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => onReject(l)} aria-label="رفض">
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground/50">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <DataTable
+      columns={columns}
+      data={leaves}
+      keyExtractor={(l) => l.id}
+      emptyText="لا توجد إجازات بهذه الفلاتر"
+      onRowClick={onDetail}
+    />
   );
 }
 

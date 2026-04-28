@@ -470,14 +470,6 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                         </div>
                       </div>
                     </div>
-
-                    {/* Inline KPI strip */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <Stat icon={CheckCircle2} value={stats.present} label="أيام حضور" sub={`من ${stats.total} يوم`} accent="success" />
-                      <Stat icon={Clock} value={stats.late} label="تأخيرات" accent={stats.late > 0 ? 'warning' : undefined} />
-                      <Stat icon={AlertTriangle} value={employeeViolations.length} label="مخالفات" accent={employeeViolations.length > 0 ? 'destructive' : undefined} />
-                      <Stat icon={Wallet} value={formatCurrency(netSalary)} label="الراتب الصافي" accent="gold" />
-                    </div>
                   </div>
                 </div>
 

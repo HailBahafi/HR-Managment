@@ -3,18 +3,17 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, FileText, Trash2, LayoutGrid, List, User, CalendarRange, Coins, ChevronRight, BarChart2 } from 'lucide-react';
+import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { SetPageTitle } from '@/components/set-page-title';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
-  HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, Pagination,
+  HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
   MinimalDropdown, SearchableDropdown,
 } from '@/components/hr-requests/shared-ui';
 import {
@@ -115,15 +114,6 @@ function formToDraft(v: FormValues, status: HRContractLifecycleStatus = 'draft')
 type PanelMode = 'create' | 'edit' | 'view';
 type StatusFilter = 'all' | HRContractLifecycleStatus;
 type KindFilter = 'all' | HRContractKind;
-type ViewMode = 'table' | 'cards';
-
-const CONTRACT_CARD_STYLE: Partial<Record<HRContractLifecycleStatus, { border: string; accent: string }>> = {
-  draft:      { border: 'border-border',         accent: 'bg-muted/30' },
-  active:     { border: 'border-success/25',     accent: 'bg-success/5' },
-  expired:    { border: 'border-primary/20',     accent: 'bg-primary/5' },
-  terminated: { border: 'border-destructive/20', accent: 'bg-destructive/5' },
-  archived:   { border: 'border-border',         accent: 'bg-muted/20' },
-};
 
 function TerminateModal({ open, reason, onReasonChange, onConfirm, onCancel }: {
   open: boolean; reason: string; onReasonChange: (v: string) => void;
@@ -201,7 +191,6 @@ export function EmploymentContractsClient() {
   const statusFilter = (values.status as StatusFilter) || 'all';
   const kindFilter = (values.kind as KindFilter) || 'all';
 
-  const [viewMode, setViewMode] = React.useState<ViewMode>('table');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [panelMode, setPanelMode] = React.useState<PanelMode>('create');
   const [selected, setSelected] = React.useState<HRContractRecord | null>(null);
@@ -210,8 +199,6 @@ export function EmploymentContractsClient() {
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
   const [terminateId, setTerminateId] = React.useState<string | null>(null);
   const [terminateReason, setTerminateReason] = React.useState('');
-  const [page, setPage] = React.useState(1);
-  const perPage = 10;
 
   const getEmpName = (id: string) => allEmployees.find(e => e.id === id)?.nameAr ?? id;
 
@@ -344,12 +331,7 @@ export function EmploymentContractsClient() {
   );
 
   const total = filtered.length;
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
   const readOnly = panelMode === 'view';
-
-  const activeCount     = contracts.filter(c => c.status === 'active').length;
-  const draftCount      = contracts.filter(c => c.status === 'draft').length;
-  const expiredCount    = contracts.filter(c => c.status === 'expired' || c.status === 'terminated').length;
 
   const ContractActions = ({ c }: { c: HRContractRecord }) => (
     <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
@@ -376,26 +358,6 @@ export function EmploymentContractsClient() {
     <>
       <SetPageTitle titleAr="عقود العمل" descriptionAr="إدارة دورة حياة عقود العمل الوظيفية." iconName="FileText" />
 
-      {/* ── Summary stat strip ── */}
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-soft">
-          <p className="text-[10px] font-medium text-muted-foreground">إجمالي العقود</p>
-          <p className="text-2xl font-bold tabular-nums leading-none mt-0.5 text-foreground">{contracts.length}</p>
-        </div>
-        <div className="rounded-xl border border-success/20 bg-success/6 px-4 py-3 shadow-soft">
-          <p className="text-[10px] font-medium text-muted-foreground">نشطة</p>
-          <p className="text-2xl font-bold tabular-nums leading-none mt-0.5 text-success">{activeCount}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 shadow-soft">
-          <p className="text-[10px] font-medium text-muted-foreground">مسودات</p>
-          <p className="text-2xl font-bold tabular-nums leading-none mt-0.5 text-muted-foreground">{draftCount}</p>
-        </div>
-        <div className="rounded-xl border border-destructive/15 bg-destructive/5 px-4 py-3 shadow-soft">
-          <p className="text-[10px] font-medium text-muted-foreground">منتهية / مُنهاة</p>
-          <p className="text-2xl font-bold tabular-nums leading-none mt-0.5 text-destructive">{expiredCount}</p>
-        </div>
-      </div>
-
       {/* ── Toolbar ── */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">{total} عقد</span>
@@ -405,146 +367,56 @@ export function EmploymentContractsClient() {
               <BarChart2 className="h-4 w-4" />تقارير المستحقات
             </Button>
           </Link>
-          <div className="flex items-center rounded-xl border border-border bg-card p-0.5 shadow-soft">
-            <button
-              onClick={() => setViewMode('cards')}
-              className={cn('flex h-7 w-7 items-center justify-center rounded-lg transition-all', viewMode === 'cards' ? 'bg-primary text-primary-foreground shadow-soft' : 'text-muted-foreground hover:text-foreground')}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={cn('flex h-7 w-7 items-center justify-center rounded-lg transition-all', viewMode === 'table' ? 'bg-primary text-primary-foreground shadow-soft' : 'text-muted-foreground hover:text-foreground')}
-            >
-              <List className="h-3.5 w-3.5" />
-            </button>
-          </div>
           <Button onClick={openCreate} className="gap-1.5">
             <Plus className="h-4 w-4" />عقد جديد
           </Button>
         </div>
       </div>
 
-      {paged.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptyState icon={FileText} title="لا توجد عقود" description="أنشئ عقد عمل جديداً للبدء." />
-      ) : viewMode === 'cards' ? (
-        /* ── CARDS VIEW ── */
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 animate-fade-in">
-          {paged.map(c => {
-            const style = CONTRACT_CARD_STYLE[c.status] ?? { border: 'border-border', accent: 'bg-muted/20' };
-            return (
-              <Card
-                key={c.id}
-                className={cn('luxe-card border cursor-pointer transition-all duration-200 hover:shadow-elevated', style.border)}
-                onClick={() => openView(c)}
-              >
-                <CardContent className="p-0 overflow-hidden rounded-lg">
-                  <div className={cn('px-4 pt-4 pb-3', style.accent)}>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-sm truncate">{getEmpName(c.employeeId)}</p>
-                          <p className="font-mono text-[10px] text-muted-foreground">{c.contractNumber}</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className={cn('shrink-0 text-[10px]', CONTRACT_STATUS_COLORS[c.status])}>
-                        {CONTRACT_STATUS_LABELS[c.status]}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <FileText className="h-3 w-3" />{CONTRACT_KIND_LABELS[c.contractType]}
-                      </span>
-                      <span className="flex items-center gap-1 font-mono">
-                        <CalendarRange className="h-3 w-3" />{c.startDate}<ChevronRight className="h-3 w-3 opacity-40" />{c.endDate}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 border-t border-border/50 bg-card/60 px-4 py-2">
-                    <span className="flex items-center gap-1 text-sm font-bold tabular-nums text-foreground">
-                      <Coins className="h-3.5 w-3.5 text-gold" />
-                      {c.baseSalary.toLocaleString('ar-SA')}
-                      <span className="text-[10px] font-normal text-muted-foreground">{c.currency}</span>
-                    </span>
-                    <ContractActions c={c} />
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
       ) : (
-        /* ── TABLE VIEW ── */
-        <div className="overflow-hidden rounded-2xl border border-border shadow-elevated animate-fade-in">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-linear-to-b from-muted/70 to-muted/40 text-muted-foreground">
-                  <th className="border-e border-border/60 px-4 py-3 text-right font-semibold text-xs">رقم العقد</th>
-                  <th className="border-e border-border/60 px-4 py-3 text-right font-semibold text-xs">الموظف</th>
-                  <th className="border-e border-border/60 px-4 py-3 text-right font-semibold text-xs hidden sm:table-cell">النوع</th>
-                  <th className="border-e border-border/60 px-4 py-3 text-right font-semibold text-xs hidden md:table-cell">المدة</th>
-                  <th className="border-e border-border/60 px-4 py-3 text-right font-semibold text-xs hidden md:table-cell">الراتب</th>
-                  <th className="border-e border-border/60 px-4 py-3 text-right font-semibold text-xs">الحالة</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {paged.map(c => (
-                  <tr
-                    key={c.id}
-                    className="group border-b border-border/50 last:border-0 even:bg-muted/10 hover:bg-primary/4 transition-colors duration-150 cursor-pointer"
-                    onClick={() => openView(c)}
-                  >
-                    <td className="border-e border-border/40 px-4 py-3">
-                      <span className="font-mono text-xs text-muted-foreground">{c.contractNumber}</span>
-                    </td>
-                    <td className="border-e border-border/40 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                          <User className="h-3.5 w-3.5" />
-                        </div>
-                        <span className="font-semibold text-sm">{getEmpName(c.employeeId)}</span>
-                      </div>
-                    </td>
-                    <td className="border-e border-border/40 px-4 py-3 hidden sm:table-cell">
-                      <span className="text-xs text-muted-foreground">{CONTRACT_KIND_LABELS[c.contractType]}</span>
-                    </td>
-                    <td className="border-e border-border/40 px-4 py-3 hidden md:table-cell">
-                      <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
-                        {c.startDate}<ChevronRight className="h-3 w-3 opacity-40" />{c.endDate}
-                      </span>
-                    </td>
-                    <td className="border-e border-border/40 px-4 py-3 hidden md:table-cell">
-                      <span className="font-mono font-semibold tabular-nums text-sm">
-                        {c.baseSalary.toLocaleString('ar-SA')}
-                        <span className="ms-1 text-[10px] font-normal text-muted-foreground">{c.currency}</span>
-                      </span>
-                    </td>
-                    <td className="border-e border-border/40 px-4 py-3">
-                      <Badge variant="outline" className={cn('text-[10px]', CONTRACT_STATUS_COLORS[c.status])}>
-                        {CONTRACT_STATUS_LABELS[c.status]}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ContractActions c={c} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {total > perPage && (
-        <div className="mt-4">
-          <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={() => {}} />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map(c => (
+            <div
+              key={c.id}
+              className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col cursor-pointer"
+              onClick={() => openView(c)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">{getEmpName(c.employeeId)}</p>
+                    <p className="font-mono text-[10px] text-muted-foreground">{c.contractNumber}</p>
+                  </div>
+                </div>
+                <Badge variant="outline" className={cn('shrink-0 text-[10px]', CONTRACT_STATUS_COLORS[c.status])}>
+                  {CONTRACT_STATUS_LABELS[c.status]}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  <FileText className="h-3 w-3" />{CONTRACT_KIND_LABELS[c.contractType]}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
+                  <CalendarRange className="h-3 w-3" />{c.startDate}
+                  <ChevronRight className="h-3 w-3 opacity-40" />
+                  {c.endDate}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-sm font-bold tabular-nums text-foreground">
+                <Coins className="h-3.5 w-3.5 text-gold" />
+                {c.baseSalary.toLocaleString('ar-SA')}
+                <span className="text-[10px] font-normal text-muted-foreground">{c.currency}</span>
+              </div>
+              <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
+                <ContractActions c={c} />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

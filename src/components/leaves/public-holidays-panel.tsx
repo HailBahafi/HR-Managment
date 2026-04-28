@@ -100,47 +100,39 @@ export function PublicHolidaysPanel() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-        {sorted.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Calendar className="mb-3 h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">لا توجد عطل رسمية. ابدأ بإضافة عطلة جديدة.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3 text-right">التاريخ</th>
-                  <th className="px-4 py-3 text-right">الاسم</th>
-                  <th className="px-4 py-3 text-right">التكرار</th>
-                  <th className="px-4 py-3 text-right">الحالة</th>
-                  <th className="w-24 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((item) => (
-                  <tr key={item.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(item)}>
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-xs font-bold text-primary" dir="ltr">{item.date}</span>
-                      <p className="text-[10px] text-muted-foreground">{formatDate(item.date)}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{item.nameAr}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      {item.recurring ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
-                          <RefreshCw className="h-2.5 w-2.5" />
-                          سنوي
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">مرة واحدة</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
+      {sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
+          <Calendar className="mb-3 h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">لا توجد عطل رسمية. ابدأ بإضافة عطلة جديدة.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {sorted.map((item) => {
+              const [mm, dd] = item.date.split('-');
+              const monthName = MONTH_NAMES[(Number(mm) || 1) - 1] ?? '';
+              return (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openEdit(item)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(item); } }}
+                  className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary opacity-0 blur-2xl transition-opacity group-hover:opacity-10" />
+                  <div className="relative p-5">
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={cn(
+                        'flex h-12 w-12 flex-col items-center justify-center rounded-xl',
+                        item.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground/60',
+                      )}>
+                        <span className="font-display text-lg font-bold leading-none">{dd}</span>
+                        <span className="text-[9px] mt-0.5 font-medium">{monthName}</span>
+                      </div>
                       <span className={cn(
-                        'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
+                        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
                         item.isActive
                           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                           : 'border-border bg-muted text-muted-foreground',
@@ -148,27 +140,47 @@ export function PublicHolidaysPanel() {
                         <span className={cn('h-1.5 w-1.5 rounded-full', item.isActive ? 'bg-emerald-500' : 'bg-muted-foreground')} />
                         {item.isActive ? 'نشط' : 'موقوف'}
                       </span>
-                    </td>
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" type="button" onClick={() => openEdit(item)} aria-label="تعديل">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" type="button" className="text-destructive hover:text-destructive" aria-label="حذف" onClick={() => setConfirmId(item.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+
+                    {/* Name */}
+                    <h3 className="font-display text-base font-bold leading-snug mb-3 group-hover:text-primary transition-colors truncate">
+                      {item.nameAr}
+                    </h3>
+
+                    {/* Recurrence */}
+                    <div className="mb-4">
+                      {item.recurring ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          <RefreshCw className="h-2.5 w-2.5" />
+                          يتكرر سنوياً
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          مرة واحدة
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div
+                      className="flex items-center gap-1 border-t border-border/60 pt-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button variant="ghost" size="sm" type="button" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(item)}>
+                        <Pencil className="h-3 w-3" /> تعديل
+                      </Button>
+                      <Button variant="ghost" size="sm" type="button" className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive" onClick={() => setConfirmId(item.id)}>
+                        <Trash2 className="h-3 w-3" /> حذف
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-        <div className="border-t border-border bg-muted/20 px-4 py-2.5 text-xs text-muted-foreground">
-          {sorted.length} من {items.length} عطلة
-        </div>
-      </div>
+          <p className="text-xs text-muted-foreground">{sorted.length} من {items.length} عطلة</p>
+        </>
+      )}
 
       {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>

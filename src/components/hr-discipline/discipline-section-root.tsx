@@ -6,7 +6,6 @@ import { useSetPageTitle } from '@/components/page-title-context';
 import { ViolationTypesClient } from './violation-types-client';
 import { DisciplineApprovalClient } from './discipline-approval-client';
 import { ViolationCasesClient } from './violation-cases-client';
-import { ViolationApprovalsClient } from './violation-approvals-client';
 import { NoticesClient } from './notices-client';
 import { InvestigationsClient } from './investigations-client';
 import { PenaltiesClient } from './penalties-client';
@@ -26,7 +25,6 @@ export function HRDisciplineSectionRoot({ section, titleAr }: Props) {
       {section === 'violation-types' && <ViolationTypesClient />}
       {section === 'approval-assignment' && <DisciplineApprovalClient />}
       {section === 'violation-cases' && <ViolationCasesClient />}
-      {section === 'violation-approvals' && <ViolationApprovalsClient />}
       {section === 'notices' && <NoticesClient />}
       {section === 'investigations' && <InvestigationsClient />}
       {section === 'penalties' && <PenaltiesClient />}

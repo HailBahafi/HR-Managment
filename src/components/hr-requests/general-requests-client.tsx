@@ -8,7 +8,7 @@ import { usePageFilters } from '@/components/filter-panel-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer,
-  FormField, PageHeader, EmptyState, Pagination, ActiveBadge,
+  FormField, PageHeader, EmptyState, ActiveBadge,
 } from './shared-ui';
 import { HRRequestTemplateFieldsForm, validateTemplateRequired } from './template-fields-form';
 import type { HRRequestTemplateFieldsFormValues } from './template-fields-form';
@@ -18,9 +18,6 @@ import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-director
 import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/lib/hr-requests/types';
 import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID } from '@/lib/hr-requests/types';
 import { cn } from '@/lib/utils';
-
-const LS_PAGE = 'hr_requests_table_page';
-const LS_PER = 'hr_requests_table_per';
 
 function formatFieldSummary(record: HRRequestSubmissionRecord, template: HRRequestTemplateEntity | undefined): string {
   if (!template) return '—';
@@ -40,10 +37,6 @@ export function GeneralRequestsClient() {
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
   const [refreshing, setRefreshing] = React.useState(false);
-
-  // Pagination
-  const [page, setPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PAGE) ?? '1') : 1);
-  const [perPage, setPerPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PER) ?? '10') : 10);
 
   // Drawer / modals
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -94,8 +87,6 @@ export function GeneralRequestsClient() {
     });
   }, [submissions, appliedSearch, appliedDept, appliedEmp]);
 
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
-
 
   const refresh = () => {
     setRefreshing(true);
@@ -129,9 +120,6 @@ export function GeneralRequestsClient() {
     resetCreate();
   };
 
-  React.useEffect(() => { localStorage.setItem(LS_PAGE, String(page)); }, [page]);
-  React.useEffect(() => { localStorage.setItem(LS_PER, String(perPage)); }, [perPage]);
-
   const viewTemplate = viewRecord ? getTemplateById(viewRecord.templateId) : undefined;
 
   return (
@@ -145,61 +133,59 @@ export function GeneralRequestsClient() {
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-        {paginated.length === 0 ? (
-          <EmptyState icon={Search} title="لا توجد طلبات" description="جرّب تعديل الفلاتر أو أضف طلباً جديداً" />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3 text-right">القسم</th>
-                  <th className="px-4 py-3 text-right">الموظف</th>
-                  <th className="px-4 py-3 text-right">نوع الطلب</th>
-                  <th className="px-4 py-3 text-right">ملخص الحقول</th>
-                  <th className="px-4 py-3 text-right">التاريخ</th>
-                  <th className="w-20 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.map(r => {
-                  const tpl = getTemplateById(r.templateId);
-                  return (
-                    <tr key={r.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setViewRecord(r)}>
-                      <td className="px-4 py-3">
-                        <span className="font-medium text-xs">{r.departmentNameAr}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-medium">{r.employeeNameAr}</p>
-                        <p className="text-xs text-muted-foreground" dir="ltr">{r.employeeNameEn}</p>
-                      </td>
-                      <td className="px-4 py-3 text-xs font-medium">{r.requestTypeNameAr}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate">
-                        {formatFieldSummary(r, tpl)}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(r.createdAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" type="button" onClick={() => setViewRecord(r)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" type="button" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(r.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
+          <Search className="mb-3 h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">لا توجد طلبات. جرّب تعديل الفلاتر أو أضف طلباً جديداً</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map(r => {
+              const tpl = getTemplateById(r.templateId);
+              const initial = r.employeeNameAr.charAt(0);
+              return (
+                <div
+                  key={r.id}
+                  className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col cursor-pointer"
+                  onClick={() => setViewRecord(r)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {initial}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">{r.employeeNameAr}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{r.departmentNameAr}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                      {r.requestTypeNameAr}
+                    </span>
+                    {formatFieldSummary(r, tpl) !== '—' && (
+                      <span className="text-[11px] text-muted-foreground line-clamp-1">{formatFieldSummary(r, tpl)}</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {new Date(r.createdAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </p>
+                  <div className="mt-auto flex gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="gap-1.5 flex-1" onClick={() => setViewRecord(r)}>
+                      <Eye className="h-3.5 w-3.5" /> عرض
+                    </Button>
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(r.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-        <Pagination page={page} perPage={perPage} total={filtered.length} onPage={p => setPage(p)} onPerPage={p => { setPerPage(p); setPage(1); }} />
-      </div>
+        </>
+      )}
 
       {/* Create drawer */}
       <HRSettingsFormDrawer

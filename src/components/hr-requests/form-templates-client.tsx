@@ -10,16 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  EmptyState, Pagination, ActiveBadge,
+  ActiveBadge,
 } from './shared-ui';
 import { HRRequestTypeTemplateFieldsEditor } from './template-fields-editor';
 import { HRRequestTemplateFieldsForm } from './template-fields-form';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import type { HRRequestTemplateEntity, HRRequestFieldDefinition } from '@/lib/hr-requests/types';
 import { cn } from '@/lib/utils';
-
-const LS_PAGE = 'hr_form_templates_currentPage';
-const LS_PER = 'hr_form_templates_itemsPerPage';
 
 interface DraftForm {
   nameAr: string; sortOrder: number; isActive: boolean;
@@ -41,8 +38,6 @@ export function FormTemplatesClient() {
   const search = (values.q as string) ?? '';
   const filterKind = ((values.kind as FilterKind) || 'all');
   const filterActive = (values.active as string) === 'active';
-  const [page, setPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PAGE) ?? '1') : 1);
-  const [perPage, setPerPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PER) ?? '10') : 10);
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -51,9 +46,6 @@ export function FormTemplatesClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [previewTpl, setPreviewTpl] = React.useState<HRRequestTemplateEntity | null>(null);
   const [previewValues, setPreviewValues] = React.useState<Record<string, unknown>>({});
-
-  React.useEffect(() => { localStorage.setItem(LS_PAGE, String(page)); }, [page]);
-  React.useEffect(() => { localStorage.setItem(LS_PER, String(perPage)); }, [perPage]);
 
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase();
@@ -65,8 +57,6 @@ export function FormTemplatesClient() {
       return true;
     }).sort((a, b) => a.sortOrder - b.sortOrder);
   }, [templates, search, filterActive, filterKind]);
-
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
   const openCreate = () => {
     setEditId(null);
@@ -100,58 +90,55 @@ export function FormTemplatesClient() {
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-        {paginated.length === 0 ? (
-          <EmptyState icon={Star} title="لا توجد قوالب" description="أنشئ قالباً جديداً للبدء" />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3 text-right">الاسم</th>
-                  <th className="px-4 py-3 text-right">الحقول</th>
-                  <th className="px-4 py-3 text-right">الافتراضي</th>
-                  <th className="px-4 py-3 text-right">الحالة</th>
-                  <th className="w-28 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.map(t => (
-                  <tr key={t.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(t)}>
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{t.nameAr}</p>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{t.formFields.length} حقل</td>
-                    <td className="px-4 py-3">
-                      {t.isUniversalDefault && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gold/20 px-2.5 py-0.5 text-[11px] font-medium text-gold-foreground">
-                          <Star className="h-3 w-3" /> افتراضي عالمي
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3"><ActiveBadge active={t.isActive} /></td>
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" type="button" onClick={() => { setPreviewTpl(t); setPreviewValues({}); }}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" type="button" onClick={() => openEdit(t)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" type="button" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(t.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
+          <Star className="mb-3 h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">لا توجد قوالب. أنشئ قالباً جديداً للبدء</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map(t => (
+              <div
+                key={t.id}
+                className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col cursor-pointer"
+                onClick={() => openEdit(t)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">{t.nameAr}</p>
+                    {t.isUniversalDefault && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">افتراضي عالمي</p>
+                    )}
+                  </div>
+                  <ActiveBadge active={t.isActive} />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    {t.formFields.length} حقل
+                  </span>
+                  {t.isUniversalDefault && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gold/20 px-2.5 py-0.5 text-[11px] font-medium text-gold-foreground">
+                      <Star className="h-3 w-3" /> افتراضي
+                    </span>
+                  )}
+                </div>
+                <div className="mt-auto flex gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
+                  <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { setPreviewTpl(t); setPreviewValues({}); }}>
+                    <Eye className="h-3.5 w-3.5" /> معاينة
+                  </Button>
+                  <Button variant="ghost" size="sm" className="gap-1.5 flex-1" onClick={() => openEdit(t)}>
+                    <Pencil className="h-3.5 w-3.5" /> تعديل
+                  </Button>
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(t.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-        <Pagination page={page} perPage={perPage} total={filtered.length} onPage={setPage} onPerPage={p => { setPerPage(p); setPage(1); }} />
-      </div>
+        </>
+      )}
 
       {/* Drawer */}
       <HRSettingsFormDrawer

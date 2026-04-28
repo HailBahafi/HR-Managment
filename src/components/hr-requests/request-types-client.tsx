@@ -9,16 +9,13 @@ import { Switch } from '@/components/ui/switch';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   MinimalDropdown, ConfirmationModal, HRSettingsFormDrawer,
-  FormField, EmptyState, Pagination, ActiveBadge,
+  FormField, ActiveBadge,
 } from './shared-ui';
 import { HRRequestApprovalFlowEditor } from './approval-flow-editor';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import type { HRRequestTypeEntity, HRApprovalStage } from '@/lib/hr-requests/types';
 import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, validateApprovalStages, slugify } from '@/lib/hr-requests/types';
 import { cn } from '@/lib/utils';
-
-const LS_PAGE = 'hr_request_types_currentPage';
-const LS_PER = 'hr_request_types_itemsPerPage';
 
 interface DraftForm {
   scope: 'specific' | 'global';
@@ -44,9 +41,6 @@ export function RequestTypesClient() {
   const search = (values.q as string) ?? '';
   const filterDepts: string[] = [];
   const filterActive = (values.active as string) === 'active';
-  const [page, setPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PAGE) ?? '1') : 1);
-  const [perPage, setPerPage] = React.useState(() => typeof window !== 'undefined' ? Number(localStorage.getItem(LS_PER) ?? '10') : 10);
-
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -65,11 +59,6 @@ export function RequestTypesClient() {
       return true;
     }).sort((a, b) => a.sortOrder - b.sortOrder);
   }, [requestTypes, search, filterDepts, filterActive]);
-
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
-
-  React.useEffect(() => { localStorage.setItem(LS_PAGE, String(page)); }, [page]);
-  React.useEffect(() => { localStorage.setItem(LS_PER, String(perPage)); }, [perPage]);
 
   const openCreate = () => {
     setEditId(null);
@@ -134,55 +123,55 @@ export function RequestTypesClient() {
         </Button>
       </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-          {paginated.length === 0 ? (
-            <EmptyState icon={Filter} title="لا توجد أنواع" description="أضف نوعاً جديداً أو عدّل الفلاتر" />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="px-4 py-3 text-right">النطاق</th>
-                    <th className="px-4 py-3 text-right">الاسم</th>
-                    <th className="px-4 py-3 text-right">القالب</th>
-                    <th className="px-4 py-3 text-right">مراحل الموافقة</th>
-                    <th className="px-4 py-3 text-right">الحالة</th>
-                    <th className="w-20 px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated.map(rt => {
-                    const tpl = templates.find(t => t.id === rt.templateId);
-                    return (
-                      <tr key={rt.id} className="group border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => openEdit(rt)}>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{getDeptLabel(rt.departmentId)}</td>
-                        <td className="px-4 py-3 font-medium">{rt.nameAr}</td>
-                        <td className="px-4 py-3 text-xs">
-                          {tpl ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary font-medium">
-                              {tpl.nameAr}{tpl.isUniversalDefault ? ' ★' : ''}
-                              <span className="text-muted-foreground font-normal">({tpl.formFields.length} حقل)</span>
-                            </span>
-                          ) : <span className="text-muted-foreground">—</span>}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{rt.approvalStages?.length ?? 0} مرحلة</td>
-                        <td className="px-4 py-3"><ActiveBadge active={rt.isActive} /></td>
-                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" type="button" onClick={() => openEdit(rt)}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" type="button" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(rt.id)}><Trash2 className="h-4 w-4" /></Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <Pagination page={page} perPage={perPage} total={filtered.length} onPage={setPage} onPerPage={p => { setPerPage(p); setPage(1); }} />
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
+          <Filter className="mb-3 h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">لا توجد أنواع. أضف نوعاً جديداً أو عدّل الفلاتر</p>
         </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map(rt => {
+              const tpl = templates.find(t => t.id === rt.templateId);
+              return (
+                <div
+                  key={rt.id}
+                  className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col cursor-pointer"
+                  onClick={() => openEdit(rt)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-muted-foreground truncate">{getDeptLabel(rt.departmentId)}</p>
+                      <p className="font-semibold truncate">{rt.nameAr}</p>
+                    </div>
+                    <ActiveBadge active={rt.isActive} />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tpl ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                        {tpl.nameAr}{tpl.isUniversalDefault ? ' ★' : ''}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">بدون قالب</span>
+                    )}
+                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      {rt.approvalStages?.length ?? 0} مرحلة
+                    </span>
+                  </div>
+                  <div className="mt-auto flex gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="gap-1.5 flex-1" onClick={() => openEdit(rt)}>
+                      <Pencil className="h-3.5 w-3.5" /> تعديل
+                    </Button>
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(rt.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Drawer */}
       <HRSettingsFormDrawer

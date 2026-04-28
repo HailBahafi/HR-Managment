@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  PageHeader, EmptyState, MinimalDropdown, SearchableDropdown, Pagination,
+  EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/components/hr-requests/shared-ui';
 import { useHRDisciplineAppealsStore } from '@/lib/hr-discipline/appeals-store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
@@ -43,20 +43,14 @@ export function AppealsClient() {
 
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو الموظف…' }]);
   const q = (values.q as string) ?? '';
-  const [page, setPage] = React.useState(1);
-  const [perPage, setPerPage] = React.useState(10);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  React.useEffect(() => { setPage(1); }, [q]);
-
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
   const filtered = appeals.filter(a => a.caseNumber.includes(q) || a.employeeNameAr.includes(q));
-  const total = filtered.length;
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
@@ -85,76 +79,43 @@ export function AppealsClient() {
         </Button>
       </div>
 
-      {/* Desktop */}
-      <div className="hidden md:block rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 border-b border-border">
-            <tr>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">القضية</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الموظف</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">القناة</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">التاريخ</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الحالة</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {paged.length === 0 && <tr><td colSpan={6}><EmptyState title="لا توجد تظلمات" /></td></tr>}
-            {paged.map(a => (
-              <tr key={a.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => { /* Optional: open view modal */ }}>
-                <td className="px-4 py-3 font-mono text-xs font-semibold">{a.caseNumber}</td>
-                <td className="px-4 py-3 font-medium">{a.employeeNameAr}</td>
-                <td className="px-4 py-3">{APPEAL_CHANNEL_LABELS[a.channel]}</td>
-                <td className="px-4 py-3 text-muted-foreground">{a.date}</td>
-                <td className="px-4 py-3">
-                  <MinimalDropdown
-                    value={a.status}
-                    onChange={v => { update(a.id, { status: v as HRAppealStatus }); toast.success('تم تحديث الحالة'); }}
-                    options={STATUS_OPTIONS}
-                    className={cn('h-8 text-xs border-0 shadow-none', STATUS_COLORS[a.status])}
-                  />
-                </td>
-                <td className="px-4 py-3 text-left" onClick={e => e.stopPropagation()}>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(a.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {total > 0 && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
-
-      {/* Mobile */}
-      <div className="md:hidden space-y-2">
-        {paged.length === 0 && <EmptyState title="لا توجد تظلمات" />}
-        {paged.map(a => (
-          <div key={a.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-mono text-xs font-bold">{a.caseNumber}</div>
-                <div className="font-medium">{a.employeeNameAr}</div>
-                <div className="text-xs text-muted-foreground">{APPEAL_CHANNEL_LABELS[a.channel]} · {a.date}</div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', STATUS_COLORS[a.status])}>
+      {filtered.length === 0 ? (
+        <EmptyState title="لا توجد تظلمات" />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map(a => (
+            <div key={a.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] font-bold text-muted-foreground">{a.caseNumber}</p>
+                  <p className="font-semibold truncate mt-0.5">{a.employeeNameAr}</p>
+                </div>
+                <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', STATUS_COLORS[a.status])}>
                   {APPEAL_STATUS_LABELS[a.status]}
                 </span>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(a.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
-            </div>
-            <div className="pt-2 border-t border-border">
+              <div className="flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {APPEAL_CHANNEL_LABELS[a.channel]}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {a.date}
+                </span>
+              </div>
               <MinimalDropdown
                 value={a.status}
                 onChange={v => { update(a.id, { status: v as HRAppealStatus }); toast.success('تم تحديث الحالة'); }}
                 options={STATUS_OPTIONS}
               />
+              <div className="mt-auto flex justify-end border-t border-border pt-3">
+                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(a.id)}>
+                  <Trash2 className="h-3.5 w-3.5" /> حذف
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
-        {total > perPage && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
+          ))}
+        </div>
+      )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="تقديم تظلم" size="lg" onSave={handleSave} error={formError}>
         <FormField label="القضية" required>

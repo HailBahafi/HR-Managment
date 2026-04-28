@@ -227,20 +227,6 @@ export function AnalyticsClient() {
 
   return (
     <div className="space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="إجمالي الطلبات" value={totalLeaves} sub="في النظام" icon={Users} />
-        <KpiCard label="معتمدة" value={approved} sub={`${Math.round((approved / totalLeaves) * 100)}% من الإجمالي`} icon={TrendingUp} accent="bg-emerald-500" />
-        <KpiCard label="قيد الانتظار" value={pending} sub="تحتاج إجراء" icon={Clock} accent="bg-amber-500" />
-        <KpiCard label="أيام مُستهلكة" value={totalDays} sub="يوم عمل فعلي" icon={CalendarOff} accent="bg-primary" />
-      </div>
-
-      {/* Branch bar */}
-      <BranchBar />
-
-      {/* Timeline */}
-      <TimelineView />
-
       {/* Employee cards */}
       <div>
         <div className="mb-4 flex items-center justify-between">

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  PageHeader, EmptyState, MinimalDropdown, SearchableDropdown, Pagination,
+  EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/components/hr-requests/shared-ui';
 import { useHRDisciplineNoticesStore } from '@/lib/hr-discipline/notices-store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
@@ -31,21 +31,15 @@ export function NoticesClient() {
 
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم أو رقم القضية…' }]);
   const q = (values.q as string) ?? '';
-  const [page, setPage] = React.useState(1);
-  const [perPage, setPerPage] = React.useState(10);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  React.useEffect(() => { setPage(1); }, [q]);
-
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
   const filtered = notices.filter(n => n.employeeNameAr.includes(q) || n.reasonAr.includes(q));
-  const total = filtered.length;
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
@@ -69,55 +63,31 @@ export function NoticesClient() {
         </Button>
       </div>
 
-      {/* Desktop */}
-      <div className="hidden md:block rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 border-b border-border">
-            <tr>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الموظف</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">النوع</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">السبب</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">التاريخ</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {paged.length === 0 && <tr><td colSpan={5}><EmptyState title="لا توجد إنذارات" /></td></tr>}
-            {paged.map(n => (
-              <tr key={n.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => { /* Optional: open view modal */ }}>
-                <td className="px-4 py-3 font-medium">{n.employeeNameAr}</td>
-                <td className="px-4 py-3">{NOTICE_KIND_LABELS[n.kind]}</td>
-                <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{n.reasonAr}</td>
-                <td className="px-4 py-3 text-muted-foreground">{n.date}</td>
-                <td className="px-4 py-3 text-left" onClick={e => e.stopPropagation()}>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(n.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {total > 0 && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
-
-      {/* Mobile */}
-      <div className="md:hidden space-y-2">
-        {paged.length === 0 && <EmptyState title="لا توجد إنذارات" />}
-        {paged.map(n => (
-          <div key={n.id} className="rounded-xl border border-border bg-card p-4 space-y-1">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-medium">{n.employeeNameAr}</div>
-                <div className="text-xs text-muted-foreground">{NOTICE_KIND_LABELS[n.kind]} · {n.date}</div>
-                <div className="text-sm mt-1 text-muted-foreground">{n.reasonAr}</div>
+      {filtered.length === 0 ? (
+        <EmptyState title="لا توجد إنذارات" />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map(n => (
+            <div key={n.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">{n.employeeNameAr}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{n.date}</p>
+                </div>
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                  {NOTICE_KIND_LABELS[n.kind]}
+                </span>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => setDeleteId(n.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              <p className="text-xs text-muted-foreground line-clamp-3">{n.reasonAr}</p>
+              <div className="mt-auto flex justify-end border-t border-border pt-3">
+                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(n.id)}>
+                  <Trash2 className="h-3.5 w-3.5" /> حذف
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
-        {total > perPage && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
+          ))}
+        </div>
+      )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة إنذار" size="lg" onSave={handleSave} error={formError}>
         <FormField label="الموظف" required>

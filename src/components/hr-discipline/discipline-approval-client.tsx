@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  PageHeader, EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
+  EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
 } from '@/components/hr-requests/shared-ui';
 import { useHRDisciplineApprovalAssignmentTemplatesStore } from '@/lib/hr-discipline/discipline-approval-store';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
@@ -103,7 +103,7 @@ export function DisciplineApprovalClient() {
       {filtered.length === 0 ? (
         <EmptyState title="لا توجد قوالب" description="أضف قالباً لتعريف سلسلة موافقة" />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map(t => (
             <div key={t.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
               <div className="flex items-start justify-between gap-2">

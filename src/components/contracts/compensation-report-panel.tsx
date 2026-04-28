@@ -235,140 +235,19 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
 
       <div className={cn('space-y-5 transition-opacity duration-500', mounted ? 'opacity-100' : 'opacity-0')}>
 
-        {/* ══ HERO HEADER ══ */}
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/8 via-card to-card shadow-soft">
-          <div className="absolute inset-0 dotted-bg opacity-30 pointer-events-none" />
-          <div className="absolute -top-8 -start-8 h-32 w-32 rounded-full bg-primary/6 blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-6 -end-6 h-24 w-24 rounded-full bg-gold/8 blur-2xl pointer-events-none" />
-
-          <div className="relative flex flex-wrap items-start justify-between gap-4 px-6 py-5">
-            <div className="space-y-2.5">
-              {backBtn}
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
-                  <BarChart3 className="h-4.5 w-4.5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-foreground leading-tight">
-                    {period.nameAr || period.code}
-                  </h1>
-                  <p className="text-xs text-muted-foreground">تقرير المستحقات والخصومات</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground border border-border/60">
-                  <CalendarRange className="h-3.5 w-3.5" />
-                  <span className="font-mono">{period.periodStart}</span>
-                  <ChevronRight className="h-3 w-3 opacity-40" />
-                  <span className="font-mono">{period.periodEnd}</span>
-                </span>
-                <Badge
-                  className={cn(
-                    'rounded-lg border px-2.5 py-1 text-xs font-medium',
-                    PERIOD_STATUS_BADGE[period.status] ?? 'bg-muted text-muted-foreground',
-                  )}
-                >
-                  {PERIOD_STATUS_LABELS[period.status]}
-                </Badge>
-                {isApproved && (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-success/10 border border-success/25 px-2.5 py-1 text-xs font-semibold text-success animate-fade-in">
-                    <BadgeCheck className="h-3.5 w-3.5" />
-                    معتمد نهائياً
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {!isApproved && hasLines && (
-              <Button
-                onClick={handleAdvance}
-                className="shrink-0 shadow-elevated gap-1.5"
-              >
-                <Sparkles className="h-4 w-4" />
-                {advanceBtnLabel(compStatus)}
-              </Button>
-            )}
-          </div>
+        {/* ══ BACK BUTTON ══ */}
+        <div className="flex justify-start">
+          {backBtn}
         </div>
-
-        {/* ══ SUMMARY STAT CARDS ══ */}
-        {hasLines && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 animate-fade-in">
-            {[
-              {
-                label: 'الموظفون',
-                value: fmt(previews.length, 0),
-                sub: 'سجل تشغيل',
-                icon: Users,
-                color: 'text-primary',
-                bg: 'bg-primary/8 border-primary/20',
-              },
-              {
-                label: 'إجمالي الرواتب',
-                value: fmt(totalBase + totalAllowances),
-                sub: 'أساسي + بدلات',
-                icon: Wallet,
-                color: 'text-gold',
-                bg: 'bg-gold/8 border-gold/20',
-              },
-              {
-                label: 'إجمالي الخصومات',
-                value: fmt(totalDed),
-                sub: 'كل أنواع الخصم',
-                icon: TrendingDown,
-                color: 'text-destructive',
-                bg: 'bg-destructive/8 border-destructive/20',
-              },
-              {
-                label: 'صافي المستحق',
-                value: fmt(totalNet),
-                sub: 'بعد جميع التعديلات',
-                icon: BadgeCheck,
-                color: 'text-success',
-                bg: 'bg-success/8 border-success/20',
-              },
-            ].map(({ label, value, sub, icon: Icon, color, bg }) => (
-              <Card key={label} className={cn('luxe-card border', bg, 'transition-all duration-300')}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-medium text-muted-foreground truncate">{label}</p>
-                      <p className={cn('mt-1 text-xl font-bold font-mono tabular-nums leading-none', color)}>
-                        {value}
-                      </p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">{sub}</p>
-                    </div>
-                    <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border', bg)}>
-                      <Icon className={cn('h-4 w-4', color)} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
 
         {/* ══ REVIEW WORKFLOW ══ */}
         <Card className="overflow-hidden border-primary/20 animate-fade-in">
-          <div className="relative overflow-hidden bg-gradient-to-b from-primary/6 to-card">
-            <div className="flex items-center justify-between gap-3 border-b border-border/50 px-5 py-4">
-              <div>
-                <p className="text-sm font-bold text-foreground">مسار مراجعة التقرير</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  مستقل عن حالة الفترة — يُعاد لمسودة عند تغيير لقطة العقود.
-                </p>
-              </div>
-              {isApproved && (
-                <span className="inline-flex items-center gap-1.5 rounded-xl bg-success/12 border border-success/25 px-3 py-1.5 text-xs font-bold text-success animate-fade-in">
-                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  معتمد
-                </span>
-              )}
-            </div>
+          <div className="relative overflow-hidden bg-linear-to-b from-primary/6 to-card">
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <p className="shrink-0 text-xs font-bold text-foreground">مسار المراجعة</p>
 
-            <div className="px-5 py-5">
-              {/* Steps */}
-              <div className="flex w-full items-center" dir="ltr">
+              {/* Steps (compact, inline) */}
+              <div className="flex flex-1 items-center min-w-0" dir="ltr">
                 {REVIEW_STEPS.map((st, i) => {
                   const done   = i < reviewIdx || isApproved;
                   const active = i === reviewIdx && !isApproved;
@@ -378,58 +257,47 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
                     <React.Fragment key={st.key}>
                       {i > 0 && (
                         <div className={cn(
-                          'h-[2px] min-w-4 flex-1 rounded-full transition-all duration-500',
+                          'h-[2px] min-w-2 flex-1 rounded-full transition-all duration-500',
                           filled ? 'bg-primary' : 'bg-border',
                         )} />
                       )}
-                      <div className="flex flex-col items-center gap-1.5">
-                        <div className={cn(
-                          'flex h-10 w-10 items-center justify-center rounded-xl border-2 transition-all duration-300',
-                          done   && 'border-success/50 bg-success/10 text-success shadow-sm',
-                          active && 'border-primary bg-primary text-primary-foreground shadow-elevated scale-110',
+                      <div
+                        title={st.ar}
+                        className={cn(
+                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition-all duration-300',
+                          done   && 'border-success/50 bg-success/10 text-success',
+                          active && 'border-primary bg-primary text-primary-foreground shadow-soft',
                           !done && !active && 'border-border bg-muted/30 text-muted-foreground',
-                        )}>
-                          {done
-                            ? <Check className="h-4 w-4" strokeWidth={2.5} />
-                            : <StepIcon className="h-4 w-4" />
-                          }
-                        </div>
-                        <p className={cn(
-                          'w-20 text-center text-[9px] font-semibold leading-tight',
-                          active ? 'text-primary' : done ? 'text-success' : 'text-muted-foreground',
-                        )}>
-                          {st.ar}
-                        </p>
+                        )}
+                      >
+                        {done
+                          ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          : <StepIcon className="h-3.5 w-3.5" />
+                        }
                       </div>
                     </React.Fragment>
                   );
                 })}
               </div>
 
-              {/* Action row */}
-              <div className="mt-4 pt-4 border-t border-border/50">
-                {isApproved ? (
-                  <p className="text-center text-xs text-success font-medium">
-                    ✓ تقرير المستحقات والخصومات في حالة اعتماد نهائي.
-                  </p>
-                ) : (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-[11px] text-muted-foreground sm:max-w-[60%]">
-                      بعد الاطلاع والتحقق من الجدول، سجّل مرحلة المراجعة. الخطوة الأخيرة هي الاعتماد النهائي.
-                    </p>
-                    <Button
-                      size="sm"
-                      onClick={handleAdvance}
-                      disabled={!hasLines}
-                      title={!hasLines ? 'أضف سجلات تشغيل أولاً' : undefined}
-                      className="shrink-0 gap-1.5"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      {advanceBtnLabel(compStatus)}
-                    </Button>
-                  </div>
-                )}
-              </div>
+              {/* Action / status */}
+              {isApproved ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-success/12 border border-success/25 px-2 py-1 text-[11px] font-bold text-success">
+                  <Check className="h-3 w-3" strokeWidth={2.5} />
+                  معتمد
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleAdvance}
+                  disabled={!hasLines}
+                  title={!hasLines ? 'أضف سجلات تشغيل أولاً' : undefined}
+                  className="h-7 shrink-0 gap-1 px-2.5 text-xs"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  {advanceBtnLabel(compStatus)}
+                </Button>
+              )}
             </div>
           </div>
         </Card>
@@ -596,11 +464,6 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
           </div>
         )}
 
-        {hasLines && (
-          <div className="flex justify-start pt-1 animate-fade-in">
-            {backBtn}
-          </div>
-        )}
       </div>
     </>
   );

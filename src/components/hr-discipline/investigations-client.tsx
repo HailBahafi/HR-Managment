@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  PageHeader, EmptyState, MinimalDropdown, SearchableDropdown, Pagination,
+  EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/components/hr-requests/shared-ui';
 import { useHRDisciplineInvestigationsStore } from '@/lib/hr-discipline/investigations-store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
@@ -36,20 +36,14 @@ export function InvestigationsClient() {
 
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو المحقق…' }]);
   const q = (values.q as string) ?? '';
-  const [page, setPage] = React.useState(1);
-  const [perPage, setPerPage] = React.useState(10);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  React.useEffect(() => { setPage(1); }, [q]);
-
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
   const filtered = investigations.filter(i => i.caseNumber.includes(q) || i.employeeNameAr.includes(q) || i.investigatorName.includes(q));
-  const total = filtered.length;
-  const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
@@ -78,58 +72,34 @@ export function InvestigationsClient() {
         </Button>
       </div>
 
-      {/* Desktop */}
-      <div className="hidden md:block rounded-xl border border-border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 border-b border-border">
-            <tr>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">القضية</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">الموظف</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">المحقق</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">التاريخ</th>
-              <th className="px-4 py-3 text-right font-medium text-muted-foreground">النتيجة</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {paged.length === 0 && <tr><td colSpan={6}><EmptyState title="لا توجد تحقيقات" /></td></tr>}
-            {paged.map(inv => (
-              <tr key={inv.id} className="group hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => { /* Optional: open view modal */ }}>
-                <td className="px-4 py-3 font-mono text-xs font-semibold">{inv.caseNumber}</td>
-                <td className="px-4 py-3 font-medium">{inv.employeeNameAr}</td>
-                <td className="px-4 py-3 text-muted-foreground">{inv.investigatorName}</td>
-                <td className="px-4 py-3 text-muted-foreground">{inv.date}</td>
-                <td className="px-4 py-3">{INVESTIGATION_RESULT_LABELS[inv.result]}</td>
-                <td className="px-4 py-3 text-left" onClick={e => e.stopPropagation()}>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {total > 0 && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
-
-      {/* Mobile */}
-      <div className="md:hidden space-y-2">
-        {paged.length === 0 && <EmptyState title="لا توجد تحقيقات" />}
-        {paged.map(inv => (
-          <div key={inv.id} className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-mono text-xs font-bold">{inv.caseNumber}</div>
-                <div className="font-medium">{inv.employeeNameAr}</div>
-                <div className="text-xs text-muted-foreground">{inv.investigatorName} · {inv.date}</div>
-                <div className="text-xs mt-1">{INVESTIGATION_RESULT_LABELS[inv.result]}</div>
+      {filtered.length === 0 ? (
+        <EmptyState title="لا توجد تحقيقات" />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map(inv => (
+            <div key={inv.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] font-bold text-muted-foreground">{inv.caseNumber}</p>
+                  <p className="font-semibold truncate mt-0.5">{inv.employeeNameAr}</p>
+                </div>
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary shrink-0">
+                  {INVESTIGATION_RESULT_LABELS[inv.result]}
+                </span>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => setDeleteId(inv.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <p>المحقق: {inv.investigatorName}</p>
+                <p>التاريخ: {inv.date}</p>
+              </div>
+              <div className="mt-auto flex justify-end border-t border-border pt-3">
+                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(inv.id)}>
+                  <Trash2 className="h-3.5 w-3.5" /> حذف
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
-        {total > perPage && <Pagination page={page} perPage={perPage} total={total} onPage={setPage} onPerPage={setPerPage} />}
-      </div>
+          ))}
+        </div>
+      )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة تحقيق" size="lg" onSave={handleSave} error={formError}>
         <FormField label="القضية" required>

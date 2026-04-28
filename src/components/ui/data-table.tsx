@@ -24,12 +24,13 @@ interface DataTableProps<T> {
   loading?: boolean;
   emptyText?: string;
   mobileCard?(row: T): React.ReactNode;
+  onRowClick?(row: T): void;
   className?: string;
 }
 
 export function DataTable<T>({
   columns, data, keyExtractor, loading, emptyText = 'لا توجد بيانات',
-  mobileCard, className,
+  mobileCard, onRowClick, className,
 }: DataTableProps<T>) {
   if (loading) {
     return (
@@ -71,7 +72,7 @@ export function DataTable<T>({
           </thead>
           <tbody className="divide-y divide-border/40">
             {data.map((row, i) => (
-              <tr key={keyExtractor(row)} className="group transition-colors hover:bg-muted/20">
+              <tr key={keyExtractor(row)} className={cn('group transition-colors hover:bg-muted/20', onRowClick && 'cursor-pointer')} onClick={() => onRowClick?.(row)}>
                 {columns.map(col => (
                   <td key={col.key} className={cn('px-4 py-3', col.className)}>
                     <div className={cn(col.isActions && 'opacity-0 group-hover:opacity-100 transition-opacity')}>
