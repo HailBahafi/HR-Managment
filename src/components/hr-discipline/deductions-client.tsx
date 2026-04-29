@@ -19,8 +19,8 @@ const STATUS_COLORS: Record<HRDeductionStatus, string> = {
 
 export function DeductionsClient() {
   const { deductions } = useHRDisciplinePayrollDeductionsStore();
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو الموظف…' }]);
-  const q = (values.q as string) ?? '';
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم الموظف…' }]);
+  const q = (values.q as string) ?? ''
 
   const filtered = deductions.filter(d =>
     d.caseNumber.includes(q) || d.employeeNameAr.includes(q) || d.reasonAr.includes(q) || d.month.includes(q)

@@ -25,9 +25,9 @@ export function defaultShiftPeriod(id: string): ShiftPeriod {
   };
 }
 
-/** Saudi-style week: Fri–Sat rest, Sun–Thu work with one default period each. */
+/** Saudi-style week starting Saturday: Fri–Sat rest, Sun–Thu work with one default period each. */
 export function defaultWorkWeekPeriods(makePeriodId: (day: number, i: number) => string): TemplateDayConfig[] {
-  const days: WeekDayIndex[] = [0, 1, 2, 3, 4, 5, 6];
+  const days: WeekDayIndex[] = [6, 0, 1, 2, 3, 4, 5];
   return days.map((day) => {
     if (day === 5 || day === 6) {
       return { day, isRest: true, periods: [] };

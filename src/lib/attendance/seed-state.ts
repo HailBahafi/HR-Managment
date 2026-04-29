@@ -32,7 +32,7 @@ function periodFromMock(shiftId: string, day: WeekDayIndex, idx: number, p: { st
 }
 
 function shiftToWeekDays(shift: Shift): TemplateDayConfig[] {
-  const days: WeekDayIndex[] = [0, 1, 2, 3, 4, 5, 6];
+  const days: WeekDayIndex[] = [6, 0, 1, 2, 3, 4, 5];
   return days.map((day) => {
     if (day === 5 || day === 6) return { day, isRest: true, periods: [] };
     return {

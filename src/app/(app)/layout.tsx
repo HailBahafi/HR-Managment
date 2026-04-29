@@ -10,11 +10,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <PageTitleProvider>
         <FilterPanelProvider>
-          <div className="min-h-screen bg-background">
+          <div className="h-screen flex flex-col bg-background overflow-hidden">
             <Topbar />
             <Sidebar />
             <FilterPanel />
-            <main className="min-w-0 overflow-x-hidden p-4 ">{children}</main>
+            <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4">{children}</main>
           </div>
         </FilterPanelProvider>
       </PageTitleProvider>

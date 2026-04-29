@@ -66,11 +66,21 @@ const SEED_LINES_JAN: HRPayrollEmploymentLine[] = [
   { id: 'prd1-el-1', sortOrder: 1, employeeId: 'e1', employeeNameAr: 'عبدالرحمن المالكي', departmentSnapshot: 'الموارد البشرية',   jobTitleArSnapshot: 'مدير الموارد البشرية',     baseSalarySnapshot: 12000, contractCurrency: 'SAR', contractId: 'ctr-seed-1',  contractNumber: 'CL-2024-001', capturedAt: '2025-01-28T10:00:00.000Z' },
   { id: 'prd1-el-2', sortOrder: 2, employeeId: 'e2', employeeNameAr: 'ريم الشهراني',       departmentSnapshot: 'تقنية المعلومات',   jobTitleArSnapshot: 'مدير تقنية المعلومات',     baseSalarySnapshot: 9000,  contractCurrency: 'SAR', contractId: 'ctr-seed-2',  contractNumber: 'CL-2024-002', capturedAt: '2025-01-28T10:00:00.000Z' },
   { id: 'prd1-el-3', sortOrder: 3, employeeId: 'e3', employeeNameAr: 'فهد العنزي',         departmentSnapshot: 'المالية والمحاسبة', jobTitleArSnapshot: 'المدير المالي',            baseSalarySnapshot: 7500,  contractCurrency: 'SAR', contractId: 'ctr-seed-3',  contractNumber: 'CL-2024-003', capturedAt: '2025-01-28T10:00:00.000Z' },
+  { id: 'prd1-el-4', sortOrder: 4, employeeId: 'e4', employeeNameAr: 'لينا الحربي',        departmentSnapshot: 'التسويق',           jobTitleArSnapshot: 'مدير التسويق',             baseSalarySnapshot: 5500,  contractCurrency: 'SAR', contractId: 'ctr-seed-8',  contractNumber: 'CL-2025-004', capturedAt: '2025-01-28T10:00:00.000Z' },
+  { id: 'prd1-el-5', sortOrder: 5, employeeId: 'e5', employeeNameAr: 'سلطان الدوسري',      departmentSnapshot: 'المبيعات',          jobTitleArSnapshot: 'مدير المبيعات',            baseSalarySnapshot: 6500,  contractCurrency: 'SAR', contractId: 'ctr-seed-9',  contractNumber: 'CL-2025-005', capturedAt: '2025-01-28T10:00:00.000Z' },
+  { id: 'prd1-el-6', sortOrder: 6, employeeId: 'e6', employeeNameAr: 'هدى العمري',         departmentSnapshot: 'العمليات',          jobTitleArSnapshot: 'مدير العمليات',            baseSalarySnapshot: 8500,  contractCurrency: 'SAR', contractId: 'ctr-seed-10', contractNumber: 'CL-2025-006', capturedAt: '2025-01-28T10:00:00.000Z' },
+  { id: 'prd1-el-7', sortOrder: 7, employeeId: 'e7', employeeNameAr: 'يوسف الزهراني',      departmentSnapshot: 'خدمة العملاء',      jobTitleArSnapshot: 'مدير خدمة العملاء',        baseSalarySnapshot: 7200,  contractCurrency: 'SAR', contractId: 'ctr-seed-11', contractNumber: 'CL-2025-007', capturedAt: '2025-01-28T10:00:00.000Z' },
+  { id: 'prd1-el-8', sortOrder: 8, employeeId: 'e8', employeeNameAr: 'مها السبيعي',        departmentSnapshot: 'الجودة',            jobTitleArSnapshot: 'مدير الجودة',              baseSalarySnapshot: 6800,  contractCurrency: 'SAR', contractId: 'ctr-seed-12', contractNumber: 'CL-2025-008', capturedAt: '2025-01-28T10:00:00.000Z' },
 ];
 const SEED_INPUTS_JAN: Record<string, HRPayrollMonthlyInput[]> = {
-  'prd1-el-1': [{ kind: 'overtime_hours', value: 600,  note: 'عمل إضافي — ورشة مستهدفة' }, { kind: 'late_minutes', value: 40,  note: 'تأخير' }],
+  'prd1-el-1': [{ kind: 'overtime_hours', value: 600,  note: 'عمل إضافي — ورشة مستهدفة' }, { kind: 'late_minutes', value: 40, note: 'تأخير' }],
   'prd1-el-2': [{ kind: 'allowance_amount', value: 500, note: 'مكافأة جهود' }, { kind: 'absence_days', value: 1, note: 'غياب' }],
   'prd1-el-3': [{ kind: 'overtime_hours', value: 375,  note: 'إغلاق حسابات يناير' }, { kind: 'late_minutes', value: 25, note: '' }],
+  'prd1-el-4': [{ kind: 'absence_days', value: 2, note: 'غياب غير مبرر' }, { kind: 'deduction_amount', value: 400, note: 'جزاء تأخير تسليم تقارير' }, { kind: 'late_minutes', value: 120, note: 'تأخير متكرر' }],
+  'prd1-el-5': [{ kind: 'overtime_hours', value: 488,  note: 'متابعة عملاء جدد' }, { kind: 'allowance_amount', value: 750, note: 'مكافأة تجاوز مبيعات يناير' }],
+  'prd1-el-6': [{ kind: 'overtime_hours', value: 900,  note: 'إشراف عمليات مفتوحة السنة' }, { kind: 'allowance_amount', value: 1500, note: 'بدل خطورة عمليات ليلية' }],
+  'prd1-el-7': [{ kind: 'absence_days', value: 1.5,   note: 'إجازة اضطرارية' }, { kind: 'late_minutes', value: 75, note: 'تأخير' }],
+  'prd1-el-8': [{ kind: 'overtime_hours', value: 600,  note: 'مراجعة جودة مستهدف نهاية السنة' }, { kind: 'allowance_amount', value: 1200, note: 'مكافأة شهادة ISO جديدة' }],
 };
 
 // ── Feb 2025 ──────────────────────────────────────────────────────────────────
@@ -80,13 +90,19 @@ const SEED_LINES_FEB: HRPayrollEmploymentLine[] = [
   { id: 'prd2-el-3', sortOrder: 3, employeeId: 'e3', employeeNameAr: 'فهد العنزي',         departmentSnapshot: 'المالية والمحاسبة', jobTitleArSnapshot: 'المدير المالي',            baseSalarySnapshot: 7500,  contractCurrency: 'SAR', contractId: 'ctr-seed-3',  contractNumber: 'CL-2024-003', capturedAt: '2025-02-25T10:00:00.000Z' },
   { id: 'prd2-el-4', sortOrder: 4, employeeId: 'e4', employeeNameAr: 'لينا الحربي',        departmentSnapshot: 'التسويق',           jobTitleArSnapshot: 'مدير التسويق',             baseSalarySnapshot: 5500,  contractCurrency: 'SAR', contractId: 'ctr-seed-8',  contractNumber: 'CL-2025-004', capturedAt: '2025-02-25T10:00:00.000Z' },
   { id: 'prd2-el-5', sortOrder: 5, employeeId: 'e5', employeeNameAr: 'سلطان الدوسري',      departmentSnapshot: 'المبيعات',          jobTitleArSnapshot: 'مدير المبيعات',            baseSalarySnapshot: 6500,  contractCurrency: 'SAR', contractId: 'ctr-seed-9',  contractNumber: 'CL-2025-005', capturedAt: '2025-02-25T10:00:00.000Z' },
+  { id: 'prd2-el-6', sortOrder: 6, employeeId: 'e6', employeeNameAr: 'هدى العمري',         departmentSnapshot: 'العمليات',          jobTitleArSnapshot: 'مدير العمليات',            baseSalarySnapshot: 8500,  contractCurrency: 'SAR', contractId: 'ctr-seed-10', contractNumber: 'CL-2025-006', capturedAt: '2025-02-25T10:00:00.000Z' },
+  { id: 'prd2-el-7', sortOrder: 7, employeeId: 'e7', employeeNameAr: 'يوسف الزهراني',      departmentSnapshot: 'خدمة العملاء',      jobTitleArSnapshot: 'مدير خدمة العملاء',        baseSalarySnapshot: 7200,  contractCurrency: 'SAR', contractId: 'ctr-seed-11', contractNumber: 'CL-2025-007', capturedAt: '2025-02-25T10:00:00.000Z' },
+  { id: 'prd2-el-8', sortOrder: 8, employeeId: 'e8', employeeNameAr: 'مها السبيعي',        departmentSnapshot: 'الجودة',            jobTitleArSnapshot: 'مدير الجودة',              baseSalarySnapshot: 6800,  contractCurrency: 'SAR', contractId: 'ctr-seed-12', contractNumber: 'CL-2025-008', capturedAt: '2025-02-25T10:00:00.000Z' },
 ];
 const SEED_INPUTS_FEB: Record<string, HRPayrollMonthlyInput[]> = {
   'prd2-el-1': [{ kind: 'overtime_hours', value: 900,  note: 'عمل إضافي — نهاية أسبوع' }, { kind: 'allowance_amount', value: 1500, note: 'مكافأة أداء' }, { kind: 'absence_days', value: 0.5, note: 'غياب جزئي' }, { kind: 'late_minutes', value: 60, note: 'تأخير' }],
   'prd2-el-2': [{ kind: 'overtime_hours', value: 450,  note: 'تحديث بنية تقنية' }, { kind: 'deduction_amount', value: 300, note: 'جزاء إداري' }],
   'prd2-el-3': [{ kind: 'allowance_amount', value: 1200, note: 'بدل طوارئ مشروع' }, { kind: 'absence_days', value: 1, note: '' }, { kind: 'late_minutes', value: 30, note: '' }],
-  'prd2-el-4': [{ kind: 'late_minutes', value: 90,    note: 'تأخير متكرر' }, { kind: 'deduction_amount', value: 300, note: 'جزاء إداري — تأخير تسليم' }],
+  'prd2-el-4': [{ kind: 'late_minutes', value: 90, note: 'تأخير متكرر' }, { kind: 'deduction_amount', value: 300, note: 'جزاء إداري — تأخير تسليم' }],
   'prd2-el-5': [{ kind: 'overtime_hours', value: 488,  note: 'تغطية نهاية الأسبوع' }, { kind: 'allowance_amount', value: 800, note: 'مكافأة تجاوز المبيعات' }],
+  'prd2-el-6': [{ kind: 'overtime_hours', value: 680,  note: 'تشغيل خط إنتاج متواصل' }, { kind: 'allowance_amount', value: 1200, note: 'بدل عمليات ليلية' }, { kind: 'absence_days', value: 0.5, note: 'غياب جزئي' }],
+  'prd2-el-7': [{ kind: 'allowance_amount', value: 600,  note: 'مكافأة رضا العملاء' }, { kind: 'late_minutes', value: 45, note: 'تأخير' }, { kind: 'deduction_amount', value: 200, note: 'خصم إداري' }],
+  'prd2-el-8': [{ kind: 'overtime_hours', value: 480,  note: 'مراجعة جودة الدفعة 5' }, { kind: 'allowance_amount', value: 900, note: 'مكافأة اجتياز معيار' }],
 };
 
 // ── Mar 2025 — 8 employees, comprehensive ────────────────────────────────────
@@ -138,20 +154,20 @@ const SEED: HRPayrollPeriodRecord[] = [
     id: 'prd-seed-1', code: 'PAY-2025-01', nameAr: 'يناير 2025', nameEn: 'January 2025',
     periodStart: '2025-01-01', periodEnd: '2025-01-31',
     status: 'closed', compensationReviewStatus: 'approved',
-    snapshotContractIds: ['ctr-seed-1', 'ctr-seed-2', 'ctr-seed-3'],
+    snapshotContractIds: ['ctr-seed-1','ctr-seed-2','ctr-seed-3','ctr-seed-8','ctr-seed-9','ctr-seed-10','ctr-seed-11','ctr-seed-12'],
     employmentLines: SEED_LINES_JAN, linesMaterializedAt: '2025-01-28T10:00:00.000Z',
     employmentLineMonthlyInputs: SEED_INPUTS_JAN,
-    notes: 'مغلقة واعتُمدت — 3 موظفين',
+    notes: 'مغلقة واعتُمدت — 8 موظفين',
     createdAt: '2024-12-25T08:00:00.000Z', updatedAt: '2025-01-31T14:00:00.000Z',
   },
   {
     id: 'prd-seed-2', code: 'PAY-2025-02', nameAr: 'فبراير 2025', nameEn: 'February 2025',
     periodStart: '2025-02-01', periodEnd: '2025-02-28',
     status: 'closed', compensationReviewStatus: 'approved',
-    snapshotContractIds: ['ctr-seed-1', 'ctr-seed-2', 'ctr-seed-3', 'ctr-seed-8', 'ctr-seed-9'],
+    snapshotContractIds: ['ctr-seed-1','ctr-seed-2','ctr-seed-3','ctr-seed-8','ctr-seed-9','ctr-seed-10','ctr-seed-11','ctr-seed-12'],
     employmentLines: SEED_LINES_FEB, linesMaterializedAt: '2025-02-25T10:00:00.000Z',
     employmentLineMonthlyInputs: SEED_INPUTS_FEB,
-    notes: 'مغلقة واعتُمدت — 5 موظفين مع مكافآت ومخصومات',
+    notes: 'مغلقة واعتُمدت — 8 موظفين',
     createdAt: '2025-01-28T08:00:00.000Z', updatedAt: '2025-02-28T14:00:00.000Z',
   },
   {
@@ -260,10 +276,10 @@ export const useHRPayrollPeriodsStore = create<State>()(
     }),
     {
       name: 'hr_payroll_periods_v1',
-      version: 4,
+      version: 5,
       partialize: s => ({ periods: s.periods }),
       migrate: (_persisted: unknown, fromVersion: number) => {
-        if ((fromVersion ?? 0) >= 4) {
+        if ((fromVersion ?? 0) >= 5) {
           const ps = _persisted as { periods?: HRPayrollPeriodRecord[] };
           return { periods: ps?.periods ?? SEED.map(p => ({ ...p })) };
         }

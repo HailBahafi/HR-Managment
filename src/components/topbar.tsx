@@ -96,7 +96,7 @@ export const navConfig: NavItem[] = [
       { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
       { label: 'عقود العمل',   href: '/hr/contracts/employment',        icon: FileSignature },
       { label: 'مواد العقود',  href: '/hr/contracts/articles',          icon: BookOpen },
-      { label: 'التقارير والنماذج', href: '/hr/contracts/reports',         icon: FileSpreadsheet },
+      { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports',         icon: FileSpreadsheet },
     ]}],
   },
   { key: 'permissions', label: 'الصلاحيات', href: '/permissions', icon: Shield },

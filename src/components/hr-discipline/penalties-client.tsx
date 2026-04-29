@@ -53,7 +53,7 @@ export function PenaltiesClient() {
   const handleSave = () => {
     setFormError(null);
     if (!draft.employeeId) { setFormError('الموظف مطلوب'); return; }
-    if (!draft.caseId) { setFormError('القضية مطلوبة'); return; }
+    if (!draft.caseId) { setFormError('المخالفة مطلوبة'); return; }
     if (!draft.decisionDate) { setFormError('تاريخ القرار مطلوب'); return; }
     add(draft);
     toast.success('تم إضافة العقوبة');

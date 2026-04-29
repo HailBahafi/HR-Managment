@@ -23,6 +23,10 @@ import {
   FileSignature,
   MapPinned,
   ExternalLink,
+  Link2,
+  Layers,
+  Search,
+  Unlink,
   UserRound,
   Receipt,
   Heart,
@@ -47,6 +51,10 @@ import { useAttendanceStore } from '@/lib/attendance/store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
 import { cn, formatCurrency, formatDate, getInitials } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { SingleDatePicker } from '@/components/ui/single-date-picker';
 
 const SECTIONS = [
   { id: 'personal', label: 'البيانات الشخصية', icon: User },
@@ -96,25 +104,15 @@ function Prop({ icon: Icon, label, children, mono, accent }: {
   );
 }
 
-function SectionH({ icon: Icon, title, subtitle, action }: {
-  icon: React.ElementType;
-  title: string;
+function SectionH({ action }: {
+  icon?: React.ElementType;
+  title?: string;
   subtitle?: string;
   action?: React.ReactNode;
 }) {
+  if (!action) return null;
   return (
-    <div className="flex items-start justify-between mb-6 pb-4 border-b border-border/40">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="font-arabic-display text-2xl font-semibold text-foreground tracking-tight leading-tight">
-            {title}
-          </h2>
-          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
-        </div>
-      </div>
+    <div className="flex items-center justify-end gap-2 mb-4">
       {action}
     </div>
   );
@@ -128,7 +126,7 @@ function FieldGroup({ title, hint, children }: {
   return (
     <div className="mb-7 last:mb-0">
       <div className="flex items-baseline justify-between mb-3">
-        <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           {title}
         </h3>
         {hint && <span className="text-[10px] text-muted-foreground/60">{hint}</span>}
@@ -168,7 +166,7 @@ function Stat({ value, label, sub, accent, icon: Icon }: {
   return (
     <div className={cn("relative rounded-xl border p-4 transition-all hover:shadow-xs", cardBorder)}>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground font-medium">{label}</div>
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{label}</div>
         {Icon && <Icon className={cn("h-3.5 w-3.5", valueColor, "opacity-70")} />}
       </div>
       <div className={cn("font-arabic-display text-2xl font-semibold tabular-nums leading-none", valueColor)}>
@@ -185,7 +183,7 @@ function Empty({ icon: Icon, text, action }: {
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 py-12 text-center text-muted-foreground border border-dashed border-border/60 rounded-xl bg-muted/20">
+    <div className="flex flex-col items-center gap-2.5 py-8 text-center text-muted-foreground border border-dashed border-border/60 rounded-xl bg-muted/20">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-background/80 border border-border/50">
         <Icon className="h-5 w-5 opacity-60" />
       </div>
@@ -204,13 +202,14 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   const department = getDepartment(employee.departmentId);
   const manager = employee.managerId ? getEmployee(employee.managerId) : null;
 
-  const { events, daySummaries, checkpointLinks, checkpoints } = useAttendanceStore();
+  const { events, daySummaries, checkpointLinks, checkpoints, assignments, shiftTemplates, addCheckpointLinkBatch, removeCheckpointLink, addAssignmentBatch, removeAssignment } = useAttendanceStore();
   const { cases: violationCases } = useHRViolationCasesStore();
   const { contracts } = useHRContractsStore();
 
   const employeeEvents = events.filter(e => e.employeeId === employee.id);
   const employeeSummaries = daySummaries.filter(s => s.employeeId === employee.id);
   const employeeCheckpoints = checkpointLinks.filter(c => c.employeeId === employee.id);
+  const employeeAssignments = assignments.filter(a => a.targetType === 'employee' && a.targetId === employee.id);
   const employeeViolations = violationCases.filter(v => v.employeeId === employee.id);
   const employeeContracts = contracts.filter(c => c.employeeId === employee.id);
   const employeeRequests = data.requests.filter(r => r.employeeId === employee.id);
@@ -259,6 +258,57 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   })();
 
   const [activeSection, setActiveSection] = React.useState<SectionId>('personal');
+
+  // ─── Checkpoint connect/disconnect ───────────────────────────────────
+  const [cpOpen, setCpOpen] = React.useState(false);
+  const [cpDate, setCpDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [cpSel, setCpSel] = React.useState<Set<string>>(new Set());
+  const [cpQuery, setCpQuery] = React.useState('');
+  const [cpUnlinkTarget, setCpUnlinkTarget] = React.useState<string | null>(null);
+
+  const openCpDialog = () => {
+    setCpDate(new Date().toISOString().slice(0, 10));
+    setCpSel(new Set());
+    setCpQuery('');
+    setCpOpen(true);
+  };
+
+  const submitCpLink = () => {
+    if (cpSel.size === 0) return;
+    addCheckpointLinkBatch({
+      effectiveFrom: cpDate,
+      pairs: [...cpSel].map(checkInPointId => ({ employeeId: employee.id, checkInPointId })),
+    });
+    setCpOpen(false);
+  };
+
+  // ─── Shift connect/disconnect ─────────────────────────────────────────
+  const [shiftOpen, setShiftOpen] = React.useState(false);
+  const [shiftMode, setShiftMode] = React.useState<'template' | 'open'>('template');
+  const [shiftTemplateId, setShiftTemplateId] = React.useState('');
+  const [shiftDate, setShiftDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [shiftHours, setShiftHours] = React.useState('8');
+  const [shiftUnlinkTarget, setShiftUnlinkTarget] = React.useState<string | null>(null);
+
+  const openShiftDialog = () => {
+    const active = shiftTemplates.filter(t => t.isActive);
+    setShiftMode('template');
+    setShiftTemplateId(active[0]?.id ?? '');
+    setShiftDate(new Date().toISOString().slice(0, 10));
+    setShiftHours('8');
+    setShiftOpen(true);
+  };
+
+  const submitShift = () => {
+    if (shiftMode === 'template' && !shiftTemplateId) return;
+    addAssignmentBatch({
+      templateId: shiftMode === 'open' ? '__open__' : shiftTemplateId,
+      effectiveFrom: shiftDate,
+      openShiftHours: shiftMode === 'open' ? Number(shiftHours) : undefined,
+      items: [{ targetType: 'employee', targetId: employee.id, targetLabel: employee.name }],
+    });
+    setShiftOpen(false);
+  };
   const contentRef = React.useRef<HTMLElement | null>(null);
   // Reset scroll on section change
   React.useEffect(() => {
@@ -315,7 +365,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   };
 
   return (
-    <div dir="rtl" className="h-fullflex flex-col overflow-hidden bg-background -mx-4 sm:-mx-6">
+    <div dir="rtl" className="h-full flex flex-col overflow-hidden bg-background -mx-4 sm:-mx-6">
       {/* Top breadcrumb bar */}
       <div className="shrink-0 border-b border-border/60 bg-card/50 backdrop-blur-md">
         <div className="px-3 sm:px-6 h-12 flex items-center justify-between">
@@ -468,7 +518,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
         {/* Content area (only this scrolls) */}
         <main ref={contentRef} className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
+          <div className="max-w-5xl mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-5">
             {/* Personal (merged with overview + quick metadata) */}
             {activeSection === 'personal' && (
               <section>
@@ -599,7 +649,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   <div className="absolute inset-0 dotted-bg opacity-5" />
                   <div className="relative p-6">
                     <div className="flex items-baseline justify-between mb-1">
-                      <span className="text-xs uppercase tracking-[0.1em] text-muted-foreground font-medium">
+                      <span className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
                         الراتب الصافي الشهري
                       </span>
                       <Wallet className="h-4 w-4 text-gold" />
@@ -632,95 +682,474 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
             )}
 
             {activeSection === 'attendance' && (
-              <section>
-                <SectionH
-                  icon={Clock}
-                  title="الحضور والانصراف"
-                  subtitle="إحصائيات الحضور ونقاط التسجيل المرتبطة"
-                  action={
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
-                      <Link href="/hr/attendance/daily">
-                        <ExternalLink className="h-3 w-3" />
-                        التقرير الكامل
-                      </Link>
-                    </Button>
-                  }
-                />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
-              {[
-                { label: 'حاضر', value: stats.present, color: 'success' as const },
-                { label: 'متأخر', value: stats.late, color: 'warning' as const },
-                { label: 'غائب', value: stats.absent, color: 'destructive' as const },
-                { label: 'خروج مبكر', value: stats.earlyLeave, color: 'warning' as const },
-              ].map(s => (
-                <div key={s.label} className="border border-border/60 rounded-md p-3">
-                  <div className="text-xs text-muted-foreground mb-1">{s.label}</div>
-                  <div className={cn(
-                    "font-arabic-display text-xl font-semibold tabular-nums",
-                    s.value > 0 && (
-                      s.color === 'success' ? 'text-success' :
-                      s.color === 'warning' ? 'text-warning' : 'text-destructive'
-                    )
-                  )}>{s.value}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mb-5">
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">نقاط التسجيل المرتبطة</h3>
-              {employeeCheckpoints.length > 0 ? (
-                <div className="border-y border-border/40">
-                  {employeeCheckpoints.map(link => {
-                    const cp = checkpoints.find(c => c.id === link.checkInPointId);
-                    return (
-                      <ItemRow key={link.id}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <MapPinned className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{cp?.nameAr || 'نقطة تسجيل'}</div>
-                            <div className="text-xs text-muted-foreground font-mono" dir="ltr">
-                              {cp?.latitude?.toFixed(4)}, {cp?.longitude?.toFixed(4)}
-                            </div>
-                          </div>
-                        </div>
-                        <Badge variant={link.linkActive ? 'success' : 'subtle'} className="text-[10px] shrink-0">
-                          {link.linkActive ? 'نشط' : 'موقوف'}
-                        </Badge>
-                      </ItemRow>
-                    );
-                  })}
-                </div>
-              ) : (
-                <Empty icon={MapPinned} text="لا توجد نقاط تسجيل مرتبطة" />
-              )}
-            </div>
-
-            <div>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">آخر حركات الحضور</h3>
-              {employeeEvents.length > 0 ? (
-                <div className="border-y border-border/40">
-                  {employeeEvents.slice(0, 8).map(evt => (
-                    <ItemRow key={evt.id}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        {evt.type === 'check_in'
-                          ? <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                          : <CircleDot className="h-4 w-4 text-warning shrink-0" />}
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium">{evt.type === 'check_in' ? 'دخول' : 'خروج'}</div>
-                          <div className="text-xs text-muted-foreground">{formatDate(evt.date)}</div>
-                        </div>
-                      </div>
-                      <div className="text-left">
-                        <div className="font-mono text-xs" dir="ltr">{evt.at}</div>
-                        <div className="text-[10px] text-muted-foreground/70">{evt.source}</div>
-                      </div>
-                    </ItemRow>
+              <section className="space-y-5">
+                {/* Stats row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { label: 'حاضر', value: stats.present, color: 'success' as const },
+                    { label: 'متأخر', value: stats.late, color: 'warning' as const },
+                    { label: 'غائب', value: stats.absent, color: 'destructive' as const },
+                    { label: 'خروج مبكر', value: stats.earlyLeave, color: 'warning' as const },
+                  ].map(s => (
+                    <div key={s.label} className={cn(
+                      'rounded-xl border p-3 bg-card',
+                      s.value > 0
+                        ? s.color === 'success' ? 'border-success/40 bg-success/5'
+                          : s.color === 'warning' ? 'border-warning/40 bg-warning/5'
+                          : 'border-destructive/40 bg-destructive/5'
+                        : 'border-border/60'
+                    )}>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{s.label}</div>
+                      <div className={cn(
+                        'font-arabic-display text-xl font-semibold tabular-nums',
+                        s.value > 0
+                          ? s.color === 'success' ? 'text-success'
+                            : s.color === 'warning' ? 'text-warning'
+                            : 'text-destructive'
+                          : 'text-foreground'
+                      )}>{s.value}</div>
+                    </div>
                   ))}
                 </div>
-              ) : (
-                <Empty icon={Clock} text="لا توجد حركات حضور حتى الآن" />
-              )}
-            </div>
+
+                {/* Two-column: shift + checkpoints */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Shift assignments */}
+                  <div className="rounded-xl border border-border/60 bg-card/50">
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40">
+                      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">الشيفت المرتبط</h3>
+                      <Button variant="ghost" size="sm" className="h-6 gap-1 text-[11px] px-2" onClick={openShiftDialog}>
+                        <Layers className="h-3 w-3" /> ربط
+                      </Button>
+                    </div>
+                    <div className="p-2 space-y-1.5">
+                      {employeeAssignments.length > 0 ? employeeAssignments.map(asg => {
+                        const isOpen = asg.templateId === '__open__';
+                        const tpl = !isOpen ? shiftTemplates.find(t => t.id === asg.templateId) : null;
+                        return (
+                          <div
+                            key={asg.id}
+                            className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 border-r-2"
+                            style={{ borderRightColor: !isOpen && tpl ? tpl.colorHex : undefined }}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div
+                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+                                style={!isOpen && tpl ? { background: tpl.colorHex + '22', color: tpl.colorHex } : undefined}
+                              >
+                                {isOpen ? <Clock className="h-3.5 w-3.5 text-primary" /> : <Layers className="h-3.5 w-3.5" />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-medium truncate">
+                                  {isOpen ? `شيفت مفتوح · ${asg.openShiftHours ?? '?'} ساعة` : (tpl?.nameAr ?? 'شيفت')}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground font-mono" dir="ltr">{asg.effectiveFrom}</div>
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => setShiftUnlinkTarget(asg.id)}>
+                              <Unlink className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        );
+                      }) : (
+                        <div className="flex flex-col items-center gap-1.5 py-5 text-center text-muted-foreground">
+                          <Layers className="h-5 w-5 opacity-40" />
+                          <p className="text-xs">لم يُرتبط بشيفت بعد</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Checkpoints */}
+                  <div className="rounded-xl border border-border/60 bg-card/50">
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40">
+                      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">نقاط التسجيل</h3>
+                      <Button variant="ghost" size="sm" className="h-6 gap-1 text-[11px] px-2" onClick={openCpDialog}>
+                        <Link2 className="h-3 w-3" /> ربط
+                      </Button>
+                    </div>
+                    <div className="p-2 space-y-1.5">
+                      {employeeCheckpoints.length > 0 ? employeeCheckpoints.map(link => {
+                        const cp = checkpoints.find(c => c.id === link.checkInPointId);
+                        return (
+                          <div key={link.id} className={cn(
+                            'flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 border-r-2',
+                            link.linkActive ? 'border-r-success' : 'border-r-muted-foreground/25'
+                          )}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={cn(
+                                'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
+                                link.linkActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                              )}>
+                                <MapPinned className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-medium truncate">{cp?.nameAr || 'نقطة تسجيل'}</div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                                    {cp?.latitude?.toFixed(4)}, {cp?.longitude?.toFixed(4)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Badge variant={link.linkActive ? 'success' : 'subtle'} className="text-[10px] h-4 px-1.5">
+                                {link.linkActive ? 'نشط' : 'موقوف'}
+                              </Badge>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => setCpUnlinkTarget(link.id)}>
+                                <Unlink className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }) : (
+                        <div className="flex flex-col items-center gap-1.5 py-5 text-center text-muted-foreground">
+                          <MapPinned className="h-5 w-5 opacity-40" />
+                          <p className="text-xs">لا توجد نقاط مرتبطة</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Last attendance events — day-grouped */}
+                {(() => {
+                  const srcLabel: Record<string, string> = { device: 'جهاز', manual: 'يدوي', gps: 'GPS' };
+                  const parseMins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+                  const durLabel = (from: string, to: string) => {
+                    const d = parseMins(to) - parseMins(from);
+                    if (d <= 0) return null;
+                    const h = Math.floor(d / 60), m = d % 60;
+                    return h > 0 ? `${h}س${m > 0 ? ` ${m}د` : ''}` : `${m}د`;
+                  };
+
+                  const grouped = new Map<string, { checkIn?: typeof employeeEvents[0]; checkOut?: typeof employeeEvents[0] }>();
+                  for (const evt of [...employeeEvents].sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at))) {
+                    if (!grouped.has(evt.date)) grouped.set(evt.date, {});
+                    const g = grouped.get(evt.date)!;
+                    if (evt.type === 'check_in' && !g.checkIn) g.checkIn = evt;
+                    if (evt.type === 'check_out') g.checkOut = evt;
+                  }
+                  const days = [...grouped.entries()].slice(0, 6);
+
+                  return (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs uppercase tracking-widest text-muted-foreground/70">آخر حركات الحضور</h3>
+                        <Button variant="ghost" size="sm" className="h-6 gap-1 text-[11px] px-2" asChild>
+                          <Link href="/hr/attendance/daily"><ExternalLink className="h-3 w-3" /> الكل</Link>
+                        </Button>
+                      </div>
+
+                      {days.length > 0 ? (
+                        <div className="space-y-2">
+                          {days.map(([date, g]) => {
+                            const dur = g.checkIn && g.checkOut ? durLabel(g.checkIn.at, g.checkOut.at) : null;
+                            const hasIn  = !!g.checkIn;
+                            const hasOut = !!g.checkOut;
+                            return (
+                              <div key={date} className="overflow-hidden rounded-xl border bg-card">
+                                {/* Date header */}
+                                <div className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2">
+                                  <Calendar className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                                  <span className="text-[11px] font-medium text-muted-foreground">{formatDate(date)}</span>
+                                  {dur ? (
+                                    <span className="mr-auto flex items-center gap-1 font-mono text-[11px] text-primary/70">
+                                      <Clock className="h-3 w-3" />{dur}
+                                    </span>
+                                  ) : !hasIn && !hasOut ? null : (
+                                    <span className="mr-auto text-[10px] text-muted-foreground/50">
+                                      {hasIn && !hasOut ? 'لم يتسجل خروج' : !hasIn && hasOut ? 'لم يتسجل دخول' : ''}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* In / Out side by side */}
+                                <div className="grid grid-cols-2 divide-x divide-x-reverse divide-border/30">
+                                  {([
+                                    { key: 'in',  event: g.checkIn,  label: 'دخول',  Icon: CheckCircle2, color: 'text-success', bg: 'bg-success/10' },
+                                    { key: 'out', event: g.checkOut, label: 'خروج', Icon: CircleDot,     color: 'text-warning', bg: 'bg-warning/10' },
+                                  ] as const).map(({ key, event, label, Icon, color, bg }) => (
+                                    <div key={key} className={cn('flex items-center gap-3 px-4 py-3 transition-colors', !event && 'opacity-35')}>
+                                      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', bg, color)}>
+                                        <Icon className="h-4 w-4" />
+                                      </div>
+                                      <div>
+                                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+                                        <div className={cn('font-mono text-base font-bold tabular-nums leading-tight', event ? color : 'text-muted-foreground/30')}>
+                                          {event?.at ?? '——:——'}
+                                        </div>
+                                        {event?.source && (
+                                          <div className="text-[10px] text-muted-foreground/50">{srcLabel[event.source] ?? event.source}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <Empty icon={Clock} text="لا توجد حركات حضور حتى الآن" />
+                      )}
+                    </div>
+                  );
+                })()}
+
+            {/* ── Connect shift dialog ── */}
+            <Dialog open={shiftOpen} onOpenChange={setShiftOpen}>
+              <DialogContent className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-sm">
+                <DialogHeader className="border-b border-border px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Layers className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base">ربط شيفت</DialogTitle>
+                      <DialogDescription className="text-xs">حدد نوع الشيفت لـ {employee.name}</DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                <div className="px-5 py-4 space-y-4">
+                  {/* mode toggle */}
+                  <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
+                    <button
+                      type="button"
+                      className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all', shiftMode === 'template' ? 'bg-card shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                      onClick={() => setShiftMode('template')}
+                    >
+                      <Layers className="h-3.5 w-3.5" /> شيفت محدد
+                    </button>
+                    <button
+                      type="button"
+                      className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all', shiftMode === 'open' ? 'bg-card shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                      onClick={() => setShiftMode('open')}
+                    >
+                      <Clock className="h-3.5 w-3.5" /> شيفت مفتوح
+                    </button>
+                  </div>
+
+                  {/* effective date */}
+                  <div className="flex items-center gap-3">
+                    <Label className="shrink-0 text-xs">ساري من</Label>
+                    <SingleDatePicker value={shiftDate} onChange={setShiftDate} />
+                  </div>
+
+                  {shiftMode === 'template' ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">اختر الشيفت</Label>
+                      <div className="space-y-1 max-h-56 overflow-y-auto">
+                        {shiftTemplates.filter(t => t.isActive).map(tpl => {
+                          const sel = shiftTemplateId === tpl.id;
+                          return (
+                            <button
+                              key={tpl.id}
+                              type="button"
+                              onClick={() => setShiftTemplateId(tpl.id)}
+                              className={cn(
+                                'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-right text-sm transition-all',
+                                sel ? 'bg-primary/10' : 'hover:bg-muted/50',
+                              )}
+                            >
+                              <div
+                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all"
+                                style={sel ? { borderColor: tpl.colorHex, background: tpl.colorHex } : { borderColor: tpl.colorHex + '80' }}
+                              >
+                                {sel && <Check className="h-3 w-3 text-white" />}
+                              </div>
+                              <div className="h-3 w-3 rounded-full shrink-0" style={{ background: tpl.colorHex }} />
+                              <span className="flex-1 truncate font-medium">{tpl.nameAr}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">{tpl.effectiveFrom}</span>
+                            </button>
+                          );
+                        })}
+                        {shiftTemplates.filter(t => t.isActive).length === 0 && (
+                          <p className="py-4 text-center text-xs text-muted-foreground">لا توجد شيفتات نشطة</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label className="text-xs">عدد ساعات العمل اليومية</Label>
+                      <div className="relative">
+                        <Clock className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          min="1" max="24" step="0.5"
+                          value={shiftHours}
+                          onChange={e => setShiftHours(e.target.value)}
+                          placeholder="8"
+                          className="pr-9"
+                        />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">الموظف يعمل ساعات مرنة بدون شيفت ثابت</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between border-t border-border bg-muted/20 px-5 py-3">
+                  <Button variant="outline" size="sm" onClick={() => setShiftOpen(false)}>إلغاء</Button>
+                  <Button
+                    variant="luxe" size="sm"
+                    onClick={submitShift}
+                    disabled={shiftMode === 'template' && !shiftTemplateId}
+                    className="gap-1.5"
+                  >
+                    <Layers className="h-3.5 w-3.5" /> ربط الشيفت
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* ── Unlink shift confirm dialog ── */}
+            <Dialog open={!!shiftUnlinkTarget} onOpenChange={o => { if (!o) setShiftUnlinkTarget(null); }}>
+              <DialogContent className="max-w-xs">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-destructive">
+                    <Unlink className="h-4 w-4" /> فك ربط الشيفت
+                  </DialogTitle>
+                  <DialogDescription>هل تريد إزالة هذا الشيفت من الموظف؟</DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 pt-1">
+                  <Button variant="outline" size="sm" onClick={() => setShiftUnlinkTarget(null)}>إلغاء</Button>
+                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => {
+                    if (shiftUnlinkTarget) { removeAssignment(shiftUnlinkTarget); setShiftUnlinkTarget(null); }
+                  }}>
+                    <Unlink className="h-3.5 w-3.5" /> فك الربط
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* ── Connect checkpoint dialog ── */}
+            <Dialog open={cpOpen} onOpenChange={setCpOpen}>
+              <DialogContent className="flex max-h-[80vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+                <DialogHeader className="border-b border-border px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Link2 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base">ربط نقطة تسجيل</DialogTitle>
+                      <DialogDescription className="text-xs">اختر نقطة أو أكثر لربطها بـ {employee.name}</DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                <div className="border-b border-border bg-muted/20 px-5 py-3">
+                  <div className="flex items-center gap-3">
+                    <Label className="shrink-0 text-xs">ساري من</Label>
+                    <SingleDatePicker value={cpDate} onChange={setCpDate} />
+                  </div>
+                </div>
+
+                <div className="border-b border-border px-3 py-2.5">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={cpQuery}
+                      onChange={e => setCpQuery(e.target.value)}
+                      placeholder="ابحث باسم النقطة…"
+                      className="h-8 bg-background pr-8 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+                  {(() => {
+                    const linkedIds = new Set(employeeCheckpoints.map(l => l.checkInPointId));
+                    const q = cpQuery.trim().toLowerCase();
+                    const list = checkpoints.filter(cp =>
+                      (!q || cp.nameAr.toLowerCase().includes(q))
+                    );
+                    if (list.length === 0) return (
+                      <p className="py-6 text-center text-xs text-muted-foreground">لا توجد نقاط مطابقة</p>
+                    );
+                    return list.map(cp => {
+                      const sel = cpSel.has(cp.id);
+                      const alreadyLinked = linkedIds.has(cp.id);
+                      return (
+                        <button
+                          key={cp.id}
+                          type="button"
+                          disabled={alreadyLinked}
+                          onClick={() => {
+                            setCpSel(prev => {
+                              const n = new Set(prev);
+                              n.has(cp.id) ? n.delete(cp.id) : n.add(cp.id);
+                              return n;
+                            });
+                          }}
+                          className={cn(
+                            'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-right text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                            sel ? 'bg-primary/10 text-primary' : alreadyLinked ? 'bg-muted/40' : 'hover:bg-muted/50',
+                          )}
+                        >
+                          <div className={cn(
+                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all',
+                            sel ? 'border-primary bg-primary' : 'border-border',
+                          )}>
+                            {sel && <Check className="h-3 w-3 text-primary-foreground" />}
+                          </div>
+                          <div className={cn(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                            sel ? 'bg-primary/15' : 'bg-muted',
+                          )}>
+                            <MapPinned className={cn('h-4 w-4', sel ? 'text-primary' : 'text-muted-foreground')} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{cp.nameAr}</p>
+                            <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">
+                              {cp.latitude.toFixed(4)}, {cp.longitude.toFixed(4)}
+                            </p>
+                          </div>
+                          {alreadyLinked && (
+                            <Badge variant="subtle" className="shrink-0 text-[9px]">مرتبط</Badge>
+                          )}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+
+                <div className="flex items-center justify-between border-t border-border bg-muted/20 px-5 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    {cpSel.size > 0
+                      ? <><span className="number-ar font-semibold text-foreground">{cpSel.size}</span> نقطة محددة</>
+                      : 'اختر نقطة أو أكثر'}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCpOpen(false)}>إلغاء</Button>
+                    <Button variant="luxe" size="sm" onClick={submitCpLink} disabled={cpSel.size === 0}>
+                      <Link2 className="h-3.5 w-3.5" /> ربط
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* ── Unlink confirm dialog ── */}
+            <Dialog open={!!cpUnlinkTarget} onOpenChange={o => !o && setCpUnlinkTarget(null)}>
+              <DialogContent className="max-w-xs">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-destructive">
+                    <Unlink className="h-4 w-4" /> فك ربط النقطة
+                  </DialogTitle>
+                  <DialogDescription>هل تريد فك ربط هذه النقطة من الموظف؟</DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 pt-1">
+                  <Button variant="outline" size="sm" onClick={() => setCpUnlinkTarget(null)}>إلغاء</Button>
+                  <Button variant="destructive" size="sm" onClick={() => {
+                    if (cpUnlinkTarget) { removeCheckpointLink(cpUnlinkTarget); setCpUnlinkTarget(null); }
+                  }}>
+                    <Unlink className="h-3.5 w-3.5" /> فك الربط
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
               </section>
             )}
 
@@ -744,16 +1173,19 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
               ].map(b => {
                 const pct = (b.used / b.total) * 100;
                 return (
-                  <div key={b.label} className="border border-border/60 rounded-md p-3">
-                    <div className="flex items-baseline justify-between mb-1.5">
-                      <span className="text-xs text-muted-foreground">{b.label}</span>
-                      <span className="font-arabic-display text-base font-semibold tabular-nums">
+                  <div key={b.label} className={cn(
+                      'rounded-xl border bg-card p-4 transition-all',
+                      pct > 70 ? 'border-warning/40 bg-warning/5' : 'border-border/60'
+                    )}>
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{b.label}</span>
+                      <span className="font-arabic-display text-2xl font-semibold tabular-nums">
                         {b.total - b.used}
                         <span className="text-xs text-muted-foreground font-normal">/{b.total}</span>
                       </span>
                     </div>
-                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div className={cn('h-full rounded-full', pct > 70 ? 'bg-warning' : 'bg-primary')} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
@@ -761,22 +1193,38 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
             </div>
 
             {employeeRequests.filter(r => r.type === 'leave').length > 0 ? (
-              <div className="border-y border-border/40">
-                {employeeRequests.filter(r => r.type === 'leave').map(req => (
-                  <ItemRow key={req.id}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{req.title}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {req.fromDate && formatDate(req.fromDate)}
-                          {req.toDate && ` ← ${formatDate(req.toDate)}`}
+              <div className="space-y-2">
+                {employeeRequests.filter(r => r.type === 'leave').map(req => {
+                  const isApproved = req.status === 'approved';
+                  const isPending  = ['pending', 'under_review'].includes(req.status);
+                  return (
+                    <div key={req.id} className={cn(
+                      'flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 transition-all hover:shadow-xs',
+                      isApproved ? 'border-success/30 border-r-2 border-r-success'
+                      : isPending ? 'border-warning/30 border-r-2 border-r-warning'
+                      : 'border-destructive/30 border-r-2 border-r-destructive'
+                    )}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn(
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                          isApproved ? 'bg-success/10 text-success'
+                          : isPending ? 'bg-warning/10 text-warning'
+                          : 'bg-destructive/10 text-destructive'
+                        )}>
+                          <Calendar className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{req.title}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {req.fromDate && formatDate(req.fromDate)}
+                            {req.toDate && ` ← ${formatDate(req.toDate)}`}
+                          </div>
                         </div>
                       </div>
+                      <StatusBadge status={req.status} />
                     </div>
-                    <StatusBadge status={req.status} />
-                  </ItemRow>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <Empty icon={Calendar} text="لا توجد طلبات إجازة" />
@@ -792,31 +1240,47 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   subtitle={`${employeeRequests.length} طلب مسجّل`}
                 />
             {employeeRequests.length > 0 ? (
-              <div className="border-y border-border/40">
-                {employeeRequests.map(req => (
-                  <ItemRow key={req.id}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">
-                          <RequestTypeLabel type={req.type} />
-                          <span className="text-muted-foreground/70 mx-1.5">·</span>
-                          <span className="text-muted-foreground/80">{req.title}</span>
+              <div className="space-y-2">
+                {employeeRequests.map(req => {
+                  const isApproved = req.status === 'approved';
+                  const isPending  = ['pending', 'under_review'].includes(req.status);
+                  return (
+                    <div key={req.id} className={cn(
+                      'flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 transition-all hover:shadow-xs',
+                      isApproved ? 'border-success/30 border-r-2 border-r-success'
+                      : isPending ? 'border-warning/30 border-r-2 border-r-warning'
+                      : 'border-border/60 border-r-2 border-r-muted-foreground/25'
+                    )}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn(
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                          isApproved ? 'bg-success/10 text-success'
+                          : isPending ? 'bg-warning/10 text-warning'
+                          : 'bg-muted text-muted-foreground'
+                        )}>
+                          <FileText className="h-4 w-4" />
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatDate(req.submittedAt)}
-                          {req.requestNumber && (
-                            <>
-                              <span className="mx-1.5 text-muted-foreground/40">·</span>
-                              <span className="font-mono">#{req.requestNumber}</span>
-                            </>
-                          )}
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">
+                            <RequestTypeLabel type={req.type} />
+                            <span className="text-muted-foreground/70 mx-1.5">·</span>
+                            <span className="text-muted-foreground/80">{req.title}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDate(req.submittedAt)}
+                            {req.requestNumber && (
+                              <>
+                                <span className="mx-1.5 text-muted-foreground/40">·</span>
+                                <span className="font-mono">#{req.requestNumber}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <StatusBadge status={req.status} />
                     </div>
-                    <StatusBadge status={req.status} />
-                  </ItemRow>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <Empty icon={FileText} text="لا توجد طلبات" />
@@ -837,28 +1301,41 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   }
                 />
             {employeeViolations.length > 0 ? (
-              <div className="border-y border-border/40">
-                {employeeViolations.map(v => (
-                  <ItemRow key={v.id}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{v.typeNameAr}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {formatDate(v.date)}
-                          {v.description && <> <span className="mx-1.5 text-muted-foreground/40">·</span> {v.description}</>}
+              <div className="space-y-2">
+                {employeeViolations.map(v => {
+                  const isResolved = v.status === 'closed';
+                  return (
+                    <div key={v.id} className={cn(
+                      'flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 transition-all hover:shadow-xs',
+                      isResolved
+                        ? 'border-border/60 border-r-2 border-r-muted-foreground/25'
+                        : 'border-warning/30 bg-warning/5 border-r-2 border-r-warning'
+                    )}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn(
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                          isResolved ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
+                        )}>
+                          <AlertTriangle className="h-4 w-4" />
                         </div>
-                        {v.typeHasDeduction && (
-                          <div className="text-xs text-destructive mt-0.5">
-                            خصم {v.typeDeductionValue}{' '}
-                            {v.typeDeductionKind === 'amount' ? 'ريال' : v.typeDeductionKind === 'day' ? 'يوم' : 'ساعة'}
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{v.typeNameAr}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {formatDate(v.date)}
+                            {v.description && <> <span className="mx-1.5 text-muted-foreground/40">·</span> {v.description}</>}
                           </div>
-                        )}
+                          {v.typeHasDeduction && (
+                            <div className="text-xs text-destructive mt-0.5">
+                              خصم {v.typeDeductionValue}{' '}
+                              {v.typeDeductionKind === 'amount' ? 'ريال' : v.typeDeductionKind === 'day' ? 'يوم' : 'ساعة'}
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      <StatusBadge status={v.status} />
                     </div>
-                    <StatusBadge status={v.status} />
-                  </ItemRow>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <Empty icon={Award} text="سجل نظيف — لا توجد مخالفات" />
@@ -879,31 +1356,49 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   }
                 />
             {employeeContracts.length > 0 ? (
-              <div className="border-y border-border/40">
-                {employeeContracts.map(c => (
-                  <ItemRow key={c.id} href={`/hr/employees/contracts?contractId=${c.id}`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <FileSignature className="h-4 w-4 text-gold shrink-0" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">
-                          عقد <span className="font-mono">#{c.contractNumber}</span>
+              <div className="space-y-2">
+                {employeeContracts.map(c => {
+                  const isActive = ['active', 'signed'].includes(c.status);
+                  const isDraft  = c.status === 'draft';
+                  return (
+                    <Link
+                      key={c.id}
+                      href={`/hr/employees/contracts?contractId=${c.id}`}
+                      className={cn(
+                        'group flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 transition-all hover:shadow-xs',
+                        isActive ? 'border-gold/40 bg-gold/5 border-r-2 border-r-gold'
+                        : isDraft ? 'border-warning/30 border-r-2 border-r-warning'
+                        : 'border-border/60 border-r-2 border-r-muted-foreground/25'
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn(
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                          isActive ? 'bg-gold/10 text-gold' : 'bg-muted text-muted-foreground'
+                        )}>
+                          <FileSignature className="h-4 w-4" />
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatDate(c.startDate)} ← {formatDate(c.endDate)}
-                          <span className="mx-1.5 text-muted-foreground/40">·</span>
-                          {formatCurrency(c.baseSalary)}
-                          {c.allowanceLines.length > 0 && (
-                            <> <span className="mx-1.5 text-muted-foreground/40">·</span> +{c.allowanceLines.length} بدلات</>
-                          )}
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">
+                            عقد <span className="font-mono">#{c.contractNumber}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDate(c.startDate)} ← {formatDate(c.endDate)}
+                            <span className="mx-1.5 text-muted-foreground/40">·</span>
+                            {formatCurrency(c.baseSalary)}
+                            {c.allowanceLines.length > 0 && (
+                              <> <span className="mx-1.5 text-muted-foreground/40">·</span> +{c.allowanceLines.length} بدلات</>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge status={c.status} />
-                      <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                    </div>
-                  </ItemRow>
-                ))}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <StatusBadge status={c.status} />
+                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <Empty
@@ -935,11 +1430,13 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   }
                 />
             {employeePayslips.length > 0 ? (
-              <div className="border-y border-border/40">
+              <div className="space-y-2">
                 {employeePayslips.map(p => (
-                  <ItemRow key={p.id}>
+                  <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-gold/30 bg-card px-4 py-3 transition-all hover:shadow-xs hover:border-gold/50 border-r-2 border-r-gold">
                     <div className="flex items-center gap-3 min-w-0">
-                      <Receipt className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold">
+                        <Receipt className="h-4 w-4" />
+                      </div>
                       <div className="min-w-0">
                         <div className="text-sm font-medium">{p.month} {p.year}</div>
                         <div className="text-xs text-muted-foreground">
@@ -949,10 +1446,10 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                       </div>
                     </div>
                     <div className="text-left shrink-0">
-                      <div className="font-arabic-display font-semibold text-sm tabular-nums">{formatCurrency(p.net)}</div>
+                      <div className="font-arabic-display font-semibold text-sm tabular-nums text-gold">{formatCurrency(p.net)}</div>
                       <div className="text-[10px] text-muted-foreground">صافي</div>
                     </div>
-                  </ItemRow>
+                  </div>
                 ))}
               </div>
             ) : (

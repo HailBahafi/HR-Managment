@@ -20,7 +20,7 @@ const displayFont = Rubik({
 export const metadata: Metadata = {
   title: 'روز | منصة الموارد البشرية الذكية',
   description: 'نظام متكامل لإدارة الموارد البشرية — موظفين، حضور، رواتب، تقارير',
-  icons: { icon: '/logo.svg' },
+  icons: { icon: '/logo.png' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

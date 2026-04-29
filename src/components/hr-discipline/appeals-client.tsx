@@ -41,7 +41,7 @@ export function AppealsClient() {
   const { appeals, add, update, remove } = useHRDisciplineAppealsStore();
   const { cases } = useHRViolationCasesStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو الموظف…' }]);
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم  الموظف…' }]);
   const q = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -62,7 +62,7 @@ export function AppealsClient() {
 
   const handleSave = () => {
     setFormError(null);
-    if (!draft.caseId) { setFormError('القضية مطلوبة'); return; }
+    if (!draft.caseId) { setFormError('المخالفة مطلوبة'); return; }
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
     if (!draft.grounds.trim()) { setFormError('أسباب التظلم مطلوبة'); return; }
     add(draft);
@@ -118,8 +118,8 @@ export function AppealsClient() {
       )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="تقديم تظلم" size="lg" onSave={handleSave} error={formError}>
-        <FormField label="القضية" required>
-          <SearchableDropdown value={draft.caseId} onChange={handleCaseSelect} options={caseOptions} placeholder="اختر القضية…" />
+        <FormField label="الموظف" required>
+          <SearchableDropdown value={draft.caseId} onChange={handleCaseSelect} options={caseOptions} placeholder="اختر موظف" />
         </FormField>
         {draft.employeeNameAr && (
           <div className="rounded-lg bg-muted/40 px-3 py-2 text-sm"><span className="text-muted-foreground">الموظف: </span>{draft.employeeNameAr}</div>

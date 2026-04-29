@@ -33,6 +33,8 @@ const DAY_LABELS: Record<WeekDayIndex, string> = {
   6: 'السبت',
 };
 
+const WEEK_ORDER: WeekDayIndex[] = [6, 0, 1, 2, 3, 4, 5];
+
 const DAY_SHORT: Record<WeekDayIndex, string> = {
   0: 'أحد',
   1: 'إثن',
@@ -333,58 +335,114 @@ function DayColumn({
   onAddPeriod: () => void;
   onRemovePeriod: (periodId: string) => void;
 }) {
+  const [collapsed, setCollapsed] = React.useState(false);
   const restToggleId = React.useId();
-  return (
-    <div className={cn('rounded-xl border p-4 space-y-3', wd.isRest ? 'border-dashed border-border bg-muted/20' : 'border-border shadow-soft')}>
-      {/* Day header */}
-      <div className="flex items-center justify-end">
 
-        <label
-          htmlFor={restToggleId}
-          className={cn(
-            'flex cursor-pointer select-none items-center gap-2 rounded-full border-2 px-3 py-1.5 transition-all duration-200',
-            wd.isRest
-              ? 'border-amber-500/45 bg-amber-500/12 shadow-sm shadow-amber-500/10'
-              : 'border-border/70 bg-muted/20 hover:bg-muted/35',
-          )}
+  const periodSummary = !wd.isRest && wd.periods.length > 0
+    ? wd.periods.map((p) => `${p.startTime}–${p.endTime}`).join(' · ')
+    : null;
+
+  return (
+    <div className={cn(
+      'overflow-hidden rounded-xl border transition-all',
+      wd.isRest ? 'border-dashed border-border bg-muted/20' : 'border-border shadow-soft',
+    )}>
+      {/* ── Clickable header row ── */}
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        {/* Day badge + name + summary — click to toggle */}
+        <button
+          type="button"
+          onClick={() => setCollapsed((p) => !p)}
+          className="flex flex-1 items-center gap-2.5 min-w-0 text-right"
         >
-          <span className={cn('text-xs', wd.isRest ? 'font-medium text-amber-950 dark:text-amber-100' : 'text-muted-foreground')}>راحة</span>
-          <Switch
-            id={restToggleId}
-            checked={wd.isRest}
-            onCheckedChange={(v) =>
-              onUpdateDay({ isRest: v, periods: v ? [] : [defaultShiftPeriod(genId('per'))] })
-            }
-            className="shrink-0"
-          />
-        </label>
+          <div className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors',
+            wd.isRest
+              ? 'bg-muted text-muted-foreground/50'
+              : 'bg-primary/12 text-primary',
+          )}>
+            {DAY_SHORT[wd.day]}
+          </div>
+
+          <div className="min-w-0 flex-1 text-right">
+            <div className={cn('text-sm font-semibold leading-tight', wd.isRest && 'text-muted-foreground')}>
+              {DAY_LABELS[wd.day]}
+            </div>
+            {collapsed && (
+              <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                {wd.isRest ? 'يوم راحة' : (periodSummary ?? 'لا توجد فترات')}
+              </div>
+            )}
+            {!collapsed && !wd.isRest && wd.periods.length > 0 && (
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                {wd.periods.length} {wd.periods.length === 1 ? 'فترة' : 'فترات'}
+              </div>
+            )}
+          </div>
+
+          <ChevronDown className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200',
+            collapsed ? '-rotate-90' : 'rotate-0',
+          )} />
+        </button>
+
+        {/* Rest toggle — stop propagation so it doesn't collapse */}
+        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+          <label
+            htmlFor={restToggleId}
+            className={cn(
+              'flex cursor-pointer select-none items-center gap-2 rounded-full border-2 px-3 py-1.5 transition-all duration-200',
+              wd.isRest
+                ? 'border-amber-500/45 bg-amber-500/12 shadow-sm shadow-amber-500/10'
+                : 'border-border/70 bg-muted/20 hover:bg-muted/35',
+            )}
+          >
+            <span className={cn('text-xs', wd.isRest ? 'font-medium text-amber-950 dark:text-amber-100' : 'text-muted-foreground')}>
+              راحة
+            </span>
+            <Switch
+              id={restToggleId}
+              checked={wd.isRest}
+              onCheckedChange={(v) => {
+                onUpdateDay({ isRest: v, periods: v ? [] : [defaultShiftPeriod(genId('per'))] });
+                if (collapsed) setCollapsed(false);
+              }}
+              className="shrink-0"
+            />
+          </label>
+        </div>
       </div>
 
-      {wd.isRest ? (
-        <div className="flex items-center justify-center py-4">
-          <span className="text-xs text-muted-foreground/60">يوم راحة</span>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {wd.periods.map((p) => (
-            <PeriodCard
-              key={p.id}
-              period={p}
-              dayLabel={DAY_LABELS[wd.day]}
-              onUpdate={(patch) => onUpdatePeriod(p.id, patch)}
-              onRemove={() => onRemovePeriod(p.id)}
-            />
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full gap-1.5 border-dashed text-muted-foreground hover:text-foreground"
-            onClick={onAddPeriod}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            إضافة فترة
-          </Button>
+      {/* ── Collapsible body ── */}
+      {!collapsed && (
+        <div className="border-t border-border/40 p-4 space-y-3">
+          {wd.isRest ? (
+            <div className="flex items-center justify-center py-3">
+              <span className="text-xs text-muted-foreground/60">يوم راحة</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {wd.periods.map((p) => (
+                <PeriodCard
+                  key={p.id}
+                  period={p}
+                  dayLabel={DAY_LABELS[wd.day]}
+                  onUpdate={(patch) => onUpdatePeriod(p.id, patch)}
+                  onRemove={() => onRemovePeriod(p.id)}
+                />
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5 border-dashed text-muted-foreground hover:text-foreground"
+                onClick={onAddPeriod}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                إضافة فترة
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -505,7 +563,7 @@ export function ShiftTemplatesPanel() {
 
                 {/* 7-day strip */}
                 <div className="flex gap-1 mb-4" dir="rtl">
-                  {t.weekDays.map((wd) => (
+                  {[...t.weekDays].sort((a, b) => WEEK_ORDER.indexOf(a.day) - WEEK_ORDER.indexOf(b.day)).map((wd) => (
                     <div
                       key={wd.day}
                       title={DAY_LABELS[wd.day]}
@@ -516,7 +574,7 @@ export function ShiftTemplatesPanel() {
                           : 'bg-primary/15 text-primary font-semibold',
                       )}
                     >
-                      {DAY_SHORT[wd.day].charAt(0)}
+                      {DAY_SHORT[wd.day]}
                     </div>
                   ))}
                 </div>
@@ -604,7 +662,7 @@ export function ShiftTemplatesPanel() {
                   الجدول الأسبوعي
                 </h4>
                 <div className="grid gap-3 md:grid-cols-2">
-                  {draft.weekDays.map((wd) => (
+                  {[...draft.weekDays].sort((a, b) => WEEK_ORDER.indexOf(a.day) - WEEK_ORDER.indexOf(b.day)).map((wd) => (
                     <DayColumn
                       key={wd.day}
                       wd={wd}

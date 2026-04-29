@@ -57,6 +57,7 @@ export type AssignmentTargetType = 'employee' | 'department' | 'location';
 export interface ShiftAssignment {
   id: string;
   templateId: string;
+  openShiftHours?: number;
   targetType: AssignmentTargetType;
   targetId: string;
   targetLabel: string;

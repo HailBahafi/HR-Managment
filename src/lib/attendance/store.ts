@@ -33,6 +33,7 @@ export type AttendanceStore = PersistedSlice & {
     templateId: string;
     effectiveFrom: string;
     items: AssignmentBatchItem[];
+    openShiftHours?: number;
   }) => void;
   removeAssignment: (id: string) => void;
   removeAssignmentBatch: (batchId: string) => void;
@@ -71,11 +72,12 @@ export const useAttendanceStore = create<AttendanceStore>()(
           assignments: s.assignments.filter((a) => a.templateId !== id),
         })),
 
-      addAssignmentBatch: ({ templateId, effectiveFrom, items }) => {
+      addAssignmentBatch: ({ templateId, effectiveFrom, items, openShiftHours }) => {
         const batchId = genId('batch');
         const rows: ShiftAssignment[] = items.map((it) => ({
           id: genId('asg'),
           templateId,
+          ...(openShiftHours !== undefined && { openShiftHours }),
           targetType: it.targetType,
           targetId: it.targetId,
           targetLabel: it.targetLabel,

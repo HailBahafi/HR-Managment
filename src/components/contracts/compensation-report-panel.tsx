@@ -112,7 +112,7 @@ const PERIOD_STATUS_BADGE: Record<string, string> = {
   closed: 'bg-primary/10 text-primary border-primary/30',
 };
 
-export function CompensationReportPanel({ periodId }: { periodId: string }) {
+export function CompensationReportPanel({ periodId, embedded = false }: { periodId: string; embedded?: boolean }) {
   const periods               = useHRPayrollPeriodsStore(s => s.periods);
   const setCompensationStatus = useHRPayrollPeriodsStore(s => s.setCompensationStatus);
   const setMonthlyInputs      = useHRPayrollPeriodsStore(s => s.setMonthlyInputs);
@@ -196,6 +196,7 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
   );
 
   if (!periodId || !period) {
+    if (embedded) return <p className="text-sm text-muted-foreground py-4">الفترة غير موجودة.</p>;
     return (
       <div className="flex flex-col items-start gap-4 p-6 animate-fade-in">
         {backBtn}
@@ -216,7 +217,9 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
   const totalAllowances = previews.reduce((s, r) => s + r.allowancesMonthlyTotal, 0);
   const totalEntitlements = previews.reduce((s, r) => s + r.entitlementOvertimeSar + r.entitlementBonusSar, 0);
   const totalDed   = previews.reduce((s, r) => s + r.dedAbsenceSar + r.dedLateSar + r.dedPenaltiesSar + r.dedAdminSar, 0);
-  const totalNet   = previews.reduce((s, r) => s + lineNetFromVisibleColumns(r, cols), 0);
+  const totalNet      = previews.reduce((s, r) => s + lineNetFromVisibleColumns(r, cols), 0);
+  const totalDedNoAdmin = previews.reduce((s, r) => s + r.dedAbsenceSar + r.dedLateSar + r.dedPenaltiesSar, 0);
+  const totalNetSar   = previews.reduce((s, r) => s + r.lineNetSar, 0);
 
   const handleAdvance = () => {
     if (!hasLines) { toast.error('تأكد من وجود سجلات في الفترة قبل تسجيل المراجعة.'); return; }
@@ -231,17 +234,19 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
 
   return (
     <>
-      <SetPageTitle titleAr={`تقرير المستحقات — ${period.nameAr || period.code}`} iconName="CalendarRange" />
+      {!embedded && <SetPageTitle titleAr={`تقرير المستحقات — ${period.nameAr || period.code}`} iconName="CalendarRange" />}
 
       <div className={cn('space-y-5 transition-opacity duration-500', mounted ? 'opacity-100' : 'opacity-0')}>
 
         {/* ══ BACK BUTTON ══ */}
-        <div className="flex justify-start">
-          {backBtn}
-        </div>
+        {!embedded && (
+          <div className="flex justify-start">
+            {backBtn}
+          </div>
+        )}
 
         {/* ══ REVIEW WORKFLOW ══ */}
-        <Card className="overflow-hidden border-primary/20 animate-fade-in">
+        {!embedded && <Card className="overflow-hidden border-primary/20 animate-fade-in">
           <div className="relative overflow-hidden bg-linear-to-b from-primary/6 to-card">
             <div className="flex items-center gap-3 px-4 py-2.5">
               <p className="shrink-0 text-xs font-bold text-foreground">مسار المراجعة</p>
@@ -300,10 +305,10 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
               )}
             </div>
           </div>
-        </Card>
+        </Card>}
 
         {/* ══ COLUMN TOGGLES ══ */}
-        {hasLines && (
+        {!embedded && hasLines && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 shadow-soft animate-fade-in">
             <span className="text-xs font-semibold text-muted-foreground">إظهار الأعمدة</span>
             <div className="h-5 w-px bg-border hidden sm:block" />
@@ -367,19 +372,22 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border shadow-elevated animate-fade-in">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] border-collapse text-[11.5px]">
+              <table className={cn('w-full border-collapse text-[11.5px]', embedded ? 'min-w-[680px]' : 'min-w-[860px]')}>
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-border bg-gradient-to-b from-muted/80 to-muted/50 backdrop-blur-sm text-muted-foreground">
                     <th className="w-9 border-e border-border/60 px-2 py-3 text-center font-semibold">#</th>
                     <th className="min-w-[9.5rem] border-e border-border/60 px-3 py-3 text-right font-semibold">الموظف</th>
-                    <th className="min-w-[11rem] border-e border-border/60 px-3 py-3 text-right font-semibold">البدلات (شهري)</th>
+                    {!embedded && <th className="min-w-[11rem] border-e border-border/60 px-3 py-3 text-right font-semibold">البدلات (شهري)</th>}
                     <th className="min-w-[5.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">الراتب الأساسي</th>
-                    {cols.colOvertime   && <th className="min-w-[5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-primary/80">أوفر تايم</th>}
-                    {cols.colBonus      && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-primary/80">مكافآت</th>}
-                    {cols.colDedAbsence && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-warning">غياب</th>}
-                    {cols.colDedLate    && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">تأخير</th>}
-                    {cols.colDedPenalties&&<th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">جزاءات</th>}
-                    {cols.colDedAdmin   && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">إداري</th>}
+                    {embedded  && <th className="min-w-[5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">البدلات</th>}
+                    {!embedded && cols.colOvertime   && <th className="min-w-[5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-primary/80">أوفر تايم</th>}
+                    {!embedded && cols.colBonus      && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-primary/80">مكافآت</th>}
+                    {embedded  && <th className="min-w-[5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-primary/80">مستحقات</th>}
+                    {!embedded && cols.colDedAbsence && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-warning">غياب</th>}
+                    {!embedded && cols.colDedLate    && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">تأخير</th>}
+                    {!embedded && cols.colDedPenalties&&<th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">جزاءات</th>}
+                    {!embedded && cols.colDedAdmin   && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">إداري</th>}
+                    {embedded  && <th className="min-w-[5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive/80">خصومات</th>}
                     <th className="min-w-[6rem] bg-primary/6 px-3 py-3 text-center font-bold text-primary">الصافي</th>
                   </tr>
                 </thead>
@@ -400,37 +408,54 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
                         <td className="border-e border-border/40 px-3 py-2 text-right">
                           <span className="font-semibold text-foreground">{row.namePrimary}</span>
                         </td>
-                        <td className="border-e border-border/40 px-3 py-2 text-right">
-                          {row.allowanceLines.length === 0 ? (
-                            <span className="text-muted-foreground text-[10px]">—</span>
-                          ) : (
-                            <div className="space-y-0.5">
-                              {row.allowanceLines.map(a => (
-                                <div key={a.labelAr} className="flex justify-between gap-2 text-[10px]">
-                                  <span className="text-muted-foreground">{a.labelAr}</span>
-                                  <span className="font-mono font-semibold tabular-nums text-primary">{fmt(a.amount)}</span>
+                        {!embedded && (
+                          <td className="border-e border-border/40 px-3 py-2 text-right">
+                            {row.allowanceLines.length === 0 ? (
+                              <span className="text-muted-foreground text-[10px]">—</span>
+                            ) : (
+                              <div className="space-y-0.5">
+                                {row.allowanceLines.map(a => (
+                                  <div key={a.labelAr} className="flex justify-between gap-2 text-[10px]">
+                                    <span className="text-muted-foreground">{a.labelAr}</span>
+                                    <span className="font-mono font-semibold tabular-nums text-primary">{fmt(a.amount)}</span>
+                                  </div>
+                                ))}
+                                <div className="mt-0.5 border-t border-border/40 pt-0.5 text-right text-[10px] font-bold">
+                                  ∑ <span className="font-mono text-primary">{fmt(row.allowancesMonthlyTotal)}</span>
                                 </div>
-                              ))}
-                              <div className="mt-0.5 border-t border-border/40 pt-0.5 text-right text-[10px] font-bold">
-                                ∑ <span className="font-mono text-primary">{fmt(row.allowancesMonthlyTotal)}</span>
                               </div>
-                            </div>
-                          )}
-                        </td>
+                            )}
+                          </td>
+                        )}
                         <td className="border-e border-border/40 px-3 py-2 text-center font-mono font-semibold tabular-nums">
                           {fmt(row.baseSalary)}
                         </td>
-                        {cols.colOvertime    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.overtime}   onChange={chg('overtime')}   onCommit={sav} colorClass="text-primary"           disabled={isApproved} /></td>}
-                        {cols.colBonus       && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.bonus}      onChange={chg('bonus')}      onCommit={sav} colorClass="text-primary"           disabled={isApproved} /></td>}
-                        {cols.colDedAbsence  && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.absenceSar} onChange={chg('absenceSar')} onCommit={sav} colorClass="text-warning"           disabled={isApproved} /></td>}
-                        {cols.colDedLate     && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.late}       onChange={chg('late')}       onCommit={sav} colorClass="text-destructive"       disabled={isApproved} /></td>}
-                        {cols.colDedPenalties&& <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.penalties}  onChange={chg('penalties')}  onCommit={sav} colorClass="text-destructive"       disabled={isApproved} /></td>}
-                        {cols.colDedAdmin    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.admin}      onChange={chg('admin')}      onCommit={sav} colorClass="text-muted-foreground" disabled={isApproved} /></td>}
+                        {embedded && (
+                          <td className="border-e border-border/40 px-3 py-2 text-center font-mono tabular-nums">
+                            {fmt(row.allowancesMonthlyTotal)}
+                          </td>
+                        )}
+                        {!embedded && cols.colOvertime    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.overtime}   onChange={chg('overtime')}   onCommit={sav} colorClass="text-primary"           disabled={isApproved} /></td>}
+                        {!embedded && cols.colBonus       && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.bonus}      onChange={chg('bonus')}      onCommit={sav} colorClass="text-primary"           disabled={isApproved} /></td>}
+                        {embedded && (
+                          <td className="border-e border-border/40 px-3 py-2 text-center font-mono tabular-nums text-primary">
+                            {fmt(row.entitlementOvertimeSar + row.entitlementBonusSar)}
+                          </td>
+                        )}
+                        {!embedded && cols.colDedAbsence  && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.absenceSar} onChange={chg('absenceSar')} onCommit={sav} colorClass="text-warning"           disabled={isApproved} /></td>}
+                        {!embedded && cols.colDedLate     && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.late}       onChange={chg('late')}       onCommit={sav} colorClass="text-destructive"       disabled={isApproved} /></td>}
+                        {!embedded && cols.colDedPenalties&& <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.penalties}  onChange={chg('penalties')}  onCommit={sav} colorClass="text-destructive"       disabled={isApproved} /></td>}
+                        {!embedded && cols.colDedAdmin    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.admin}      onChange={chg('admin')}      onCommit={sav} colorClass="text-muted-foreground" disabled={isApproved} /></td>}
+                        {embedded && (
+                          <td className="border-e border-border/40 px-3 py-2 text-center font-mono tabular-nums text-destructive">
+                            {fmt(row.dedAbsenceSar + row.dedLateSar + row.dedPenaltiesSar)}
+                          </td>
+                        )}
                         <td className={cn(
                           'bg-primary/5 px-3 py-2 text-center font-mono font-bold tabular-nums',
-                          net < 0 ? 'text-destructive' : 'text-foreground',
+                          (embedded ? row.lineNetSar : net) < 0 ? 'text-destructive' : 'text-foreground',
                         )}>
-                          {fmt(net)}
+                          {fmt(embedded ? row.lineNetSar : net)}
                         </td>
                       </tr>
                     );
@@ -439,24 +464,39 @@ export function CompensationReportPanel({ periodId }: { periodId: string }) {
                 {/* Totals footer */}
                 <tfoot>
                   <tr className="border-t-2 border-primary/20 bg-gradient-to-b from-primary/6 to-primary/3 font-bold text-[11.5px]">
-                    <td colSpan={3} className="border-e border-border/60 px-3 py-3 text-right text-xs font-bold text-primary">
-                      المجموع الكلي
-                    </td>
-                    <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums">
-                      {fmt(totalBase)}
-                    </td>
-                    {cols.colOvertime    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-primary">{fmt(previews.reduce((s,r)=>s+r.entitlementOvertimeSar,0))}</td>}
-                    {cols.colBonus       && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-primary">{fmt(previews.reduce((s,r)=>s+r.entitlementBonusSar,0))}</td>}
-                    {cols.colDedAbsence  && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-warning">{fmt(previews.reduce((s,r)=>s+r.dedAbsenceSar,0))}</td>}
-                    {cols.colDedLate     && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(previews.reduce((s,r)=>s+r.dedLateSar,0))}</td>}
-                    {cols.colDedPenalties&& <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(previews.reduce((s,r)=>s+r.dedPenaltiesSar,0))}</td>}
-                    {cols.colDedAdmin    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-muted-foreground">{fmt(0)}</td>}
-                    <td className={cn(
-                      'bg-primary/10 px-3 py-3 text-center font-mono font-extrabold tabular-nums text-sm',
-                      totalNet < 0 ? 'text-destructive' : 'text-primary',
-                    )}>
-                      {fmt(totalNet)}
-                    </td>
+                    {embedded ? (
+                      <>
+                        <td colSpan={2} className="border-e border-border/60 px-3 py-3 text-right text-xs font-bold text-primary">المجموع الكلي</td>
+                        <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums">{fmt(totalBase)}</td>
+                        <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums">{fmt(totalAllowances)}</td>
+                        <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-primary">{fmt(totalEntitlements)}</td>
+                        <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(totalDedNoAdmin)}</td>
+                        <td className={cn('bg-primary/10 px-3 py-3 text-center font-mono font-extrabold tabular-nums text-sm', totalNetSar < 0 ? 'text-destructive' : 'text-primary')}>
+                          {fmt(totalNetSar)}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td colSpan={3} className="border-e border-border/60 px-3 py-3 text-right text-xs font-bold text-primary">
+                          المجموع الكلي
+                        </td>
+                        <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums">
+                          {fmt(totalBase)}
+                        </td>
+                        {cols.colOvertime    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-primary">{fmt(previews.reduce((s,r)=>s+r.entitlementOvertimeSar,0))}</td>}
+                        {cols.colBonus       && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-primary">{fmt(previews.reduce((s,r)=>s+r.entitlementBonusSar,0))}</td>}
+                        {cols.colDedAbsence  && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-warning">{fmt(previews.reduce((s,r)=>s+r.dedAbsenceSar,0))}</td>}
+                        {cols.colDedLate     && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(previews.reduce((s,r)=>s+r.dedLateSar,0))}</td>}
+                        {cols.colDedPenalties&& <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(previews.reduce((s,r)=>s+r.dedPenaltiesSar,0))}</td>}
+                        {cols.colDedAdmin    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-muted-foreground">{fmt(0)}</td>}
+                        <td className={cn(
+                          'bg-primary/10 px-3 py-3 text-center font-mono font-extrabold tabular-nums text-sm',
+                          totalNet < 0 ? 'text-destructive' : 'text-primary',
+                        )}>
+                          {fmt(totalNet)}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 </tfoot>
               </table>

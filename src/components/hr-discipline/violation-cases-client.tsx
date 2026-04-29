@@ -31,7 +31,7 @@ export function ViolationCasesClient() {
   const { types } = useHRViolationTypesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو الموظف…' }]);
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم الموظف…' }]);
   const q = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -119,7 +119,7 @@ export function ViolationCasesClient() {
       submit(result.id);
     }
 
-    toast.success(andSubmit ? 'تم حفظ القضية وتقديمها' : 'تم حفظ المسودة');
+    toast.success(andSubmit ? 'تم حفظ المخالفة وتقديمها' : 'تم حفظ المسودة');
     setDrawerOpen(false);
     setDraft(EMPTY);
   };
@@ -361,7 +361,7 @@ export function ViolationCasesClient() {
       {/* Reject Modal */}
       <Dialog open={!!rejectModal} onOpenChange={v => !v && setRejectModal(null)}>
         <DialogContent className="sm:max-w-sm border-border">
-          <DialogHeader><DialogTitle>رفض القضية {rejectModal?.caseNumber}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>رفض المخالفة {rejectModal?.caseNumber}</DialogTitle></DialogHeader>
           <Input value={rejectNote} onChange={e => setRejectNote(e.target.value)} placeholder="سبب الرفض (اختياري)…" />
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setRejectModal(null)}>إلغاء</Button>

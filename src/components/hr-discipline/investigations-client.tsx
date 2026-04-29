@@ -34,7 +34,7 @@ export function InvestigationsClient() {
   const { cases } = useHRViolationCasesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم القضية أو المحقق…' }]);
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم الموظف…' }]);
   const q = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -55,7 +55,7 @@ export function InvestigationsClient() {
 
   const handleSave = () => {
     setFormError(null);
-    if (!draft.caseId) { setFormError('القضية مطلوبة'); return; }
+    if (!draft.caseId) { setFormError('الموظف مطلوب'); return; }
     if (!draft.investigatorName.trim()) { setFormError('اسم المحقق مطلوب'); return; }
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
     add(draft);

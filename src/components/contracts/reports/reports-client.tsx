@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { FileText, Download, Eye, Loader2, FileSpreadsheet, ReceiptText, ScrollText } from 'lucide-react';
+import { PayrollMultiPeriodExplorer } from './payroll-multi-period-explorer';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/set-page-title';
 import { useHRPayrollPeriodsStore, type HRPayrollPeriodRecord } from '@/lib/contracts/payroll-periods-store';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
@@ -165,27 +165,12 @@ export function ReportsClient() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <SetPageTitle titleAr="التقارير والنماذج" descriptionAr="إنشاء وطباعة التقارير الرسمية وتصديرها PDF" iconName="FileText" />
+      <SetPageTitle titleAr="كشف مسيرات الرواتب" descriptionAr="إنشاء وطباعة التقارير الرسمية وتصديرها PDF" iconName="FileText" />
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-xl border border-border bg-muted/30 p-1">
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => switchTab(t.key)}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all',
-              tab === t.key
-                ? 'bg-card shadow-sm text-primary border border-border'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <t.icon className="h-4 w-4 shrink-0" />
-            {t.label}
-          </button>
-        ))}
-      </div>
+ 
+      {tab === 'payroll' && <PayrollMultiPeriodExplorer />}
 
+      {tab !== 'payroll' && (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* ── LEFT: Form ── */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-soft space-y-4">
@@ -194,40 +179,7 @@ export function ReportsClient() {
             <h3 className="font-semibold">خيارات النموذج</h3>
           </div>
 
-          {/* Payroll form */}
-          {tab === 'payroll' && (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">فترة الرواتب</label>
-                <select
-                  value={periodId}
-                  onChange={e => setPeriodId(e.target.value)}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  {periods.map(p => (
-                    <option key={p.id} value={p.id}>{p.nameAr} — {p.code}</option>
-                  ))}
-                </select>
-              </div>
-              {periodId && (
-                <div className="rounded-lg bg-muted/40 p-3 text-xs space-y-1">
-                  <p className="font-medium">معاينة الفترة:</p>
-                  {(() => {
-                    const p = periods.find(x => x.id === periodId);
-                    if (!p) return null;
-                    return (
-                      <>
-                        <p className="text-muted-foreground">{p.employmentLines.length} موظف · {p.periodStart} إلى {p.periodEnd}</p>
-                        <Badge variant={p.status === 'closed' ? 'success' : p.status === 'open' ? 'warning' : 'secondary'} className="text-[10px]">
-                          {p.status === 'closed' ? 'مغلقة' : p.status === 'open' ? 'مفتوحة' : 'مسودة'}
-                        </Badge>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          )}
+          {/* payroll form removed — handled by PayrollMultiPeriodExplorer above */}
 
           {/* Receipt form */}
           {tab === 'receipt' && (
@@ -336,13 +288,11 @@ export function ReportsClient() {
           ) : (
             <div className="flex h-full min-h-[620px] flex-col items-center justify-center gap-4 p-8 text-center">
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted/50">
-                {tab === 'payroll'   && <FileSpreadsheet className="h-9 w-9 text-muted-foreground" />}
                 {tab === 'receipt'   && <ReceiptText      className="h-9 w-9 text-muted-foreground" />}
                 {tab === 'clearance' && <ScrollText       className="h-9 w-9 text-muted-foreground" />}
               </div>
               <div>
                 <p className="font-semibold text-muted-foreground">
-                  {tab === 'payroll'   && 'مسير رواتب العاملين'}
                   {tab === 'receipt'   && 'سند استلام نقدي'}
                   {tab === 'clearance' && 'مخالصة موظف'}
                 </p>
@@ -360,6 +310,7 @@ export function ReportsClient() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

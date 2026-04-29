@@ -417,7 +417,7 @@ export const useHRViolationCasesStore = create<CasesState>()(
 
       submit: (id) => {
         const c = get().cases.find(x => x.id === id);
-        if (!c) return { ok:false, error:'القضية غير موجودة' };
+        if (!c) return { ok:false, error:'المخالفة غير موجودة' };
         if (!c.typeNeedsApproval) {
           // auto approve
           set(s => ({ cases: s.cases.map(x => x.id === id ? { ...x, status:'approved', updatedAt:now() } : x) }));
@@ -434,7 +434,7 @@ export const useHRViolationCasesStore = create<CasesState>()(
 
       approve: (id, role, note) => {
         const c = get().cases.find(x => x.id === id);
-        if (!c) return { ok:false, error:'القضية غير موجودة' };
+        if (!c) return { ok:false, error:'المخالفة غير موجودة' };
         const logEntry = { role, action: 'approved' as const, note, at: now() };
         const newIndex = c.currentApprovalIndex + 1;
         const isLast = newIndex >= c.requiredApprovers.length;
