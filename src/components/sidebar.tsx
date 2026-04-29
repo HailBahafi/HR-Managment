@@ -260,7 +260,9 @@ export function Sidebar() {
           open ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        <MobileDrawer onClose={close} />
+        <React.Suspense fallback={null}>
+          <MobileDrawer onClose={close} />
+        </React.Suspense>
       </aside>
     </>
   );
