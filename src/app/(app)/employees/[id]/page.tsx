@@ -88,7 +88,7 @@ function Prop({ icon: Icon, label, children, mono, accent }: {
           "text-sm font-medium truncate min-w-0",
           mono && "font-mono text-xs",
           accent ? accentCls[accent] : "text-foreground"
-        )} {...(mono ? { dir: 'ltr' as const } : {})}>
+        )}>
           {children}
         </div>
       </div>
@@ -133,7 +133,7 @@ function FieldGroup({ title, hint, children }: {
         </h3>
         {hint && <span className="text-[10px] text-muted-foreground/60">{hint}</span>}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
         {children}
       </div>
     </div>
@@ -315,42 +315,41 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   };
 
   return (
-    <div dir="rtl" className="h-[calc(100vh-86px)] flex flex-col overflow-hidden bg-background -mx-4 sm:-mx-6">
+    <div dir="rtl" className="h-fullflex flex-col overflow-hidden bg-background -mx-4 sm:-mx-6">
       {/* Top breadcrumb bar */}
       <div className="shrink-0 border-b border-border/60 bg-card/50 backdrop-blur-md">
-        <div className="px-6 h-12 flex items-center justify-between">
+        <div className="px-3 sm:px-6 h-12 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link href="/employees" className="hover:text-foreground transition-colors flex items-center gap-1">
               <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
-              الموظفون
+              <span className="hidden sm:inline">الموظفون</span>
             </Link>
             <span className="text-muted-foreground/40">/</span>
-            <span className="text-foreground font-medium truncate max-w-[200px]">{employee.name}</span>
+            <span className="text-foreground font-medium truncate max-w-[140px] sm:max-w-[200px]">{employee.name}</span>
           </div>
           <div className="flex items-center gap-1">
             {editing ? (
               <>
                 <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleCancel}>
                   <X className="h-3.5 w-3.5" />
-                  إلغاء
+                  <span className="hidden sm:inline">إلغاء</span>
                 </Button>
                 <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={handleSave}>
                   <Check className="h-3.5 w-3.5" />
-                  حفظ التغييرات
+                  <span className="hidden sm:inline">حفظ التغييرات</span>
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hidden sm:flex">
                   <Share2 className="h-3.5 w-3.5" />
-                  مشاركة
                 </Button>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
                 <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setEditing(true)}>
                   <Edit3 className="h-3.5 w-3.5" />
-                  تعديل
+                  <span className="hidden sm:inline">تعديل</span>
                 </Button>
               </>
             )}
@@ -358,21 +357,67 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
+      {/* Mobile: identity strip + horizontal section tabs */}
+      <div className="md:hidden shrink-0 border-b border-border/60 bg-card/30">
+        <div className="flex items-center gap-3 px-3 py-2.5 border-b border-border/40">
+          <Avatar className="h-9 w-9 ring-2 ring-background shadow-xs shrink-0">
+            <AvatarImage src={employee.avatar} alt={employee.name} />
+            <AvatarFallback className="text-xs font-arabic-display bg-primary text-primary-foreground">
+              {getInitials(employee.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold truncate">{employee.name}</div>
+            <div className="text-[11px] text-muted-foreground truncate">{employee.position}</div>
+          </div>
+          <StatusBadge status={employee.contractStatus} />
+        </div>
+        <div className="flex overflow-x-auto scrollbar-hide gap-0.5 px-2 py-1.5">
+          {SECTIONS.map(s => {
+            const isActive = activeSection === s.id;
+            const count = counts[s.id];
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActiveSection(s.id)}
+                className={cn(
+                  "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all shrink-0",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <s.icon className="h-3.5 w-3.5 shrink-0" />
+                {s.label}
+                {count !== undefined && count > 0 && (
+                  <span className={cn(
+                    "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] tabular-nums",
+                    isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  )}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Main split layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-80 shrink-0 border-l border-border/60 bg-card/30 flex flex-col overflow-hidden">
+        {/* Sidebar — desktop only */}
+        <aside className="hidden md:flex w-72 lg:w-80 shrink-0 border-l border-border/60 bg-card/30 flex-col overflow-hidden">
           {/* Identity card */}
-          <div className="p-6 border-b border-border/60">
-            <div className="flex items-start gap-4">
-              <Avatar className="h-16 w-16 ring-2 ring-background shadow-xs">
+          <div className="p-5 border-b border-border/60">
+            <div className="flex items-start gap-3">
+              <Avatar className="h-14 w-14 ring-2 ring-background shadow-xs">
                 <AvatarImage src={employee.avatar} alt={employee.name} />
                 <AvatarFallback className="text-base font-arabic-display bg-primary text-primary-foreground">
                   {getInitials(employee.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <h1 className="font-arabic-display text-xl font-semibold tracking-tight text-foreground truncate">
+                <h1 className="font-arabic-display text-lg font-semibold tracking-tight text-foreground truncate">
                   {employee.name}
                 </h1>
                 <p className="text-xs text-muted-foreground truncate mt-0.5">{employee.position}</p>
@@ -423,7 +468,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
         {/* Content area (only this scrolls) */}
         <main ref={contentRef} className="flex-1 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-8 py-8">
+          <div className="max-w-5xl mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
             {/* Personal (merged with overview + quick metadata) */}
             {activeSection === 'personal' && (
               <section>
@@ -431,7 +476,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                 <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-linear-to-bl from-primary/6 via-card to-gold/4 mb-8">
                   <div className="absolute inset-0 dotted-bg opacity-5" />
                   <div className="relative p-6 md:p-7">
-                    <div className="flex items-start gap-5 mb-6">
+                    <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5 mb-6">
                       <Avatar className="h-20 w-20 ring-4 ring-background shadow-sm">
                         <AvatarImage src={employee.avatar} alt={employee.name} />
                         <AvatarFallback className="text-xl font-arabic-display bg-primary text-primary-foreground">
@@ -488,7 +533,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   </Prop>
                 </FieldGroup>
 
-                <FieldGroup title="بيانات الاتصال" hint="للتواصل المباشر مع الموظف">
+                <FieldGroup title="بيانات الاتصال">
                   <Field
                     icon={AtSign}
                     field="email"
@@ -601,7 +646,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                     </Button>
                   }
                 />
-            <div className="grid grid-cols-4 gap-2 mb-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
               {[
                 { label: 'حاضر', value: stats.present, color: 'success' as const },
                 { label: 'متأخر', value: stats.late, color: 'warning' as const },
@@ -691,7 +736,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                     </Button>
                   }
                 />
-            <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
               {[
                 { label: 'سنوية', used: 9, total: 30 },
                 { label: 'مرضية', used: 15, total: 60 },

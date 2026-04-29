@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Shield,
@@ -86,6 +86,7 @@ const mobileNav: MobileNavItem[] = [
 
 function MobileDrawer({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
 
   // Auto-close on navigation
@@ -106,14 +107,22 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
     });
   };
 
+  function isChildMatch(href: string) {
+    const [base, qs] = href.split('?');
+    if (qs) {
+      const childParams = new URLSearchParams(qs);
+      const currentParams = searchParams;
+      for (const [k, v] of childParams.entries()) {
+        if (currentParams.get(k) !== v) return false;
+      }
+      return pathname === base;
+    }
+    return pathname === base || pathname.startsWith(base + '/');
+  }
+
   const isParentActive = (item: MobileNavItem) => {
     if (item.href) return pathname === item.href || pathname.startsWith(item.href + '/');
-    if (item.children) {
-      return item.children.some(c => {
-        const base = c.href.split('?')[0];
-        return pathname === base || pathname.startsWith(base + '/');
-      });
-    }
+    if (item.children) return item.children.some(c => isChildMatch(c.href));
     return false;
   };
 
@@ -190,8 +199,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                 <div className="mt-0.5 mb-1 space-y-0.5 pe-2 ps-6">
                   {item.children.map(child => {
                     const ChildIcon = child.icon;
-                    const base = child.href.split('?')[0];
-                    const childActive = pathname === base || pathname.startsWith(base + '/');
+                    const childActive = isChildMatch(child.href);
                     return (
                       <Link
                         key={child.href}

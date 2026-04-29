@@ -275,6 +275,50 @@ function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
       keyExtractor={(l) => l.id}
       emptyText="لا توجد إجازات بهذه الفلاتر"
       onRowClick={onDetail}
+      mobileCard={(l) => {
+        const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
+        const dept = MOCK_DEPARTMENTS.find(d => d.id === emp?.departmentId);
+        const typeCfg = TYPE_STYLE[l.type];
+        const statusCfg = STATUS_STYLE[l.status];
+        const canAct = canActOnLeave(l);
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                  {emp?.nameAr.charAt(0) ?? '?'}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{emp?.nameAr ?? l.employeeId}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{dept?.nameAr}</p>
+                </div>
+              </div>
+              <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', statusCfg.color)}>
+                <span className={cn('h-1.5 w-1.5 rounded-full', statusCfg.dot)} />
+                {statusCfg.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', typeCfg.color)}>
+                <span className={cn('h-1.5 w-1.5 rounded-full', typeCfg.dot)} />
+                {LEAVE_TYPE_LABELS[l.type]}
+              </span>
+              <span className="text-xs text-muted-foreground font-mono" dir="ltr">{l.start} → {l.end}</span>
+              <span className="text-xs text-muted-foreground">{l.workingDays} أيام</span>
+            </div>
+            {canAct && (
+              <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs text-emerald-600 border-emerald-500/40 hover:bg-emerald-500/10" onClick={(e) => { e.stopPropagation(); onApprove(l); }}>
+                  <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onReject(l); }}>
+                  <XCircle className="h-3.5 w-3.5" /> رفض
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      }}
     />
   );
 }

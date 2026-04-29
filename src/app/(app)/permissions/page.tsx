@@ -343,7 +343,8 @@ export default function PermissionsPage() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-border">
+              <div className="overflow-x-auto rounded-xl border border-border">
+              <div className="min-w-[480px]">
                 {/* Column headers */}
                 <div
                   className="grid border-b border-border bg-muted/50 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
@@ -409,6 +410,7 @@ export default function PermissionsPage() {
                     </div>
                   );
                 })}
+              </div>
               </div>
 
               {/* Counter */}

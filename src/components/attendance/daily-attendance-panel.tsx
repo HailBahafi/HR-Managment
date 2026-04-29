@@ -95,14 +95,34 @@ export function DailyAttendancePanel() {
   }), [filtered]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      {/* ── Stats strip ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'حاضر',        value: stats.present, colorCls: 'text-emerald-600', bgCls: 'bg-emerald-500/10', icon: Users },
+          { label: 'متأخر',       value: stats.late,    colorCls: 'text-amber-600',   bgCls: 'bg-amber-500/10',   icon: Clock3 },
+          { label: 'غائب',        value: stats.absent,  colorCls: 'text-destructive',  bgCls: 'bg-destructive/10', icon: TrendingUp },
+          { label: 'متوسط العمل', value: stats.avgWork, colorCls: 'text-primary',      bgCls: 'bg-primary/10',     icon: Timer },
+        ].map(s => (
+          <div key={s.label} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-soft">
+            <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', s.bgCls)}>
+              <s.icon className={cn('h-4 w-4', s.colorCls)} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground truncate">{s.label}</p>
+              <p className={cn('font-display text-xl font-bold number-ar tabular-nums', s.colorCls)}>{s.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* ── Top controls ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         {/* Presets */}
-        <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1 self-start sm:self-auto">
           {(['day','week','month','custom'] as Preset[]).map((p) => (
             <button key={p} type="button" onClick={() => applyPreset(p)}
-              className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
+              className={cn('rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-medium transition-all',
                 preset === p ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -112,9 +132,9 @@ export function DailyAttendancePanel() {
         </div>
 
         {/* View toggle */}
-        <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1 self-start sm:self-auto">
           <button type="button" onClick={() => setView('grid')}
-            className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
+            className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-medium transition-all',
               view === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -122,7 +142,7 @@ export function DailyAttendancePanel() {
             جدول
           </button>
           <button type="button" onClick={() => setView('timeline')}
-            className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
+            className={cn('flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs sm:text-sm font-medium transition-all',
               view === 'timeline' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -177,8 +197,39 @@ function GridView({ rows }: { rows: AttendanceDaySummary[] }) {
     );
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-      <div className="overflow-x-auto">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      {/* Mobile cards */}
+      <div className="divide-y divide-border/40 sm:hidden">
+        {rows.map((s) => {
+          const cfg = STATUS[s.status];
+          return (
+            <div key={s.id} className="p-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                    {s.employeeName.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">{s.employeeName}</p>
+                    <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">{s.date}</p>
+                  </div>
+                </div>
+                <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', cfg.color)}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dot)} />
+                  {cfg.label}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                {s.lateMinutes > 0 && <span className="text-amber-600 font-medium">تأخير: {s.lateMinutes} د</span>}
+                <span>العمل: <span className="font-mono text-foreground">{s.workedMinutes} د</span></span>
+                {s.notes && <span className="truncate">{s.notes}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* Desktop table */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -233,7 +284,7 @@ function GridView({ rows }: { rows: AttendanceDaySummary[] }) {
   );
 }
 
-// ─── Smart timeline (auto adapts to range size) ────────────────────────────────
+// ─── Smart timeline (auto adapts to range size) ──────────────────────────────── (auto adapts to range size) ────────────────────────────────
 
 function SmartTimeline({
   summaries, events, dates, from, to,
