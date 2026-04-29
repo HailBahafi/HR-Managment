@@ -3,14 +3,11 @@
 import * as React from 'react';
 import Link from 'next/link';
 import {
-  Users, UserCheck, FileCheck2, Wallet, Clock, AlertCircle, ArrowLeft,
+  Users, UserCheck, FileCheck2, Wallet, Clock,
   Building2, CalendarDays, TrendingUp, UserPlus,
-  ShieldAlert,
+  ShieldAlert, UserX, Timer, ArrowUpRight, ChevronLeft,
 } from 'lucide-react';
-import { KpiCard } from '@/components/kpi-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { data, getEmployee } from '@/lib/data';
 import { getInitials, cn } from '@/lib/utils';
 import { useSetPageTitle } from '@/components/page-title-context';
@@ -18,195 +15,401 @@ import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-st
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
 import { MOCK_UNIFIED_LEAVES } from '@/lib/leaves/unified-mock';
 
+/* ─── Sparkline ──────────────────────────────────────────────────────────────── */
+function Sparkline({ values, color }: { values: number[]; color: string }) {
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const W = 64; const H = 24;
+  const pts = values
+    .map((v, i) => `${(i / (values.length - 1)) * W},${H - ((v - min) / range) * (H - 2) - 1}`)
+    .join(' ');
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none" className="overflow-visible opacity-80">
+      <polyline points={pts} stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle
+        cx={(values.length - 1) / (values.length - 1) * W}
+        cy={H - ((values[values.length - 1] - min) / range) * (H - 2) - 1}
+        r="2.5" fill={color}
+      />
+    </svg>
+  );
+}
+
+/* ─── Radial progress ────────────────────────────────────────────────────────── */
+function RadialProgress({ value, size = 80, stroke = 7, color }: {
+  value: number; size?: number; stroke?: number; color: string;
+}) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (value / 100) * circ;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} stroke="currentColor" className="text-border" fill="none" />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke}
+        stroke={color} fill="none" strokeLinecap="round"
+        strokeDasharray={circ} strokeDashoffset={offset}
+        style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+      />
+    </svg>
+  );
+}
+
+/* ─── Page ───────────────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   useSetPageTitle({ titleAr: 'لوحة التحكم', descriptionAr: 'نظرة عامة على أداء المنظمة', iconName: 'LayoutDashboard' });
 
-  const { cases } = useHRViolationCasesStore();
+  const { cases }     = useHRViolationCasesStore();
   const { contracts } = useHRContractsStore();
 
-  const totalEmployees = data.company.totalEmployees;
-  const presentCount = data.attendanceToday.filter(a => a.status === 'present').length;
-  const lateCount = data.attendanceToday.filter(a => a.status === 'late').length;
-  const absentCount = data.attendanceToday.filter(a => a.status === 'absent').length;
-  const attendanceRate = Math.round(((presentCount + lateCount) / data.attendanceToday.length) * 100);
+  const totalEmployees  = data.company.totalEmployees;
+  const total           = data.attendanceToday.length;
+  const presentCount    = data.attendanceToday.filter(a => a.status === 'present').length;
+  const lateCount       = data.attendanceToday.filter(a => a.status === 'late').length;
+  const absentCount     = data.attendanceToday.filter(a => a.status === 'absent').length;
+  const attendanceRate  = total ? Math.round(((presentCount + lateCount) / total) * 100) : 0;
   const pendingRequests = data.requests.filter(r => r.status === 'pending').length;
+
   const lateEmployees = data.attendanceToday
     .filter(a => a.status === 'late' || a.status === 'absent')
     .map(a => ({ ...a, employee: getEmployee(a.employeeId)! }))
     .filter(a => a.employee);
 
   const underReviewCases = cases.filter(c => c.status === 'under_review');
-  const activeContracts = contracts.filter(c => c.status === 'active').length;
-  const pendingLeaves = MOCK_UNIFIED_LEAVES.filter(l => l.status === 'pending').length;
+  const activeContracts  = contracts.filter(c => c.status === 'active').length;
+  const pendingLeaves    = MOCK_UNIFIED_LEAVES.filter(l => l.status === 'pending').length;
+
+  const dateAr = new Intl.DateTimeFormat('ar-SA', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  }).format(new Date());
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-5 animate-fade-in" dir="rtl">
 
-      {/* ── Main KPIs ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <KpiCard
-          label="إجمالي الموظفين"
-          value={totalEmployees.toLocaleString('ar-SA')}
-          delta={4.2} icon={Users} accent="primary"
-          description={`في ${data.branches.length} فروع`}
-          sparkline={[620, 680, 720, 740, 780, 810, 842]}
-        />
-        <KpiCard
-          label="نسبة الحضور اليوم"
-          value={`${attendanceRate}%`}
-          delta={1.8} icon={UserCheck} accent="success"
-          description={`${presentCount + lateCount} من ${data.attendanceToday.length} موظف`}
-          sparkline={[92, 95, 93, 96, 97, 96, attendanceRate]}
-        />
+      {/* ════════════════════════════════════════════════════════════════
+          HERO — gradient banner with greeting + live date
+      ════════════════════════════════════════════════════════════════ */}
+      <div className="relative overflow-hidden rounded-2xl bg-[hsl(175,55%,14%)] text-white shadow-luxe">
+        {/* layered glow circles */}
+        <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[hsl(175,50%,30%)] opacity-20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-10 left-10 h-40 w-40 rounded-full bg-[hsl(38,62%,52%)] opacity-10 blur-2xl" />
+
+        <div className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          {/* greeting */}
+          <div>
+            <p className="text-[11px] font-medium tracking-widest uppercase text-white/50 mb-1">{dateAr}</p>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-white leading-snug">
+              لوحة التحكم
+            </h1>
+            <p className="mt-1 text-sm text-white/60">
+              {presentCount + lateCount} موظف حاضر اليوم من أصل {total}
+            </p>
+          </div>
+
+          {/* attendance ring + legend */}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <RadialProgress value={attendanceRate} size={72} stroke={6} color="hsl(38,62%,52%)" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-display text-lg font-bold text-white leading-none">{attendanceRate}%</span>
+                <span className="text-[9px] text-white/50">حضور</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5 text-[11px]">
+              <span className="flex items-center gap-1.5 text-white/80"><span className="h-2 w-2 rounded-full bg-emerald-400 inline-block shrink-0" />{presentCount} حاضر</span>
+              <span className="flex items-center gap-1.5 text-white/80"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block shrink-0"   />{lateCount} متأخر</span>
+              <span className="flex items-center gap-1.5 text-white/80"><span className="h-2 w-2 rounded-full bg-rose-400 inline-block shrink-0"    />{absentCount} غائب</span>
+            </div>
+          </div>
+        </div>
+
+        {/* bottom attendance bar */}
+        <div className="flex h-1">
+          <div className="bg-emerald-400 transition-all" style={{ width: `${total ? (presentCount / total) * 100 : 0}%` }} />
+          <div className="bg-amber-400 transition-all"   style={{ width: `${total ? (lateCount    / total) * 100 : 0}%` }} />
+          <div className="bg-rose-400 transition-all"    style={{ width: `${total ? (absentCount  / total) * 100 : 0}%` }} />
+          <div className="flex-1 bg-white/10" />
+        </div>
       </div>
 
-      {/* ── Secondary Stats Strip ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* ════════════════════════════════════════════════════════════════
+          KPI GRID — 4 cards with sparklines
+      ════════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { label: 'عقود نشطة',             value: activeContracts, icon: FileCheck2,   colorCls: 'text-emerald-600 dark:text-emerald-400', bgCls: 'bg-emerald-50 dark:bg-emerald-950/40', href: '/hr/contracts' },
-          { label: 'إجازات معلقة',           value: pendingLeaves,   icon: CalendarDays, colorCls: 'text-blue-600 dark:text-blue-400',        bgCls: 'bg-blue-50 dark:bg-blue-950/40',        href: '/hr/leaves' },
-          { label: 'طلبات بانتظار المراجعة', value: pendingRequests, icon: Clock,        colorCls: 'text-amber-600 dark:text-amber-400',      bgCls: 'bg-amber-50 dark:bg-amber-950/40',      href: '/requests' },
-        ].map(s => (
-          <Link key={s.label} href={s.href}
-            className="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elevated">
-            <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105', s.bgCls, s.colorCls)}>
-              <s.icon className="h-5 w-5" />
+          {
+            label: 'إجمالي الموظفين',
+            value: totalEmployees.toLocaleString('ar-SA'),
+            sub: `${data.branches.length} فروع`,
+            delta: '+4.2%', positive: true,
+            icon: Users,
+            href: '/employees',
+            sparkline: [620, 680, 720, 740, 780, 810, 842],
+            accentLight: 'bg-primary/8 border-primary/20',
+            iconBg: 'bg-primary/10 text-primary',
+            valueColor: 'text-primary',
+            sparkColor: 'hsl(175,55%,22%)',
+          },
+          {
+            label: 'نسبة الحضور',
+            value: `${attendanceRate}%`,
+            sub: `${presentCount + lateCount} حاضر اليوم`,
+            delta: '+1.8%', positive: true,
+            icon: UserCheck,
+            href: '/attendance?section=daily',
+            sparkline: [88, 91, 93, 90, 94, 95, attendanceRate],
+            accentLight: 'bg-emerald-50 border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-800/30',
+            iconBg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+            valueColor: 'text-emerald-700 dark:text-emerald-400',
+            sparkColor: '#10b981',
+          },
+          {
+            label: 'إجازات معلقة',
+            value: String(pendingLeaves),
+            sub: 'بانتظار الموافقة',
+            delta: null, positive: true,
+            icon: CalendarDays,
+            href: '/hr/leaves/unified-management',
+            sparkline: [3, 5, 4, 7, 6, 8, pendingLeaves],
+            accentLight: 'bg-blue-50 border-blue-200/60 dark:bg-blue-950/20 dark:border-blue-800/30',
+            iconBg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+            valueColor: 'text-blue-700 dark:text-blue-400',
+            sparkColor: '#3b82f6',
+          },
+          {
+            label: 'عقود نشطة',
+            value: String(activeContracts),
+            sub: 'عقد موظف',
+            delta: null, positive: true,
+            icon: FileCheck2,
+            href: '/hr/contracts/employment',
+            sparkline: [18, 20, 22, 21, 24, 23, activeContracts],
+            accentLight: 'bg-violet-50 border-violet-200/60 dark:bg-violet-950/20 dark:border-violet-800/30',
+            iconBg: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+            valueColor: 'text-violet-700 dark:text-violet-400',
+            sparkColor: '#7c3aed',
+          },
+        ].map(k => (
+          <Link
+            key={k.label}
+            href={k.href}
+            className={cn(
+              'group relative flex flex-col justify-between overflow-hidden rounded-xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-elevated',
+              k.accentLight,
+            )}
+          >
+            {/* header row */}
+            <div className="flex items-start justify-between mb-4">
+              <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', k.iconBg)}>
+                <k.icon className="h-4 w-4" />
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/30 transition-all group-hover:text-muted-foreground group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </div>
+
+            {/* value */}
             <div>
-              <div className={cn('font-display text-2xl font-bold tabular-nums', s.colorCls)}>{s.value}</div>
-              <div className="text-xs text-muted-foreground leading-tight mt-0.5">{s.label}</div>
+              <p className="text-[11px] font-medium text-muted-foreground mb-0.5">{k.label}</p>
+              <p className={cn('font-display text-2xl font-bold tabular-nums leading-none', k.valueColor)}>{k.value}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{k.sub}</p>
+            </div>
+
+            {/* footer: sparkline + delta */}
+            <div className="mt-3 flex items-end justify-between">
+              <Sparkline values={k.sparkline} color={k.sparkColor} />
+              {k.delta && (
+                <span className="text-[10px] font-semibold rounded-full px-1.5 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                  {k.delta}
+                </span>
+              )}
             </div>
           </Link>
         ))}
       </div>
 
-      {/* ── Violations Queue + Today's Alerts ────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-        {/* Under-review violations */}
-        <div className="flex flex-col rounded-xl border border-border bg-card shadow-soft overflow-hidden">
-          <div className="flex items-center justify-between p-5 border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <ShieldAlert className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="font-display text-base font-bold leading-tight">مخالفات بانتظار الاعتماد</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">الحالات التي تحتاج قراراً</p>
-              </div>
+      {/* ════════════════════════════════════════════════════════════════
+          TODAY SNAPSHOT — 4 inline stat pills
+      ════════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: 'حاضر اليوم',   value: presentCount,    icon: UserCheck, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30', border: 'border-emerald-200/60 dark:border-emerald-800/30' },
+          { label: 'متأخر',         value: lateCount,       icon: Timer,     color: 'text-amber-700 dark:text-amber-400',     bg: 'bg-amber-100 dark:bg-amber-900/30',     border: 'border-amber-200/60 dark:border-amber-800/30' },
+          { label: 'غائب',          value: absentCount,     icon: UserX,     color: 'text-rose-700 dark:text-rose-400',       bg: 'bg-rose-100 dark:bg-rose-900/30',       border: 'border-rose-200/60 dark:border-rose-800/30' },
+          { label: 'طلبات معلقة',  value: pendingRequests, icon: Clock,     color: 'text-orange-700 dark:text-orange-400',   bg: 'bg-orange-100 dark:bg-orange-900/30',   border: 'border-orange-200/60 dark:border-orange-800/30' },
+        ].map(s => (
+          <div key={s.label} className={cn('flex items-center gap-3 rounded-xl border bg-card p-4', s.border)}>
+            <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', s.bg)}>
+              <s.icon className={cn('h-4 w-4', s.color)} />
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="warning" className="tabular-nums">{underReviewCases.length}</Badge>
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 hidden sm:flex" asChild>
-                <Link href="/hr/discipline/violation-cases">عرض الكل <ArrowLeft className="h-3 w-3" /></Link>
-              </Button>
+            <div>
+              <p className={cn('font-display text-2xl font-bold tabular-nums leading-none', s.color)}>{s.value}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{s.label}</p>
             </div>
           </div>
-          <div className="divide-y divide-border/40 flex-1">
-            {underReviewCases.slice(0, 5).map(c => {
+        ))}
+      </div>
+
+      {/* ════════════════════════════════════════════════════════════════
+          TWO PANELS — Violations + Attendance alerts
+      ════════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+        {/* ── Violations panel ── */}
+        <div className="flex flex-col rounded-xl border border-border bg-card shadow-soft overflow-hidden">
+          {/* header */}
+          <div className="flex items-center justify-between px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-display text-sm font-bold leading-none">مخالفات بانتظار الاعتماد</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">الحالات التي تحتاج قراراً</p>
+              </div>
+            </div>
+            <Link
+              href="/hr/discipline/violation-cases"
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+            >
+              {underReviewCases.length > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15 text-[10px] font-bold text-amber-600 dark:text-amber-400 tabular-nums ml-1">
+                  {underReviewCases.length}
+                </span>
+              )}
+              عرض الكل
+              <ChevronLeft className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <div className="h-px bg-border/60" />
+
+          {/* rows */}
+          <div className="divide-y divide-border/40 flex-1 min-h-0">
+            {underReviewCases.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/60 mb-3">
+                  <ShieldAlert className="h-5 w-5 text-muted-foreground/30" />
+                </div>
+                <p className="text-sm text-muted-foreground">لا توجد مخالفات معلقة</p>
+              </div>
+            ) : underReviewCases.slice(0, 5).map(c => {
               const stage = c.requiredApprovers[c.currentApprovalIndex];
-              const stageLabel = stage === 'manager' ? 'مدير مباشر' : stage === 'hr' ? 'موارد بشرية' : 'تنفيذي';
+              const stageLabel = stage === 'manager' ? 'مدير' : stage === 'hr' ? 'موارد بشرية' : 'تنفيذي';
               return (
-                <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold">
+                <div key={c.id} className="group flex items-center gap-3 px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold">
                     {c.employeeNameAr.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{c.employeeNameAr}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{c.typeNameAr} · {c.caseNumber}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{c.typeNameAr} · <span className="font-mono">{c.caseNumber}</span></p>
                   </div>
-                  <Badge variant="outline" className="shrink-0 text-[10px]">{stageLabel}</Badge>
+                  <span className="shrink-0 rounded-full border border-border/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {stageLabel}
+                  </span>
                 </div>
               );
             })}
-            {underReviewCases.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50 mb-2">
-                  <ShieldAlert className="h-5 w-5 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm text-muted-foreground">لا توجد مخالفات معلقة</p>
-              </div>
-            )}
           </div>
-          {underReviewCases.length > 0 && (
-            <div className="p-3 border-t border-border/60 sm:hidden">
-              <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1" asChild>
-                <Link href="/hr/discipline/violation-cases">عرض الكل <ArrowLeft className="h-3 w-3" /></Link>
-              </Button>
-            </div>
-          )}
         </div>
 
-        {/* Today's alerts */}
+        {/* ── Today's alerts panel ── */}
         <div className="flex flex-col rounded-xl border border-border bg-card shadow-soft overflow-hidden">
-          <div className="flex items-center justify-between p-5 border-b border-border/60">
+          {/* header */}
+          <div className="flex items-center justify-between px-5 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-                <AlertCircle className="h-4 w-4" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-900/30">
+                <UserX className="h-4 w-4 text-rose-600 dark:text-rose-400" />
               </div>
               <div>
-                <h3 className="font-display text-base font-bold leading-tight">تنبيهات اليوم</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">تأخرات وغياب — <span className="tabular-nums">{lateCount + absentCount}</span> موظف</p>
+                <h3 className="font-display text-sm font-bold leading-none">تنبيهات الحضور</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {lateCount + absentCount} حالة تأخر أو غياب اليوم
+                </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              {absentCount > 0 && <Badge variant="destructive" className="tabular-nums">{absentCount} غائب</Badge>}
-              {lateCount > 0 && <Badge variant="warning" className="tabular-nums">{lateCount} متأخر</Badge>}
+            <div className="flex items-center gap-1.5">
+              {absentCount > 0 && (
+                <span className="rounded-full bg-rose-100 dark:bg-rose-900/30 px-2.5 py-0.5 text-[11px] font-semibold text-rose-700 dark:text-rose-400 tabular-nums">
+                  {absentCount} غائب
+                </span>
+              )}
+              {lateCount > 0 && (
+                <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
+                  {lateCount} متأخر
+                </span>
+              )}
             </div>
           </div>
-          <div className="divide-y divide-border/40 flex-1">
-            {lateEmployees.slice(0, 5).map(item => (
-              <div key={item.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors">
+
+          <div className="h-px bg-border/60" />
+
+          {/* rows */}
+          <div className="divide-y divide-border/40 flex-1 min-h-0">
+            {lateEmployees.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-3">
+                  <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <p className="text-sm text-muted-foreground">جميع الموظفين حاضرون</p>
+              </div>
+            ) : lateEmployees.slice(0, 5).map(item => (
+              <div key={item.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/30 transition-colors">
                 <Avatar className="h-8 w-8 shrink-0">
                   <AvatarImage src={item.employee.avatar} />
-                  <AvatarFallback className="text-xs">{getInitials(item.employee.name)}</AvatarFallback>
+                  <AvatarFallback className="text-[11px] font-semibold bg-muted">
+                    {getInitials(item.employee.name)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{item.employee.name}</p>
                   <p className="truncate text-[11px] text-muted-foreground">{item.employee.position}</p>
                 </div>
                 {item.status === 'late'
-                  ? <Badge variant="warning" className="shrink-0 text-[10px] tabular-nums">+{item.lateMinutes} د</Badge>
-                  : <Badge variant="destructive" className="shrink-0 text-[10px]">غائب</Badge>}
+                  ? <span className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
+                      +{item.lateMinutes} د
+                    </span>
+                  : <span className="shrink-0 rounded-full bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:text-rose-400">
+                      غائب
+                    </span>
+                }
               </div>
             ))}
-            {lateEmployees.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50 mb-2">
-                  <UserCheck className="h-5 w-5 text-muted-foreground/40" />
-                </div>
-                <p className="text-sm text-muted-foreground">جميع الموظفين حاضرون</p>
-              </div>
-            )}
           </div>
         </div>
+
       </div>
 
-      {/* ── Quick Actions ────────────────────────────────────────────── */}
+      {/* ════════════════════════════════════════════════════════════════
+          QUICK ACTIONS — coloured icon tiles
+      ════════════════════════════════════════════════════════════════ */}
       <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
-        <div className="mb-4">
-          <h3 className="font-display text-base font-bold">إجراءات سريعة</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">الأدوات الأكثر استخداماً في متناول يدك</p>
-        </div>
-        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        <p className="font-display text-sm font-bold mb-1">إجراءات سريعة</p>
+        <p className="text-[11px] text-muted-foreground mb-4">الأدوات الأكثر استخداماً</p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            { label: 'موظف جديد',       icon: UserPlus,    href: '/employees' },
-            { label: 'طلب إجازة',        icon: CalendarDays, href: '/hr/leaves' },
-            { label: 'الرواتب',          icon: Wallet,       href: '/hr/contracts' },
-            { label: 'تقرير حضور',       icon: Clock,        href: '/attendance' },
-            { label: 'هيكل تنظيمي',      icon: Building2,    href: '/organization' },
-            { label: 'تحليلات الإجازات', icon: TrendingUp,   href: '/hr/leaves/analytics' },
+            { label: 'موظف جديد',       icon: UserPlus,     href: '/employees',                color: 'text-primary',                              bg: 'bg-primary/10',                              hoverBg: 'hover:bg-primary/15' },
+            { label: 'طلب إجازة',        icon: CalendarDays, href: '/hr/leaves',                color: 'text-blue-700 dark:text-blue-400',          bg: 'bg-blue-100 dark:bg-blue-900/30',            hoverBg: 'hover:bg-blue-200/70 dark:hover:bg-blue-900/50' },
+            { label: 'الرواتب',          icon: Wallet,       href: '/hr/contracts',             color: 'text-emerald-700 dark:text-emerald-400',    bg: 'bg-emerald-100 dark:bg-emerald-900/30',      hoverBg: 'hover:bg-emerald-200/70 dark:hover:bg-emerald-900/50' },
+            { label: 'تقرير حضور',       icon: Clock,        href: '/attendance?section=daily', color: 'text-amber-700 dark:text-amber-400',        bg: 'bg-amber-100 dark:bg-amber-900/30',          hoverBg: 'hover:bg-amber-200/70 dark:hover:bg-amber-900/50' },
+            { label: 'هيكل تنظيمي',      icon: Building2,    href: '/organization',             color: 'text-violet-700 dark:text-violet-400',      bg: 'bg-violet-100 dark:bg-violet-900/30',        hoverBg: 'hover:bg-violet-200/70 dark:hover:bg-violet-900/50' },
+            { label: 'تحليل الإجازات',   icon: TrendingUp,   href: '/hr/leaves/analytics',      color: 'text-rose-700 dark:text-rose-400',          bg: 'bg-rose-100 dark:bg-rose-900/30',            hoverBg: 'hover:bg-rose-200/70 dark:hover:bg-rose-900/50' },
           ].map(a => (
-            <Link key={a.label} href={a.href}
-              className="group flex flex-col items-center gap-2 rounded-xl border border-border bg-muted/20 p-3 sm:p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-sm">
-              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-background text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary shadow-xs">
-                <a.icon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
-              </div>
-              <span className="text-[10px] sm:text-xs font-semibold text-center leading-tight text-muted-foreground group-hover:text-foreground">{a.label}</span>
+            <Link
+              key={a.label}
+              href={a.href}
+              className={cn(
+                'group flex flex-col items-center gap-2.5 rounded-xl p-3 sm:p-4 transition-all hover:-translate-y-0.5',
+                a.bg, a.hoverBg,
+              )}
+            >
+              <a.icon className={cn('h-5 w-5', a.color)} />
+              <span className={cn('text-[10px] sm:text-[11px] font-semibold text-center leading-snug', a.color)}>{a.label}</span>
             </Link>
           ))}
         </div>
       </div>
+
     </div>
   );
 }
