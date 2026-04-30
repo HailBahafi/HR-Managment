@@ -94,7 +94,7 @@ export function SingleDatePicker({
             disabled={disabled}
             aria-expanded={open}
             className={cn(
-              'group flex h-10 w-full items-center gap-2.5 rounded-lg border px-3 text-sm transition-all',
+              'group flex h-10 min-w-0 w-full max-w-full items-center gap-2.5 rounded-lg border px-3 text-sm transition-all',
               'border-input bg-background text-right hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
               selected
                 ? 'border-primary/30 bg-primary/5 text-foreground'
@@ -105,11 +105,12 @@ export function SingleDatePicker({
             )}
           >
             <CalendarDays className={cn('h-4 w-4 shrink-0', selected ? 'text-primary' : 'text-muted-foreground')} />
-            <span className="flex-1  text-right">
+            <span
+              className="min-w-0 flex-1 truncate text-right"
+              title={selected ? `${weekdayLabel}، ${dayLabel} ${monthYearLabel}` : undefined}
+            >
               {selected ? (
-                <span className="font-medium">
-                  {weekdayLabel}، {dayLabel} {monthYearLabel}
-                </span>
+                <span className="font-medium">{weekdayLabel}، {dayLabel} {monthYearLabel}</span>
               ) : (
                 <span>{placeholder}</span>
               )}

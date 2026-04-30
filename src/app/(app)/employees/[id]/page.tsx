@@ -709,27 +709,29 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
             {activeSection === 'attendance' && (
               <section className="space-y-5">
                 {/* Date range filter */}
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/30 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
                   <span className="text-xs font-medium text-muted-foreground shrink-0">تصفية بالتاريخ:</span>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex min-w-0 w-full flex-1 flex-col gap-2 sm:min-w-0 sm:flex-1 sm:flex-row sm:items-stretch sm:gap-2">
                     <SingleDatePicker
                       value={attFrom}
                       onChange={setAttFrom}
                       placeholder="من تاريخ"
-                      className="h-8 text-xs w-36"
+                      wrapperClassName="min-w-0 w-full sm:min-w-[11rem] sm:flex-1"
+                      className="h-8 min-w-0 text-xs"
                     />
-                    <span className="text-muted-foreground text-xs">→</span>
+                    <span className="flex shrink-0 items-center justify-center text-muted-foreground text-xs sm:w-6" aria-hidden>←</span>
                     <SingleDatePicker
                       value={attTo}
                       onChange={setAttTo}
                       placeholder="إلى تاريخ"
-                      className="h-8 text-xs w-36"
+                      wrapperClassName="min-w-0 w-full sm:min-w-[11rem] sm:flex-1"
+                      className="h-8 min-w-0 text-xs"
                     />
                     {(attFrom || attTo) && (
                       <button
                         type="button"
                         onClick={() => { setAttFrom(''); setAttTo(''); }}
-                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+                        className="flex shrink-0 items-center justify-center gap-1 self-start rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors sm:self-center"
                       >
                         <X className="h-3 w-3" />
                         مسح
@@ -737,7 +739,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                     )}
                   </div>
                   {(attFrom || attTo) && (
-                    <span className="mr-auto text-[11px] text-primary font-medium">
+                    <span className="text-[11px] font-medium text-primary shrink-0 sm:ms-auto">
                       {employeeSummaries.length} سجل
                     </span>
                   )}
