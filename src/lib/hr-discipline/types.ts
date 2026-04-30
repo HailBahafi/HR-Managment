@@ -75,7 +75,6 @@ export const hrDisciplineSections = [
   { slug: 'violation-cases',      titleAr: 'تسجيل  المخالفات',      titleEn: 'Violation Cases' },
   { slug: 'notices',              titleAr: 'الإنذارات والتحذيرات', titleEn: 'Notices' },
   { slug: 'investigations',       titleAr: 'التحقيقات',            titleEn: 'Investigations' },
-  { slug: 'penalties',            titleAr: 'العقوبات',             titleEn: 'Penalties' },
   { slug: 'deductions',           titleAr: 'كشف الخصومات',          titleEn: 'Payroll Deductions' },
   { slug: 'appeals',              titleAr: 'التظلمات',             titleEn: 'Appeals' },
 ] as const;
@@ -87,19 +86,22 @@ export function isDisciplineSection(s: string): s is HRDisciplineSection {
 
 export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDisciplineSection; labelAr: string }[] }[] = [
   {
+    labelAr: 'مسار القضية', items: [
+      { slug: 'violation-cases',  labelAr: 'تسجيل المخالفات' },
+      { slug: 'notices',          labelAr: 'الإنذارات' },
+      { slug: 'investigations',   labelAr: 'التحقيقات' },
+      { slug: 'appeals',          labelAr: 'التظلمات' },
+    ],
+  },
+  {
     labelAr: 'الإعدادات', items: [
       { slug: 'violation-types',     labelAr: 'أنواع المخالفات' },
       { slug: 'approval-assignment', labelAr: 'إسناد الموافقات' },
     ],
   },
   {
-    labelAr: 'مسار القضية', items: [
-      { slug: 'violation-cases',  labelAr: 'تسجيل المخالفات' },
-      { slug: 'notices',          labelAr: 'الإنذارات' },
-      { slug: 'investigations',   labelAr: 'التحقيقات' },
-      { slug: 'penalties',        labelAr: 'العقوبات' },
-      { slug: 'deductions',       labelAr: 'كشف الخصومات' },
-      { slug: 'appeals',          labelAr: 'التظلمات' },
+    labelAr: '', items: [
+      { slug: 'deductions', labelAr: 'كشف الخصومات' },
     ],
   },
 ];

@@ -27,7 +27,6 @@ export function HRDisciplineSectionRoot({ section, titleAr }: Props) {
       {section === 'violation-cases' && <ViolationCasesClient />}
       {section === 'notices' && <NoticesClient />}
       {section === 'investigations' && <InvestigationsClient />}
-      {section === 'penalties' && <PenaltiesClient />}
       {section === 'deductions' && <DeductionsClient />}
       {section === 'appeals' && <AppealsClient />}
     </div>

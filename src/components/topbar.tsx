@@ -56,31 +56,43 @@ export const navConfig: NavItem[] = [
   },
   {
     key: 'attendance', label: 'الحضور', icon: Clock,
-    groups: [{ items: [
-      { label: 'قوالب الشفت',          href: '/attendance?section=templates',        icon: LayoutGrid },
-      { label: 'تعيين القوالب',        href: '/attendance?section=assignment',       icon: ClipboardList },
-      { label: 'الحضور اليومي',        href: '/attendance?section=daily',            icon: CalendarRange },
-      { label: 'نقاط التسجيل',         href: '/attendance?section=checkpoints',      icon: MapPin },
-      { label: 'ربط النقاط بالموظفين', href: '/attendance?section=checkpoint-links', icon: Link2 },
-    ]}],
+    groups: [
+      { labelAr: 'المتابعة', items: [
+        { label: 'اداره الحضور', href: '/attendance?section=daily', icon: CalendarRange },
+      ]},
+      { labelAr: 'الإسناد', items: [
+        { label: 'ربط الشيفتات بالموظفين',        href: '/attendance?section=assignment',       icon: ClipboardList },
+        { label: 'ربط الموظفين بالنقاط ', href: '/attendance?section=checkpoint-links', icon: Link2 },
+      ]},
+      { labelAr: 'الإعداد', items: [
+        { label: 'قوالب الشفت',  href: '/attendance?section=templates',   icon: LayoutGrid },
+        { label: 'نقاط التسجيل', href: '/attendance?section=checkpoints', icon: MapPin },
+      ]},
+    ],
   },
   {
     key: 'leaves', label: 'الإجازات', icon: CalendarDays,
-    groups: [{ items: [
-      { label: 'التحليلات',     href: '/hr/leaves/analytics',         icon: BarChart3 },
-      { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList },
-      { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types',       icon: ListChecks },
-      { label: 'العطل الرسمية',  href: '/hr/leaves/public-holidays',   icon: CalendarDays },
-    ]}],
+    groups: [
+      { labelAr: 'المتابعة', items: [
+        { label: 'التحليلات',     href: '/hr/leaves/analytics',         icon: BarChart3 },
+        { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList },
+      ]},
+      { labelAr: 'الإعداد', items: [
+        { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types',     icon: ListChecks },
+        { label: 'العطل الرسمية',  href: '/hr/leaves/public-holidays', icon: CalendarDays },
+      ]},
+    ],
   },
   {
     key: 'requests', label: 'الطلبات', icon: ClipboardList,
-    groups: [{ items: [
-      { label: 'الطلبات العامة',  href: '/hr/requests/general',             icon: InboxIcon },
-      { label: 'أنواع الطلبات',   href: '/hr/requests/request-types',       icon: ListChecks },
-      { label: 'قوالب النماذج',   href: '/hr/requests/form-templates',      icon: FileText },
-      { label: 'قوالب الموافقة',  href: '/hr/requests/approval-assignment', icon: ShieldCheck },
-    ]}],
+    groups: [
+      { labelAr: 'الطلبات', items: [{ label: 'إدارة الطلبات', href: '/hr/requests/general', icon: InboxIcon }] },
+      { labelAr: 'الإعداد', items: [
+        { label: 'أنواع الطلبات', href: '/hr/requests/request-types',   icon: ListChecks },
+        { label: 'قوالب النماذج', href: '/hr/requests/form-templates',  icon: FileText },
+      ]},
+      { labelAr: 'الموافقات', items: [{ label: 'إسناد الموافقة', href: '/hr/requests/approval-assignment', icon: ShieldCheck }] },
+    ],
   },
   {
     key: 'discipline', label: 'الانضباط', icon: ShieldAlert,
@@ -91,13 +103,19 @@ export const navConfig: NavItem[] = [
   },
   {
     key: 'contracts', label: 'الراتب والعقود', icon: Wallet,
-    groups: [{ items: [
-      { label: 'فترات الراتب',  href: '/hr/contracts/payroll-periods',  icon: CalendarRange },
-      { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
-      { label: 'عقود العمل',   href: '/hr/contracts/employment',        icon: FileSignature },
-      { label: 'مواد العقود',  href: '/hr/contracts/articles',          icon: BookOpen },
-      { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports',         icon: FileSpreadsheet },
-    ]}],
+    groups: [
+      { labelAr: 'الراتب', items: [
+        { label: 'فترات الراتب',  href: '/hr/contracts/payroll-periods',  icon: CalendarRange },
+        { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
+      ]},
+      { labelAr: 'العقود', items: [
+        { label: 'عقود العمل',  href: '/hr/contracts/employment', icon: FileSignature },
+        { label: 'مواد العقود', href: '/hr/contracts/articles',   icon: BookOpen },
+      ]},
+      { labelAr: 'التقارير', items: [
+        { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports', icon: FileSpreadsheet },
+      ]},
+    ],
   },
   { key: 'permissions', label: 'الصلاحيات', href: '/permissions', icon: Shield },
 ];
@@ -141,16 +159,14 @@ function NavDropdownContent({
   return (
     <div
       className={cn(
-        'nav-dropdown absolute right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-border/60 bg-popover/95 p-2 shadow-elevated backdrop-blur-xl',
-        multiGroup
-          ? cn('flex gap-1', groups.length >= 3 ? 'min-w-[500px]' : 'min-w-[360px]')
-          : 'min-w-[220px]',
+        'nav-dropdown absolute right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-border/60 bg-popover/95 p-2 shadow-elevated backdrop-blur-xl min-w-[220px]',
       )}
       onMouseEnter={onOpen}
       onMouseLeave={onClose}
     >
       {groups.map((group, gi) => (
-        <div key={gi} className={cn('flex flex-col gap-0.5', multiGroup && 'flex-1')}>
+        <div key={gi} className="flex flex-col gap-0.5">
+          {gi > 0 && <div className="my-1 border-t border-border/40" />}
           {group.labelAr && (
             <p className="mb-1 px-3 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/50">
               {group.labelAr}

@@ -10,7 +10,7 @@ import type { AttendanceSection } from '@/lib/attendance/types';
 const SECTIONS: { id: AttendanceSection; label: string; icon: React.ElementType }[] = [
   { id: 'daily', label: 'الحضور اليومي', icon: CalendarRange },
   { id: 'templates', label: 'قوالب الشفت', icon: LayoutGrid },
-  { id: 'assignment', label: 'تعيين القوالب', icon: ClipboardList },
+  { id: 'assignment', label: 'ربط الشيفتات بالموظفين', icon: ClipboardList },
   { id: 'checkpoints', label: 'نقاط التسجيل', icon: MapPin },
   { id: 'checkpoint-links', label: 'ربط النقاط', icon: Link2 },
 ];

@@ -15,12 +15,14 @@ import { Logo } from '@/components/logo';
 import { useSidebar } from '@/components/sidebar-context';
 import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
 
+type MobileNavChild = { label: string; href: string; icon?: React.ElementType } | { separator: true };
+
 type MobileNavItem = {
   key: string;
   label: string;
   href?: string;
   icon: React.ElementType;
-  children?: { label: string; href: string; icon?: React.ElementType }[];
+  children?: MobileNavChild[];
 };
 
 const mobileNav: MobileNavItem[] = [
@@ -37,11 +39,13 @@ const mobileNav: MobileNavItem[] = [
   {
     key: 'attendance', label: 'الحضور', icon: Clock,
     children: [
+      { label: 'اداره الحضور', href: '/attendance?section=daily', icon: CalendarRange },
+      { separator: true },
+      { label: 'ربط الشيفتات بالموظفين', href: '/attendance?section=assignment', icon: ClipboardList },
+      { label: 'ربط الموظفين بالنقاط ', href: '/attendance?section=checkpoint-links', icon: Link2 },
+      { separator: true },
       { label: 'قوالب الشفت', href: '/attendance?section=templates', icon: LayoutGrid },
-      { label: 'تعيين القوالب', href: '/attendance?section=assignment', icon: ClipboardList },
-      { label: 'الحضور اليومي', href: '/attendance?section=daily', icon: CalendarRange },
       { label: 'نقاط التسجيل', href: '/attendance?section=checkpoints', icon: MapPin },
-      { label: 'ربط النقاط', href: '/attendance?section=checkpoint-links', icon: Link2 },
     ],
   },
   {
@@ -123,7 +127,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
 
   const isParentActive = (item: MobileNavItem) => {
     if (item.href) return pathname === item.href || pathname.startsWith(item.href + '/');
-    if (item.children) return item.children.some(c => isChildMatch(c.href));
+    if (item.children) return item.children.some(c => !('separator' in c) && isChildMatch(c.href));
     return false;
   };
 
@@ -198,7 +202,10 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
 
               {isExpanded && (
                 <div className="mt-0.5 mb-1 space-y-0.5 pe-2 ps-6">
-                  {item.children.map(child => {
+                  {item.children.map((child, idx) => {
+                    if ('separator' in child) {
+                      return <div key={`sep-${idx}`} className="my-1 border-t border-sidebar-border/30" />;
+                    }
                     const ChildIcon = child.icon;
                     const childActive = isChildMatch(child.href);
                     return (

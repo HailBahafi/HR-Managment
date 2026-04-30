@@ -16,10 +16,10 @@ import type { AttendanceSection } from '@/lib/attendance/types';
 
 const SECTION_COPY: Record<AttendanceSection, { title: string; desc: string }> = {
   templates: { title: 'قوالب الشفت', desc: 'تعريف الجداول الأسبوعية والفترات والنوافذ.' },
-  assignment: { title: 'تعيين القوالب', desc: 'ربط القوالب بالموظفين أو الأقسام أو الفروع.' },
-  daily: { title: 'الحضور اليومي', desc: 'متابعة السجلات والانحرافات ضمن نطاق زمني.' },
+  assignment: { title: 'ربط الشيفتات بالموظفين', desc: 'ربط الشيفتات بالموظفين أو الأقسام أو الفروع.' },
+  daily: { title: 'الحضور اليومي', desc: 'متابعة السجلات ضمن نطاق زمني.' },
   checkpoints: { title: 'نقاط التسجيل', desc: 'إدارة المواقع الجغرافية المعتمدة للتسجيل.' },
-  'checkpoint-links': { title: 'ربط النقاط بالموظفين', desc: 'دفعات ربط الموظفين بنقاط محددة.' },
+  'checkpoint-links': { title: 'ربط الموظفين بالنقاط ', desc: 'ربط الموظفين بنقاط محددة' },
 };
 
 export function AttendanceClient() {

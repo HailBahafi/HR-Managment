@@ -13,10 +13,10 @@ import type {
 } from '@/lib/hr-requests/types';
 
 const TABS = [
-  { href: '/hr/requests/general', label: 'الطلبات العامة', icon: InboxIcon },
+  { href: '/hr/requests/general', label: 'إدارة الطلبات', icon: InboxIcon },
   { href: '/hr/requests/request-types', label: 'أنواع الطلبات', icon: ListChecks },
   { href: '/hr/requests/form-templates', label: 'قوالب النماذج', icon: FileText },
-  { href: '/hr/requests/approval-assignment', label: 'قوالب الموافقة', icon: ShieldCheck },
+  { href: '/hr/requests/approval-assignment', label: 'إسناد الموافقة', icon: ShieldCheck },
 ];
 
 export function RequestsNav() {
