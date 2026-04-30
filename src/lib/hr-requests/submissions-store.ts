@@ -11,7 +11,39 @@ const SEED: HRRequestSubmissionRecord[] = [
     requestTypeId: 'rt-leave', requestTypeNameAr: 'طلب إجازة', requestTypeNameEn: 'Leave Request',
     departmentId: 'd1', departmentNameAr: 'الموارد البشرية', departmentNameEn: 'Human Resources',
     templateId: 'tpl-general',
-    fieldValues: { 'f-reason': 'إجازة عائلية', 'f-start': '2026-05-01', 'f-end': '2026-05-07', 'f-urgent': false },
+    fieldValues: { 'f-reason': 'إجازة سنوية عائلية', 'f-start': '2026-04-13', 'f-end': '2026-04-16', 'f-urgent': false },
+  },
+  {
+    id: 'sub-e1-002', createdAt: '2026-02-10T10:30:00Z',
+    employeeId: 'e1', employeeNameAr: 'عبدالرحمن المالكي', employeeNameEn: 'Abdulrahman Al-Maliki',
+    requestTypeId: 'rt-sick', requestTypeNameAr: 'إجازة مرضية', requestTypeNameEn: 'Sick Leave',
+    departmentId: 'd1', departmentNameAr: 'الموارد البشرية', departmentNameEn: 'Human Resources',
+    templateId: 'tpl-general',
+    fieldValues: { 'f-reason': 'التهاب حاد', 'f-start': '2026-02-11', 'f-end': '2026-02-11', 'f-urgent': true },
+  },
+  {
+    id: 'sub-e1-003', createdAt: '2026-03-08T08:45:00Z',
+    employeeId: 'e1', employeeNameAr: 'عبدالرحمن المالكي', employeeNameEn: 'Abdulrahman Al-Maliki',
+    requestTypeId: 'rt-equipment', requestTypeNameAr: 'طلب معدات', requestTypeNameEn: 'Equipment Request',
+    departmentId: 'd1', departmentNameAr: 'الموارد البشرية', departmentNameEn: 'Human Resources',
+    templateId: 'tpl-general',
+    fieldValues: { 'f-issue': 'طلب ماوس وكيبورد جديد', 'f-priority': 'normal' },
+  },
+  {
+    id: 'sub-e1-004', createdAt: '2026-01-20T09:00:00Z',
+    employeeId: 'e1', employeeNameAr: 'عبدالرحمن المالكي', employeeNameEn: 'Abdulrahman Al-Maliki',
+    requestTypeId: 'rt-travel', requestTypeNameAr: 'طلب سفر', requestTypeNameEn: 'Travel Request',
+    departmentId: 'd1', departmentNameAr: 'الموارد البشرية', departmentNameEn: 'Human Resources',
+    templateId: 'tpl-general',
+    fieldValues: { 'f-reason': 'حضور ورشة عمل في جدة', 'f-start': '2026-01-25', 'f-end': '2026-01-27', 'f-urgent': false },
+  },
+  {
+    id: 'sub-e1-005', createdAt: '2026-04-25T11:00:00Z',
+    employeeId: 'e1', employeeNameAr: 'عبدالرحمن المالكي', employeeNameEn: 'Abdulrahman Al-Maliki',
+    requestTypeId: 'rt-certificate', requestTypeNameAr: 'طلب شهادة راتب', requestTypeNameEn: 'Salary Certificate',
+    departmentId: 'd1', departmentNameAr: 'الموارد البشرية', departmentNameEn: 'Human Resources',
+    templateId: null,
+    fieldValues: { 'f-purpose': 'بنك الراجحي - قرض عقاري' },
   },
   {
     id: 'sub-002', createdAt: '2026-04-16T11:30:00Z',
@@ -50,11 +82,10 @@ export const useHRRequestSubmissionsStore = create<SubmissionsState>()(
     {
       name: 'hr-request-submissions-storage',
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted: unknown, version: number) => {
-        const s = persisted as SubmissionsState;
-        if (version < 2) return { ...s, submissions: s.submissions ?? SEED };
-        return s;
+        if (version < 3) return { submissions: SEED };
+        return persisted as SubmissionsState;
       },
     },
   ),

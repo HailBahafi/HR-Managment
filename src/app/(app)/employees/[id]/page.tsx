@@ -206,21 +206,37 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   const { cases: violationCases } = useHRViolationCasesStore();
   const { contracts } = useHRContractsStore();
 
-  const employeeEvents = events.filter(e => e.employeeId === employee.id);
-  const employeeSummaries = daySummaries.filter(s => s.employeeId === employee.id);
-  const employeeCheckpoints = checkpointLinks.filter(c => c.employeeId === employee.id);
-  const employeeAssignments = assignments.filter(a => a.targetType === 'employee' && a.targetId === employee.id);
-  const employeeViolations = violationCases.filter(v => v.employeeId === employee.id);
-  const employeeContracts = contracts.filter(c => c.employeeId === employee.id);
-  const employeeRequests = data.requests.filter(r => r.employeeId === employee.id);
-  const employeePayslips = data.payslips?.filter(p => p.employeeId === employee.id) || [];
+  const allEmployeeEvents     = events.filter(e => e.employeeId === employee.id);
+  const allEmployeeSummaries  = daySummaries.filter(s => s.employeeId === employee.id);
+  const employeeCheckpoints   = checkpointLinks.filter(c => c.employeeId === employee.id);
+  const employeeAssignments   = assignments.filter(a => a.targetType === 'employee' && a.targetId === employee.id);
+  const employeeViolations    = violationCases.filter(v => v.employeeId === employee.id);
+  const employeeContracts     = contracts.filter(c => c.employeeId === employee.id);
+  const employeeRequests      = data.requests.filter(r => r.employeeId === employee.id);
+  const employeePayslips      = data.payslips?.filter(p => p.employeeId === employee.id) || [];
+
+  // ─── Attendance date range filter ────────────────────────────────────
+  const [attFrom, setAttFrom] = React.useState('');
+  const [attTo,   setAttTo]   = React.useState('');
+
+  const employeeSummaries = React.useMemo(() =>
+    allEmployeeSummaries.filter(s =>
+      (!attFrom || s.date >= attFrom) &&
+      (!attTo   || s.date <= attTo),
+    ), [allEmployeeSummaries, attFrom, attTo]);
+
+  const employeeEvents = React.useMemo(() =>
+    allEmployeeEvents.filter(e =>
+      (!attFrom || e.date >= attFrom) &&
+      (!attTo   || e.date <= attTo),
+    ), [allEmployeeEvents, attFrom, attTo]);
 
   const stats = {
-    present: employeeSummaries.filter(s => s.status === 'present').length,
-    absent: employeeSummaries.filter(s => s.status === 'absent').length,
-    late: employeeSummaries.filter(s => s.status === 'late').length,
-    earlyLeave: employeeSummaries.filter(s => s.status === 'early_leave').length,
-    total: employeeSummaries.length,
+    present:   employeeSummaries.filter(s => s.status === 'present').length,
+    absent:    employeeSummaries.filter(s => s.status === 'absent').length,
+    late:      employeeSummaries.filter(s => s.status === 'late').length,
+    earlyLeave:employeeSummaries.filter(s => s.status === 'early_leave').length,
+    total:     employeeSummaries.length,
   };
 
   // ─── Edit mode ───────────────────────────────────────────────────────
@@ -683,6 +699,41 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
             {activeSection === 'attendance' && (
               <section className="space-y-5">
+                {/* Date range filter */}
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                  <span className="text-xs font-medium text-muted-foreground shrink-0">تصفية بالتاريخ:</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <SingleDatePicker
+                      value={attFrom}
+                      onChange={setAttFrom}
+                      placeholder="من تاريخ"
+                      className="h-8 text-xs w-36"
+                    />
+                    <span className="text-muted-foreground text-xs">→</span>
+                    <SingleDatePicker
+                      value={attTo}
+                      onChange={setAttTo}
+                      placeholder="إلى تاريخ"
+                      className="h-8 text-xs w-36"
+                    />
+                    {(attFrom || attTo) && (
+                      <button
+                        type="button"
+                        onClick={() => { setAttFrom(''); setAttTo(''); }}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                        مسح
+                      </button>
+                    )}
+                  </div>
+                  {(attFrom || attTo) && (
+                    <span className="mr-auto text-[11px] text-primary font-medium">
+                      {employeeSummaries.length} سجل
+                    </span>
+                  )}
+                </div>
+
                 {/* Stats row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
@@ -830,7 +881,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                     if (evt.type === 'check_in' && !g.checkIn) g.checkIn = evt;
                     if (evt.type === 'check_out') g.checkOut = evt;
                   }
-                  const days = [...grouped.entries()].slice(0, 6);
+                  const days = [...grouped.entries()];
 
                   return (
                     <div>
