@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Plus, Eye, Trash2, Send, CheckCircle2, XCircle, Edit3, ShieldAlert, CalendarDays, User } from 'lucide-react';
+import { EmployeePicker } from '@/components/ui/employee-picker';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,14 @@ export function ViolationCasesClient() {
 
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم الموظف…' }]);
   const q = (values.q as string) ?? '';
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+
+  const empPickerList = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of cases) map.set(c.employeeId, c.employeeNameAr);
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [cases]);
+
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -75,7 +84,8 @@ export function ViolationCasesClient() {
   };
 
   const filtered = cases.filter(c =>
-    c.caseNumber.includes(q) || c.employeeNameAr.includes(q) || c.typeNameAr.includes(q)
+    (c.caseNumber.includes(q) || c.employeeNameAr.includes(q) || c.typeNameAr.includes(q)) &&
+    (selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId))
   );
 
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
@@ -126,7 +136,8 @@ export function ViolationCasesClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2 flex-wrap">
+        <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
         <Button variant="luxe" size="sm" onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
           <Plus className="h-4 w-4 ml-1" />قضية جديدة
         </Button>

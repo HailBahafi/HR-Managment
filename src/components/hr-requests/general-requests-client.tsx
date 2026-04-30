@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Eye, Trash2, Plus, RefreshCw, Search } from 'lucide-react';
+import { EmployeePicker } from '@/components/ui/employee-picker';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { usePageFilters } from '@/components/filter-panel-context';
@@ -63,6 +64,13 @@ export function GeneralRequestsClient() {
   const appliedSearch = (values.search as string) ?? '';
   const appliedDept = (values.dept as string) ?? 'all';
   const appliedEmp = (values.emp as string) ?? '';
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+
+  const empPickerList = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of submissions) map.set(s.employeeId, s.employeeNameAr);
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [submissions]);
 
   const formDeptTypes = requestTypes.filter(rt =>
     rt.isActive && (rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID || rt.departmentId === formDeptId)
@@ -82,10 +90,11 @@ export function GeneralRequestsClient() {
     return submissions.filter(s => {
       if (appliedDept !== 'all' && s.departmentId !== appliedDept) return false;
       if (appliedEmp && s.employeeId !== appliedEmp) return false;
+      if (selectedEmpIds.size > 0 && !selectedEmpIds.has(s.employeeId)) return false;
       if (q && !s.departmentNameAr.includes(q) && !s.requestTypeNameAr.includes(q) && !s.employeeNameAr.includes(q) && !JSON.stringify(s.fieldValues).toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [submissions, appliedSearch, appliedDept, appliedEmp]);
+  }, [submissions, appliedSearch, appliedDept, appliedEmp, selectedEmpIds]);
 
 
   const refresh = () => {
@@ -124,7 +133,8 @@ export function GeneralRequestsClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 flex-wrap">
+        <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
         <Button variant="outline" size="sm" className="gap-1.5" onClick={refresh} disabled={refreshing}>
           <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> تحديث
         </Button>

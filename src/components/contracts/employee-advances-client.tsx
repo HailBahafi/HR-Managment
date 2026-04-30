@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Plus, Banknote, Download } from 'lucide-react';
+import { EmployeePicker } from '@/components/ui/employee-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +65,13 @@ export function EmployeeAdvancesClient() {
 
   const q = ((values.q as string) ?? '').toLowerCase();
   const statusFilter = (values.status as StatusFilter) || 'all';
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+
+  const empPickerList = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const x of items) map.set(x.employeeId, x.employeeNameAr);
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [items]);
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -76,10 +84,11 @@ export function EmployeeAdvancesClient() {
       .filter(x => {
         const matchQ = !q || x.employeeNameAr.includes(q) || x.note.toLowerCase().includes(q);
         const matchS = statusFilter === 'all' || x.status === statusFilter;
-        return matchQ && matchS;
+        const matchEmp = selectedEmpIds.size === 0 || selectedEmpIds.has(x.employeeId);
+        return matchQ && matchS && matchEmp;
       })
       .sort((a, b) => b.advanceDate.localeCompare(a.advanceDate)),
-    [items, q, statusFilter],
+    [items, q, statusFilter, selectedEmpIds],
   );
 
   const total = filtered.length;
@@ -135,7 +144,8 @@ export function EmployeeAdvancesClient() {
       {/* ── Toolbar ── */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">{total} سلفة</span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
           {filtered.length > 0 && (
             <Button variant="outline" onClick={downloadCsv} className="gap-1.5">
               <Download className="h-3.5 w-3.5" />تصدير

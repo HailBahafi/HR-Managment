@@ -5,6 +5,7 @@ import {
   Plus, ChevronLeft, ChevronRight, CalendarDays, List,
   CheckCircle2, XCircle, Clock,
 } from 'lucide-react';
+import { EmployeePicker } from '@/components/ui/employee-picker';
 import { format, addMonths, subMonths, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, getDay, isValid } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -67,13 +68,20 @@ export function UnifiedManagementClient() {
     { key: 'type', label: 'نوع الإجازة', type: 'select', options: [{ value: 'all', label: 'جميع الأنواع' }, { value: 'annual', label: 'سنوية' }, { value: 'sick', label: 'مرضية' }, { value: 'emergency', label: 'طارئة' }, { value: 'unpaid', label: 'بدون راتب' }, { value: 'maternity', label: 'أمومة' }] },
     { key: 'stage', label: 'مرحلة الاعتماد', type: 'select', options: [{ value: 'all', label: 'الكل' }, { value: 'fully_approved', label: 'مكتمل' }, { value: 'awaiting_first', label: 'بانتظار الأول' }, { value: 'awaiting_second', label: 'بانتظار الثاني' }, { value: 'awaiting_third', label: 'بانتظار الثالث' }] },
   ]);
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+
+  const empPickerList = React.useMemo(() =>
+    MOCK_UNIFIED_EMPLOYEES.map(e => ({ id: e.id, name: e.nameAr })),
+    [],
+  );
+
   const filters: UnifiedFilterState = {
     branchId: (values.branch as string) || 'all',
     departmentId: (values.dept as string) || 'all',
     status: (values.status as UnifiedFilterState['status']) || 'all',
     type: (values.type as UnifiedFilterState['type']) || 'all',
     approvalStage: (values.stage as UnifiedFilterState['approvalStage']) || 'all',
-    employeeIds: [],
+    employeeIds: [...selectedEmpIds],
   };
 
   const [view, setView] = React.useState<'table' | 'calendar'>('table');
@@ -129,10 +137,13 @@ export function UnifiedManagementClient() {
             تقويم
           </button>
         </div>
-        <Button variant="luxe" className="gap-2 shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
-          <Plus className="h-4 w-4" />
-          إضافة إجازة
-        </Button>
+        <div className="flex items-center gap-2">
+          <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
+          <Button variant="luxe" className="gap-2 shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
+            <Plus className="h-4 w-4" />
+            إضافة إجازة
+          </Button>
+        </div>
       </div>
 
       {/* Content */}

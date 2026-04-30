@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { EmployeePicker } from '@/components/ui/employee-picker';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,14 @@ export function NoticesClient() {
 
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم أو رقم القضية…' }]);
   const q = (values.q as string) ?? '';
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+
+  const empPickerList = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of notices) map.set(n.employeeId, n.employeeNameAr);
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [notices]);
+
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -39,7 +48,10 @@ export function NoticesClient() {
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
-  const filtered = notices.filter(n => n.employeeNameAr.includes(q) || n.reasonAr.includes(q));
+  const filtered = notices.filter(n =>
+    (n.employeeNameAr.includes(q) || n.reasonAr.includes(q)) &&
+    (selectedEmpIds.size === 0 || selectedEmpIds.has(n.employeeId))
+  );
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
@@ -57,7 +69,8 @@ export function NoticesClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2 flex-wrap">
+        <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
         <Button variant="luxe" size="sm" onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
           <Plus className="h-4 w-4 ml-1" />إضافة إنذار
         </Button>

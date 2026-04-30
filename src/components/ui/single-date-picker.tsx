@@ -105,7 +105,7 @@ export function SingleDatePicker({
             )}
           >
             <CalendarDays className={cn('h-4 w-4 shrink-0', selected ? 'text-primary' : 'text-muted-foreground')} />
-            <span className="flex-1 truncate text-right">
+            <span className="flex-1  text-right">
               {selected ? (
                 <span className="font-medium">
                   {weekdayLabel}، {dayLabel} {monthYearLabel}

@@ -5,8 +5,9 @@ import { format, subDays, parseISO, eachDayOfInterval, isValid } from 'date-fns'
 import { arSA } from 'date-fns/locale';
 import {
   LayoutList, Clock3,
-  TrendingUp, Users, Timer, ChevronLeft, ChevronRight, ChevronDown, Check, X,
+  TrendingUp, Users, Timer, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { EmployeePicker } from '@/components/ui/employee-picker';
 import { Button } from '@/components/ui/button';
 import { usePageFilters } from '@/components/filter-panel-context';
 import { useAttendanceStore } from '@/lib/attendance/store';
@@ -35,6 +36,15 @@ function minutesToHHMM(m: number) {
   const h = Math.floor(m / 60) % 24;
   const mn = m % 60;
   return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
+}
+
+/** ساعات الغياب تُقدَّر بافتراض يوم عمل قياسي عندما لا يُحسب وقت وردية من السجل. */
+const DEFAULT_ABSENT_DAY_HOURS = 8;
+
+function fmtDecimalHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours === 0) return '0';
+  const rounded = Math.round(hours * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
 // ─── Main component ─────────────────────────────────────────────────────────────
@@ -99,23 +109,56 @@ export function DailyAttendancePanel() {
       (selectedEmpIds.size === 0 || selectedEmpIds.has(e.employeeId)),
     ), [events, from, to, q, selectedEmpIds]);
 
-  const stats = React.useMemo(() => ({
-    present: filtered.filter((s) => s.status === 'present').length,
-    late:    filtered.filter((s) => s.status === 'late').length,
-    absent:  filtered.filter((s) => s.status === 'absent').length,
-    avgWork: filtered.length ? Math.round(filtered.reduce((a, s) => a + s.workedMinutes, 0) / filtered.length) : 0,
-  }), [filtered]);
+  const stats = React.useMemo(() => {
+    const workedM = filtered.reduce((a, s) => a + s.workedMinutes, 0);
+    const lateM = filtered.reduce((a, s) => a + s.lateMinutes, 0);
+    const absentDays = filtered.filter((s) => s.status === 'absent').length;
+    const workH = workedM / 60;
+    const lateH = lateM / 60;
+    const absentH = absentDays * DEFAULT_ABSENT_DAY_HOURS;
+    const avgWorkH = filtered.length ? workH / filtered.length : 0;
+    return {
+      workHours: workH,
+      lateHours: lateH,
+      absentHours: absentH,
+      avgWorkHours: avgWorkH,
+    };
+  }, [filtered]);
 
   return (
     <div className="space-y-4">
       {/* ── Stats strip ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'حاضر',        value: stats.present, colorCls: 'text-emerald-600', bgCls: 'bg-emerald-500/10', icon: Users },
-          { label: 'متأخر',       value: stats.late,    colorCls: 'text-amber-600',   bgCls: 'bg-amber-500/10',   icon: Clock3 },
-          { label: 'غائب',        value: stats.absent,  colorCls: 'text-destructive',  bgCls: 'bg-destructive/10', icon: TrendingUp },
-          { label: 'متوسط العمل', value: stats.avgWork, colorCls: 'text-primary',      bgCls: 'bg-primary/10',     icon: Timer },
-        ].map(s => (
+          {
+            label: 'إجمالي ساعات العمل',
+            value: `${fmtDecimalHours(stats.workHours)} س`,
+            colorCls: 'text-emerald-600',
+            bgCls: 'bg-emerald-500/10',
+            icon: Users,
+          },
+          {
+            label: 'إجمالي ساعات التأخير',
+            value: `${fmtDecimalHours(stats.lateHours)} س`,
+            colorCls: 'text-amber-600',
+            bgCls: 'bg-amber-500/10',
+            icon: Clock3,
+          },
+          {
+            label: `ساعات الغياب (تقدير ${DEFAULT_ABSENT_DAY_HOURS}س/يوم)`,
+            value: `${fmtDecimalHours(stats.absentHours)} س`,
+            colorCls: 'text-destructive',
+            bgCls: 'bg-destructive/10',
+            icon: TrendingUp,
+          },
+          {
+            label: 'متوسط ساعات العمل / سجل',
+            value: `${fmtDecimalHours(stats.avgWorkHours)} س`,
+            colorCls: 'text-primary',
+            bgCls: 'bg-primary/10',
+            icon: Timer,
+          },
+        ].map((s) => (
           <div key={s.label} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-soft">
             <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', s.bgCls)}>
               <s.icon className={cn('h-4 w-4', s.colorCls)} />
@@ -184,24 +227,6 @@ export function DailyAttendancePanel() {
             to={to}
           />
       }
-    </div>
-  );
-}
-
-// ─── Stat card ─────────────────────────────────────────────────────────────────
-
-function StatCard({ icon: Icon, label, value, color, bg }: {
-  icon: React.ElementType; label: string; value: number; color: string; bg: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl px-4 py-3 shadow-soft">
-      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', bg)}>
-        <Icon className={cn('h-4 w-4', color)} />
-      </div>
-      <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="font-display text-xl font-bold number-ar">{value}</p>
-      </div>
     </div>
   );
 }
@@ -628,9 +653,12 @@ function MonthHeatmap({
             <tbody>
               {byEmployee.map(({ name, byDate }) => {
                 const allRows = [...byDate.values()];
-                const presentCount = allRows.filter(s => s.status === 'present').length;
-                const lateCount    = allRows.filter(s => s.status === 'late').length;
-                const absentCount  = allRows.filter(s => s.status === 'absent').length;
+                const workedM = allRows.reduce((a, s) => a + s.workedMinutes, 0);
+                const lateM = allRows.reduce((a, s) => a + s.lateMinutes, 0);
+                const absentDays = allRows.filter((s) => s.status === 'absent').length;
+                const workH = workedM / 60;
+                const lateH = lateM / 60;
+                const absentH = absentDays * DEFAULT_ABSENT_DAY_HOURS;
 
                 return (
                   <tr key={name} className="group border-b border-border/60 transition-colors last:border-b-0 hover:bg-muted/20">
@@ -663,10 +691,10 @@ function MonthHeatmap({
                     })}
                     {/* Row totals */}
                     <td className="px-4 py-4">
-                      <div className="flex flex-col items-center gap-0.5 text-center">
-                        <span className="text-[10px] text-emerald-600">{presentCount}✓</span>
-                        {lateCount > 0 && <span className="text-[10px] text-amber-600">{lateCount}⏱</span>}
-                        {absentCount > 0 && <span className="text-[10px] text-destructive">{absentCount}✗</span>}
+                      <div className="flex flex-col items-center gap-0.5 text-center tabular-nums number-ar">
+                        <span className="text-[10px] text-emerald-600" title="ساعات العمل">{fmtDecimalHours(workH)} س ✓</span>
+                        {lateH > 0 && <span className="text-[10px] text-amber-600" title="ساعات التأخير">{fmtDecimalHours(lateH)} س ⏱</span>}
+                        {absentH > 0 && <span className="text-[10px] text-destructive" title="ساعات الغياب (تقديري)">{fmtDecimalHours(absentH)} س ✗</span>}
                       </div>
                     </td>
                   </tr>
@@ -686,164 +714,6 @@ function MonthHeatmap({
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Employee multi-select picker ──────────────────────────────────────────────
-
-function EmployeePicker({
-  employees,
-  selected,
-  onChange,
-}: {
-  employees: { id: string; name: string }[];
-  selected: Set<string>;
-  onChange: (s: Set<string>) => void;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState('');
-  const ref = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const filtered = search.trim()
-    ? employees.filter(e => e.name.includes(search.trim()))
-    : employees;
-
-  const toggle = (id: string) => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    onChange(next);
-  };
-
-  const clearAll = () => onChange(new Set());
-
-  const allSelected = employees.length > 0 && employees.every(e => selected.has(e.id));
-  const label = (selected.size === 0 || allSelected)
-    ? 'جميع الموظفين'
-    : selected.size === 1
-      ? (employees.find(e => e.id === [...selected][0])?.name ?? '1 موظف')
-      : `${selected.size} موظفين`;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className={cn(
-          'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all',
-          selected.size > 0 && !allSelected
-            ? 'border-primary/50 bg-primary/10 text-primary'
-            : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground',
-        )}
-      >
-        <Users className="h-3.5 w-3.5 shrink-0" />
-        <span className="max-w-[140px] truncate">{label}</span>
-        {selected.size > 0 && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); clearAll(); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); clearAll(); } }}
-            className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 hover:bg-primary/30 cursor-pointer"
-          >
-            <X className="h-2.5 w-2.5" />
-          </span>
-        )}
-        <ChevronDown className={cn('h-3.5 w-3.5 opacity-50 transition-transform', open && 'rotate-180')} />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-64 rounded-xl border border-border bg-popover shadow-elevated backdrop-blur-xl">
-          {/* Search */}
-          <div className="border-b border-border p-2">
-            <input
-              autoFocus
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="بحث عن موظف…"
-              className="w-full rounded-lg bg-muted/40 px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-
-          {/* All toggle */}
-          {(() => {
-            const allSelected = employees.length > 0 && employees.every(e => selected.has(e.id));
-            const toggleAll = () => {
-              if (allSelected) {
-                onChange(new Set());
-              } else {
-                onChange(new Set(employees.map(e => e.id)));
-              }
-            };
-            return (
-              <button
-                type="button"
-                onClick={toggleAll}
-                className={cn(
-                  'flex w-full items-center gap-2.5 border-b border-border/40 px-3 py-2 text-sm transition-colors hover:bg-muted/40',
-                  allSelected ? 'text-primary font-medium' : 'text-muted-foreground',
-                )}
-              >
-                <span className={cn(
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
-                  allSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
-                )}>
-                  {allSelected && <Check className="h-3 w-3" />}
-                </span>
-                جميع الموظفين
-              </button>
-            );
-          })()}
-
-          {/* Employee list */}
-          <div className="max-h-56 overflow-y-auto py-1">
-            {filtered.length === 0 && (
-              <p className="px-3 py-4 text-center text-xs text-muted-foreground">لا نتائج</p>
-            )}
-            {filtered.map(emp => {
-              const isSelected = selected.has(emp.id);
-              return (
-                <button
-                  key={emp.id}
-                  type="button"
-                  onClick={() => toggle(emp.id)}
-                  className={cn(
-                    'flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-muted/40',
-                    isSelected ? 'text-primary font-medium' : 'text-foreground/80',
-                  )}
-                >
-                  <span className={cn(
-                    'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                    isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
-                  )}>
-                    {isSelected && <Check className="h-3 w-3" />}
-                  </span>
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                    {emp.name.charAt(0)}
-                  </div>
-                  <span className="truncate">{emp.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {selected.size > 0 && !allSelected && (
-            <div className="border-t border-border p-2">
-              <p className="text-center text-xs text-muted-foreground">
-                {selected.size} موظف محدد
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

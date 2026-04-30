@@ -70,6 +70,13 @@ const SECTIONS = [
 
 type SectionId = typeof SECTIONS[number]['id'];
 
+function fmtAttendanceHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours === 0) return '0';
+  const rounded = Math.round(hours * 10) / 10;
+  const n = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${n} س`;
+}
+
 function Prop({ icon: Icon, label, children, mono, accent }: {
   icon: React.ElementType;
   label: string;
@@ -231,13 +238,15 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
       (!attTo   || e.date <= attTo),
     ), [allEmployeeEvents, attFrom, attTo]);
 
-  const stats = {
-    present:   employeeSummaries.filter(s => s.status === 'present').length,
-    absent:    employeeSummaries.filter(s => s.status === 'absent').length,
-    late:      employeeSummaries.filter(s => s.status === 'late').length,
-    earlyLeave:employeeSummaries.filter(s => s.status === 'early_leave').length,
-    total:     employeeSummaries.length,
-  };
+  const attendanceStats = React.useMemo(() => {
+    const lateMinutes = employeeSummaries.reduce((a, s) => a + s.lateMinutes, 0);
+    return {
+      presentDays: employeeSummaries.filter((s) => s.status === 'present').length,
+      absentDays: employeeSummaries.filter((s) => s.status === 'absent').length,
+      earlyLeaveDays: employeeSummaries.filter((s) => s.status === 'early_leave').length,
+      lateHours: lateMinutes / 60,
+    };
+  }, [employeeSummaries]);
 
   // ─── Edit mode ───────────────────────────────────────────────────────
   type Draft = typeof employee;
@@ -515,7 +524,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                     )}
                   >
                     <s.icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
-                    <span className="flex-1 truncate text-right">{s.label}</span>
+                    <span className="flex-1  text-right">{s.label}</span>
                     {count !== undefined && count > 0 && (
                       <Badge
                         variant={isActive ? 'gold' : 'subtle'}
@@ -734,31 +743,67 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   )}
                 </div>
 
-                {/* Stats row */}
+                {/* حاضر / غائب / خروج مبكر = أيام · متأخر = مجموع التأخير بالساعات */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { label: 'حاضر', value: stats.present, color: 'success' as const },
-                    { label: 'متأخر', value: stats.late, color: 'warning' as const },
-                    { label: 'غائب', value: stats.absent, color: 'destructive' as const },
-                    { label: 'خروج مبكر', value: stats.earlyLeave, color: 'warning' as const },
-                  ].map(s => (
-                    <div key={s.label} className={cn(
-                      'rounded-xl border p-3 bg-card',
-                      s.value > 0
-                        ? s.color === 'success' ? 'border-success/40 bg-success/5'
-                          : s.color === 'warning' ? 'border-warning/40 bg-warning/5'
-                          : 'border-destructive/40 bg-destructive/5'
-                        : 'border-border/60'
-                    )}>
+                    {
+                      label: 'حاضر',
+                      title: 'عدد أيام الحضور (حالة حاضر)',
+                      display: String(attendanceStats.presentDays),
+                      active: attendanceStats.presentDays > 0,
+                      color: 'success' as const,
+                    },
+                    {
+                      label: 'متأخر',
+                      title: 'إجمالي وقت التأخير بالساعات (مجموع الدقائق)',
+                      display: fmtAttendanceHours(attendanceStats.lateHours),
+                      active: attendanceStats.lateHours > 0,
+                      color: 'warning' as const,
+                    },
+                    {
+                      label: 'غائب',
+                      title: 'عدد أيام الغياب',
+                      display: String(attendanceStats.absentDays),
+                      active: attendanceStats.absentDays > 0,
+                      color: 'destructive' as const,
+                    },
+                    {
+                      label: 'خروج مبكر',
+                      title: 'عدد أيام الانصراف المبكر',
+                      display: String(attendanceStats.earlyLeaveDays),
+                      active: attendanceStats.earlyLeaveDays > 0,
+                      color: 'warning' as const,
+                    },
+                  ].map((s) => (
+                    <div
+                      key={s.label}
+                      title={s.title}
+                      className={cn(
+                        'rounded-xl border p-3 bg-card',
+                        s.active
+                          ? s.color === 'success'
+                            ? 'border-success/40 bg-success/5'
+                            : s.color === 'warning'
+                              ? 'border-warning/40 bg-warning/5'
+                              : 'border-destructive/40 bg-destructive/5'
+                          : 'border-border/60',
+                      )}
+                    >
                       <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{s.label}</div>
-                      <div className={cn(
-                        'font-arabic-display text-xl font-semibold tabular-nums',
-                        s.value > 0
-                          ? s.color === 'success' ? 'text-success'
-                            : s.color === 'warning' ? 'text-warning'
-                            : 'text-destructive'
-                          : 'text-foreground'
-                      )}>{s.value}</div>
+                      <div
+                        className={cn(
+                          'font-arabic-display text-xl font-semibold tabular-nums number-ar',
+                          s.active
+                            ? s.color === 'success'
+                              ? 'text-success'
+                              : s.color === 'warning'
+                                ? 'text-warning'
+                                : 'text-destructive'
+                            : 'text-foreground',
+                        )}
+                      >
+                        {s.display}
+                      </div>
                     </div>
                   ))}
                 </div>
