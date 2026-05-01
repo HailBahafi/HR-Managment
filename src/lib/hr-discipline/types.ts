@@ -142,6 +142,34 @@ export const CASE_STATUS_COLORS: Record<HRViolationCaseStatus, string> = {
   executed: 'text-purple-700 border-purple-200 bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:bg-purple-950/30',
   closed: 'text-muted-foreground border-border bg-muted/30',
 };
+
+/** ترتيب عرض مراحل التصفية في الواجهة (مسار الطلب الإداري) */
+export const CASE_STATUS_FILTER_ORDER: HRViolationCaseStatus[] = [
+  'draft',
+  'submitted',
+  'under_review',
+  'approved',
+  'executed',
+  'closed',
+  'rejected',
+];
+
+/** خط سير الحالة الرئيسي (بدون مرفوض) لعرض شريط التقدم */
+export const CASE_MAIN_FLOW: HRViolationCaseStatus[] = [
+  'draft',
+  'submitted',
+  'under_review',
+  'approved',
+  'executed',
+  'closed',
+];
+
+/** أين تقف الحالة ضمن المسار الرئيسي (−1 إن لم تكن في المسار، مثل مرفوض) */
+export function caseMainFlowIndex(status: HRViolationCaseStatus): number {
+  if (status === 'rejected') return -1;
+  const i = CASE_MAIN_FLOW.indexOf(status);
+  return i >= 0 ? i : CASE_MAIN_FLOW.length - 1;
+}
 export const DEDUCTION_KIND_LABELS: Record<HRViolationDeductionKind, string> = {
   none: 'لا يوجد', amount: 'مبلغ ثابت', hours: 'بالساعات', day: 'بالأيام',
 };
