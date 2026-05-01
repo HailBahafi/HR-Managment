@@ -16,7 +16,7 @@ const SEED: HRApprovalAssignmentTemplate[] = [
     ],
   },
   {
-    id: 'daat-fast', nameAr: 'موافقة سريعة للانضباط', description: 'أي معتمد واحد من فريق الإدارة',
+    id: 'daat-fast', nameAr: 'موافقة سريعة للانضباط', description: 'معتمد واحد من فريق الإدارة',
     isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
     stages: [
       { id: 'dats-3', sortOrder: 1, mode: 'any_one', approvers: [{ employeeId: 'e1', mandatory: false }, { employeeId: 'e3', mandatory: false }] },

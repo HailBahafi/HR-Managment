@@ -83,6 +83,8 @@ export type DaySummaryStatus =
   | 'late'
   | 'absent'
   | 'early_leave'
+  | 'holiday'
+  /** قيم قديمة — تُعرض في الواجهة كحاضر/غائب */
   | 'incomplete'
   | 'overtime';
 

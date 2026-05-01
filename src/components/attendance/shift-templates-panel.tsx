@@ -1,12 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Pencil, Plus, Trash2, Clock, ChevronDown, Settings2, Coffee } from 'lucide-react';
+import { Pencil, Plus, Trash2, Clock, ChevronDown, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -17,38 +15,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { defaultShiftPeriod, defaultWorkWeekPeriods } from '@/lib/attendance/defaults';
-import type { ShiftPeriod, ShiftTemplate, TemplateDayConfig, WeekDayIndex } from '@/lib/attendance/types';
+import { defaultShiftPeriod } from '@/lib/attendance/defaults';
+import type { ShiftPeriod, ShiftTemplate, WeekDayIndex } from '@/lib/attendance/types';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import { genId } from '@/lib/attendance/utils';
 import { cn } from '@/lib/utils';
+import { LabelWithTooltip } from '@/components/ui/tooltip';
+import { TimePicker } from '@/components/ui/time-picker';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const DAY_LABELS: Record<WeekDayIndex, string> = {
-  0: 'الأحد',
-  1: 'الإثنين',
-  2: 'الثلاثاء',
-  3: 'الأربعاء',
-  4: 'الخميس',
-  5: 'الجمعة',
-  6: 'السبت',
+  0: 'الأحد', 1: 'الإثنين', 2: 'الثلاثاء', 3: 'الأربعاء',
+  4: 'الخميس', 5: 'الجمعة', 6: 'السبت',
+};
+
+const DAY_SHORT: Record<WeekDayIndex, string> = {
+  0: 'أحد', 1: 'إثن', 2: 'ثلا', 3: 'أرب', 4: 'خمس', 5: 'جمع', 6: 'سبت',
 };
 
 const WEEK_ORDER: WeekDayIndex[] = [6, 0, 1, 2, 3, 4, 5];
+const DEFAULT_REST: WeekDayIndex[] = [5, 6];
 
-const DAY_SHORT: Record<WeekDayIndex, string> = {
-  0: 'أحد',
-  1: 'إثن',
-  2: 'ثلا',
-  3: 'أرب',
-  4: 'خمس',
-  5: 'جمع',
-  6: 'سبت',
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function summarizeTemplate(t: ShiftTemplate): string {
   const workDays = t.weekDays.filter((d) => !d.isRest).length;
-  const maxP = Math.max(0, ...t.weekDays.map((d) => (d.isRest ? 0 : d.periods.length)));
-  return `${workDays} أيام · ${maxP} فترات`;
+  const sample = t.weekDays.find((d) => !d.isRest && d.periods.length > 0);
+  if (!sample) return `${workDays} أيام عمل`;
+  const p = sample.periods[0];
+  return `${workDays} أيام · ${p.startTime} – ${p.endTime}`;
 }
 
 function cloneTemplate(t: ShiftTemplate): ShiftTemplate {
@@ -56,162 +52,82 @@ function cloneTemplate(t: ShiftTemplate): ShiftTemplate {
 }
 
 function validateTemplate(t: ShiftTemplate): string | null {
-  if (!t.nameAr.trim()) return 'اسم القالب بالعربية مطلوب';
-  for (const d of t.weekDays) {
-    if (d.isRest) continue;
-    if (d.periods.length === 0) return `${DAY_LABELS[d.day]}: يجب وجود فترة أو تعيين اليوم كراحة`;
+  if (!t.nameAr.trim()) return 'اسم القالب مطلوب';
+  const workDays = t.weekDays.filter((d) => !d.isRest);
+  if (workDays.length === 0) return 'يجب تحديد يوم عمل واحد على الأقل';
+  for (const d of workDays) {
     for (const p of d.periods) {
       const [sh, sm] = p.startTime.split(':').map(Number);
       const [eh, em] = p.endTime.split(':').map(Number);
-      const a = sh * 60 + sm;
-      const b = eh * 60 + em;
-      if (!(b > a)) return `${DAY_LABELS[d.day]}: وقت النهاية يجب أن يكون بعد البداية`;
+      if (eh * 60 + em <= sh * 60 + sm)
+        return `${DAY_LABELS[d.day]}: وقت النهاية يجب أن يكون بعد البداية`;
       if (p.breakEnabled) {
         const [bh, bm] = p.breakStart.split(':').map(Number);
-        const [eh2, em2] = p.breakEnd.split(':').map(Number);
-        const bs = bh * 60 + bm;
-        const be = eh2 * 60 + em2;
-        if (bs < a || be > b || be <= bs) return `${DAY_LABELS[d.day]}: أوقات الاستراحة يجب أن تقع داخل الفترة`;
+        const [xh, xm] = p.breakEnd.split(':').map(Number);
+        const a = sh * 60 + sm, b = eh * 60 + em;
+        const bs = bh * 60 + bm, be = xh * 60 + xm;
+        if (bs < a || be > b || be <= bs)
+          return `${DAY_LABELS[d.day]}: أوقات الاستراحة يجب أن تقع داخل فترة العمل`;
       }
     }
   }
   return null;
 }
 
-/** Row whose border and background clearly reflect on/off; whole row is clickable. */
-function SettingToggleRow({
-  checked,
-  onCheckedChange,
-  title,
-  subtitle,
-  compact,
-  className,
-}: {
-  checked: boolean;
-  onCheckedChange: (v: boolean) => void;
-  title: string;
-  subtitle?: string;
-  compact?: boolean;
-  className?: string;
-}) {
-  const id = React.useId();
-  return (
-    <label
-      htmlFor={id}
-      className={cn(
-        'flex cursor-pointer select-none items-center justify-between gap-3 border-2 transition-all duration-200',
-        compact ? 'rounded-xl px-3 py-2' : 'rounded-2xl px-4 py-3.5',
-        checked
-          ? 'border-primary/40 bg-primary/[0.09] shadow-sm shadow-primary/10'
-          : 'border-border/70 bg-muted/15 hover:border-border hover:bg-muted/30',
-        className,
-      )}
-    >
-      <span className="min-w-0 flex-1">
-        <span className={cn('font-medium text-foreground', compact ? 'text-xs' : 'text-sm')}>{title}</span>
-        {subtitle ? <span className="mt-0.5 block text-xs text-muted-foreground">{subtitle}</span> : null}
-      </span>
-      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0" />
-    </label>
-  );
+function durationLabel(start: string, end: string): string {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const d = (eh * 60 + em) - (sh * 60 + sm);
+  if (d <= 0) return '';
+  const h = Math.floor(d / 60), m = d % 60;
+  return m > 0 ? `${h}س ${m}د` : `${h}س`;
 }
 
-// ─── Period card ──────────────────────────────────────────────────────────────
+// ─── Schedule form ────────────────────────────────────────────────────────────
 
-function PeriodCard({
-  period,
-  dayLabel,
-  onUpdate,
-  onRemove,
-}: {
-  period: ShiftPeriod;
-  dayLabel: string;
-  onUpdate: (patch: Partial<ShiftPeriod>) => void;
-  onRemove: () => void;
-}) {
-  const [showAdvanced, setShowAdvanced] = React.useState(false);
-  const breakSwitchId = React.useId();
-
-  const durationMins = React.useMemo(() => {
-    const [sh, sm] = period.startTime.split(':').map(Number);
-    const [eh, em] = period.endTime.split(':').map(Number);
-    const d = (eh * 60 + em) - (sh * 60 + sm);
-    return d > 0 ? d : 0;
-  }, [period.startTime, period.endTime]);
-
-  const durationLabel = durationMins > 0
-    ? `${Math.floor(durationMins / 60)}س ${durationMins % 60 > 0 ? `${durationMins % 60}د` : ''}`.trim()
-    : '';
+function ScheduleForm({ period, onChange }: { period: ShiftPeriod; onChange: (p: ShiftPeriod) => void }) {
+  const dur = durationLabel(period.startTime, period.endTime);
+  const [showAdv, setShowAdv] = React.useState(false);
 
   return (
-    <div className="overflow-hidden rounded-xl shadow-soft">
-      {/* Main times row */}
-      <div className="flex items-center gap-0 divide-x divide-x-reverse divide-border/60">
-        <div className="flex flex-1 flex-col items-center gap-0.5 px-4 py-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">بداية</span>
-          <Input
-            type="time"
-            className="h-9 border-0 bg-transparent p-0 text-center font-mono text-base font-bold shadow-none focus-visible:ring-0"
-            value={period.startTime}
-            onChange={(e) => onUpdate({ startTime: e.target.value })}
-          />
+    <div className="space-y-3">
+      {/* Times row */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">بداية الدوام</Label>
+          <TimePicker value={period.startTime} onChange={(v) => onChange({ ...period, startTime: v })} />
         </div>
-
-        <div className="flex flex-col items-center px-3 py-3 text-muted-foreground/40">
-          <span className="text-lg">→</span>
-          {durationLabel && (
-            <span className="mt-0.5 text-[10px] font-mono text-primary/70">{durationLabel}</span>
-          )}
+        <div className="flex flex-col items-center pb-2.5 text-muted-foreground/50 gap-0.5">
+          <span className="text-lg">←</span>
+          {dur && <span className="text-[10px] font-mono text-primary/70 font-medium">{dur}</span>}
         </div>
-
-        <div className="flex flex-1 flex-col items-center gap-0.5 px-4 py-3">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">نهاية</span>
-          <Input
-            type="time"
-            className="h-9 border-0 bg-transparent p-0 text-center font-mono text-base font-bold shadow-none focus-visible:ring-0"
-            value={period.endTime}
-            onChange={(e) => onUpdate({ endTime: e.target.value })}
-          />
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">نهاية الدوام</Label>
+          <TimePicker value={period.endTime} onChange={(v) => onChange({ ...period, endTime: v })} />
         </div>
       </div>
 
-      <Separator />
-
-      {/* Break row */}
-      <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-        <label
-          htmlFor={breakSwitchId}
-          className={cn(
-            'flex cursor-pointer select-none items-center gap-2 rounded-xl border-2 px-3 py-2 transition-all duration-200',
-            period.breakEnabled
-              ? 'border-primary/40 bg-primary/[0.07] shadow-sm shadow-primary/5'
-              : 'border-transparent bg-muted/25 hover:bg-muted/40',
-          )}
-        >
-          <Coffee className={cn('h-3.5 w-3.5 shrink-0', period.breakEnabled ? 'text-primary' : 'text-muted-foreground')} />
-          <span className={cn('text-xs', period.breakEnabled ? 'font-medium text-foreground' : 'text-muted-foreground')}>استراحة</span>
+      {/* Break — compact single row, times expand inline when enabled */}
+      <div className={cn(
+        'flex flex-wrap items-center gap-3 rounded-xl border-2 px-4 py-2.5 transition-all duration-200',
+        period.breakEnabled ? 'border-primary/30 bg-primary/[0.05]' : 'border-border/50 bg-muted/10',
+      )}>
+        <label className="flex cursor-pointer items-center gap-2 shrink-0">
+          <Coffee className={cn('h-4 w-4', period.breakEnabled ? 'text-primary' : 'text-muted-foreground/40')} />
+          <span className={cn('text-sm font-medium', period.breakEnabled ? 'text-foreground' : 'text-muted-foreground')}>
+            استراحة
+          </span>
           <Switch
-            id={breakSwitchId}
             checked={period.breakEnabled}
-            onCheckedChange={(v) => onUpdate({ breakEnabled: v })}
-            className="shrink-0"
+            onCheckedChange={(v) => onChange({ ...period, breakEnabled: v })}
           />
         </label>
+
         {period.breakEnabled && (
-          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-1.5" dir="ltr">
-            <Input
-              type="time"
-              className="h-7 w-[6.5rem] border-0 bg-transparent p-0 font-mono text-xs shadow-none focus-visible:ring-0"
-              value={period.breakStart}
-              onChange={(e) => onUpdate({ breakStart: e.target.value })}
-            />
-            <span className="text-muted-foreground">—</span>
-            <Input
-              type="time"
-              className="h-7 w-[6.5rem] border-0 bg-transparent p-0 font-mono text-xs shadow-none focus-visible:ring-0"
-              value={period.breakEnd}
-              onChange={(e) => onUpdate({ breakEnd: e.target.value })}
-            />
+          <div className="flex items-center gap-2">
+            <TimePicker value={period.breakStart} onChange={(v) => onChange({ ...period, breakStart: v })} className="h-9 w-32 text-sm" />
+            <span className="text-muted-foreground/60 text-xs">—</span>
+            <TimePicker value={period.breakEnd} onChange={(v) => onChange({ ...period, breakEnd: v })} className="h-9 w-32 text-sm" />
           </div>
         )}
       </div>
@@ -219,232 +135,344 @@ function PeriodCard({
       {/* Advanced toggle */}
       <button
         type="button"
-        onClick={() => setShowAdvanced((p) => !p)}
-        className="flex w-full items-center justify-between border-t border-border bg-muted/20 px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/40"
+        onClick={() => setShowAdv((p) => !p)}
+        className="flex w-full items-center justify-between rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-border/80 hover:text-foreground"
       >
-        <span className="flex items-center gap-1.5">
-          <Settings2 className="h-3 w-3" />
-          إعدادات نوافذ الدخول والخروج
-        </span>
-        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showAdvanced && 'rotate-180')} />
+        <span>إعدادات متقدمة (نوافذ الدخول والخروج)</span>
+        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showAdv && 'rotate-180')} />
       </button>
 
-      {showAdvanced && (
-        <div className="border-t border-border/40 bg-muted/10 px-4 py-3 space-y-3">
-          {/* Check-in windows */}
+      {showAdv && (
+        <div className="rounded-xl border border-border/60 bg-muted/10 p-4 space-y-4">
           <div>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-primary/70">نافذة الدخول</p>
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-primary/70">نافذة الدخول</p>
             <div className="grid grid-cols-3 gap-2">
-              <NumberField
+              <MiniField
                 label="قبل (د)"
                 value={period.checkIn.beforeStartMinutes}
-                onChange={(v) => onUpdate({ checkIn: { ...period.checkIn, beforeStartMinutes: v } })}
+                onChange={(v) => onChange({ ...period, checkIn: { ...period.checkIn, beforeStartMinutes: v } })}
+                tooltip={
+                  <>
+                    <strong className="block mb-1">السماح بالدخول المبكر</strong>
+                    عدد الدقائق قبل بداية الفترة التي يُسمح فيها بتسجيل الدخول.
+                    <br />مثال: بداية الدوام 09:00 وهذه القيمة 30 دقيقة ← أقرب بصمة مقبولة هي 08:30.
+                    أي بصمة قبل ذلك لا تُعد حضوراً ضمن هذه النافذة.
+                  </>
+                }
               />
-              <NumberField
+              <MiniField
                 label="سماحية (د)"
                 value={period.checkIn.graceMinutes}
-                onChange={(v) => onUpdate({ checkIn: { ...period.checkIn, graceMinutes: v } })}
+                onChange={(v) => onChange({ ...period, checkIn: { ...period.checkIn, graceMinutes: v } })}
+                tooltip={
+                  <>
+                    <strong className="block mb-1">فترة التسامح</strong>
+                    عدد الدقائق بعد بداية الفترة لا يُحسب فيها تأخير.
+                    <br />مثال: بداية 09:00 وسماحية 10 دقائق ← الدخول حتى 09:10 لا يُسجَّل تأخيراً.
+                  </>
+                }
               />
-              <NumberField
+              <MiniField
                 label="بعد (د)"
                 value={period.checkIn.afterStartMinutes}
-                onChange={(v) => onUpdate({ checkIn: { ...period.checkIn, afterStartMinutes: v } })}
+                onChange={(v) => onChange({ ...period, checkIn: { ...period.checkIn, afterStartMinutes: v } })}
+                tooltip={
+                  <>
+                    <strong className="block mb-1">آخر قبول للدخول</strong>
+                    عدد الدقائق بعد بداية الفترة يُغلق فيها باب الدخول.
+                    <br />مثال: بداية 09:00 وهذه القيمة 60 دقيقة:
+                    <ul className="mt-1 space-y-0.5 list-disc ps-4">
+                      <li>09:00 – 09:10: ضمن السماحية، لا تأخير</li>
+                      <li>09:10 – 10:00: دخول متأخر مقبول</li>
+                      <li>بعد 10:00: يُعتبر الموظف غائباً</li>
+                    </ul>
+                  </>
+                }
               />
             </div>
           </div>
-
-          {/* Check-out windows */}
           <div>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-primary/70">نافذة الخروج</p>
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-primary/70">نافذة الخروج</p>
             <div className="grid grid-cols-3 gap-2">
-              <NumberField
+              <MiniField
                 label="قبل النهاية (د)"
                 value={period.checkOut.beforeEndMinutes}
-                onChange={(v) => onUpdate({ checkOut: { ...period.checkOut, beforeEndMinutes: v } })}
+                onChange={(v) => onChange({ ...period, checkOut: { ...period.checkOut, beforeEndMinutes: v } })}
+                tooltip={
+                  <>
+                    <strong className="block mb-1">الخروج المبكر المسموح</strong>
+                    عدد الدقائق قبل نهاية الفترة التي يُمكن فيها بدء تسجيل الخروج.
+                    <br />مثال: نهاية 17:00 وهذه القيمة 10 دقائق ← يُقبل الخروج من 16:50.
+                  </>
+                }
               />
-              <NumberField
+              <MiniField
                 label="نقص مسموح (د)"
                 value={period.checkOut.allowedShortageMinutes}
-                onChange={(v) => onUpdate({ checkOut: { ...period.checkOut, allowedShortageMinutes: v } })}
+                onChange={(v) => onChange({ ...period, checkOut: { ...period.checkOut, allowedShortageMinutes: v } })}
+                tooltip={
+                  <>
+                    <strong className="block mb-1">نقص الوقت المغفور</strong>
+                    الخروج قبل نهاية الدوام بهذا القدر لا يُعدّ خروجاً مبكراً مؤثراً.
+                    <br />مثال: نهاية 17:00 ونقص مسموح 15 دقيقة ← الخروج من 16:45 لا يُحسب مخالفة.
+                  </>
+                }
               />
-              <NumberField
+              <MiniField
                 label="بعد النهاية (د)"
                 value={period.checkOut.afterEndMinutes}
-                onChange={(v) => onUpdate({ checkOut: { ...period.checkOut, afterEndMinutes: v } })}
-              />
-            </div>
-          </div>
-
-          {/* Flexibility + flags */}
-          <div className="grid grid-cols-2 gap-2">
-            <NumberField
-              label="مرونة (د)"
-              value={period.flexibilityMinutes}
-              onChange={(v) => onUpdate({ flexibilityMinutes: v })}
-            />
-            <div className="flex items-end">
-              <SettingToggleRow
-                className="w-full"
-                compact
-                checked={period.checkOutNotRequired}
-                onCheckedChange={(v) => onUpdate({ checkOutNotRequired: v })}
-                title="خروج غير إلزامي"
+                onChange={(v) => onChange({ ...period, checkOut: { ...period.checkOut, afterEndMinutes: v } })}
+                tooltip={
+                  <>
+                    <strong className="block mb-1">آخر قبول لتسجيل الخروج</strong>
+                    عدد الدقائق بعد نهاية الفترة يظل فيها تسجيل الخروج مقبولاً.
+                    <br />مثال: نهاية 17:00 وهذه القيمة 120 دقيقة ← تُقبل بصمة الخروج حتى 19:00.
+                  </>
+                }
               />
             </div>
           </div>
         </div>
       )}
-
-      {/* Footer actions */}
-      <div className="flex justify-end border-t border-border/40 px-3 py-2">
-        <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 text-xs text-destructive hover:text-destructive" onClick={onRemove}>
-          <Trash2 className="h-3 w-3" />
-          حذف الفترة
-        </Button>
-      </div>
     </div>
   );
 }
 
-function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function MiniField({
+  label, value, onChange, tooltip,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  tooltip?: React.ReactNode;
+}) {
   return (
     <div className="space-y-1">
-      <Label className="text-[10px] text-muted-foreground">{label}</Label>
-      <Input
-        type="number"
-        className="h-8 font-mono text-sm"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
-      />
+      {tooltip
+        ? <LabelWithTooltip label={label} tooltip={tooltip} tooltipSide="top" />
+        : <Label className="text-[10px] text-muted-foreground">{label}</Label>
+      }
+      <Input type="number" className="h-8 font-mono text-xs" value={value}
+        onChange={(e) => onChange(Number(e.target.value) || 0)} />
     </div>
   );
 }
 
-// ─── Day column ────────────────────────────────────────────────────────────────
+// ─── Day pill ─────────────────────────────────────────────────────────────────
 
-function DayColumn({
-  wd,
-  onUpdateDay,
-  onUpdatePeriod,
-  onAddPeriod,
-  onRemovePeriod,
-}: {
-  wd: TemplateDayConfig;
-  onUpdateDay: (patch: Partial<TemplateDayConfig>) => void;
-  onUpdatePeriod: (periodId: string, patch: Partial<ShiftPeriod>) => void;
-  onAddPeriod: () => void;
-  onRemovePeriod: (periodId: string) => void;
+function DayPill({ day, isRest, onClick }: { day: WeekDayIndex; isRest: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex flex-1 flex-col items-center gap-1 rounded-xl border-2 py-2.5 text-center transition-all duration-150 select-none',
+        isRest
+          ? 'border-border/50 bg-muted/20 text-muted-foreground/50 hover:border-border hover:bg-muted/30'
+          : 'border-primary/40 bg-primary/10 text-primary shadow-sm shadow-primary/10',
+      )}
+    >
+      <span className="text-[11px] font-bold">{DAY_SHORT[day]}</span>
+      <span className={cn('h-1.5 w-1.5 rounded-full', isRest ? 'bg-muted-foreground/30' : 'bg-primary')} />
+    </button>
+  );
+}
+
+// ─── Dialog form ─────────────────────────────────────────────────────────────
+
+function DialogForm({ draft, setDraft }: {
+  draft: ShiftTemplate;
+  setDraft: React.Dispatch<React.SetStateAction<ShiftTemplate | null>>;
 }) {
-  const [collapsed, setCollapsed] = React.useState(false);
-  const restToggleId = React.useId();
+  const firstWorkPeriod = draft.weekDays.find((d) => !d.isRest && d.periods.length > 0)?.periods[0]
+    ?? defaultShiftPeriod(genId('per'));
+  const [period, setPeriod] = React.useState<ShiftPeriod>(firstWorkPeriod);
 
-  const periodSummary = !wd.isRest && wd.periods.length > 0
-    ? wd.periods.map((p) => `${p.startTime}–${p.endTime}`).join(' · ')
-    : null;
+  const workDays = WEEK_ORDER.filter((d) => !draft.weekDays.find((w) => w.day === d)?.isRest);
+
+  const toggleDay = (day: WeekDayIndex) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        weekDays: prev.weekDays.map((w) => {
+          if (w.day !== day) return w;
+          const toRest = !w.isRest;
+          return toRest
+            ? { ...w, isRest: true, periods: [] }
+            : { ...w, isRest: false, periods: [{ ...period, id: genId('per') }] };
+        }),
+      };
+    });
+  };
+
+  const applyToAll = () => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        weekDays: prev.weekDays.map((w) =>
+          w.isRest ? w : { ...w, periods: [{ ...period, id: genId('per') }] },
+        ),
+      };
+    });
+  };
+
+  const applyToDays = (days: WeekDayIndex[]) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        weekDays: prev.weekDays.map((w) =>
+          days.includes(w.day) ? { ...w, isRest: false, periods: [{ ...period, id: genId('per') }] } : w,
+        ),
+      };
+    });
+  };
+
+  const handlePeriodChange = (p: ShiftPeriod) => {
+    setPeriod(p);
+    setDraft((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        weekDays: prev.weekDays.map((w) =>
+          w.isRest ? w : { ...w, periods: [{ ...p, id: w.periods[0]?.id ?? genId('per') }] },
+        ),
+      };
+    });
+  };
 
   return (
-    <div className={cn(
-      'overflow-hidden rounded-xl border transition-all',
-      wd.isRest ? 'border-dashed border-border bg-muted/20' : 'border-border shadow-soft',
-    )}>
-      {/* ── Clickable header row ── */}
-      <div className="flex items-center gap-2 px-3 py-2.5">
-        {/* Day badge + name + summary — click to toggle */}
-        <button
-          type="button"
-          onClick={() => setCollapsed((p) => !p)}
-          className="flex flex-1 items-center gap-2.5 min-w-0 text-right"
-        >
-          <div className={cn(
-            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-colors',
-            wd.isRest
-              ? 'bg-muted text-muted-foreground/50'
-              : 'bg-primary/12 text-primary',
-          )}>
-            {DAY_SHORT[wd.day]}
-          </div>
-
-          <div className="min-w-0 flex-1 text-right">
-            <div className={cn('text-sm font-semibold leading-tight', wd.isRest && 'text-muted-foreground')}>
-              {DAY_LABELS[wd.day]}
-            </div>
-            {collapsed && (
-              <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                {wd.isRest ? 'يوم راحة' : (periodSummary ?? 'لا توجد فترات')}
-              </div>
-            )}
-            {!collapsed && !wd.isRest && wd.periods.length > 0 && (
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {wd.periods.length} {wd.periods.length === 1 ? 'فترة' : 'فترات'}
-              </div>
-            )}
-          </div>
-
-          <ChevronDown className={cn(
-            'h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200',
-            collapsed ? '-rotate-90' : 'rotate-0',
-          )} />
-        </button>
-
-        {/* Rest toggle — stop propagation so it doesn't collapse */}
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-          <label
-            htmlFor={restToggleId}
-            className={cn(
-              'flex cursor-pointer select-none items-center gap-2 rounded-full border-2 px-3 py-1.5 transition-all duration-200',
-              wd.isRest
-                ? 'border-amber-500/45 bg-amber-500/12 shadow-sm shadow-amber-500/10'
-                : 'border-border/70 bg-muted/20 hover:bg-muted/35',
-            )}
-          >
-            <span className={cn('text-xs', wd.isRest ? 'font-medium text-amber-950 dark:text-amber-100' : 'text-muted-foreground')}>
-              راحة
-            </span>
-            <Switch
-              id={restToggleId}
-              checked={wd.isRest}
-              onCheckedChange={(v) => {
-                onUpdateDay({ isRest: v, periods: v ? [] : [defaultShiftPeriod(genId('per'))] });
-                if (collapsed) setCollapsed(false);
-              }}
-              className="shrink-0"
-            />
-          </label>
+    <div className="space-y-5">
+      {/* ── Name + active toggle in one row ── */}
+      <div className="flex items-end gap-3">
+        <div className="flex-1 space-y-1.5">
+          <Label>اسم القالب</Label>
+          <Input
+            placeholder="مثال: دوام صباحي، دوام مسائي…"
+            value={draft.nameAr}
+            onChange={(e) => setDraft((d) => d ? { ...d, nameAr: e.target.value } : d)}
+          />
         </div>
+        <label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border-2 border-border/60 px-3 py-2.5 transition-all hover:bg-muted/20">
+          <span className="text-sm font-medium">نشط</span>
+          <Switch
+            checked={draft.isActive}
+            onCheckedChange={(v) => setDraft((d) => d ? { ...d, isActive: v } : d)}
+          />
+        </label>
       </div>
 
-      {/* ── Collapsible body ── */}
-      {!collapsed && (
-        <div className="border-t border-border/40 p-4 space-y-3">
-          {wd.isRest ? (
-            <div className="flex items-center justify-center py-3">
-              <span className="text-xs text-muted-foreground/60">يوم راحة</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {wd.periods.map((p) => (
-                <PeriodCard
-                  key={p.id}
-                  period={p}
-                  dayLabel={DAY_LABELS[wd.day]}
-                  onUpdate={(patch) => onUpdatePeriod(p.id, patch)}
-                  onRemove={() => onRemovePeriod(p.id)}
-                />
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full gap-1.5 border-dashed text-muted-foreground hover:text-foreground"
-                onClick={onAddPeriod}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                إضافة فترة
-              </Button>
-            </div>
-          )}
+      <Separator />
+
+      {/* ── Work days picker ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold">أيام العمل</p>
+            <p className="text-[11px] text-muted-foreground">انقر لتبديل العمل / الراحة</p>
+          </div>
         </div>
-      )}
+
+        <div className="flex gap-1.5" dir="rtl">
+          {WEEK_ORDER.map((day) => {
+            const wd = draft.weekDays.find((w) => w.day === day)!;
+            return <DayPill key={day} day={day} isRest={wd.isRest} onClick={() => toggleDay(day)} />;
+          })}
+        </div>
+
+        {workDays.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {workDays.map((d) => (
+              <span key={d} className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                {DAY_LABELS[d]}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* ── Schedule ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold">أوقات الدوام</p>
+            <p className="text-[11px] text-muted-foreground">يُطبَّق تلقائياً على جميع أيام العمل</p>
+          </div>
+        </div>
+        <ScheduleForm period={period} onChange={handlePeriodChange} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Template card ────────────────────────────────────────────────────────────
+
+function TemplateCard({ t, onEdit, onDelete }: { t: ShiftTemplate; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div
+      className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated cursor-pointer"
+      onClick={onEdit}
+    >
+      <div className="p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Clock className="h-5 w-5" />
+          </div>
+          <span className={cn(
+            'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+            t.isActive
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+              : 'border-border bg-muted text-muted-foreground',
+          )}>
+            <span className={cn('h-1.5 w-1.5 rounded-full', t.isActive ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+            {t.isActive ? 'نشط' : 'موقوف'}
+          </span>
+        </div>
+
+        <h3 className="font-display text-base font-bold leading-snug mb-1 group-hover:text-primary transition-colors">
+          {t.nameAr}
+        </h3>
+        <p className="text-xs text-muted-foreground mb-4">{summarizeTemplate(t)}</p>
+
+        {/* 7-day strip */}
+        <div className="flex gap-1 mb-4" dir="rtl">
+          {WEEK_ORDER.map((day) => {
+            const wd = t.weekDays.find((w) => w.day === day);
+            return (
+              <div
+                key={day}
+                title={DAY_LABELS[day]}
+                className={cn(
+                  'flex h-6 flex-1 items-center justify-center rounded text-[9px] font-bold',
+                  wd?.isRest ? 'bg-muted text-muted-foreground/40' : 'bg-primary/15 text-primary',
+                )}
+              >
+                {DAY_SHORT[day]}
+              </div>
+            );
+          })}
+        </div>
+
+        <div
+          className="flex items-center justify-end border-t border-border/60 pt-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" type="button" className="h-7 gap-1 px-2 text-xs" onClick={onEdit}>
+              <Pencil className="h-3 w-3" /> تعديل
+            </Button>
+            <Button variant="ghost" size="sm" type="button"
+              className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
+              onClick={onDelete}>
+              <Trash2 className="h-3 w-3" /> حذف
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -453,32 +481,32 @@ function DayColumn({
 
 export function ShiftTemplatesPanel() {
   const shiftTemplates = useAttendanceStore((s) => s.shiftTemplates);
-  const upsertTemplate = useAttendanceStore((s) => s.upsertTemplate);
-  const removeTemplate = useAttendanceStore((s) => s.removeTemplate);
+  const upsertTemplate  = useAttendanceStore((s) => s.upsertTemplate);
+  const removeTemplate  = useAttendanceStore((s) => s.removeTemplate);
 
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen]   = React.useState(false);
   const [draft, setDraft] = React.useState<ShiftTemplate | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  const openCreate = () => {
-    setDraft({
+  const buildDefault = (): ShiftTemplate => {
+    const per = defaultShiftPeriod(genId('per'));
+    return {
       id: genId('tpl'),
       nameAr: '',
       nameEn: '',
       colorHex: '#0f766e',
       effectiveFrom: new Date().toISOString().slice(0, 10),
       isActive: true,
-      weekDays: defaultWorkWeekPeriods((day, i) => `p-${day}-${i}`),
-    });
-    setError(null);
-    setOpen(true);
+      weekDays: ([6, 0, 1, 2, 3, 4, 5] as WeekDayIndex[]).map((day) => ({
+        day,
+        isRest: DEFAULT_REST.includes(day),
+        periods: DEFAULT_REST.includes(day) ? [] : [{ ...per, id: genId('per') }],
+      })),
+    };
   };
 
-  const openEdit = (t: ShiftTemplate) => {
-    setDraft(cloneTemplate(t));
-    setError(null);
-    setOpen(true);
-  };
+  const openCreate = () => { setDraft(buildDefault()); setError(null); setOpen(true); };
+  const openEdit = (t: ShiftTemplate) => { setDraft(cloneTemplate(t)); setError(null); setOpen(true); };
 
   const save = () => {
     if (!draft) return;
@@ -489,39 +517,13 @@ export function ShiftTemplatesPanel() {
     setDraft(null);
   };
 
-  const updateDay = (day: WeekDayIndex, patch: Partial<TemplateDayConfig>) =>
-    setDraft((d) => d ? { ...d, weekDays: d.weekDays.map((w) => w.day === day ? { ...w, ...patch } : w) } : d);
-
-  const updatePeriod = (day: WeekDayIndex, periodId: string, patch: Partial<ShiftPeriod>) =>
-    setDraft((d) => d ? {
-      ...d,
-      weekDays: d.weekDays.map((w) =>
-        w.day !== day ? w : { ...w, periods: w.periods.map((p) => p.id === periodId ? { ...p, ...patch } : p) },
-      ),
-    } : d);
-
-  const addPeriod = (day: WeekDayIndex) =>
-    setDraft((d) => d ? {
-      ...d,
-      weekDays: d.weekDays.map((w) =>
-        w.day !== day ? w : { ...w, isRest: false, periods: [...w.periods, defaultShiftPeriod(genId('per'))] },
-      ),
-    } : d);
-
-  const removePeriod = (day: WeekDayIndex, periodId: string) =>
-    setDraft((d) => d ? {
-      ...d,
-      weekDays: d.weekDays.map((w) =>
-        w.day !== day ? w : { ...w, periods: w.periods.filter((p) => p.id !== periodId) },
-      ),
-    } : d);
+  const isEdit = !!draft && shiftTemplates.some((x) => x.id === draft.id);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
         <Button variant="luxe" className="gap-2 shrink-0" type="button" onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          قالب جديد
+          <Plus className="h-4 w-4" /> قالب جديد
         </Button>
       </div>
 
@@ -529,161 +531,45 @@ export function ShiftTemplatesPanel() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <Clock className="mb-3 h-10 w-10 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">لا توجد قوالب بعد</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">أضف قالباً جديداً لتحديد أوقات الدوام</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {shiftTemplates.map((t) => (
-            <div
+            <TemplateCard
               key={t.id}
-              className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated cursor-pointer"
-              onClick={() => openEdit(t)}
-            >
-              <div className="p-5">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  <span className={cn(
-                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                    t.isActive
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                      : 'border-border bg-muted text-muted-foreground',
-                  )}>
-                    <span className={cn('h-1.5 w-1.5 rounded-full', t.isActive ? 'bg-emerald-500' : 'bg-muted-foreground')} />
-                    {t.isActive ? 'نشط' : 'موقوف'}
-                  </span>
-                </div>
-
-                {/* Name + summary */}
-                <h3 className="font-display text-base font-bold leading-snug mb-1 group-hover:text-primary transition-colors">
-                  {t.nameAr}
-                </h3>
-                <p className="text-xs text-muted-foreground mb-4">{summarizeTemplate(t)}</p>
-
-                {/* 7-day strip */}
-                <div className="flex gap-1 mb-4" dir="rtl">
-                  {[...t.weekDays].sort((a, b) => WEEK_ORDER.indexOf(a.day) - WEEK_ORDER.indexOf(b.day)).map((wd) => (
-                    <div
-                      key={wd.day}
-                      title={DAY_LABELS[wd.day]}
-                      className={cn(
-                        'flex h-6 flex-1 items-center justify-center rounded text-[9px] font-bold',
-                        wd.isRest
-                          ? 'bg-muted text-muted-foreground/40'
-                          : 'bg-primary/15 text-primary font-semibold',
-                      )}
-                    >
-                      {DAY_SHORT[wd.day]}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Footer: date + actions */}
-                <div
-                  className="flex items-center justify-between border-t border-border/60 pt-3"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <span className="font-mono text-[11px] text-muted-foreground" dir="ltr">{t.effectiveFrom}</span>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" type="button" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(t)}>
-                      <Pencil className="h-3 w-3" /> تعديل
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive"
-                      onClick={() => { if (typeof window !== 'undefined' && window.confirm('حذف القالب؟')) removeTemplate(t.id); }}
-                    >
-                      <Trash2 className="h-3 w-3" /> حذف
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+              t={t}
+              onEdit={() => openEdit(t)}
+              onDelete={() => { if (window.confirm('حذف القالب؟')) removeTemplate(t.id); }}
+            />
           ))}
         </div>
       )}
 
-      {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[min(92vh,900px)] w-full max-w-5xl flex-col overflow-hidden border-border p-0 sm:max-w-5xl">
-          {/* Fixed header */}
+        <DialogContent className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden border-border p-0">
           <div className="shrink-0 border-b border-border px-6 py-5">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">
-                {draft && shiftTemplates.some((x) => x.id === draft.id) ? 'تعديل القالب' : 'قالب جديد'}
+                {isEdit ? 'تعديل القالب' : 'قالب دوام جديد'}
               </DialogTitle>
-              <DialogDescription>حدد الأسماء، الألوان، والجدول الأسبوعي والفترات لكل يوم.</DialogDescription>
+              <DialogDescription>
+                حدد أيام العمل ثم أدخل أوقات الدوام — تُطبَّق تلقائياً على جميع الأيام المحددة.
+              </DialogDescription>
             </DialogHeader>
           </div>
 
-          {/* Scrollable body */}
           {draft && (
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-              {/* Meta fields */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="nameAr">الاسم</Label>
-                  <Input id="nameAr" value={draft.nameAr} onChange={(e) => setDraft({ ...draft, nameAr: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>اللون</Label>
-                  <div className="flex gap-2">
-                    <Input type="color" className="h-10 w-14 cursor-pointer p-1" value={draft.colorHex} onChange={(e) => setDraft({ ...draft, colorHex: e.target.value })} />
-                    <Input dir="ltr" className="font-mono text-sm" value={draft.colorHex} onChange={(e) => setDraft({ ...draft, colorHex: e.target.value })} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="eff">ساري من</Label>
-                  <SingleDatePicker
-                    id="eff"
-                    value={draft.effectiveFrom}
-                    onChange={(effectiveFrom) => setDraft({ ...draft, effectiveFrom })}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <SettingToggleRow
-                    checked={draft.isActive}
-                    onCheckedChange={(v) => setDraft({ ...draft, isActive: v })}
-                    title="قالب نشط"
-                    subtitle="يمكن إيقاف القالب دون حذفه"
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Weekly schedule */}
-              <div className="space-y-3">
-                <h4 className="flex items-center gap-2 text-sm font-semibold">
-                  <Clock className="h-4 w-4 text-primary" />
-                  الجدول الأسبوعي
-                </h4>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {[...draft.weekDays].sort((a, b) => WEEK_ORDER.indexOf(a.day) - WEEK_ORDER.indexOf(b.day)).map((wd) => (
-                    <DayColumn
-                      key={wd.day}
-                      wd={wd}
-                      onUpdateDay={(patch) => updateDay(wd.day, patch)}
-                      onUpdatePeriod={(pid, patch) => updatePeriod(wd.day, pid, patch)}
-                      onAddPeriod={() => addPeriod(wd.day)}
-                      onRemovePeriod={(pid) => removePeriod(wd.day, pid)}
-                    />
-                  ))}
-                </div>
-              </div>
-
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              <DialogForm draft={draft} setDraft={setDraft as React.Dispatch<React.SetStateAction<ShiftTemplate | null>>} />
               {error && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   {error}
                 </div>
               )}
             </div>
           )}
 
-          {/* Fixed footer */}
           <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>إلغاء</Button>
             <Button variant="luxe" type="button" onClick={save}>حفظ القالب</Button>

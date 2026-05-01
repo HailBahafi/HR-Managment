@@ -19,7 +19,7 @@ const SECTION_COPY: Record<AttendanceSection, { title: string; desc: string }> =
   assignment: { title: 'ربط الشيفتات بالموظفين', desc: 'ربط الشيفتات بالموظفين أو الأقسام أو الفروع.' },
   daily: { title: 'الحضور اليومي', desc: 'متابعة السجلات ضمن نطاق زمني.' },
   checkpoints: { title: 'نقاط التسجيل', desc: 'إدارة المواقع الجغرافية المعتمدة للتسجيل.' },
-  'checkpoint-links': { title: 'ربط الموظفين بالنقاط ', desc: 'ربط الموظفين بنقاط محددة' },
+  'checkpoint-links': { title: 'ربط النقاط بالموظفين  ', desc: 'ربط الموظفين بنقاط محددة' },
 };
 
 export function AttendanceClient() {

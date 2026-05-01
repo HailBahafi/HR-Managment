@@ -13,8 +13,9 @@ import {
 } from './shared-ui';
 import { HRRequestApprovalFlowEditor } from './approval-flow-editor';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
+import { useHRApprovalAssignmentTemplatesStore } from '@/lib/hr-requests/approval-assignment-store';
 import type { HRRequestTypeEntity, HRApprovalStage } from '@/lib/hr-requests/types';
-import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, validateApprovalStages, slugify } from '@/lib/hr-requests/types';
+import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, validateApprovalStages } from '@/lib/hr-requests/types';
 import { cn } from '@/lib/utils';
 
 interface DraftForm {
@@ -24,15 +25,24 @@ interface DraftForm {
   sortOrder: number;
   isActive: boolean;
   templateId: string | null;
+  approvalAssignmentTemplateId: string | null;
   approvalStages: HRApprovalStage[];
 }
 
 const EMPTY: DraftForm = {
-  scope: 'global', departmentId: '', nameAr: '', sortOrder: 1, isActive: true, templateId: null, approvalStages: [],
+  scope: 'global',
+  departmentId: '',
+  nameAr: '',
+  sortOrder: 1,
+  isActive: true,
+  templateId: null,
+  approvalAssignmentTemplateId: null,
+  approvalStages: [],
 };
 
 export function RequestTypesClient() {
   const { departments, requestTypes, templates, addRequestType, updateRequestType, deleteRequestType } = useHRConfigurationStore();
+  const approvalAssignmentTemplates = useHRApprovalAssignmentTemplatesStore(s => s.templates);
 
   const { values } = usePageFilters([
     { key: 'q', label: 'بحث', type: 'text', placeholder: 'الاسم…' },
@@ -49,6 +59,10 @@ export function RequestTypesClient() {
 
   const activeDepts = departments.filter(d => d.isActive);
   const activeTemplates = templates.filter(t => t.isActive);
+  const activeApprovalAssignmentTemplates = React.useMemo(
+    () => approvalAssignmentTemplates.filter(t => t.isActive).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar')),
+    [approvalAssignmentTemplates],
+  );
 
   const filtered = React.useMemo(() => {
     const q = search.toLowerCase();
@@ -74,6 +88,7 @@ export function RequestTypesClient() {
       departmentId: rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID ? '' : rt.departmentId,
       nameAr: rt.nameAr, sortOrder: rt.sortOrder, isActive: rt.isActive,
       templateId: rt.templateId,
+      approvalAssignmentTemplateId: rt.approvalAssignmentTemplateId ?? null,
       approvalStages: rt.approvalStages ?? [],
     });
     setError(null);
@@ -92,6 +107,7 @@ export function RequestTypesClient() {
       sortOrder: draft.sortOrder,
       isActive: draft.isActive,
       templateId: draft.templateId,
+      approvalAssignmentTemplateId: draft.approvalAssignmentTemplateId,
       approvalStages: draft.approvalStages,
     };
     if (editId) {
@@ -115,6 +131,11 @@ export function RequestTypesClient() {
     ...activeTemplates.map(t => ({ value: t.id, label: `${t.nameAr}${t.isUniversalDefault ? ' ★' : ''}` })),
   ];
 
+  const aaTplOptions = [
+    { value: '__none__', label: '— بدون قالب موافقات —' },
+    ...activeApprovalAssignmentTemplates.map(t => ({ value: t.id, label: t.nameAr })),
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -133,6 +154,7 @@ export function RequestTypesClient() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map(rt => {
               const tpl = templates.find(t => t.id === rt.templateId);
+              const aaTpl = approvalAssignmentTemplates.find(t => t.id === rt.approvalAssignmentTemplateId);
               return (
                 <div
                   key={rt.id}
@@ -157,6 +179,11 @@ export function RequestTypesClient() {
                     <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                       {rt.approvalStages?.length ?? 0} مرحلة
                     </span>
+                    {aaTpl ? (
+                      <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-medium text-amber-900 dark:text-amber-200">
+                        موافقات: {aaTpl.nameAr}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="mt-auto flex gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
                     <Button variant="ghost" size="sm" className="gap-1.5 flex-1" onClick={() => openEdit(rt)}>
@@ -200,11 +227,18 @@ export function RequestTypesClient() {
           <FormField label="الاسم" required span2>
             <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="طلب إجازة" />
           </FormField>
-          <FormField label="القالب">
+          <FormField label="قالب النموذج">
             <MinimalDropdown
               value={draft.templateId ?? '__none__'}
               onChange={v => patch('templateId', v === '__none__' ? null : v)}
               options={tplOptions}
+            />
+          </FormField>
+          <FormField label="قالب إسناد الموافقات">
+            <MinimalDropdown
+              value={draft.approvalAssignmentTemplateId ?? '__none__'}
+              onChange={v => patch('approvalAssignmentTemplateId', v === '__none__' ? null : v)}
+              options={aaTplOptions}
             />
           </FormField>
           <FormField label="نشط" span2>

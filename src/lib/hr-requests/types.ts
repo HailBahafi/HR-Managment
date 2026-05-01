@@ -107,10 +107,30 @@ export interface HRRequestTypeEntity {
   isActive: boolean;
   subtypes: HRRequestSubtype[];
   templateId: string | null;
+  /** قالب «إسناد الموافقات» المرتبط — يُعرض في طلب جديد ويُنسخ إلى لقطة مسار الموافقة */
+  approvalAssignmentTemplateId?: string | null;
   approvalStages?: HRApprovalStage[];
 }
 
 // ─── Submissions ──────────────────────────────────────────────────────────────
+
+export type HRSubmissionApprovalStageState = 'pending' | 'approved' | 'rejected';
+
+export interface HRSubmissionApprovalStageSnapshot {
+  stageId: string;
+  mode: HRApprovalStageMode;
+  /** مطابق لترتيب `approverNamesAr` — لتحديد من يملك زر الموافقة/الرفض */
+  approverEmployeeIds: string[];
+  approverNamesAr: string[];
+  state: HRSubmissionApprovalStageState;
+}
+
+/** لقطة مسار موافقات مرتبطة بقالب إسناد الموافقات */
+export interface HRSubmissionApprovalSnapshot {
+  assignmentTemplateId: string;
+  assignmentTemplateNameAr: string;
+  stages: HRSubmissionApprovalStageSnapshot[];
+}
 
 export interface HRRequestSubmissionRecord {
   id: string;
@@ -126,6 +146,8 @@ export interface HRRequestSubmissionRecord {
   departmentNameEn: string;
   templateId: string | null;
   fieldValues: Record<string, unknown>;
+  /** مسار الموافقات (من قالب إسناد الموافقات) وحالة كل مرحلة */
+  approvalSnapshot?: HRSubmissionApprovalSnapshot | null;
 }
 
 // ─── Approval assignment templates ────────────────────────────────────────────
@@ -147,6 +169,165 @@ export interface HRApprovalAssignmentTemplate {
   stages: HRApprovalTemplateStage[];
   createdAt: string;
   updatedAt: string;
+}
+
+export function approvalStageModeLabelAr(mode: HRApprovalStageMode): string {
+  const labels: Record<HRApprovalStageMode, string> = {
+    sequential: 'تتابعي',
+    parallel: 'متوازي',
+    optional: 'اختياري',
+    any_one: 'أي معتمد',
+  };
+  return labels[mode];
+}
+
+export function approvalStageStateLabelAr(state: HRSubmissionApprovalStageState): string {
+  if (state === 'approved') return 'معتمد';
+  if (state === 'rejected') return 'مرفوض';
+  return 'قيد الانتظار';
+}
+
+/** ملخص سطر واحد لكل مرحلة: الحالة وليس وضع التشغيل (تتابعي/متوازي) */
+export function formatApprovalStagesSummary(stages: HRSubmissionApprovalStageSnapshot[]): string {
+  return stages.map((st, i) => {
+    const stLabel = approvalStageStateLabelAr(st.state);
+    const who = st.approverNamesAr.join('، ');
+    return `المرحلة ${i + 1}: ${stLabel}${who ? ` (${who})` : ''}`;
+  }).join(' · ');
+}
+
+/**
+ * أول مرحلة قيد الانتظار يجب أن تُعالج الآن، والمُعتمِد الحالي ضمن قائمة المعتمدين فيها،
+ * وجميع المراحل السابقة معتمدة (للمسار التتابعي وغيره).
+ */
+export function getApprovalActionContext(
+  ap: HRSubmissionApprovalSnapshot | null | undefined,
+  actingEmployeeId: string | null | undefined,
+): { canAct: boolean; stageIndex: number | null } {
+  if (!ap?.stages?.length || !actingEmployeeId) return { canAct: false, stageIndex: null };
+  const pendingIdx = ap.stages.findIndex(s => s.state === 'pending');
+  if (pendingIdx < 0) return { canAct: false, stageIndex: null };
+  for (let i = 0; i < pendingIdx; i++) {
+    if (ap.stages[i]!.state !== 'approved') return { canAct: false, stageIndex: null };
+  }
+  const cur = ap.stages[pendingIdx]!;
+  const ids = cur.approverEmployeeIds ?? [];
+  if (!ids.includes(actingEmployeeId)) return { canAct: false, stageIndex: null };
+  return { canAct: true, stageIndex: pendingIdx };
+}
+
+/** لكل مرحلة: هل يظهر صف موافقة/رفض، وهل هو نشط (مسار تتابعي: مرحلة واحدة فقط نشطة) */
+export function getPerStageApprovalUi(
+  ap: HRSubmissionApprovalSnapshot | null | undefined,
+  actingEmployeeId: string | null | undefined,
+): {
+  stageIndex: number;
+  state: HRSubmissionApprovalStageState;
+  canAct: boolean;
+  showActionRow: boolean;
+  disabledHintAr: string | null;
+}[] {
+  if (!ap?.stages?.length) return [];
+  const firstPending = ap.stages.findIndex(s => s.state === 'pending');
+  const multi = ap.stages.length >= 2;
+  return ap.stages.map((st, idx) => {
+    const ids = st.approverEmployeeIds ?? [];
+    const isApprover = !!actingEmployeeId && ids.includes(actingEmployeeId);
+    let priorApproved = true;
+    for (let i = 0; i < idx; i++) {
+      if (ap.stages[i]!.state !== 'approved') {
+        priorApproved = false;
+        break;
+      }
+    }
+    const gate = firstPending === idx;
+    const canAct =
+      !!actingEmployeeId &&
+      isApprover &&
+      st.state === 'pending' &&
+      priorApproved &&
+      gate;
+
+    let disabledHintAr: string | null = null;
+    if (multi && st.state === 'pending' && isApprover && !priorApproved) {
+      disabledHintAr = 'بانتظار إكمال مراحل سابقة';
+    } else if (multi && st.state === 'pending' && isApprover && !gate) {
+      disabledHintAr = 'مرحلة أخرى قيد المعالجة أولاً';
+    } else if (multi && st.state === 'pending' && !isApprover) {
+      disabledHintAr = 'لست من المعتمدين في هذه المرحلة';
+    }
+
+    const showActionRow = multi ? true : canAct;
+    return { stageIndex: idx, state: st.state, canAct, showActionRow, disabledHintAr };
+  });
+}
+
+export function buildApprovalSnapshotFromTemplate(
+  tpl: HRApprovalAssignmentTemplate,
+  resolveName: (employeeId: string) => string,
+  stageStates: HRSubmissionApprovalStageState[],
+): HRSubmissionApprovalSnapshot {
+  const sorted = [...tpl.stages].sort((a, b) => a.sortOrder - b.sortOrder);
+  const stages: HRSubmissionApprovalStageSnapshot[] = sorted.map((s, i) => ({
+    stageId: s.id,
+    mode: s.mode,
+    approverEmployeeIds: s.approvers.map(a => a.employeeId),
+    approverNamesAr: s.approvers.map(a => resolveName(a.employeeId)),
+    state: stageStates[i] ?? 'pending',
+  }));
+  return {
+    assignmentTemplateId: tpl.id,
+    assignmentTemplateNameAr: tpl.nameAr,
+    stages,
+  };
+}
+
+/** ملخص عرض للبطاقة: أين وصل الطلب وعدد المراحل */
+export function deriveSubmissionApprovalSummary(ap: HRSubmissionApprovalSnapshot | null | undefined): {
+  overall: 'in_progress' | 'approved' | 'rejected';
+  totalStages: number;
+  /** عدد المراحل التي أصبحت «معتمدة» — لشريط التقدم (معتمد/الإجمالي) */
+  approvedStagesCount: number;
+  /** أول مرحلة قيد الانتظار (1-based) للعرض النصي */
+  currentStepDisplay: number;
+  labelAr: string;
+  /** حالة كل مرحلة والمعتمدون، وليس وضع التشغيل (تتابعي/متوازي) */
+  detailAr: string;
+} | null {
+  if (!ap?.stages?.length) return null;
+  const n = ap.stages.length;
+  const approvedStagesCount = ap.stages.filter(s => s.state === 'approved').length;
+  const detailAr = formatApprovalStagesSummary(ap.stages);
+  const rej = ap.stages.findIndex(s => s.state === 'rejected');
+  if (rej >= 0) {
+    return {
+      overall: 'rejected',
+      totalStages: n,
+      approvedStagesCount,
+      currentStepDisplay: rej + 1,
+      labelAr: `مرفوض — المرحلة ${rej + 1} من ${n}`,
+      detailAr,
+    };
+  }
+  const pendingIdx = ap.stages.findIndex(s => s.state === 'pending');
+  if (pendingIdx < 0) {
+    return {
+      overall: 'approved',
+      totalStages: n,
+      approvedStagesCount: n,
+      currentStepDisplay: n,
+      labelAr: `معتمد — ${n} ${n === 1 ? 'مرحلة' : 'مراحل'}`,
+      detailAr,
+    };
+  }
+  return {
+    overall: 'in_progress',
+    totalStages: n,
+    approvedStagesCount,
+    currentStepDisplay: pendingIdx + 1,
+    labelAr: `المرحلة ${pendingIdx + 1} من ${n}`,
+    detailAr,
+  };
 }
 
 export function templateStagesToCore(stages: HRApprovalTemplateStage[]): HRApprovalStage[] {

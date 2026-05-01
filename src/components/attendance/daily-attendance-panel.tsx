@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { format, subDays, parseISO, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subDays, parseISO, startOfMonth, endOfMonth, isFriday } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import {
-  LayoutList, Clock3,
+  Clock3,
   TrendingUp, Users, Timer, CalendarDays, Calendar,
 } from 'lucide-react';
 import { EmployeePicker } from '@/components/ui/employee-picker';
@@ -14,20 +14,103 @@ import { usePageFilters } from '@/components/filter-panel-context';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import type { AttendanceDaySummary, AttendanceEvent, DaySummaryStatus } from '@/lib/attendance/types';
 import { enumerateDates, minutesFromMidnight, todayIso } from '@/lib/attendance/utils';
+import { data } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
-// ─── Status config ───────────────────────────────────────────────────────────
+// ─── Status config (عرض المستخدم فقط — بدون «غير مكتمل» و«تمديد») ───────────
 
-const STATUS: Record<DaySummaryStatus, { label: string; color: string; dot: string; bar: string }> = {
+const STATUS = {
   present:     { label: 'حاضر',         color: 'bg-success/10 text-success border-success/30',             dot: 'bg-success',            bar: 'bg-success' },
   late:        { label: 'متأخر',        color: 'bg-warning/10 text-warning border-warning/30',             dot: 'bg-warning',            bar: 'bg-warning' },
   absent:      { label: 'غائب',         color: 'bg-destructive/10 text-destructive border-destructive/30', dot: 'bg-destructive',        bar: 'bg-destructive/60' },
-  early_leave: { label: 'انصراف مبكر', color: 'bg-warning/10 text-warning border-warning/30',             dot: 'bg-warning/70',         bar: 'bg-warning/60' },
-  incomplete:  { label: 'غير مكتمل',  color: 'bg-muted text-muted-foreground border-border',              dot: 'bg-muted-foreground',   bar: 'bg-muted-foreground/40' },
-  overtime:    { label: 'تمديد',        color: 'bg-primary/10 text-primary border-primary/30',             dot: 'bg-primary',            bar: 'bg-primary' },
-};
+  early_leave: { label: 'انصراف مبكر', color: 'bg-amber-500/10 text-amber-900 dark:text-amber-200 border-amber-500/25', dot: 'bg-amber-500', bar: 'bg-amber-500/70' },
+  holiday:     { label: 'عطلة',         color: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/25', dot: 'bg-slate-500', bar: 'bg-slate-400' },
+} as const;
 
-type ViewMode = 'grid' | 'timeline';
+type StatusVisualKey = keyof typeof STATUS;
+
+function resolveVisualKey(s: DaySummaryStatus): StatusVisualKey {
+  if (s === 'holiday') return 'holiday';
+  if (s === 'overtime') return 'present';
+  if (s === 'incomplete') return 'absent';
+  if (s === 'present' || s === 'late' || s === 'absent' || s === 'early_leave') return s;
+  return 'present';
+}
+
+function cfgFor(s: DaySummaryStatus) {
+  return STATUS[resolveVisualKey(s)];
+}
+
+/** لكل موظف وكل يوم في النطاق: سجل كامل — الجمعة عطلة، وغياب السجل يُعرض غائب */
+function densifySummaries(
+  summaries: AttendanceDaySummary[],
+  dates: string[],
+  roster: { id: string; name: string }[],
+): AttendanceDaySummary[] {
+  const map = new Map<string, AttendanceDaySummary>();
+  for (const s of summaries) map.set(`${s.employeeId}|${s.date}`, s);
+  const TPL = 'tpl-s1';
+  const out: AttendanceDaySummary[] = [];
+
+  for (const emp of roster) {
+    for (const d of dates) {
+      const k = `${emp.id}|${d}`;
+      const dParsed = parseISO(`${d}T12:00:00`);
+      const friday = isFriday(dParsed);
+      const existing = map.get(k);
+
+      if (existing) {
+        let st: DaySummaryStatus = existing.status;
+        if (friday) st = 'holiday';
+        else if (st === 'overtime') st = 'present';
+        else if (st === 'incomplete') st = 'absent';
+        out.push({
+          ...existing,
+          employeeName: emp.name,
+          status: st,
+          lateMinutes: st === 'holiday' ? 0 : existing.lateMinutes,
+          earlyLeaveMinutes: st === 'holiday' ? 0 : existing.earlyLeaveMinutes,
+          overtimeMinutes: st === 'holiday' ? 0 : existing.overtimeMinutes,
+          workedMinutes: st === 'holiday' ? 0 : existing.workedMinutes,
+        });
+        continue;
+      }
+
+      if (friday) {
+        out.push({
+          id: `syn-${emp.id}-${d}`,
+          employeeId: emp.id,
+          employeeName: emp.name,
+          date: d,
+          templateId: null,
+          status: 'holiday',
+          lateMinutes: 0,
+          earlyLeaveMinutes: 0,
+          overtimeMinutes: 0,
+          workedMinutes: 0,
+        });
+        continue;
+      }
+
+      /* لا يوجد سجل لهذا اليوم: نعرض غائب بدل ترك الخلية فارغة (لا نُولّد حضوراً وهمياً) */
+      out.push({
+        id: `syn-${emp.id}-${d}`,
+        employeeId: emp.id,
+        employeeName: emp.name,
+        date: d,
+        templateId: TPL,
+        status: 'absent',
+        lateMinutes: 0,
+        earlyLeaveMinutes: 0,
+        overtimeMinutes: 0,
+        workedMinutes: 0,
+      });
+    }
+  }
+
+  return out.sort((a, b) => a.employeeId.localeCompare(b.employeeId) || a.date.localeCompare(b.date));
+}
+
 type Preset   = 'day' | 'week' | 'month' | 'custom';
 
 // Full Arabic day name
@@ -64,8 +147,7 @@ export function DailyAttendancePanel() {
   const daySummaries = useAttendanceStore((s) => s.daySummaries);
   const events       = useAttendanceStore((s) => s.events);
 
-  const [preset, setPreset] = React.useState<Preset>('week');
-  const [view, setView] = React.useState<ViewMode>('timeline');
+  const [preset, setPreset] = React.useState<Preset>('month');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [customFrom, setCustomFrom] = React.useState('');
   const [customTo, setCustomTo]   = React.useState('');
@@ -83,8 +165,11 @@ export function DailyAttendancePanel() {
   const q    = (values.q as string) ?? '';
 
   React.useEffect(() => {
-    setValue('date_from', defaultFrom);
-    setValue('date_to',   defaultTo);
+    const start = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+    const end   = format(endOfMonth(new Date()),   'yyyy-MM-dd');
+    setValue('date_from', start);
+    setValue('date_to',   end);
+    setPreset('month');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -113,13 +198,17 @@ export function DailyAttendancePanel() {
 
   const dates = React.useMemo(() => enumerateDates(from, to), [from, to]);
 
-  const allEmployees = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const s of daySummaries) {
-      if (s.date >= from && s.date <= to) map.set(s.employeeId, s.employeeName);
-    }
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [daySummaries, from, to]);
+  const allEmployees = React.useMemo(
+    () => data.employees.map(e => ({ id: e.id, name: e.name })),
+    [],
+  );
+
+  const roster = React.useMemo(() => {
+    let emps = allEmployees;
+    if (q.trim()) emps = emps.filter(e => e.name.includes(q) || e.id.includes(q));
+    if (selectedEmpIds.size > 0) emps = emps.filter(e => selectedEmpIds.has(e.id));
+    return emps;
+  }, [allEmployees, q, selectedEmpIds]);
 
   const filtered = React.useMemo(() =>
     daySummaries.filter((s) =>
@@ -135,17 +224,23 @@ export function DailyAttendancePanel() {
       (selectedEmpIds.size === 0 || selectedEmpIds.has(e.employeeId)),
     ), [events, from, to, q, selectedEmpIds]);
 
+  const denseSummaries = React.useMemo(
+    () => densifySummaries(filtered, dates, roster),
+    [filtered, dates, roster],
+  );
+
   const stats = React.useMemo(() => {
-    const workedM   = filtered.reduce((a, s) => a + s.workedMinutes, 0);
-    const lateM     = filtered.reduce((a, s) => a + s.lateMinutes, 0);
-    const absentDays = filtered.filter((s) => s.status === 'absent').length;
+    const workedM   = denseSummaries.reduce((a, s) => a + s.workedMinutes, 0);
+    const lateM     = denseSummaries.reduce((a, s) => a + s.lateMinutes, 0);
+    const absentDays = denseSummaries.filter((s) => s.status === 'absent').length;
+    const denom = denseSummaries.length || 1;
     return {
       workHours:    workedM / 60,
       lateHours:    lateM / 60,
       absentHours:  absentDays * DEFAULT_ABSENT_DAY_HOURS,
-      avgWorkHours: filtered.length ? workedM / 60 / filtered.length : 0,
+      avgWorkHours: workedM / 60 / denom,
     };
-  }, [filtered]);
+  }, [denseSummaries]);
 
   const PRESET_LABELS: Record<Preset, string> = {
     day: 'اليوم', week: 'أسبوع', month: 'شهر', custom: 'مخصص',
@@ -194,22 +289,6 @@ export function DailyAttendancePanel() {
 
           <div className="flex items-center gap-2 pb-3">
             <EmployeePicker employees={allEmployees} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1">
-              <button type="button" onClick={() => setView('grid')}
-                className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
-                  view === 'grid' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <LayoutList className="h-3.5 w-3.5" />جدول
-              </button>
-              <button type="button" onClick={() => setView('timeline')}
-                className={cn('flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
-                  view === 'timeline' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Clock3 className="h-3.5 w-3.5" />خط زمني
-              </button>
-            </div>
           </div>
         </div>
 
@@ -271,102 +350,14 @@ export function DailyAttendancePanel() {
         )}
       </div>
 
-      {/* ── Content ── */}
-      {view === 'grid'
-        ? <GridView rows={filtered} />
-        : <SmartTimeline
-            summaries={filtered}
-            events={eventsFiltered}
-            dates={dates}
-            from={from}
-            to={to}
-          />
-      }
-    </div>
-  );
-}
-
-// ─── Grid view ───────────────────────────────────────────────────────────────
-
-function GridView({ rows }: { rows: AttendanceDaySummary[] }) {
-  if (rows.length === 0) return <EmptyState />;
-
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-      <div className="divide-y divide-border/40 sm:hidden">
-        {rows.map((s) => {
-          const cfg = STATUS[s.status];
-          return (
-            <div key={s.id} className="p-4 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                    {s.employeeName.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-sm truncate">{s.employeeName}</p>
-                    <p className="text-[10px] text-muted-foreground">{fmtDayFull(s.date)} · {s.date}</p>
-                  </div>
-                </div>
-                <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', cfg.color)}>
-                  <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dot)} />
-                  {cfg.label}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                {s.lateMinutes > 0 && <span className="text-warning font-medium">تأخير: {s.lateMinutes} د</span>}
-                <span>العمل: <span className="font-mono text-foreground">{s.workedMinutes} د</span></span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full min-w-[680px] text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground">
-              <th className="px-5 py-3.5 text-right">الموظف</th>
-              <th className="px-5 py-3.5 text-right">التاريخ</th>
-              <th className="px-5 py-3.5 text-right">الحالة</th>
-              <th className="px-5 py-3.5 text-right">تأخير</th>
-              <th className="px-5 py-3.5 text-right">وقت العمل</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((s) => {
-              const cfg = STATUS[s.status];
-              return (
-                <tr key={s.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                        {s.employeeName.charAt(0)}
-                      </div>
-                      <p className="font-medium">{s.employeeName}</p>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    <p className="text-sm">{fmtDayFull(s.date)}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">{s.date}</p>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', cfg.color)}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dot)} />
-                      {cfg.label}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 font-mono text-xs">
-                    {s.lateMinutes > 0
-                      ? <span className="text-warning">{s.lateMinutes} د</span>
-                      : <span className="text-muted-foreground">—</span>}
-                  </td>
-                  <td className="px-5 py-3 font-mono text-xs">{minutesToHHMM(s.workedMinutes)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {/* ── خط زمني فقط (مع إكمال كل الخلايا) ── */}
+      <SmartTimeline
+        summaries={denseSummaries}
+        events={eventsFiltered}
+        dates={dates}
+        from={from}
+        to={to}
+      />
     </div>
   );
 }
@@ -460,7 +451,7 @@ function GanttTimeline({
             const checkOut = sorted.findLast((e) => e.type === 'check_out');
             const inMins   = checkIn  ? minutesFromMidnight(checkIn.at)  : null;
             const outMins  = checkOut ? minutesFromMidnight(checkOut.at) : null;
-            const cfg = STATUS[s.status];
+            const cfg = cfgFor(s.status);
             return (
               <div key={s.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/10 transition-colors">
                 <div className="flex w-40 shrink-0 items-center gap-2">
@@ -535,7 +526,7 @@ function WeekGrid({ summaries, dates }: { summaries: AttendanceDaySummary[]; dat
       if (!m.has(s.employeeId)) m.set(s.employeeId, { name: s.employeeName, byDate: new Map() });
       m.get(s.employeeId)!.byDate.set(s.date, s);
     }
-    return [...m.values()];
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
   }, [summaries]);
 
   if (byEmployee.length === 0) return <EmptyState />;
@@ -578,7 +569,7 @@ function WeekGrid({ summaries, dates }: { summaries: AttendanceDaySummary[]; dat
                       <div className="mx-auto h-10 w-20 rounded-lg bg-muted/30" />
                     </td>
                   );
-                  const cfg = STATUS[s.status];
+                  const cfg = cfgFor(s.status);
                   return (
                     <td key={d} className="px-3 py-3.5">
                       <div
@@ -604,8 +595,7 @@ function WeekGrid({ summaries, dates }: { summaries: AttendanceDaySummary[]; dat
   );
 }
 
-// ─── 3. Month heatmap (> 14 days) ────────────────────────────────────────────
-// First 20 days are visible, the remaining days are accessible via horizontal scroll
+// ─── 3. Month heatmap (> 14 days) — تمرير أفقي لكل أيام الشهر ───────────────
 
 function MonthHeatmap({ summaries, dates }: { summaries: AttendanceDaySummary[]; dates: string[] }) {
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -616,36 +606,30 @@ function MonthHeatmap({ summaries, dates }: { summaries: AttendanceDaySummary[];
       if (!m.has(s.employeeId)) m.set(s.employeeId, { name: s.employeeName, id: s.employeeId, byDate: new Map() });
       m.get(s.employeeId)!.byDate.set(s.date, s);
     }
-    return [...m.values()];
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
   }, [summaries]);
 
   if (byEmployee.length === 0) return <EmptyState />;
 
-  // Day column width — wide enough for the rotated day-name header
   const DAY_W = 36;
-  const VISIBLE_DAYS = 20;
   const totalDaysWidth = dates.length * DAY_W;
-  const visibleWidth   = VISIBLE_DAYS * DAY_W;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-      {/* Info bar */}
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-2.5 bg-muted/20">
         <span className="text-xs text-muted-foreground">
-          {dates.length} يوم · اليوم 1–{Math.min(VISIBLE_DAYS, dates.length)} مرئي
-          {dates.length > VISIBLE_DAYS && <> · مرِّر للأيام {VISIBLE_DAYS + 1}–{dates.length}</>}
+          <span className="tabular-nums font-medium text-foreground">{dates.length}</span> يوم في النطاق — مرّر أفقياً لعرض كل الأيام
         </span>
         <Legend inline />
       </div>
 
-      {/* Scrollable table — capped width so day 21+ need scroll */}
       <div
         ref={scrollRef}
         className="overflow-x-auto"
         style={{ maxWidth: '100%' }}
       >
         <div style={{ minWidth: `${totalDaysWidth + 160}px` }}>
-          <table className="w-full text-sm table-fixed" style={{ minWidth: `${Math.max(totalDaysWidth + 160, visibleWidth + 160)}px` }}>
+          <table className="w-full text-sm table-fixed" style={{ minWidth: `${totalDaysWidth + 160}px` }}>
             <colgroup>
               <col style={{ width: 160 }} />
               {dates.map((d) => <col key={d} style={{ width: DAY_W }} />)}
@@ -675,14 +659,14 @@ function MonthHeatmap({ summaries, dates }: { summaries: AttendanceDaySummary[];
               </tr>
             </thead>
             <tbody>
-              {byEmployee.map(({ name, byDate }) => {
+              {byEmployee.map(({ name, id, byDate }) => {
                 const allRows   = [...byDate.values()];
                 const workedM   = allRows.reduce((a, s) => a + s.workedMinutes, 0);
                 const lateM     = allRows.reduce((a, s) => a + s.lateMinutes, 0);
                 const absentDays = allRows.filter((s) => s.status === 'absent').length;
 
                 return (
-                  <tr key={name} className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors">
+                  <tr key={id} className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="sticky right-0 z-10 bg-card px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
@@ -698,7 +682,7 @@ function MonthHeatmap({ summaries, dates }: { summaries: AttendanceDaySummary[];
                           <div className="mx-auto h-7 rounded-md bg-muted/20" style={{ width: DAY_W - 4 }} />
                         </td>
                       );
-                      const cfg = STATUS[s.status];
+                      const cfg = cfgFor(s.status);
                       return (
                         <td key={d} className="py-2.5 px-0.5">
                           <div
@@ -735,7 +719,7 @@ function MonthHeatmap({ summaries, dates }: { summaries: AttendanceDaySummary[];
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
 function Legend({ inline }: { inline?: boolean }) {
-  const items = (Object.entries(STATUS) as [DaySummaryStatus, typeof STATUS[DaySummaryStatus]][]);
+  const items = Object.entries(STATUS) as [StatusVisualKey, (typeof STATUS)[StatusVisualKey]][];
   if (inline) {
     return (
       <div className="flex flex-wrap gap-3">

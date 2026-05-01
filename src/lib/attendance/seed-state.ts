@@ -59,7 +59,7 @@ function seedAssignments(templates: ShiftTemplate[]): ShiftAssignment[] {
   const tplMorning = templates.find((t) => t.id === 'tpl-s1');
   if (!tplMorning) return [];
   const batch1 = 'batch-seed-1';
-  const emps = data.employees.slice(0, 8);
+  const emps = data.employees;
   return emps.map((e) => ({
     id: genId('asg'),
     templateId: tplMorning.id,
@@ -264,7 +264,7 @@ const E1_DAYS: E1DaySpec[] = [
   { date:'2026-04-19', status:'present',     checkIn:'08:00', checkOut:'17:00', workedMinutes:540 },
   { date:'2026-04-20', status:'present',     checkIn:'07:58', checkOut:'17:05', workedMinutes:547 },
   { date:'2026-04-21', status:'present',     checkIn:'08:00', checkOut:'17:00', workedMinutes:540 },
-  { date:'2026-04-22', status:'overtime',    checkIn:'07:30', checkOut:'19:00', overtimeMinutes:120, workedMinutes:690 },
+  { date:'2026-04-22', status:'present',     checkIn:'07:30', checkOut:'19:00', overtimeMinutes:120, workedMinutes:690, notes:'يوم بتمديد وقت' },
   { date:'2026-04-23', status:'present',     checkIn:'08:00', checkOut:'17:00', workedMinutes:540 },
   // week 5
   { date:'2026-04-26', status:'present',     checkIn:'08:02', checkOut:'17:00', workedMinutes:538 },

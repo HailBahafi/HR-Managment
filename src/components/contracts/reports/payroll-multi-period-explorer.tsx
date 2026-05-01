@@ -6,8 +6,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { EmployeePicker } from '@/components/ui/employee-picker';
 import { useHRPayrollPeriodsStore } from '@/lib/contracts/payroll-periods-store';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
 import { useHRAllowanceTypesStore } from '@/lib/contracts/allowance-types-store';
@@ -15,6 +14,7 @@ import {
   buildCompensationPreviews,
 } from '@/lib/contracts/compensation-preview';
 import { CompensationReportPanel } from '@/components/contracts/compensation-report-panel';
+import { MinimalDropdown } from '@/components/hr-requests/shared-ui';
 
 const PERIOD_STATUS_LABEL: Record<string, string> = {
   draft:  'مسودة',
@@ -30,12 +30,34 @@ export function PayrollMultiPeriodExplorer() {
   const [selectedId, setSelectedId] = React.useState<string | null>(
     () => periods[0]?.id ?? null,
   );
+  const [empFilter, setEmpFilter] = React.useState<Set<string>>(() => new Set());
   const [downloading, setDownloading] = React.useState(false);
 
   const selectedPeriod = React.useMemo(
     () => periods.find(p => p.id === selectedId) ?? null,
     [periods, selectedId],
   );
+
+  const periodEmployees = React.useMemo(() => {
+    if (!selectedPeriod) return [] as { id: string; name: string }[];
+    const seen = new Map<string, string>();
+    for (const l of selectedPeriod.employmentLines) {
+      if (!seen.has(l.employeeId)) seen.set(l.employeeId, l.employeeNameAr);
+    }
+    return [...seen.entries()].map(([id, name]) => ({ id, name }));
+  }, [selectedPeriod]);
+
+  React.useEffect(() => {
+    setEmpFilter(new Set());
+  }, [selectedId]);
+
+  const empFilterKey = React.useMemo(() => [...empFilter].sort().join(','), [empFilter]);
+
+  const employeeIdsForFilter = React.useMemo(() => {
+    if (!selectedPeriod || periodEmployees.length === 0) return undefined;
+    if (empFilter.size === 0 || empFilter.size >= periodEmployees.length) return undefined;
+    return [...empFilter];
+  }, [selectedPeriod?.id, periodEmployees.length, empFilterKey]);
 
   /* ── Excel download ──────────────────────────────────────────────────── */
   const handleDownloadExcel = async () => {
@@ -45,11 +67,14 @@ export function PayrollMultiPeriodExplorer() {
       const XLSX = await import('xlsx');
       const wb = XLSX.utils.book_new();
 
-      if (!selectedPeriod) return;
       const getContract  = (id: string) => contracts.find(c => c.id === id);
       const getAlloType   = (id: string) => allowanceTypes.find(a => a.id === id);
 
-      const previews = buildCompensationPreviews(selectedPeriod, getContract, getAlloType);
+      let previews = buildCompensationPreviews(selectedPeriod, getContract, getAlloType);
+      if (employeeIdsForFilter?.length) {
+        const allow = new Set(employeeIdsForFilter);
+        previews = previews.filter(r => allow.has(r.employeeId));
+      }
       const headers = [
         '#', 'اسم الموظف', 'القسم', 'الراتب الأساسي', 'البدلات',
         'مستحقات (أوفرتايم + مكافآت)', 'خصومات (غياب + تأخير + جزاءات)', 'الصافي',
@@ -86,16 +111,29 @@ export function PayrollMultiPeriodExplorer() {
     }
   };
 
+  const sortedPeriods = React.useMemo(
+    () => [...periods].sort((a, b) => (a.code ?? '').localeCompare(b.code ?? '', 'ar')),
+    [periods],
+  );
+
+  const periodDropdownOptions = React.useMemo(
+    () => sortedPeriods.map(p => ({
+      value: p.id,
+      label: `${(p.nameAr || p.code).trim()} — ${PERIOD_STATUS_LABEL[p.status] ?? p.status}`,
+    })),
+    [sortedPeriods],
+  );
+
   /* ── UI ──────────────────────────────────────────────────────────────── */
   return (
     <div className="space-y-5 animate-fade-in" dir="rtl">
 
-      {/* ── Period selector bar ── */}
+      {/* ── Period + employee filters ── */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <CalendarRange className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold">فترات الرواتب</span>
+            <span className="text-sm font-semibold">كشف المسير</span>
           </div>
           <Button
             variant="outline"
@@ -111,35 +149,30 @@ export function PayrollMultiPeriodExplorer() {
           </Button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {periods.map(p => {
-            const isSel = p.id === selectedId;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setSelectedId(p.id)}
-                className={cn(
-                  'flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all',
-                  isSel
-                    ? 'border-primary bg-primary text-primary-foreground shadow-soft'
-                    : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
-                )}
-              >
-                <span>{p.nameAr || p.code}</span>
-                <Badge
-                  variant={
-                    p.status === 'closed' ? 'success'
-                    : p.status === 'open'   ? 'warning'
-                    : 'secondary'
-                  }
-                  className="px-1.5 text-[9px]"
-                >
-                  {PERIOD_STATUS_LABEL[p.status] ?? p.status}
-                </Badge>
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="w-fit shrink-0 space-y-1.5">
+            <span className="block text-xs font-medium text-muted-foreground">فترات الرواتب</span>
+            <MinimalDropdown
+              value={selectedId ?? ''}
+              onChange={(v) => setSelectedId(v || null)}
+              options={periodDropdownOptions}
+              placeholder="لا توجد فترات"
+              disabled={sortedPeriods.length === 0}
+              className="h-9 w-[13rem] max-w-[min(13rem,100vw-2rem)] justify-between text-start"
+            />
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-1.5 sm:max-w-md">
+            <span className="block text-xs font-medium text-muted-foreground">تصفية الموظفين</span>
+            <EmployeePicker
+              employees={periodEmployees}
+              selected={empFilter}
+              onChange={setEmpFilter}
+            />
+            {selectedPeriod && periodEmployees.length === 0 && (
+              <p className="text-[11px] text-muted-foreground">لا يوجد موظفون في سجلات هذه الفترة.</p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -152,7 +185,11 @@ export function PayrollMultiPeriodExplorer() {
           <p className="text-sm text-muted-foreground">اختر فترة لاستعراض بيانات المسير</p>
         </div>
       ) : (
-        <CompensationReportPanel periodId={selectedPeriod.id} embedded />
+        <CompensationReportPanel
+          periodId={selectedPeriod.id}
+          embedded
+          employeeIdsFilter={employeeIdsForFilter}
+        />
       )}
     </div>
   );

@@ -112,7 +112,16 @@ const PERIOD_STATUS_BADGE: Record<string, string> = {
   closed: 'bg-primary/10 text-primary border-primary/30',
 };
 
-export function CompensationReportPanel({ periodId, embedded = false }: { periodId: string; embedded?: boolean }) {
+export function CompensationReportPanel({
+  periodId,
+  embedded = false,
+  /** عند تحديده وعدم فراغه: عرض أسطر هؤلاء الموظفين فقط (مطابقة `employeeId` على سطر المسير) */
+  employeeIdsFilter,
+}: {
+  periodId: string;
+  embedded?: boolean;
+  employeeIdsFilter?: string[] | undefined;
+}) {
   const periods               = useHRPayrollPeriodsStore(s => s.periods);
   const setCompensationStatus = useHRPayrollPeriodsStore(s => s.setCompensationStatus);
   const setMonthlyInputs      = useHRPayrollPeriodsStore(s => s.setMonthlyInputs);
@@ -133,10 +142,16 @@ export function CompensationReportPanel({ periodId, embedded = false }: { period
   const getContract = React.useCallback((id: string) => contracts.find(c => c.id === id),    [contracts]);
   const getAlloType  = React.useCallback((id: string) => allowanceTypes.find(a => a.id === id), [allowanceTypes]);
 
+  const filterKey = employeeIdsFilter?.length ? [...employeeIdsFilter].sort().join(',') : '';
   const previews = React.useMemo(() => {
     if (!period) return [];
-    return buildCompensationPreviews(period, getContract, getAlloType);
-  }, [period, getContract, getAlloType]);
+    let list = buildCompensationPreviews(period, getContract, getAlloType);
+    if (filterKey) {
+      const allow = new Set(filterKey.split(','));
+      list = list.filter(r => allow.has(r.employeeId));
+    }
+    return list;
+  }, [period, getContract, getAlloType, filterKey]);
 
   /* ── init edit state from previews ── */
   React.useEffect(() => {
@@ -208,6 +223,7 @@ export function CompensationReportPanel({ periodId, embedded = false }: { period
   }
 
   const hasLines  = period.employmentLines.length > 0;
+  const filterActive = Boolean(filterKey);
   const compStatus = period.compensationReviewStatus;
   const reviewIdx  = STATUS_IDX[compStatus];
   const isApproved = compStatus === 'approved';
@@ -367,6 +383,18 @@ export function CompensationReportPanel({ periodId, embedded = false }: { period
             <p className="text-sm font-medium text-foreground">لا توجد سجلات تشغيل</p>
             <p className="text-xs text-muted-foreground max-w-xs">
               عُد إلى تعديل الفترة وأضف الموظفين أو مزامنة لقطة العقود لعرض التقرير.
+            </p>
+          </div>
+        ) : previews.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center animate-fade-in">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted/40">
+              <Users className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">لا توجد نتائج</p>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              {filterActive
+                ? 'لا يوجد موظفون مطابقون لتصفية الموظفين الحالية. غيّر التصفية أو اختر «جميع الموظفين».'
+                : 'تعذر عرض صفوف التقرير لهذه الفترة.'}
             </p>
           </div>
         ) : (

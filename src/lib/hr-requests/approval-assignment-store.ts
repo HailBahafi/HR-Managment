@@ -16,10 +16,18 @@ const SEED: HRApprovalAssignmentTemplate[] = [
     ],
   },
   {
-    id: 'aat-fast', nameAr: 'موافقة سريعة', description: 'أي معتمد واحد من فريق الإدارة',
+    id: 'aat-fast', nameAr: 'موافقة سريعة', description: 'معتمد واحد من فريق الإدارة',
     isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
     stages: [
       { id: 'ats-3', sortOrder: 1, mode: 'any_one', approvers: [{ employeeId: 'e1', mandatory: false }, { employeeId: 'e3', mandatory: false }] },
+    ],
+  },
+  {
+    id: 'aat-double-same', nameAr: 'موافقتان متتابعتان (نفس المعتمد)', description: 'مرحلتان تتابعيتان لنفس المعتمد — للتجربة والتدقيق المزدوج',
+    isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+    stages: [
+      { id: 'ats-d1', sortOrder: 1, mode: 'sequential', approvers: [{ employeeId: 'e1', mandatory: true }] },
+      { id: 'ats-d2', sortOrder: 2, mode: 'sequential', approvers: [{ employeeId: 'e1', mandatory: true }] },
     ],
   },
 ];
@@ -61,11 +69,20 @@ export const useHRApprovalAssignmentTemplatesStore = create<AAState>()(
     {
       name: 'hr-approval-assignment-templates-v1',
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted: unknown, version: number) => {
         const s = persisted as AAState;
-        if (version < 2) return { ...s, templates: (s.templates ?? SEED).map(t => ({ ...t, description: t.description ?? '', isActive: t.isActive ?? true })) };
-        return s;
+        let templates = (s.templates ?? SEED).map(t => ({ ...t, description: t.description ?? '', isActive: t.isActive ?? true }));
+        if (version < 3) {
+          const byId = new Map(templates.map(t => [t.id, t]));
+          for (const t of SEED) {
+            if (!byId.has(t.id)) {
+              byId.set(t.id, { ...t, description: t.description ?? '', isActive: t.isActive ?? true });
+            }
+          }
+          templates = [...byId.values()];
+        }
+        return { ...s, templates };
       },
     },
   ),

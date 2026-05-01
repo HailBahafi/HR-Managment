@@ -30,7 +30,7 @@ export function PenaltiesClient() {
   const { cases } = useHRViolationCasesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'اسم الموظف أو رقم القضية…' }]);
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'اسم الموظف أو رقم المخالفة…' }]);
   const q = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -96,8 +96,8 @@ export function PenaltiesClient() {
       )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة عقوبة" size="lg" onSave={handleSave} error={formError}>
-        <FormField label="القضية" required>
-          <SearchableDropdown value={draft.caseId} onChange={handleCaseSelect} options={caseOptions} placeholder="اختر القضية…" />
+        <FormField label="المخالفة" required>
+          <SearchableDropdown value={draft.caseId} onChange={handleCaseSelect} options={caseOptions} placeholder="اختر المخالفة…" />
         </FormField>
         <FormField label="الموظف" required>
           <SearchableDropdown

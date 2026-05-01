@@ -30,7 +30,7 @@ export function NoticesClient() {
   const { cases } = useHRViolationCasesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم أو رقم القضية…' }]);
+  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم أو رقم المخالفة…' }]);
   const q = (values.q as string) ?? '';
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
@@ -115,8 +115,8 @@ export function NoticesClient() {
         <FormField label="التاريخ" required>
           <Input type="date" value={draft.date} onChange={e => set({ date: e.target.value })} />
         </FormField>
-        <FormField label="ربط بقضية">
-          <SearchableDropdown value={draft.linkedCaseId} onChange={v => set({ linkedCaseId: v })} options={caseOptions} placeholder="اختر قضية (اختياري)…" allowClear />
+        <FormField label="ربط بمخالفة">
+          <SearchableDropdown value={draft.linkedCaseId} onChange={v => set({ linkedCaseId: v })} options={caseOptions} placeholder="اختر مخالفة (اختياري)…" allowClear />
         </FormField>
         <FormField label="ملاحظة المرفقات">
           <Input value={draft.attachmentsNote} onChange={e => set({ attachmentsNote: e.target.value })} placeholder="وصف المرفقات…" />

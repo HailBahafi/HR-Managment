@@ -21,7 +21,7 @@ function uid() { return `dats-${Date.now().toString(36)}-${Math.random().toStrin
 const MODE_OPTIONS: { value: HRApprovalStageMode; label: string }[] = [
   { value: 'sequential', label: 'تسلسلي' },
   { value: 'parallel', label: 'متوازٍ' },
-  { value: 'any_one', label: 'أي معتمد' },
+  { value: 'any_one', label: 'معتمد' },
   { value: 'optional', label: 'اختياري' },
 ];
 

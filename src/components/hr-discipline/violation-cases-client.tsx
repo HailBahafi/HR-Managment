@@ -54,7 +54,7 @@ export function ViolationCasesClient() {
 
   const handleApprove = (c: HRViolationCaseRecord) => {
     const role = c.requiredApprovers[c.currentApprovalIndex];
-    if (!role) { toast.error('لا يوجد دور معتمد للقضية'); return; }
+    if (!role) { toast.error('لا يوجد دور معتمد للمخالفة'); return; }
     const res = approve(c.id, role);
     if (res.ok) toast.success(`تمت الموافقة على ${c.caseNumber}`);
     else toast.error(res.error ?? 'خطأ');
@@ -63,9 +63,9 @@ export function ViolationCasesClient() {
   const handleReject = () => {
     if (!rejectModal) return;
     const role = rejectModal.requiredApprovers[rejectModal.currentApprovalIndex];
-    if (!role) { toast.error('لا يوجد دور معتمد للقضية'); return; }
+    if (!role) { toast.error('لا يوجد دور معتمد للمخالفة'); return; }
     const res = reject(rejectModal.id, role, rejectNote);
-    if (res.ok) toast.success('تم رفض القضية');
+    if (res.ok) toast.success('تم رفض المخالفة');
     else toast.error(res.error ?? 'خطأ');
     setRejectModal(null);
     setRejectNote('');
@@ -75,7 +75,7 @@ export function ViolationCasesClient() {
     if (!editModal) return;
     if (!editNote.trim()) { toast.error('ملاحظة التعديل مطلوبة'); return; }
     const role = editModal.requiredApprovers[editModal.currentApprovalIndex];
-    if (!role) { toast.error('لا يوجد دور معتمد للقضية'); return; }
+    if (!role) { toast.error('لا يوجد دور معتمد للمخالفة'); return; }
     const res = requestEdit(editModal.id, role, editNote);
     if (res.ok) toast.success('تم إرسال طلب التعديل');
     else toast.error(res.error ?? 'خطأ');
@@ -139,14 +139,14 @@ export function ViolationCasesClient() {
       <div className="flex items-center justify-end gap-2 flex-wrap">
         <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
         <Button variant="luxe" size="sm" onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
-          <Plus className="h-4 w-4 ml-1" />قضية جديدة
+          <Plus className="h-4 w-4 ml-1" />مخالفة جديدة
         </Button>
       </div>
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
           <ShieldAlert className="mb-3 h-10 w-10 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">لا توجد قضايا. أنشئ قضية جديدة للبدء.</p>
+          <p className="text-sm text-muted-foreground">لا توجد مخالفات. أنشئ مخالفة جديدة للبدء.</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -258,7 +258,7 @@ export function ViolationCasesClient() {
                         size="sm"
                         type="button"
                         className="h-7 gap-1 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
-                        onClick={() => { submit(c.id); toast.success('تم تقديم القضية'); }}
+                        onClick={() => { submit(c.id); toast.success('تم تقديم المخالفة'); }}
                       >
                         <Send className="h-3 w-3" /> تقديم
                       </Button>
@@ -284,7 +284,7 @@ export function ViolationCasesClient() {
       <HRSettingsFormDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
-        title="قضية مخالفة جديدة"
+        title="مخالفة مخالفة جديدة"
         size="lg"
         onSave={() => handleSave(false)}
         saveLabel="حفظ مسودة"
@@ -366,7 +366,7 @@ export function ViolationCasesClient() {
         open={!!deleteId}
         onOpenChange={v => !v && setDeleteId(null)}
         onConfirm={() => { if (deleteId) { remove(deleteId); toast.success('تم الحذف'); setDeleteId(null); } }}
-        title="حذف القضية"
+        title="حذف المخالفة"
       />
 
       {/* Reject Modal */}

@@ -58,11 +58,11 @@ export const navConfig: NavItem[] = [
     key: 'attendance', label: 'الحضور', icon: Clock,
     groups: [
       { labelAr: 'المتابعة', items: [
-        { label: 'اداره الحضور', href: '/attendance?section=daily', icon: CalendarRange },
+        { label: 'إدارة الحضور', href: '/attendance?section=daily', icon: CalendarRange },
       ]},
       { labelAr: 'الإسناد', items: [
         { label: 'ربط الشيفتات بالموظفين',        href: '/attendance?section=assignment',       icon: ClipboardList },
-        { label: 'ربط الموظفين بالنقاط ', href: '/attendance?section=checkpoint-links', icon: Link2 },
+        { label: 'ربط النقاط بالموظفين  ', href: '/attendance?section=checkpoint-links', icon: Link2 },
       ]},
       { labelAr: 'الإعداد', items: [
         { label: 'قوالب الشفت',  href: '/attendance?section=templates',   icon: LayoutGrid },

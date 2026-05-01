@@ -13,7 +13,7 @@ export function defaultShiftPeriod(id: string): ShiftPeriod {
     id,
     startTime: '09:00',
     endTime: '17:00',
-    breakEnabled: true,
+    breakEnabled: false,
     breakStart: '12:00',
     breakEnd: '13:00',
     flexibilityEnabled: true,

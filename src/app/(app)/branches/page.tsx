@@ -25,11 +25,9 @@ type Branch = {
 type DraftForm = {
   name: string;
   city: string;
-  manager: string;
-  employeesCount: string;
 };
 
-const EMPTY_FORM: DraftForm = { name: '', city: '', manager: '', employeesCount: '0' };
+const EMPTY_FORM: DraftForm = { name: '', city: '' };
 
 function uid() {
   return `br-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -39,7 +37,7 @@ export default function BranchesPage() {
   useSetPageTitle({ titleAr: 'الفروع', descriptionAr: 'إدارة فروع الشركة وتوزيع الموظفين.', iconName: 'Building2' });
 
   const { values } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'اسم الفرع أو المدينة أو المدير…' },
+    { key: 'q', label: 'بحث', type: 'text', placeholder: 'اسم الفرع أو المدينة…' },
   ]);
   const q = ((values.q as string) ?? '').toLowerCase();
 
@@ -57,21 +55,19 @@ export default function BranchesPage() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewBranch, setViewBranch] = React.useState<Branch | null>(null);
 
-  const filtered = branches.filter(b =>
-    !q || b.name.includes(q) || b.city.includes(q) || b.manager.includes(q),
-  );
-
-  const totalEmployees = branches.reduce((s, b) => s + b.employeesCount, 0);
+  const filtered = branches.filter(b => {
+    if (!q) return true;
+    const n = b.name.toLowerCase();
+    const c = b.city.toLowerCase();
+    return n.includes(q) || c.includes(q);
+  });
 
   const openCreate = () => {
     setEditId(null); setForm(EMPTY_FORM); setError(null); setDrawerOpen(true);
   };
   const openEdit = (b: Branch) => {
     setEditId(b.id);
-    setForm({
-      name: b.name, city: b.city, manager: b.manager,
-      employeesCount: String(b.employeesCount),
-    });
+    setForm({ name: b.name, city: b.city });
     setError(null); setDrawerOpen(true);
   };
 
@@ -80,12 +76,12 @@ export default function BranchesPage() {
   const handleSave = () => {
     if (!form.name.trim()) { setError('اسم الفرع مطلوب'); return; }
     if (!form.city.trim()) { setError('المدينة مطلوبة'); return; }
-    if (!form.manager.trim()) { setError('اسم المدير مطلوب'); return; }
-    const count = parseInt(form.employeesCount, 10);
-    if (!Number.isFinite(count) || count < 0) { setError('عدد الموظفين غير صحيح'); return; }
-    const payload = {
-      name: form.name.trim(), city: form.city.trim(),
-      manager: form.manager.trim(), employeesCount: count,
+    const existing = editId ? branches.find(b => b.id === editId) : undefined;
+    const payload: Omit<Branch, 'id'> = {
+      name: form.name.trim(),
+      city: form.city.trim(),
+      manager: existing?.manager ?? '',
+      employeesCount: existing?.employeesCount ?? 0,
     };
     if (editId) {
       setBranches(list => list.map(b => b.id === editId ? { ...b, ...payload } : b));
@@ -106,7 +102,7 @@ export default function BranchesPage() {
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">
-          {branches.length} فرع · {totalEmployees.toLocaleString('ar-SA')} موظف
+          {branches.length} فرع
         </span>
         <Button onClick={openCreate} className="gap-1.5">
           <Plus className="h-4 w-4" />فرع جديد
@@ -125,19 +121,12 @@ export default function BranchesPage() {
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-semibold truncate min-w-0">{b.name}</p>
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary shrink-0">
-                  {b.employeesCount.toLocaleString('ar-SA')} موظف
-                </span>
               </div>
 
               <div className="space-y-1.5 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-muted-foreground">المدينة</span>
                   <span className="font-medium truncate">{b.city}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">المدير</span>
-                  <span className="font-medium truncate">{b.manager}</span>
                 </div>
               </div>
 
@@ -166,12 +155,6 @@ export default function BranchesPage() {
         </FormField>
         <FormField label="المدينة" required>
           <Input value={form.city} onChange={e => patch({ city: e.target.value })} placeholder="الرياض" />
-        </FormField>
-        <FormField label="المدير" required>
-          <Input value={form.manager} onChange={e => patch({ manager: e.target.value })} placeholder="اسم مدير الفرع" />
-        </FormField>
-        <FormField label="عدد الموظفين">
-          <Input type="number" min="0" value={form.employeesCount} onChange={e => patch({ employeesCount: e.target.value })} placeholder="0" />
         </FormField>
       </HRSettingsFormDrawer>
 
@@ -203,16 +186,6 @@ export default function BranchesPage() {
                 <div className="flex items-center justify-between gap-2 text-sm border-t border-border pt-3">
                   <span className="text-muted-foreground">المدينة</span>
                   <span className="font-medium">{viewBranch.city}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-sm border-t border-border pt-3">
-                  <span className="text-muted-foreground">المدير</span>
-                  <span className="font-medium">{viewBranch.manager}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-sm border-t border-border pt-3">
-                  <span className="text-muted-foreground">عدد الموظفين</span>
-                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                    {viewBranch.employeesCount.toLocaleString('ar-SA')} موظف
-                  </span>
                 </div>
               </div>
             </div>

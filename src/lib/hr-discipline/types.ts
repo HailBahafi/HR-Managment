@@ -86,7 +86,7 @@ export function isDisciplineSection(s: string): s is HRDisciplineSection {
 
 export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDisciplineSection; labelAr: string }[] }[] = [
   {
-    labelAr: 'مسار القضية', items: [
+    labelAr: 'مسار المخالفة', items: [
       { slug: 'violation-cases',  labelAr: 'تسجيل المخالفات' },
       { slug: 'notices',          labelAr: 'الإنذارات' },
       { slug: 'investigations',   labelAr: 'التحقيقات' },

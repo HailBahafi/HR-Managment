@@ -58,23 +58,35 @@ const RT_SEED: HRRequestTypeEntity[] = [
     id: 'rt-leave', departmentId: HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
     nameAr: 'طلب إجازة', nameEn: 'Leave Request',
     slug: 'leave-request', sortOrder: 1, isActive: true,
-    subtypes: [], templateId: 'tpl-general', approvalStages: [],
+    subtypes: [], templateId: 'tpl-general', approvalAssignmentTemplateId: 'aat-standard', approvalStages: [],
+  },
+  {
+    id: 'rt-sick', departmentId: HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
+    nameAr: 'إجازة مرضية', nameEn: 'Sick Leave',
+    slug: 'sick-leave', sortOrder: 2, isActive: true,
+    subtypes: [], templateId: 'tpl-general', approvalAssignmentTemplateId: 'aat-fast', approvalStages: [],
+  },
+  {
+    id: 'rt-certificate', departmentId: HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
+    nameAr: 'طلب شهادة راتب', nameEn: 'Salary Certificate',
+    slug: 'salary-certificate', sortOrder: 3, isActive: true,
+    subtypes: [], templateId: 'tpl-general', approvalAssignmentTemplateId: 'aat-standard', approvalStages: [],
   },
   {
     id: 'rt-equipment', departmentId: 'd2',
     nameAr: 'طلب معدات', nameEn: 'Equipment Request',
-    slug: 'equipment-request', sortOrder: 2, isActive: true,
+    slug: 'equipment-request', sortOrder: 4, isActive: true,
     subtypes: [
       { id: 'rst-laptop', nameAr: 'لابتوب', nameEn: 'Laptop', slug: 'laptop', sortOrder: 1, isActive: true },
       { id: 'rst-monitor', nameAr: 'شاشة', nameEn: 'Monitor', slug: 'monitor', sortOrder: 2, isActive: true },
     ],
-    templateId: 'tpl-it', approvalStages: [],
+    templateId: 'tpl-it', approvalAssignmentTemplateId: 'aat-standard', approvalStages: [],
   },
   {
     id: 'rt-travel', departmentId: 'd5',
     nameAr: 'طلب سفر', nameEn: 'Travel Request',
-    slug: 'travel-request', sortOrder: 3, isActive: true,
-    subtypes: [], templateId: 'tpl-general', approvalStages: [],
+    slug: 'travel-request', sortOrder: 5, isActive: true,
+    subtypes: [], templateId: 'tpl-general', approvalAssignmentTemplateId: 'aat-fast', approvalStages: [],
   },
 ];
 
@@ -206,6 +218,35 @@ export const useHRConfigurationStore = create<HRConfigState>()(
         return { dept, type: rt };
       },
     }),
-    { name: 'hr-configuration-storage', storage: createJSONStorage(() => localStorage), version: 1 },
+    {
+      name: 'hr-configuration-storage',
+      storage: createJSONStorage(() => localStorage),
+      version: 2,
+      migrate: (persisted: unknown, version: number) => {
+        type P = {
+          departments?: HRDepartmentEntity[];
+          templates?: HRRequestTemplateEntity[];
+          requestTypes?: HRRequestTypeEntity[];
+        };
+        const s = persisted as P;
+        if (version >= 2) return s as P;
+        const existing = s.requestTypes ?? [];
+        const withTpl = existing.map((rt) => ({
+          ...rt,
+          approvalAssignmentTemplateId: rt.approvalAssignmentTemplateId ?? (
+            rt.id === 'rt-leave' || rt.id === 'rt-equipment' || rt.id === 'rt-certificate' ? 'aat-standard'
+              : rt.id === 'rt-travel' || rt.id === 'rt-sick' ? 'aat-fast'
+                : null
+          ),
+        }));
+        const seen = new Set(withTpl.map(r => r.id));
+        const requestTypes = [...withTpl, ...RT_SEED.filter(r => !seen.has(r.id))];
+        return {
+          departments: s.departments ?? DEPT_SEED,
+          templates: s.templates ?? TEMPLATE_SEED,
+          requestTypes,
+        };
+      },
+    },
   ),
 );

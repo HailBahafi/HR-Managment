@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { MapPin, Pencil, Plus, Trash2, Navigation2, Radio, Loader2, ChevronLeft } from 'lucide-react';
+import { MapPin, Pencil, Plus, Trash2, Navigation2, Radio, Loader2, LocateFixed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePageFilters } from '@/components/filter-panel-context';
 import { Label } from '@/components/ui/label';
@@ -22,11 +22,12 @@ import type { AttendanceCheckInPoint } from '@/lib/attendance/types';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import { genId } from '@/lib/attendance/utils';
 import { cn } from '@/lib/utils';
-
-type GeoSuggestion = { lat: string; lon: string; display_name: string };
+import { autosuggestQuery } from '@/components/here-map/components/geocoding';
+import type { GeocodingResult } from '@/components/here-map/types/types';
 
 const GEO_DEBOUNCE_MS = 450;
 const GEO_MIN_QUERY_LEN = 2;
+const HERE_API_KEY = (process.env.NEXT_PUBLIC_HERE_API_KEY ?? '').trim();
 
 function validate(draft: AttendanceCheckInPoint): string | null {
   if (!draft.nameAr.trim()) return 'اسم النقطة بالعربية مطلوب';
@@ -46,6 +47,7 @@ export function CheckpointsPanel() {
   const [error, setError] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<string | null>(null);
   const [geoQuery, setGeoQuery] = React.useState('');
+  const justPickedRef = React.useRef(false);
 
   const { values } = usePageFilters([
     { key: 'q', label: 'بحث النقاط', type: 'text', placeholder: 'الاسم أو الإحداثيات…' },
@@ -53,7 +55,7 @@ export function CheckpointsPanel() {
   const listQ = (values.q as string) ?? '';
   const [geoLoading, setGeoLoading] = React.useState(false);
   const [geoError, setGeoError] = React.useState<string | null>(null);
-  const [geoSuggestions, setGeoSuggestions] = React.useState<GeoSuggestion[]>([]);
+  const [geoSuggestions, setGeoSuggestions] = React.useState<GeocodingResult[]>([]);
 
   const visibleCheckpoints = React.useMemo(() => {
     const t = listQ.trim().toLowerCase();
@@ -97,14 +99,14 @@ export function CheckpointsPanel() {
     setOpen(true);
   };
 
-  const pickSuggestion = React.useCallback((row: GeoSuggestion) => {
+  const pickSuggestion = React.useCallback((row: GeocodingResult) => {
+    justPickedRef.current = true;
     setDraft((d) => {
       if (!d) return d;
-      const la = Number(row.lat);
-      const lo = Number(row.lon);
-      if (!Number.isFinite(la) || !Number.isFinite(lo)) return d;
-      return { ...d, latitude: la, longitude: lo };
+      if (!Number.isFinite(row.latitude) || !Number.isFinite(row.longitude)) return d;
+      return { ...d, latitude: row.latitude, longitude: row.longitude };
     });
+    setGeoQuery(row.title);
     setGeoSuggestions([]);
     setGeoError(null);
   }, []);
@@ -116,6 +118,7 @@ export function CheckpointsPanel() {
       setGeoError(null);
       return;
     }
+    if (justPickedRef.current) { justPickedRef.current = false; return; }
     const q = geoQuery.trim();
     if (q.length < GEO_MIN_QUERY_LEN) {
       setGeoSuggestions([]);
@@ -130,25 +133,24 @@ export function CheckpointsPanel() {
 
     const timer = window.setTimeout(async () => {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=8&addressdetails=0`;
-        const res = await fetch(url, {
-          signal: ac.signal,
-          headers: { Accept: 'application/json', 'Accept-Language': 'ar,en' },
-        });
-        if (!res.ok) throw new Error('network');
-        const rows = (await res.json()) as GeoSuggestion[];
-        if (!Array.isArray(rows)) {
-          setGeoSuggestions([]);
-          setGeoError('لم يُعثر على نتائج.');
+        if (!HERE_API_KEY) {
+          setGeoError('مفتاح HERE API غير مُعرّف.');
+          setGeoLoading(false);
           return;
         }
+        // Pass the current draft location so suggestions are biased to the right area
+        const center = draft
+          ? { lat: draft.latitude, lng: draft.longitude }
+          : { lat: 24.7136, lng: 46.6753 };
+        const rows = await autosuggestQuery(q, HERE_API_KEY, center, 8);
+        if (ac.signal.aborted) return;
         setGeoSuggestions(rows);
         if (rows.length === 0) setGeoError('لم يُعثر على نتائج.');
         else setGeoError(null);
       } catch (e) {
         if (ac.signal.aborted || (e as Error).name === 'AbortError') return;
         setGeoSuggestions([]);
-        setGeoError('تعذر البحث. تحقق من الاتصال.');
+        setGeoError('تعذر البحث. تحقق من الاتصال بالإنترنت.');
       } finally {
         if (!ac.signal.aborted) setGeoLoading(false);
       }
@@ -366,7 +368,7 @@ export function CheckpointsPanel() {
 
       {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[90vh] w-full min-w-0 max-w-2xl flex-col overflow-hidden border-border p-0">
+        <DialogContent className="flex max-h-[92vh] w-full min-w-0 max-w-4xl flex-col overflow-hidden border-border p-0">
           <div className="shrink-0 p-6 pb-4">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">
@@ -382,53 +384,69 @@ export function CheckpointsPanel() {
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-6 pb-2">
               <div className="min-w-0 space-y-5">
                 <div className="space-y-2">
-                  <Label>بحث عن مكان  </Label>
+                  <Label>بحث عن عنوان أو مكان</Label>
                   <p className="text-[11px] text-muted-foreground">
-                  اكتب حرفين على الأقل؛ تظهر الاقتراحات تلقائياً اثناء الكتابة.
+                    يمكنك البحث بالاسم أو الشارع أو العنوان الوطني — تظهر الاقتراحات تلقائياً.
                   </p>
-                  <div className="relative">
-                    <Input
-                      value={geoQuery}
-                      onChange={(e) => setGeoQuery(e.target.value)}
-                      autoComplete="off"
-                      placeholder="مثال: برج المملكة الرياض، أو حي الملز…"
-                      className={cn('font-sans pe-9', geoLoading && 'opacity-90')}
-                      dir="rtl"
-                    />
-                    {geoLoading ? (
-                      <Loader2 className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-hidden />
-                    ) : null}
-                    {geoSuggestions.length > 0 ? (
-                      <ul
-                        className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-popover py-1 text-sm text-popover-foreground shadow-md"
-                        role="listbox"
-                        aria-label="اقتراحات الأماكن"
-                      >
-                        {geoSuggestions.map((s, i) => (
-                          <li key={`${s.lat}-${s.lon}-${i}`}>
-                            <button
-                              type="button"
-                              role="option"
-                              className="flex w-full items-start gap-2 px-3 py-2 text-right transition-colors hover:bg-accent hover:text-accent-foreground"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                pickSuggestion(s);
-                              }}
-                            >
-                              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                              <span className="min-w-0 flex-1 leading-snug">{s.display_name}</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        value={geoQuery}
+                        onChange={(e) => setGeoQuery(e.target.value)}
+                        autoComplete="off"
+                        placeholder="مثال: برج المملكة الرياض، حي الملز، RDAA…"
+                        className={cn('font-sans pe-9', geoLoading && 'opacity-80')}
+                        dir="rtl"
+                      />
+                      {geoLoading && (
+                        <Loader2 className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                      )}
+                      {geoSuggestions.length > 0 && (
+                        <ul
+                          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-popover py-1 text-sm text-popover-foreground shadow-lg"
+                          role="listbox"
+                        >
+                          {geoSuggestions.map((s, i) => (
+                            <li key={`${s.latitude}-${s.longitude}-${i}`}>
+                              <button
+                                type="button"
+                                role="option"
+                                className="flex w-full items-start gap-2 px-3 py-2.5 text-right transition-colors hover:bg-accent hover:text-accent-foreground"
+                                onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}
+                              >
+                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <span className="min-w-0 flex-1 leading-snug">{s.title}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    {/* Current location button */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 shrink-0"
+                      title="استخدام موقعي الحالي"
+                      onClick={() => {
+                        if (!navigator.geolocation) return;
+                        navigator.geolocation.getCurrentPosition((pos) => {
+                          setDraft((d) => d ? { ...d, latitude: pos.coords.latitude, longitude: pos.coords.longitude } : d);
+                          setGeoQuery('موقعي الحالي');
+                          setGeoSuggestions([]);
+                        }, undefined, { timeout: 8000 });
+                      }}
+                    >
+                      <LocateFixed className="h-4 w-4" />
+                    </Button>
                   </div>
-                  {geoError ? <p className="text-xs text-destructive">{geoError}</p> : null}
+                  {geoError && <p className="text-xs text-destructive">{geoError}</p>}
                 </div>
 
                 <div className="min-w-0">
                   <MapPicker
-                    height={300}
+                    height={480}
                     value={{ latitude: draft.latitude, longitude: draft.longitude, radiusMeters: draft.radiusMeters }}
                     onChange={(v) => setDraft({ ...draft, latitude: v.latitude, longitude: v.longitude, radiusMeters: v.radiusMeters })}
                     interactive

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2 } from 'lucide-react';
+import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, ListFilter } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   useHRContractsStore,
   CONTRACT_KIND_LABELS, CONTRACT_STATUS_LABELS, CONTRACT_STATUS_COLORS,
@@ -115,6 +116,16 @@ type PanelMode = 'create' | 'edit' | 'view';
 type StatusFilter = 'all' | HRContractLifecycleStatus;
 type KindFilter = 'all' | HRContractKind;
 
+const EMPLOYMENT_STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'كل الحالات' },
+  ...(Object.entries(CONTRACT_STATUS_LABELS) as [HRContractLifecycleStatus, string][]).map(([v, l]) => ({ value: v, label: l })),
+];
+
+const EMPLOYMENT_KIND_FILTER_OPTIONS: { value: KindFilter; label: string }[] = [
+  { value: 'all', label: 'كل الأنواع' },
+  ...(Object.entries(CONTRACT_KIND_LABELS) as [HRContractKind, string][]).map(([v, l]) => ({ value: v, label: l })),
+];
+
 function TerminateModal({ open, reason, onReasonChange, onConfirm, onCancel }: {
   open: boolean; reason: string; onReasonChange: (v: string) => void;
   onConfirm: () => void; onCancel: () => void;
@@ -175,15 +186,15 @@ export function EmploymentContractsClient() {
     [allowanceTypes],
   );
 
-  const { values } = usePageFilters([
+  const { values, setValue } = usePageFilters([
     { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث برقم العقد أو الموظف…' },
     {
       key: 'status', label: 'الحالة', type: 'select',
-      options: Object.entries(CONTRACT_STATUS_LABELS).map(([v, l]) => ({ value: v, label: l })),
+      options: EMPLOYMENT_STATUS_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
     },
     {
       key: 'kind', label: 'نوع العقد', type: 'select',
-      options: Object.entries(CONTRACT_KIND_LABELS).map(([v, l]) => ({ value: v, label: l })),
+      options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
     },
   ]);
 
@@ -359,14 +370,31 @@ export function EmploymentContractsClient() {
       <SetPageTitle titleAr="عقود العمل" descriptionAr="إدارة دورة حياة عقود العمل الوظيفية." iconName="FileText" />
 
       {/* ── Toolbar ── */}
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <span className="text-sm text-muted-foreground">{total} عقد</span>
-        <div className="flex items-center gap-2">
-          <Link href="/hr/contracts/payroll-periods">
-            <Button variant="outline" className="gap-1.5 h-9">
-              <BarChart2 className="h-4 w-4" />تقارير المستحقات
-            </Button>
-          </Link>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 min-w-0">
+          <span className="text-sm text-muted-foreground shrink-0">{total} عقد</span>
+          <div className="flex items-center gap-2 min-w-0 flex-1 sm:max-w-sm">
+            <ListFilter className="h-4 w-4 text-primary shrink-0" aria-hidden />
+            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">حالة العقد</span>
+            <Label htmlFor="employment-contract-status" className="sr-only">حالة العقد</Label>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setValue('status', v)}
+            >
+              <SelectTrigger id="employment-contract-status" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
+                <SelectValue placeholder="كل الحالات" />
+              </SelectTrigger>
+              <SelectContent>
+                {EMPLOYMENT_STATUS_FILTER_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           <Button onClick={openCreate} className="gap-1.5">
             <Plus className="h-4 w-4" />عقد جديد
           </Button>
@@ -436,8 +464,7 @@ export function EmploymentContractsClient() {
         saveLabel={readOnly ? 'إغلاق' : 'حفظ'}
         error={error}
       >
-        {/* Template */}
-        {!readOnly && (
+        {!readOnly && panelMode !== 'create' && (
           <FormField label="القالب">
             <MinimalDropdown value={form.templateId} onChange={applyTemplate} options={templateOptions} placeholder="اختر قالباً (اختياري)…" />
           </FormField>

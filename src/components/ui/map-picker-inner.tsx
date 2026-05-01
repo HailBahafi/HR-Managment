@@ -1,20 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { MapContainer, TileLayer, Circle, Marker, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import type { MapPickerValue } from './map-picker';
-import { Minus, Plus } from 'lucide-react';
+import { loadHereMapsSdk } from '@/components/here-map/components/here-loader';
+import { Minus, Plus, LocateFixed, Loader2 } from 'lucide-react';
 import { Button } from './button';
+import type { MapPickerValue } from './map-picker';
 
-// Fix default marker icons broken by webpack
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+// HERE Maps types are loaded at runtime via CDN; use `any` to avoid missing @types/heremaps.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyH = any;
 
 interface Props {
   value: MapPickerValue;
@@ -25,163 +19,237 @@ interface Props {
   interactive: boolean;
 }
 
-function ClickHandler({ onMove }: { onMove: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onMove(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
-/** Leaflet measures the container before modals finish layout — fixes broken / offset tiles in dialogs. */
-function MapResizeHandler() {
-  const map = useMap();
-  React.useLayoutEffect(() => {
-    const fix = () => {
-      map.invalidateSize({ animate: false, pan: false });
-    };
-    const raf = requestAnimationFrame(fix);
-    const t0 = window.setTimeout(fix, 0);
-    const t1 = window.setTimeout(fix, 150);
-    const t2 = window.setTimeout(fix, 400);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(t0);
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
-  }, [map]);
-
-  React.useEffect(() => {
-    const el = map.getContainer()?.parentElement;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(() => {
-      map.invalidateSize({ animate: false, pan: false });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [map]);
-
-  return null;
-}
-
 export default function MapPickerInner({ value, onChange, minRadius, maxRadius, interactive }: Props) {
-  const { latitude: lat, longitude: lng, radiusMeters } = value;
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const mapRef       = React.useRef<AnyH>(null);
+  const markerRef    = React.useRef<AnyH>(null);
+  const circleRef    = React.useRef<AnyH>(null);
+  const behaviorRef  = React.useRef<AnyH>(null);
 
-  const primaryStroke = React.useMemo(() => {
-    if (typeof window === 'undefined') return 'hsl(175 55% 18%)';
-    const raw = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
-    return raw ? `hsl(${raw})` : 'hsl(175 55% 18%)';
+  const [isReady,  setIsReady ] = React.useState(false);
+  const [error,    setError   ] = React.useState<string | null>(null);
+  const [locating, setLocating] = React.useState(false);
+
+  const valueRef    = React.useRef(value);
+  valueRef.current  = value;
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // ── Load HERE Maps SDK ────────────────────────────────────────────────────
+  React.useEffect(() => {
+    loadHereMapsSdk()
+      .then(() => setIsReady(true))
+      .catch((e: Error) => setError(e.message));
   }, []);
 
-  const move = React.useCallback(
-    (newLat: number, newLng: number) => onChange({ ...value, latitude: newLat, longitude: newLng }),
-    [onChange, value],
-  );
+  // ── Initialise map ────────────────────────────────────────────────────────
+  React.useEffect(() => {
+    if (!isReady || !containerRef.current || mapRef.current) return;
+    const win = window as AnyH;
+    if (!win.H?.service?.Platform) return;
 
+    const H       = win.H;
+    const apiKey  = (process.env.NEXT_PUBLIC_HERE_API_KEY ?? '').trim();
+    if (!apiKey) {
+      setError('مفتاح HERE API غير مُعرّف. أضف NEXT_PUBLIC_HERE_API_KEY في .env.local ثم أعد تشغيل الخادم.');
+      return;
+    }
+
+    const platform = new H.service.Platform({ apikey: apiKey });
+    const layers   = platform.createDefaultLayers({ lg: 'ara' });
+
+    const map = new H.Map(containerRef.current, layers.vector.normal.map, {
+      zoom: 16,
+      center: { lat: value.latitude, lng: value.longitude },
+      pixelRatio: window.devicePixelRatio || 1,
+    });
+    mapRef.current = map;
+
+    const mapEvents = new H.mapevents.MapEvents(map);
+    const behavior  = new H.mapevents.Behavior(mapEvents);
+    behaviorRef.current = behavior;
+
+    // Draggable marker
+    const marker = new H.map.Marker(
+      { lat: value.latitude, lng: value.longitude },
+      { volatility: interactive },
+    );
+    if (interactive) marker.draggable = true;
+    map.addObject(marker);
+    markerRef.current = marker;
+
+    // Acceptance radius circle
+    const circle = new H.map.Circle(
+      { lat: value.latitude, lng: value.longitude },
+      value.radiusMeters,
+      { style: { fillColor: 'rgba(37,99,235,0.12)', strokeColor: '#2563eb', lineWidth: 2 } },
+    );
+    map.addObject(circle);
+    circleRef.current = circle;
+
+    if (interactive) {
+      // Marker drag
+      map.addEventListener('dragstart', (e: AnyH) => {
+        if (e.target === marker) behavior.disable();
+      });
+      map.addEventListener('drag', (e: AnyH) => {
+        if (e.target !== marker) return;
+        const coord = map.screenToGeo(e.currentPointer.viewportX, e.currentPointer.viewportY);
+        if (coord) marker.setGeometry(coord);
+      });
+      map.addEventListener('dragend', (e: AnyH) => {
+        if (e.target !== marker) return;
+        behavior.enable();
+        const pos = marker.getGeometry();
+        onChangeRef.current({ ...valueRef.current, latitude: pos.lat, longitude: pos.lng });
+      });
+
+      // Tap-to-move
+      map.addEventListener('tap', (e: AnyH) => {
+        if (e.target === marker) return;
+        const coord = map.screenToGeo(e.currentPointer.viewportX, e.currentPointer.viewportY);
+        if (!coord) return;
+        onChangeRef.current({ ...valueRef.current, latitude: coord.lat, longitude: coord.lng });
+      });
+    }
+
+    // Keep tiles correct inside dialogs / resizable containers
+    const ro = new ResizeObserver(() => map.getViewPort()?.resize());
+    ro.observe(containerRef.current!);
+
+    return () => {
+      ro.disconnect();
+      map.dispose();
+      mapRef.current      = null;
+      markerRef.current   = null;
+      circleRef.current   = null;
+      behaviorRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady, interactive]);
+
+  // ── Sync marker + circle when value changes from outside ─────────────────
+  React.useEffect(() => {
+    const map    = mapRef.current;
+    const marker = markerRef.current;
+    const circle = circleRef.current;
+    if (!map || !marker || !circle) return;
+
+    const pos = { lat: value.latitude, lng: value.longitude };
+    marker.setGeometry(pos);
+    circle.setCenter(pos);
+    circle.setRadius(value.radiusMeters);
+    map.setCenter(pos, true);
+  }, [value.latitude, value.longitude, value.radiusMeters]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
   const adjustRadius = (delta: number) => {
-    const next = Math.min(maxRadius, Math.max(minRadius, radiusMeters + delta));
+    const next = Math.min(maxRadius, Math.max(minRadius, value.radiusMeters + delta));
     onChange({ ...value, radiusMeters: next });
   };
 
-  return (
-    <div className="relative isolate h-full min-h-0 w-full min-w-0 overflow-hidden">
-      <MapContainer
-        center={[lat, lng]}
-        zoom={interactive ? 17 : 16}
-        className="z-0 h-full w-full min-h-0 min-w-0"
-        style={{ minHeight: '100%' }}
-        zoomControl
-        scrollWheelZoom
-        dragging
-        touchZoom
-        doubleClickZoom={interactive}
-        boxZoom={false}
-        keyboard={interactive}
-        key={`${lat.toFixed(4)}-${lng.toFixed(4)}-${interactive ? 'e' : 'v'}`}
-      >
-        <MapResizeHandler />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {interactive ? <ClickHandler onMove={move} /> : null}
-        <Circle
-          center={[lat, lng]}
-          radius={radiusMeters}
-          pathOptions={{
-            color: primaryStroke,
-            fillColor: primaryStroke,
-            fillOpacity: 0.12,
-            weight: 2,
-          }}
-        />
-        <Marker
-          position={[lat, lng]}
-          draggable={interactive}
-          eventHandlers={
-            interactive
-              ? {
-                  dragend(e) {
-                    const m = e.target as L.Marker;
-                    const p = m.getLatLng();
-                    move(p.lat, p.lng);
-                  },
-                }
-              : undefined
-          }
-        />
-      </MapContainer>
+  const locateMe = () => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLocating(false);
+        onChange({ ...value, latitude: coords.latitude, longitude: coords.longitude });
+        mapRef.current?.setCenter({ lat: coords.latitude, lng: coords.longitude }, true);
+        mapRef.current?.setZoom(17, true);
+      },
+      () => setLocating(false),
+      { timeout: 8000 },
+    );
+  };
 
-      {interactive ? (
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center bg-muted/30 p-4 text-center text-sm text-destructive">
+        {error}
+      </div>
+    );
+  }
+
+  if (!isReady) {
+    return (
+      <div className="flex h-full items-center justify-center gap-2 bg-muted/20 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        جاري تحميل الخريطة…
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative isolate h-full w-full overflow-hidden">
+      {/* HERE Maps canvas */}
+      <div ref={containerRef} className="absolute inset-0" style={{ userSelect: 'none' }} />
+
+      {/* Coords badge — top end */}
+      <div
+        className="absolute end-3 top-3 z-10 rounded-md border border-border bg-card/90 px-2 py-1 font-mono text-[10px] text-muted-foreground backdrop-blur-sm"
+        dir="ltr"
+      >
+        {value.latitude.toFixed(5)}, {value.longitude.toFixed(5)}
+      </div>
+
+      {interactive && (
         <>
-          {/* Radius controls — corner of map, not center */}
-          <div className="absolute bottom-3 end-3 z-[1000] flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+          {/* My location button — top start */}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="absolute start-3 top-3 z-10 h-8 w-8 rounded-lg bg-card/95 shadow-md backdrop-blur-sm"
+            onClick={locateMe}
+            disabled={locating}
+            title="موقعي الحالي"
+          >
+            {locating
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <LocateFixed className="h-4 w-4" />}
+          </Button>
+
+          {/* Hint — below location button */}
+          <div className="absolute start-3 top-14 z-10 max-w-[min(15rem,calc(100%-1.5rem))] rounded-md border border-border bg-card/90 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
+            انقر لتحديد الموقع · اسحب الدبوس
+          </div>
+
+          {/* Radius slider — bottom end */}
+          <div className="absolute bottom-3 end-3 z-10 flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur-sm">
             <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 rounded-full"
+              type="button" variant="ghost" size="icon"
+              className="h-7 w-7 rounded-full"
               onClick={() => adjustRadius(-10)}
               aria-label="تصغير النطاق"
             >
               <Minus className="h-3.5 w-3.5" />
             </Button>
-            <div className="flex min-w-0 flex-col items-stretch">
+            <div className="flex flex-col items-center">
               <input
                 type="range"
                 min={minRadius}
                 max={maxRadius}
                 step={10}
-                value={radiusMeters}
+                value={value.radiusMeters}
                 onChange={(e) => onChange({ ...value, radiusMeters: Number(e.target.value) })}
-                className="h-1.5 w-full max-w-[10rem] shrink cursor-pointer accent-primary"
+                className="h-1.5 w-28 cursor-pointer accent-primary"
                 aria-label="نطاق القبول"
               />
-              <span className="mt-0.5 text-center font-mono text-[10px] text-muted-foreground">{radiusMeters} م</span>
+              <span className="mt-0.5 font-mono text-[10px] text-muted-foreground">{value.radiusMeters} م</span>
             </div>
             <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 rounded-full"
+              type="button" variant="ghost" size="icon"
+              className="h-7 w-7 rounded-full"
               onClick={() => adjustRadius(10)}
               aria-label="تكبير النطاق"
             >
               <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
-
-          <div className="absolute start-3 top-3 z-[1000] max-w-[min(16rem,calc(100%-1.5rem))] rounded-md border border-border bg-card/90 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
-            انقر على الخريطة لتحديد الموقع · اسحب الدبوس · شريط النطاق أسفل يمين الخريطة
-          </div>
-
-          <div className="absolute end-3 top-3 z-[1000] rounded-md border border-border bg-card/90 px-2 py-1 font-mono text-[10px] text-muted-foreground backdrop-blur-sm" dir="ltr">
-            {lat.toFixed(5)}, {lng.toFixed(5)}
-          </div>
         </>
-      ) : null}
+      )}
     </div>
   );
 }
