@@ -5,7 +5,6 @@ import {
   Plus, ChevronLeft, ChevronRight, CalendarDays, List,
   CheckCircle2, XCircle, Clock,
 } from 'lucide-react';
-import { EmployeePicker } from '@/components/ui/employee-picker';
 import { format, addMonths, subMonths, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, getDay, isValid } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,12 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { usePageFilters } from '@/components/filter-panel-context';
+import { LeavesManagementToolbar } from '@/components/leaves/leaves-management-toolbar';
+import {
+  hasDateRangeFilter,
+  recordDateComparable,
+  comparableRangeBounds,
+} from '@/lib/hr-discipline/discipline-date-filter';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -55,6 +60,27 @@ function wDays(start: string, end: string): number {
   return Math.max(1, Math.round((e - s) / 86400000) + 1);
 }
 
+/** تقاطع طلب الإجازة مع نطاق YYYY-MM-DD */
+function leaveOverlapsYmdRange(leave: UnifiedLeaveRecord, from: string, to: string): boolean {
+  if (!hasDateRangeFilter(from, to)) return true;
+  const { lo, hi } = comparableRangeBounds(from, to);
+  const ls = recordDateComparable(leave.start);
+  const le = recordDateComparable(leave.end);
+  if (ls == null || le == null) return false;
+  if (lo != null && le < lo) return false;
+  if (hi != null && ls > hi) return false;
+  return true;
+}
+
+const LEAVE_STATUS_TOOLBAR_ORDER: LeaveStatus[] = ['pending', 'approved', 'rejected', 'cancelled'];
+
+const LEAVE_STATUS_LABELS_FOR_TOOLBAR: Record<string, string> = {
+  pending: STATUS_STYLE.pending.label,
+  approved: STATUS_STYLE.approved.label,
+  rejected: STATUS_STYLE.rejected.label,
+  cancelled: STATUS_STYLE.cancelled.label,
+};
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function UnifiedManagementClient() {
@@ -64,11 +90,12 @@ export function UnifiedManagementClient() {
   const { values } = usePageFilters([
     { key: 'branch', label: 'الفرع', type: 'select', options: [{ value: 'all', label: 'جميع الفروع' }, ...MOCK_BRANCHES.map(b => ({ value: b.id, label: b.nameAr }))] },
     { key: 'dept', label: 'القسم', type: 'select', options: [{ value: 'all', label: 'جميع الأقسام' }, ...MOCK_DEPARTMENTS.map(d => ({ value: d.id, label: d.nameAr }))] },
-    { key: 'status', label: 'الحالة', type: 'select', options: [{ value: 'all', label: 'جميع الحالات' }, { value: 'pending', label: 'قيد الانتظار' }, { value: 'approved', label: 'موافق عليه' }, { value: 'rejected', label: 'مرفوض' }, { value: 'cancelled', label: 'ملغاة' }] },
     { key: 'type', label: 'نوع الإجازة', type: 'select', options: [{ value: 'all', label: 'جميع الأنواع' }, { value: 'annual', label: 'سنوية' }, { value: 'sick', label: 'مرضية' }, { value: 'emergency', label: 'طارئة' }, { value: 'unpaid', label: 'بدون راتب' }, { value: 'maternity', label: 'أمومة' }] },
     { key: 'stage', label: 'مرحلة الاعتماد', type: 'select', options: [{ value: 'all', label: 'الكل' }, { value: 'fully_approved', label: 'مكتمل' }, { value: 'awaiting_first', label: 'بانتظار الأول' }, { value: 'awaiting_second', label: 'بانتظار الثاني' }, { value: 'awaiting_third', label: 'بانتظار الثالث' }] },
   ]);
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
 
   const empPickerList = React.useMemo(() =>
     MOCK_UNIFIED_EMPLOYEES.map(e => ({ id: e.id, name: e.nameAr })),
@@ -78,7 +105,7 @@ export function UnifiedManagementClient() {
   const filters: UnifiedFilterState = {
     branchId: (values.branch as string) || 'all',
     departmentId: (values.dept as string) || 'all',
-    status: (values.status as UnifiedFilterState['status']) || 'all',
+    status: (statusFilter as UnifiedFilterState['status']) || 'all',
     type: (values.type as UnifiedFilterState['type']) || 'all',
     approvalStage: (values.stage as UnifiedFilterState['approvalStage']) || 'all',
     employeeIds: [...selectedEmpIds],
@@ -90,23 +117,50 @@ export function UnifiedManagementClient() {
   const [addOpen, setAddOpen] = React.useState(false);
   const [editLeave, setEditLeave] = React.useState<UnifiedLeaveRecord | null>(null);
 
-  // Apply filters
+  const statusCounts = React.useMemo(() => {
+    const empPick = [...selectedEmpIds];
+    const base = leaves.filter((l) => {
+      const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
+      if (!emp) return false;
+      if (filters.branchId !== 'all' && emp.homeBranchId !== filters.branchId) return false;
+      if (filters.departmentId !== 'all' && emp.departmentId !== filters.departmentId) return false;
+      if (empPick.length > 0 && !empPick.includes(l.employeeId)) return false;
+      if (filters.type !== 'all' && l.type !== filters.type) return false;
+      if (filters.approvalStage !== 'all') {
+        const stage = getApprovalStage(l);
+        if (stage !== filters.approvalStage && !(filters.approvalStage === 'fully_approved' && stage === 'fully_approved')) return false;
+      }
+      if (!leaveOverlapsYmdRange(l, dateBounds.from, dateBounds.to)) return false;
+      return true;
+    });
+    return {
+      all: base.length,
+      pending: base.filter((l) => l.status === 'pending').length,
+      approved: base.filter((l) => l.status === 'approved').length,
+      rejected: base.filter((l) => l.status === 'rejected').length,
+      cancelled: base.filter((l) => l.status === 'cancelled').length,
+    };
+  }, [leaves, filters.branchId, filters.departmentId, filters.type, filters.approvalStage, selectedEmpIds, dateBounds.from, dateBounds.to]);
+
+  // Apply filters (شريط الأدوات: فترة + حالة + موظفون؛ اللوحة: فرع، قسم، نوع، مرحلة)
   const filtered = React.useMemo(() => {
+    const empPick = [...selectedEmpIds];
     return leaves.filter((l) => {
       const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
       if (!emp) return false;
       if (filters.branchId !== 'all' && emp.homeBranchId !== filters.branchId) return false;
       if (filters.departmentId !== 'all' && emp.departmentId !== filters.departmentId) return false;
-      if (filters.employeeIds.length > 0 && !filters.employeeIds.includes(l.employeeId)) return false;
+      if (empPick.length > 0 && !empPick.includes(l.employeeId)) return false;
       if (filters.status !== 'all' && l.status !== filters.status) return false;
       if (filters.type !== 'all' && l.type !== filters.type) return false;
       if (filters.approvalStage !== 'all') {
         const stage = getApprovalStage(l);
         if (stage !== filters.approvalStage && !(filters.approvalStage === 'fully_approved' && stage === 'fully_approved')) return false;
       }
+      if (!leaveOverlapsYmdRange(l, dateBounds.from, dateBounds.to)) return false;
       return true;
     });
-  }, [leaves, filters]);
+  }, [leaves, filters.branchId, filters.departmentId, filters.status, filters.type, filters.approvalStage, selectedEmpIds, dateBounds.from, dateBounds.to]);
 
   const updateLeave = (updated: UnifiedLeaveRecord) =>
     setLeaves((ls) => ls.map((l) => l.id === updated.id ? updated : l));
@@ -125,26 +179,35 @@ export function UnifiedManagementClient() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
-          <button type="button" onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all', view === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-            <List className="h-3.5 w-3.5" />
-            جدول
-          </button>
-          <button type="button" onClick={() => setView('calendar')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all', view === 'calendar' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-            <CalendarDays className="h-3.5 w-3.5" />
-            تقويم
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
-          <Button variant="luxe" className="gap-2 shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
-            <Plus className="h-4 w-4" />
-            إضافة إجازة
-          </Button>
-        </div>
-      </div>
+      <LeavesManagementToolbar
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        statusOrder={LEAVE_STATUS_TOOLBAR_ORDER}
+        statusLabels={LEAVE_STATUS_LABELS_FOR_TOOLBAR}
+        statusCounts={statusCounts}
+        onDateBoundsChange={setDateBounds}
+        trailingActions={(
+          <>
+            <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
+              <button type="button" onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all', view === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+                <List className="h-3.5 w-3.5" />
+                جدول
+              </button>
+              <button type="button" onClick={() => setView('calendar')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all', view === 'calendar' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+                <CalendarDays className="h-3.5 w-3.5" />
+                تقويم
+              </button>
+            </div>
+            <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
+              <Plus className="h-3.5 w-3.5" />
+              إضافة إجازة
+            </Button>
+          </>
+        )}
+      />
 
       {/* Content */}
       {view === 'table'
