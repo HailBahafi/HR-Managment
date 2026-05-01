@@ -1,6 +1,113 @@
 {
   "requests": [
     {
+      "id": "req-e1-07",
+      "requestNumber": "REQ-2026-0150",
+      "employeeId": "e1",
+      "type": "leave",
+      "title": "إجازة سنوية — عيد الفطر",
+      "description": "طلب إجازة اعتيادية لمدة 5 أيام بعد عيد الفطر لزيارة العائلة في الدمام",
+      "status": "approved",
+      "submittedAt": "2026-04-28T11:20:00",
+      "fromDate": "2026-04-07",
+      "toDate": "2026-04-11",
+      "daysCount": 5,
+      "timeline": [
+        { "id": "e1t1", "action": "تقديم الطلب", "by": "عبدالرحمن المالكي", "byRole": "مقدم الطلب", "at": "2026-04-28T11:20:00" },
+        { "id": "e1t2", "action": "موافقة المدير المباشر", "by": "نورة القحطاني", "byRole": "الموارد البشرية", "at": "2026-04-28T14:00:00" },
+        { "id": "e1t3", "action": "اعتماد نهائي", "by": "نورة القحطاني", "byRole": "الموارد البشرية", "at": "2026-04-29T09:30:00", "note": "تم خصم الرصيد من الإجازة السنوية" }
+      ]
+    },
+    {
+      "id": "req-e1-06",
+      "requestNumber": "REQ-2026-0149",
+      "employeeId": "e1",
+      "type": "permission",
+      "title": "استئذان صباحي",
+      "description": "استئذان من 10 صباحاً لحضور اجتماع في المدرسة",
+      "status": "approved",
+      "submittedAt": "2026-04-26T07:45:00",
+      "fromDate": "2026-04-27",
+      "toDate": "2026-04-27",
+      "timeline": [
+        { "id": "e1p1", "action": "تقديم الطلب", "by": "عبدالرحمن المالكي", "byRole": "مقدم الطلب", "at": "2026-04-26T07:45:00" },
+        { "id": "e1p2", "action": "موافقة", "by": "نورة القحطاني", "byRole": "الموارد البشرية", "at": "2026-04-26T08:10:00" }
+      ]
+    },
+    {
+      "id": "req-e1-05",
+      "requestNumber": "REQ-2026-0148",
+      "employeeId": "e1",
+      "type": "advance",
+      "title": "سلفة على الراتب",
+      "description": "طلب سلفة 3,000 ريال لصيانة مركبة",
+      "status": "in-review",
+      "submittedAt": "2026-04-25T16:00:00",
+      "amount": 3000,
+      "timeline": [
+        { "id": "e1a1", "action": "تقديم الطلب", "by": "عبدالرحمن المالكي", "byRole": "مقدم الطلب", "at": "2026-04-25T16:00:00" },
+        { "id": "e1a2", "action": "قيد مراجعة المالية", "by": "فهد العنزي", "byRole": "المدير المالي", "at": "2026-04-26T10:00:00", "note": "التحقق من أهلية السلفة" }
+      ]
+    },
+    {
+      "id": "req-e1-04",
+      "requestNumber": "REQ-2026-0147",
+      "employeeId": "e1",
+      "type": "salary-letter",
+      "title": "خطاب تعريف للجهة الحكومية",
+      "description": "خطاب تعريف بالراتب لتحديث ملف في وزارة الموارد البشرية",
+      "status": "approved",
+      "submittedAt": "2026-04-22T09:00:00",
+      "timeline": [
+        { "id": "e1s1", "action": "تقديم الطلب", "by": "عبدالرحمن المالكي", "byRole": "مقدم الطلب", "at": "2026-04-22T09:00:00" },
+        { "id": "e1s2", "action": "إصدار الخطاب", "by": "نورة القحطاني", "byRole": "الموارد البشرية", "at": "2026-04-22T11:30:00" }
+      ]
+    },
+    {
+      "id": "req-e1-03",
+      "requestNumber": "REQ-2026-0146",
+      "employeeId": "e1",
+      "type": "equipment",
+      "title": "شاشة خارجية للمكتب",
+      "description": "طلب شاشة 27 بوصة لتحسين جودة العمل عن بُعد مع المراجعين",
+      "status": "pending",
+      "submittedAt": "2026-04-20T13:15:00",
+      "timeline": [
+        { "id": "e1e1", "action": "تقديم الطلب", "by": "عبدالرحمن المالكي", "byRole": "مقدم الطلب", "at": "2026-04-20T13:15:00" }
+      ]
+    },
+    {
+      "id": "req-e1-02",
+      "requestNumber": "REQ-2026-0145",
+      "employeeId": "e1",
+      "type": "attendance-correction",
+      "title": "تصحيح تسجيل خروج",
+      "description": "لم يُسجّل الخروج يوم 2026-04-18 بسبب انقطاع الشبكة",
+      "status": "rejected",
+      "submittedAt": "2026-04-19T08:30:00",
+      "timeline": [
+        { "id": "e1ac1", "action": "تقديم الطلب", "by": "عبدالرحمن المالكي", "byRole": "مقدم الطلب", "at": "2026-04-19T08:30:00" },
+        { "id": "e1ac2", "action": "رفض الطلب", "by": "نورة القحطاني", "byRole": "الموارد البشرية", "at": "2026-04-19T15:00:00", "note": "السجلات تُظهر خروجاً عبر البوابة — يرجى مراجعة الأمن" }
+      ]
+    },
+    {
+      "id": "req-e1-01",
+      "requestNumber": "REQ-2026-0144",
+      "employeeId": "e1",
+      "type": "leave",
+      "title": "إجازة مرضية يومين",
+      "description": "إجازة مرضية بموجب تقرير طبي",
+      "status": "pending",
+      "submittedAt": "2026-04-29T10:00:00",
+      "fromDate": "2026-05-05",
+      "toDate": "2026-05-06",
+      "daysCount": 2,
+      "timeline": [
+        { "id": "e1l1", "action": "تقديم الطلب", "by": "عبدالرحمن المالكي", "byRole": "مقدم الطلب", "at": "2026-04-29T10:00:00" },
+        { "id": "e1l2", "action": "قيد المراجعة", "by": "نورة القحطاني", "byRole": "الموارد البشرية", "at": "2026-04-29T10:45:00", "note": "بانتظار إرفاق التقرير الطبي" }
+      ]
+    },
+    {
       "id": "req1",
       "requestNumber": "REQ-2026-0142",
       "employeeId": "e6",
@@ -126,18 +233,18 @@
     }
   ],
   "stats": {
-    "total": 142,
-    "pending": 18,
-    "approved": 98,
-    "rejected": 12,
-    "inReview": 14,
+    "total": 149,
+    "pending": 21,
+    "approved": 101,
+    "rejected": 13,
+    "inReview": 15,
     "byType": {
-      "leave": 62,
-      "permission": 28,
-      "advance": 15,
-      "salary-letter": 22,
-      "equipment": 10,
-      "attendance-correction": 5
+      "leave": 64,
+      "permission": 29,
+      "advance": 16,
+      "salary-letter": 23,
+      "equipment": 11,
+      "attendance-correction": 6
     }
   }
 }

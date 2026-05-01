@@ -1,8 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Check, X, Clock, Eye, Pause, AlertCircle } from 'lucide-react';
+import { Check, X, Clock, Eye, Pause, AlertCircle, ShieldCheck } from 'lucide-react';
 
-export function StatusBadge({ status }: { status: string }) {
+type StatusBadgeProps = { status: string; /** Override label while keeping colors/icon for `status` */ labelOverride?: string };
+
+export function StatusBadge({ status, labelOverride }: StatusBadgeProps) {
   const config: Record<string, { label: string; variant: 'success' | 'warning' | 'destructive' | 'secondary' | 'gold' | 'subtle'; icon?: React.ElementType }> = {
     active: { label: 'نشط', variant: 'success', icon: Check },
     suspended: { label: 'موقوف', variant: 'warning', icon: Pause },
@@ -17,17 +19,25 @@ export function StatusBadge({ status }: { status: string }) {
     'early-leave': { label: 'خروج مبكر', variant: 'warning', icon: AlertCircle },
     'on-leave': { label: 'في إجازة', variant: 'secondary', icon: Pause },
     draft: { label: 'مسودة', variant: 'subtle' },
+    expired: { label: 'منتهي', variant: 'subtle', icon: X },
+    terminated: { label: 'مُنهى مبكراً', variant: 'destructive', icon: X },
+    archived: { label: 'مؤرشف', variant: 'subtle' },
     processing: { label: 'قيد المعالجة', variant: 'gold', icon: Clock },
     completed: { label: 'مكتمل', variant: 'success', icon: Check },
+    submitted: { label: 'مُقدَّم', variant: 'secondary', icon: Clock },
+    under_review: { label: 'قيد الاعتماد', variant: 'gold', icon: ShieldCheck },
+    executed: { label: 'تم التنفيذ', variant: 'success', icon: Check },
+    closed: { label: 'مغلق', variant: 'subtle', icon: Check },
   };
 
   const c = config[status] || { label: status, variant: 'subtle' as const };
   const Icon = c.icon;
+  const label = labelOverride ?? c.label;
 
   return (
     <Badge variant={c.variant} className={cn('gap-1')}>
       {Icon && <Icon className="h-3 w-3" />}
-      {c.label}
+      {label}
     </Badge>
   );
 }

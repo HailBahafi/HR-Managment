@@ -48,10 +48,71 @@ const SEED_UPDATED_AT = [
 ] as const;
 
 const SEED: HRContractRecord[] = [
+  // e1 — عبدالرحمن المالكي — 6 contracts (2021–2026)
   {
-    id: 'ctr-seed-1', employeeId: 'e1', contractNumber: 'CL-2024-001',
+    id: 'ctr-e1-1', employeeId: 'e1', contractNumber: 'CL-2021-001',
+    contractType: 'full_time', startDate: '2021-01-01', endDate: '2021-12-31',
+    probationDays: 90, baseSalary: 7500, currency: 'SAR', status: 'archived',
+    templateId: null,
+    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 500 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-2',
+    earlyTerminationReason: null, articleIds: ['art-seed-1'], annualLeaveDays: 21,
+    updatedAt: SEED_UPDATED_AT[0],
+  },
+  {
+    id: 'ctr-e1-2', employeeId: 'e1', contractNumber: 'CL-2022-001',
+    contractType: 'full_time', startDate: '2022-01-01', endDate: '2022-12-31',
+    probationDays: null, baseSalary: 8500, currency: 'SAR', status: 'archived',
+    templateId: null,
+    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 600 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-3',
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
+    updatedAt: SEED_UPDATED_AT[0],
+  },
+  {
+    id: 'ctr-e1-3', employeeId: 'e1', contractNumber: 'CL-2023-001',
+    contractType: 'full_time', startDate: '2023-01-01', endDate: '2023-12-31',
+    probationDays: null, baseSalary: 9500, currency: 'SAR', status: 'expired',
+    templateId: 'hct-standard',
+    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 2000 }, { allowanceTypeId: 'halt-transport', amount: 700 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-4',
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
+    updatedAt: SEED_UPDATED_AT[0],
+  },
+  {
+    id: 'ctr-e1-4', employeeId: 'e1', contractNumber: 'CL-2024-001',
+    contractType: 'full_time', startDate: '2024-01-01', endDate: '2024-12-31',
+    probationDays: null, baseSalary: 10500, currency: 'SAR', status: 'expired',
+    templateId: 'hct-exec',
+    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 2500 }, { allowanceTypeId: 'halt-transport', amount: 800 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-5',
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 30,
+    updatedAt: SEED_UPDATED_AT[0],
+  },
+  {
+    id: 'ctr-e1-5', employeeId: 'e1', contractNumber: 'CL-2025-001',
+    contractType: 'full_time', startDate: '2025-01-01', endDate: '2025-12-31',
+    probationDays: null, baseSalary: 11500, currency: 'SAR', status: 'expired',
+    templateId: 'hct-exec',
+    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 2800 }, { allowanceTypeId: 'halt-transport', amount: 800 }, { allowanceTypeId: 'halt-phone', amount: 300 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-6',
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 30,
+    updatedAt: SEED_UPDATED_AT[0],
+  },
+  {
+    id: 'ctr-e1-6', employeeId: 'e1', contractNumber: 'CL-2026-001',
+    contractType: 'full_time', startDate: '2026-01-01', endDate: '2026-12-31',
+    probationDays: null, baseSalary: 12000, currency: 'SAR', status: 'active',
+    templateId: 'hct-exec',
+    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 3000 }, { allowanceTypeId: 'halt-transport', amount: 800 }, { allowanceTypeId: 'halt-phone', amount: 300 }],
+    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
+    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 30,
+    updatedAt: SEED_UPDATED_AT[0],
+  },
+  {
+    id: 'ctr-seed-1', employeeId: 'e1-old', contractNumber: 'CL-2024-OLD',
     contractType: 'full_time', startDate: '2024-01-01', endDate: '2026-12-31',
-    probationDays: 90, baseSalary: 12000, currency: 'SAR', status: 'active',
+    probationDays: 90, baseSalary: 12000, currency: 'SAR', status: 'archived',
     templateId: 'hct-exec',
     allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 3000 }, { allowanceTypeId: 'halt-transport', amount: 800 }],
     allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
@@ -264,11 +325,11 @@ export const useHRContractsStore = create<HRContractsState>()(
     }),
     {
       name: 'hr_contracts_v1',
-      version: 4,
+      version: 5,
       skipHydration: true,
       partialize: s => ({ contracts: s.contracts }),
       migrate: (_p: unknown, fromVersion: number) => {
-        if ((fromVersion ?? 0) >= 4) {
+        if ((fromVersion ?? 0) >= 5) {
           const ps = _p as { contracts?: HRContractRecord[] };
           return { contracts: ps?.contracts ?? SEED.map(c => ({ ...c })) };
         }

@@ -123,9 +123,15 @@ export const APPEAL_CHANNEL_LABELS: Record<HRAppealChannel, string> = {
 export const APPEAL_STATUS_LABELS: Record<HRAppealStatus, string> = {
   submitted: 'مُقدَّم', in_review: 'قيد المراجعة', accepted: 'مقبول', rejected: 'مرفوض', closed: 'مغلق',
 };
+/** تسميات عربية لمسار المخالفة الإداري: مسودة → تقديم → سلسلة الموافقات → قرار → تنفيذ/إغلاق. */
 export const CASE_STATUS_LABELS: Record<HRViolationCaseStatus, string> = {
-  draft: 'مسودة', submitted: 'مُقدَّم', under_review: 'قيد الاعتماد',
-  approved: 'معتمد', rejected: 'مرفوض', executed: 'منفَّذ', closed: 'مغلق',
+  draft: 'مسودة',
+  submitted: 'مُقدَّم',
+  under_review: 'قيد الاعتماد',
+  approved: 'معتمد',
+  rejected: 'مرفوض',
+  executed: 'تم التنفيذ',
+  closed: 'مغلق',
 };
 export const CASE_STATUS_COLORS: Record<HRViolationCaseStatus, string> = {
   draft: 'text-muted-foreground border-border bg-muted/30',

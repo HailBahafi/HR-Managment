@@ -49,12 +49,16 @@ import { StatusBadge, ContractTypeLabel, RequestTypeLabel } from '@/components/s
 import { getEmployee, getBranch, getDepartment, data } from '@/lib/data';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
+import { CASE_STATUS_LABELS, type HRViolationCaseStatus } from '@/lib/hr-discipline/types';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
 import { cn, formatCurrency, formatDate, getInitials } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
+import { NewRequestDialog } from '@/components/requests/new-request-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { buildEmployeePayslipSeries, PAYSLIP_MONTHS_AR, PAYSLIP_YEAR_OPTIONS } from '@/lib/payroll/employee-payslip-series';
 
 const SECTIONS = [
   { id: 'personal', label: 'البيانات الشخصية', icon: User },
@@ -200,6 +204,103 @@ function Empty({ icon: Icon, text, action }: {
   );
 }
 
+function fmtLeaveBalance(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
+type LeaveCardAccent = 'success' | 'primary';
+
+/** بطاقة رصيد إجازة — ألوان من ثيم التطبيق (success / primary) */
+function LeaveBalanceCard({
+  title,
+  year,
+  entitlementLabel,
+  entitled,
+  used,
+  available,
+  yearEndExpected,
+  onRequestLeave,
+  accent = 'success',
+}: {
+  title: string;
+  year: number;
+  entitlementLabel: string;
+  entitled: number;
+  used: number;
+  available: number;
+  yearEndExpected: number;
+  onRequestLeave: () => void;
+  accent?: LeaveCardAccent;
+}) {
+  const pctUsed = entitled > 0 ? Math.min(100, (used / entitled) * 100) : 0;
+  const barCls = accent === 'primary' ? 'bg-primary' : 'bg-success';
+  const availTextCls = accent === 'primary' ? 'text-primary' : 'text-success';
+  const availDotCls = accent === 'primary' ? 'bg-primary' : 'bg-success';
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+      <div className="flex items-center justify-between gap-3 border-b border-border pb-3" dir="rtl">
+        <h3 className="min-w-0 text-right text-base font-semibold tracking-tight text-foreground">{title}</h3>
+        <span className="shrink-0 rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tabular-nums text-muted-foreground">
+          {year}
+        </span>
+      </div>
+
+      <div className="py-4" dir="rtl">
+        <div className="flex h-2.5 w-full justify-end overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn('h-full rounded-full transition-[width] duration-300', barCls)}
+            style={{ width: `${pctUsed}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-0 border-t border-border" dir="rtl">
+        <div className="flex items-center justify-between gap-3 border-b border-border/60 py-3 text-sm">
+          <span className="font-arabic-display text-base font-semibold tabular-nums text-foreground">{fmtLeaveBalance(entitled)}</span>
+          <span className="text-right text-muted-foreground">{entitlementLabel}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 border-b border-border/60 py-3 text-sm">
+          <span className={cn('font-arabic-display text-base font-semibold tabular-nums', availTextCls)}>
+            {fmtLeaveBalance(available)}
+          </span>
+          <span className="flex items-center gap-2 text-right text-foreground">
+            <span className={cn('h-2 w-2 shrink-0 rounded-full', availDotCls)} aria-hidden />
+            المتاح للاستخدام
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3 border-b border-border/60 py-3 text-sm">
+          <span className="font-arabic-display text-base font-semibold tabular-nums text-foreground">{fmtLeaveBalance(used)}</span>
+          <span className="flex items-center gap-2 text-right text-foreground">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/60" aria-hidden />
+            الإجازات المستخدمة
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3 py-3 text-sm">
+          <span className="font-arabic-display text-base font-semibold tabular-nums text-foreground">
+            {fmtLeaveBalance(yearEndExpected)}
+          </span>
+          <span className="flex items-center gap-2 text-right text-foreground">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-border" aria-hidden />
+            الرصيد المتوقع بنهاية السنة
+          </span>
+        </div>
+      </div>
+
+      <div className="pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 w-full rounded-xl text-sm font-medium"
+          onClick={onRequestLeave}
+        >
+          طلب إجازة
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function EmployeeProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const employee = getEmployee(id);
@@ -220,11 +321,73 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   const employeeViolations    = violationCases.filter(v => v.employeeId === employee.id);
   const employeeContracts     = contracts.filter(c => c.employeeId === employee.id);
   const employeeRequests      = data.requests.filter(r => r.employeeId === employee.id);
-  const employeePayslips      = data.payslips?.filter(p => p.employeeId === employee.id) || [];
+  const employeePayslipSeries = React.useMemo(
+    () => buildEmployeePayslipSeries(employee, data.payslips ?? []),
+    [employee],
+  );
+
+  const payslipDistinctYears = React.useMemo(
+    () => new Set(employeePayslipSeries.map((p) => p.year)).size,
+    [employeePayslipSeries],
+  );
+
+  const payslipPeriodOptions = React.useMemo(() => {
+    const opts: { value: string; label: string }[] = [{ value: 'all', label: 'كل الكشوف' }];
+    const yearsDesc = [...PAYSLIP_YEAR_OPTIONS].sort((a, b) => b - a);
+    for (const y of yearsDesc) {
+      opts.push({ value: `year:${y}`, label: `سنة ${y} — كل الأشهر` });
+      for (let i = 11; i >= 0; i--) {
+        const monthAr = PAYSLIP_MONTHS_AR[i];
+        opts.push({
+          value: `${y}-${String(i + 1).padStart(2, '0')}`,
+          label: `${monthAr} ${y}`,
+        });
+      }
+    }
+    return opts;
+  }, []);
+
+  const [payslipPeriod, setPayslipPeriod] = React.useState<string>('all');
+
+  const payslipsFiltered = React.useMemo(() => {
+    if (payslipPeriod === 'all') return employeePayslipSeries;
+    if (payslipPeriod.startsWith('year:')) {
+      const y = parseInt(payslipPeriod.slice(5), 10);
+      if (!Number.isFinite(y)) return employeePayslipSeries;
+      return employeePayslipSeries.filter((p) => p.year === y);
+    }
+    const parts = payslipPeriod.split('-');
+    const y = parseInt(parts[0] ?? '', 10);
+    const m = parseInt(parts[1] ?? '', 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m)) return employeePayslipSeries;
+    return employeePayslipSeries.filter((p) => {
+      if (p.year !== y) return false;
+      const idx = PAYSLIP_MONTHS_AR.indexOf(p.month as (typeof PAYSLIP_MONTHS_AR)[number]);
+      return idx >= 0 && idx + 1 === m;
+    });
+  }, [employeePayslipSeries, payslipPeriod]);
+
+  const LEAVE_YEARLY_ENTITLEMENT = 21;
+  const leaveBalanceDisplay = React.useMemo(() => {
+    const year = new Date().getFullYear();
+    const entitled = LEAVE_YEARLY_ENTITLEMENT;
+    const isE1 = employee.id === 'e1';
+    const annualUsed = isE1 ? 13 : 1;
+    const sickUsed = isE1 ? 5 : 0;
+    const annualAvail = Math.max(0, entitled - annualUsed);
+    const sickAvail = Math.max(0, entitled - sickUsed);
+    return {
+      year,
+      entitled,
+      annual: { used: annualUsed, available: annualAvail, yearEnd: annualAvail },
+      sick: { used: sickUsed, available: sickAvail, yearEnd: sickAvail },
+    };
+  }, [employee.id]);
 
   // ─── Attendance date range filter ────────────────────────────────────
   const [attFrom, setAttFrom] = React.useState('');
   const [attTo,   setAttTo]   = React.useState('');
+  const [leaveRequestOpen, setLeaveRequestOpen] = React.useState(false);
 
   const employeeSummaries = React.useMemo(() =>
     allEmployeeSummaries.filter(s =>
@@ -248,26 +411,27 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     };
   }, [employeeSummaries]);
 
-  // ─── Edit mode ───────────────────────────────────────────────────────
+  // ─── Edit mode (البيانات الشخصية فقط: الهوية + الاتصال) ─────────────
   type Draft = typeof employee;
-  const [editing, setEditing] = React.useState(false);
+  const [editingPersonal, setEditingPersonal] = React.useState(false);
   const [draft, setDraft] = React.useState<Draft>(() => ({ ...employee }));
 
   React.useEffect(() => {
     setDraft({ ...employee });
+    setEditingPersonal(false);
   }, [employee.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateField = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSave = () => {
+  const handleSavePersonal = () => {
     Object.assign(employee, draft);
-    setEditing(false);
+    setEditingPersonal(false);
   };
-  const handleCancel = () => {
+  const handleCancelPersonal = () => {
     setDraft({ ...employee });
-    setEditing(false);
+    setEditingPersonal(false);
   };
 
   // Derived from draft so they update live while editing
@@ -283,6 +447,14 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
   })();
 
   const [activeSection, setActiveSection] = React.useState<SectionId>('personal');
+
+  /** عند مغادرة قسم البيانات الشخصية أثناء التعديل دون حفظ — إلغاء المسودة */
+  React.useEffect(() => {
+    if (activeSection !== 'personal' && editingPersonal) {
+      setDraft({ ...employee });
+      setEditingPersonal(false);
+    }
+  }, [activeSection, editingPersonal, employee]);
 
   // ─── Checkpoint connect/disconnect ───────────────────────────────────
   const [cpOpen, setCpOpen] = React.useState(false);
@@ -340,8 +512,8 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeSection]);
 
-  // Inline Field — renders input when editing, else value via children/format
-  function Field<K extends keyof Draft>({ field, type = 'text', mono, accent, format, icon, label }: {
+  // Inline Field — يتحول لحقل إدخال فقط عندما `editable` ضمن قسم البيانات الشخصية
+  function Field<K extends keyof Draft>({ field, type = 'text', mono, accent, format, icon, label, editable = false }: {
     field: K;
     type?: 'text' | 'email' | 'tel' | 'date' | 'number';
     mono?: boolean;
@@ -349,11 +521,12 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     format?: (v: Draft[K]) => React.ReactNode;
     icon: React.ElementType;
     label: string;
+    editable?: boolean;
   }) {
     const value = draft[field];
     const display: React.ReactNode = format ? format(value) : (value as React.ReactNode);
 
-    if (!editing) {
+    if (!editable || !editingPersonal) {
       return <Prop icon={icon} label={label} mono={mono} accent={accent}>{display}</Prop>;
     }
 
@@ -386,7 +559,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     requests: employeeRequests.length,
     violations: employeeViolations.length,
     contracts: employeeContracts.length,
-    salary: employeePayslips.length,
+    salary: employeePayslipSeries.length,
   };
 
   return (
@@ -401,33 +574,6 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
             </Link>
             <span className="text-muted-foreground/40">/</span>
             <span className="text-foreground font-medium truncate max-w-[140px] sm:max-w-[200px]">{employee.name}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            {editing ? (
-              <>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={handleCancel}>
-                  <X className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">إلغاء</span>
-                </Button>
-                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={handleSave}>
-                  <Check className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">حفظ التغييرات</span>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hidden sm:flex">
-                  <Share2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-                <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setEditing(true)}>
-                  <Edit3 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">تعديل</span>
-                </Button>
-              </>
-            )}
           </div>
         </div>
       </div>
@@ -593,15 +739,44 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   </div>
                 </div>
 
-                <SectionH icon={User} title="البيانات الشخصية" subtitle="المعلومات الأساسية وبيانات الاتصال للموظف" />
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
+                  <div className="min-w-0">
+                    <h2 className="font-arabic-display text-lg font-semibold tracking-tight text-foreground flex items-center gap-2">
+                      <User className="h-5 w-5 shrink-0 text-primary" />
+                      البيانات الشخصية
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-1.5 max-w-xl">
+                      المعلومات الأساسية وبيانات الاتصال للموظف
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {editingPersonal ? (
+                      <>
+                        <Button variant="ghost" size="sm" className="h-9 gap-1.5 text-xs" onClick={handleCancelPersonal}>
+                          <X className="h-3.5 w-3.5" />
+                          إلغاء
+                        </Button>
+                        <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={handleSavePersonal}>
+                          <Check className="h-3.5 w-3.5" />
+                          حفظ التغييرات
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={() => setEditingPersonal(true)}>
+                        <Edit3 className="h-3.5 w-3.5" />
+                        تعديل
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
                 <FieldGroup title="الهوية">
                   <Prop icon={Hash} label="رقم الموظف" mono>{draft.employeeCode}</Prop>
-                  <Field icon={User} field="name" label="الاسم" />
-                  <Field icon={User} field="nameEn" label="الاسم بالإنجليزية" />
-                  <Field icon={Hash} field="nationalId" label="رقم الهوية" mono />
-                  <Field icon={Globe} field="nationality" label="الجنسية" />
-                  <Field icon={Calendar} field="birthDate" label="تاريخ الميلاد" type="date" format={(v) => formatDate(v as string)} />
+                  <Field editable icon={User} field="name" label="الاسم" />
+                  <Field editable icon={User} field="nameEn" label="الاسم بالإنجليزية" />
+                  <Field editable icon={Hash} field="nationalId" label="رقم الهوية" mono />
+                  <Field editable icon={Globe} field="nationality" label="الجنسية" />
+                  <Field editable icon={Calendar} field="birthDate" label="تاريخ الميلاد" type="date" format={(v) => formatDate(v as string)} />
                   <Prop icon={UserRound} label="الجنس">{draft.gender === 'male' ? 'ذكر' : 'أنثى'}</Prop>
                   <Prop icon={Heart} label="الحالة الاجتماعية">
                     {draft.maritalStatus === 'married' ? 'متزوج' : 'أعزب'}
@@ -610,6 +785,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
                 <FieldGroup title="بيانات الاتصال">
                   <Field
+                    editable
                     icon={AtSign}
                     field="email"
                     label="البريد الإلكتروني"
@@ -620,8 +796,8 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                       </a>
                     )}
                   />
-                  <Field icon={Phone} field="phone" label="رقم الجوال" type="tel" mono />
-                  <Field icon={MapPin} field="address" label="العنوان" />
+                  <Field editable icon={Phone} field="phone" label="رقم الجوال" type="tel" mono />
+                  <Field editable icon={MapPin} field="address" label="العنوان" />
                 </FieldGroup>
 
                 <FieldGroup title="الموقع الوظيفي">
@@ -699,7 +875,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                   <Prop icon={Wallet} label="الصافي" accent="gold">{formatCurrency(netSalary)}</Prop>
                 </FieldGroup>
 
-                <FieldGroup title="الحساب البنكي" hint="تستخدم لتحويل الرواتب">
+                <FieldGroup title="الحساب البنكي">
                   <Field icon={CreditCard} field="bankAccount" label="رقم الحساب" mono />
                   <Field icon={CreditCard} field="iban" label="رقم الآيبان (IBAN)" mono />
                 </FieldGroup>
@@ -1253,42 +1429,46 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
 
             {activeSection === 'leaves' && (
               <section>
-                <SectionH
-                  icon={Calendar}
-                  title="الإجازات"
-                  subtitle="رصيد الإجازات والطلبات"
-                  action={
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
-                      <Link href="/hr/leaves"><ExternalLink className="h-3 w-3" />الإجازات</Link>
-                    </Button>
-                  }
-                />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-              {[
-                { label: 'سنوية', used: 9, total: 30 },
-                { label: 'مرضية', used: 15, total: 60 },
-                { label: 'أخرى', used: 0, total: 10 },
-              ].map(b => {
-                const pct = (b.used / b.total) * 100;
-                return (
-                  <div key={b.label} className={cn(
-                      'rounded-xl border bg-card p-4 transition-all',
-                      pct > 70 ? 'border-warning/40 bg-warning/5' : 'border-border/60'
-                    )}>
-                    <div className="flex items-baseline justify-between mb-2">
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{b.label}</span>
-                      <span className="font-arabic-display text-2xl font-semibold tabular-nums">
-                        {b.total - b.used}
-                        <span className="text-xs text-muted-foreground font-normal">/{b.total}</span>
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                      <div className={cn('h-full rounded-full', pct > 70 ? 'bg-warning' : 'bg-primary')} style={{ width: `${pct}%` }} />
-                    </div>
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="flex items-center gap-2 font-arabic-display text-lg font-semibold tracking-tight text-foreground">
+                      <Calendar className="h-5 w-5 shrink-0 text-primary" />
+                      الإجازات
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground">رصيد الإجازات والطلبات</p>
                   </div>
-                );
-              })}
-            </div>
+                  <Button variant="ghost" size="sm" className="h-9 shrink-0 gap-1.5 text-xs" asChild>
+                    <Link href="/hr/leaves">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      إدارة الإجازات
+                    </Link>
+                  </Button>
+                </div>
+
+                <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <LeaveBalanceCard
+                    title="إجازة سنوية"
+                    year={leaveBalanceDisplay.year}
+                    entitlementLabel="الاستحقاق السنوي"
+                    entitled={leaveBalanceDisplay.entitled}
+                    used={leaveBalanceDisplay.annual.used}
+                    available={leaveBalanceDisplay.annual.available}
+                    yearEndExpected={leaveBalanceDisplay.annual.yearEnd}
+                    accent="success"
+                    onRequestLeave={() => setLeaveRequestOpen(true)}
+                  />
+                  <LeaveBalanceCard
+                    title="إجازة مرضية"
+                    year={leaveBalanceDisplay.year}
+                    entitlementLabel="الاستحقاق المعتمد (أيام)"
+                    entitled={leaveBalanceDisplay.entitled}
+                    used={leaveBalanceDisplay.sick.used}
+                    available={leaveBalanceDisplay.sick.available}
+                    yearEndExpected={leaveBalanceDisplay.sick.yearEnd}
+                    accent="primary"
+                    onRequestLeave={() => setLeaveRequestOpen(true)}
+                  />
+                </div>
 
             {employeeRequests.filter(r => r.type === 'leave').length > 0 ? (
               <div className="space-y-2">
@@ -1401,18 +1581,28 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
             {employeeViolations.length > 0 ? (
               <div className="space-y-2">
                 {employeeViolations.map(v => {
-                  const isResolved = v.status === 'closed';
+                  const st = v.status as HRViolationCaseStatus;
+                  const isOpen = st === 'draft' || st === 'submitted' || st === 'under_review';
+                  const isRejected = st === 'rejected';
+                  const isGranted = st === 'approved' || st === 'executed';
+                  const isClosed = st === 'closed';
                   return (
                     <div key={v.id} className={cn(
-                      'flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 transition-all hover:shadow-xs',
-                      isResolved
-                        ? 'border-border/60 border-r-2 border-r-muted-foreground/25'
-                        : 'border-warning/30 bg-warning/5 border-r-2 border-r-warning'
+                      'flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 transition-all hover:shadow-xs border-r-2',
+                      isOpen && 'border-warning/25 bg-warning/5 border-r-warning',
+                      isRejected && 'border-destructive/25 bg-destructive/5 border-r-destructive',
+                      isGranted && 'border-border/60 border-r-success/40',
+                      isClosed && 'border-border/60 border-r-muted-foreground/30 bg-muted/10',
+                      !isOpen && !isRejected && !isGranted && !isClosed && 'border-border/60 border-r-border',
                     )}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={cn(
                           'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                          isResolved ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
+                          isOpen && 'bg-warning/10 text-warning',
+                          isRejected && 'bg-destructive/10 text-destructive',
+                          isGranted && 'bg-success/10 text-success',
+                          isClosed && 'bg-muted text-muted-foreground',
+                          !isOpen && !isRejected && !isGranted && !isClosed && 'bg-muted text-muted-foreground',
                         )}>
                           <AlertTriangle className="h-4 w-4" />
                         </div>
@@ -1430,7 +1620,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                           )}
                         </div>
                       </div>
-                      <StatusBadge status={v.status} />
+                      <StatusBadge status={v.status} labelOverride={CASE_STATUS_LABELS[st]} />
                     </div>
                   );
                 })}
@@ -1453,52 +1643,111 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                     </Button>
                   }
                 />
-            {employeeContracts.length > 0 ? (
-              <div className="space-y-2">
-                {employeeContracts.map(c => {
-                  const isActive = ['active', 'signed'].includes(c.status);
-                  const isDraft  = c.status === 'draft';
+            {employeeContracts.length > 0 ? (() => {
+              const sorted = [...employeeContracts].sort((a, b) => b.startDate.localeCompare(a.startDate));
+              const ALLOW_LABELS: Record<string, string> = {
+                'halt-housing': 'سكن', 'halt-transport': 'مواصلات', 'halt-phone': 'هاتف',
+                'halt-food': 'غذاء', 'halt-field': 'ميدان', 'halt-risk': 'مخاطر', 'halt-gas': 'وقود',
+              };
+              return (
+              <div className="relative">
+                {/* Vertical timeline line — sits behind the dots, spans from first dot to last */}
+                <div className="absolute right-[15px] top-4 bottom-4 w-px bg-border" />
+
+                <div className="space-y-2">
+                {sorted.map((c, idx) => {
+                  const isActive = c.status === 'active';
+                  const isFirst = idx === sorted.length - 1;
+                  const allowTotal = c.allowanceLines.reduce((s, l) => s + l.amount, 0);
                   return (
-                    <Link
-                      key={c.id}
-                      href={`/hr/employees/contracts?contractId=${c.id}`}
-                      className={cn(
-                        'group flex items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 transition-all hover:shadow-xs',
-                        isActive ? 'border-gold/40 bg-gold/5 border-r-2 border-r-gold'
-                        : isDraft ? 'border-warning/30 border-r-2 border-r-warning'
-                        : 'border-border/60 border-r-2 border-r-muted-foreground/25'
-                      )}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
+                    <div key={c.id} className="relative flex items-start gap-3">
+                      {/* Timeline dot */}
+                      <div className="relative z-10 mt-3 flex shrink-0 flex-col items-center" style={{ width: 32 }}>
                         <div className={cn(
-                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                          isActive ? 'bg-gold/10 text-gold' : 'bg-muted text-muted-foreground'
-                        )}>
-                          <FileSignature className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">
-                            عقد <span className="font-mono">#{c.contractNumber}</span>
+                          'h-3 w-3 rounded-full border-2',
+                          isActive
+                            ? 'border-primary bg-primary'
+                            : 'border-border bg-background'
+                        )} />
+                      </div>
+
+                      {/* Card */}
+                      <div className={cn(
+                        'flex-1 min-w-0 rounded-xl border bg-card transition-colors hover:bg-muted/20 mb-0.5',
+                        isActive ? 'border-primary/30' : 'border-border/70'
+                      )}>
+                        <div className="flex items-start gap-3 px-4 py-3">
+                          {/* Year badge */}
+                          <div className={cn(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums mt-0.5',
+                            isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                          )}>
+                            {c.startDate.slice(0, 4)}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDate(c.startDate)} ← {formatDate(c.endDate)}
-                            <span className="mx-1.5 text-muted-foreground/40">·</span>
-                            {formatCurrency(c.baseSalary)}
+
+                          {/* Info block */}
+                          <div className="flex-1 min-w-0">
+                            {/* Top row: number + badges + status */}
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm font-semibold truncate">{c.contractNumber}</span>
+                                {isActive && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                    جارٍ
+                                  </span>
+                                )}
+                                {isFirst && c.probationDays && (
+                                  <span className="rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                    تجربة {c.probationDays}ي
+                                  </span>
+                                )}
+                              </div>
+                              <StatusBadge status={c.status} />
+                            </div>
+
+                            {/* Date range */}
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {c.startDate} <span className="mx-1 opacity-40">←</span> {c.endDate}
+                            </p>
+
+                            {/* Salary row */}
+                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                              <span className="text-xs text-muted-foreground">
+                                أساسي: <span className="font-semibold text-foreground tabular-nums">{formatCurrency(c.baseSalary)}</span>
+                              </span>
+                              {allowTotal > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  بدلات: <span className="font-semibold text-foreground tabular-nums">+{formatCurrency(allowTotal)}</span>
+                                </span>
+                              )}
+                              {allowTotal > 0 && (
+                                <span className="text-xs font-semibold text-primary tabular-nums">
+                                  = {formatCurrency(c.baseSalary + allowTotal)} / شهر
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Allowance chips */}
                             {c.allowanceLines.length > 0 && (
-                              <> <span className="mx-1.5 text-muted-foreground/40">·</span> +{c.allowanceLines.length} بدلات</>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {c.allowanceLines.map((al, i) => (
+                                  <span key={i} className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+                                    {ALLOW_LABELS[al.allowanceTypeId] ?? al.allowanceTypeId} {al.amount.toLocaleString()}
+                                  </span>
+                                ))}
+                              </div>
                             )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <StatusBadge status={c.status} />
-                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                      </div>
-                    </Link>
+                    </div>
                   );
                 })}
+                </div>
               </div>
-            ) : (
+              );
+            })() : (
               <Empty
                 icon={FileSignature}
                 text="لا توجد عقود مسجلة"
@@ -1516,48 +1765,147 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
             )}
 
             {activeSection === 'salary' && (
-              <section>
-                <SectionH
-                  icon={Receipt}
-                  title="كشوف الرواتب"
-                  subtitle="كشوف الرواتب الشهرية للموظف"
-                  action={
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" asChild>
-                      <Link href="/payroll"><ExternalLink className="h-3 w-3" />الرواتب</Link>
-                    </Button>
-                  }
-                />
-            {employeePayslips.length > 0 ? (
-              <div className="space-y-2">
-                {employeePayslips.map(p => (
-                  <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border border-gold/30 bg-card px-4 py-3 transition-all hover:shadow-xs hover:border-gold/50 border-r-2 border-r-gold">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold">
-                        <Receipt className="h-4 w-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium">{p.month} {p.year}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {p.presentDays}/{p.workingDays} يوم
-                          {p.lateDays > 0 && <> <span className="mx-1.5 text-muted-foreground/40">·</span> {p.lateDays} تأخير</>}
+              <section className="space-y-5">
+                <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card shadow-elevated">
+                  <div className="pointer-events-none absolute inset-0 dotted-bg opacity-40" aria-hidden />
+                  <div className="relative flex flex-col gap-4 p-5 sm:p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-gold/25 bg-gold/10 text-gold shadow-inner-soft">
+                          <Receipt className="h-6 w-6" />
+                        </div>
+                        <div className="min-w-0">
+                          <h2 className="text-xl font-semibold tracking-tight text-foreground">كشوف الرواتب</h2>
+                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                            سجل شهري من <span className="font-medium text-foreground tabular-nums">2020</span> إلى{' '}
+                            <span className="font-medium text-foreground tabular-nums">2026</span> — اختر شهراً وسنة من القائمة أو «كل الكشوف».
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            <Badge variant="secondary" className="rounded-lg px-2.5 py-0.5 text-xs font-medium tabular-nums">
+                              {employeePayslipSeries.length} كشفاً
+                            </Badge>
+                            <Badge variant="outline" className="rounded-lg px-2.5 py-0.5 text-xs border-primary/20 text-primary bg-primary/5">
+                              {payslipDistinctYears} سنة
+                            </Badge>
+                            {payslipPeriod !== 'all' && (
+                              <Badge variant="subtle" className="rounded-lg px-2.5 py-0.5 text-xs tabular-nums">
+                                عرض {payslipsFiltered.length}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-left shrink-0">
-                      <div className="font-arabic-display font-semibold text-sm tabular-nums text-gold">{formatCurrency(p.net)}</div>
-                      <div className="text-[10px] text-muted-foreground">صافي</div>
+                      <div className="flex flex-col gap-3 w-full lg:w-auto lg:min-w-[260px] lg:shrink-0">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="payslip-period" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
+                            شهر وسنة، أو سنة كاملة
+                          </Label>
+                          <Select value={payslipPeriod} onValueChange={setPayslipPeriod}>
+                            <SelectTrigger id="payslip-period" className="h-10 w-full rounded-xl border-border bg-background/90 shadow-xs">
+                              <SelectValue placeholder="كل الكشوف" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72">
+                              {payslipPeriodOptions.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value} className="text-sm">
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button variant="outline" size="sm" className="h-10 w-full rounded-xl gap-2 border-border bg-background/80 shadow-xs lg:w-auto" asChild>
+                          <Link href="/payroll" className="inline-flex items-center justify-center">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            صفحة الرواتب
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <Empty icon={Receipt} text="لا توجد كشوف رواتب" />
-            )}
+                </div>
+
+                {employeePayslipSeries.length > 0 ? (
+                  <div className="max-h-[min(72vh,820px)] overflow-y-auto overscroll-contain rounded-3xl border border-border/50 bg-muted/20 p-4 sm:p-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {payslipsFiltered.length > 0 ? (
+                        payslipsFiltered.map((p) => (
+                        <article
+                          key={p.id}
+                          className={cn(
+                            'group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all duration-200',
+                            'hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md',
+                          )}
+                        >
+                          <div className="pointer-events-none absolute inset-0 bg-linear-to-bl from-gold/5 via-transparent to-primary/5 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+                          <div className="relative flex flex-col gap-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h3 className="text-base font-semibold text-foreground tracking-tight">{p.month}</h3>
+                                <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">{p.year}</p>
+                              </div>
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/15">
+                                <Wallet className="h-4 w-4" aria-hidden />
+                              </span>
+                            </div>
+                            <div className="rounded-xl border border-gold/20 bg-gold/5 px-3 py-2.5">
+                              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">الصافي</p>
+                              <p className="font-arabic-display text-lg font-semibold tabular-nums text-gold leading-tight mt-1">
+                                {formatCurrency(p.net)}
+                              </p>
+                            </div>
+                            <dl className="grid grid-cols-4 gap-1.5 text-center">
+                              <div className="rounded-lg border border-border/50 bg-muted/30 px-1.5 py-2">
+                                <dt className="text-[10px] text-muted-foreground leading-tight">عمل</dt>
+                                <dd className="font-arabic-display text-xs font-semibold tabular-nums text-foreground mt-1">{p.workingDays}</dd>
+                              </div>
+                              <div className="rounded-lg border border-border/50 bg-muted/30 px-1.5 py-2">
+                                <dt className="text-[10px] text-muted-foreground leading-tight">حضور</dt>
+                                <dd className="font-arabic-display text-xs font-semibold tabular-nums text-success mt-1">{p.presentDays}</dd>
+                              </div>
+                              <div className={cn(
+                                'rounded-lg border px-1.5 py-2',
+                                p.lateDays > 0 ? 'border-warning/30 bg-warning/5' : 'border-border/50 bg-muted/30',
+                              )}>
+                                <dt className={cn('text-[10px] leading-tight', p.lateDays > 0 ? 'text-warning' : 'text-muted-foreground')}>تأخير</dt>
+                                <dd className={cn('font-arabic-display text-xs font-semibold tabular-nums mt-1', p.lateDays > 0 ? 'text-warning' : 'text-muted-foreground')}>{p.lateDays}</dd>
+                              </div>
+                              <div className={cn(
+                                'rounded-lg border px-1.5 py-2',
+                                p.absentDays > 0 ? 'border-destructive/30 bg-destructive/5' : 'border-border/50 bg-muted/30',
+                              )}>
+                                <dt className={cn('text-[10px] leading-tight', p.absentDays > 0 ? 'text-destructive' : 'text-muted-foreground')}>غياب</dt>
+                                <dd className={cn('font-arabic-display text-xs font-semibold tabular-nums mt-1', p.absentDays > 0 ? 'text-destructive' : 'text-muted-foreground')}>{p.absentDays}</dd>
+                              </div>
+                            </dl>
+                          </div>
+                        </article>
+                        ))
+                      ) : (
+                        <div className="col-span-full flex flex-col items-center justify-center py-12 text-center text-muted-foreground border border-dashed border-border rounded-2xl bg-card/50">
+                          <Receipt className="h-8 w-8 opacity-40 mb-2" aria-hidden />
+                          <p className="text-sm">لا يوجد كشف لهذه الفترة.</p>
+                          <Button type="button" variant="link" className="text-primary h-auto p-0 mt-2" onClick={() => setPayslipPeriod('all')}>
+                            عرض كل الكشوف
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <Empty icon={Receipt} text="لا توجد كشوف رواتب" />
+                )}
               </section>
             )}
           </div>
         </main>
       </div>
+
+      <NewRequestDialog
+        open={leaveRequestOpen}
+        onOpenChange={setLeaveRequestOpen}
+        initialType="leave"
+      />
     </div>
   );
 }
