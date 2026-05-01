@@ -27,36 +27,116 @@ import {
 } from '@/lib/hr-discipline/discipline-date-filter';
 
 const DATE_TAB_BASE =
-  'shrink-0 gap-1 px-3 text-[11px] transition-colors border';
+  'discipline-tab-trigger shrink-0 gap-1 px-3 text-[11px] transition-all duration-150 border';
+
+/** تمييز أوضح للمحدد: حلقة + حدود + ظل + وزن خط (الـ ! تتجاوز TabsTrigger الافتراضي) */
+const TAB_ACTIVE_SHELL =
+  'data-[state=active]:!font-semibold data-[state=active]:!shadow-md data-[state=active]:ring-2 data-[state=active]:ring-offset-2 data-[state=active]:ring-offset-background data-[state=active]:border data-[state=active]:z-[1]';
 
 /** تلوين خفيف لتبويبات الفترة */
 const DATE_TAB_TRIGGER_CLASS: Record<DateFilterTab, string> = {
-  all: `${DATE_TAB_BASE} border-transparent bg-slate-100/85 text-slate-700 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:bg-slate-800/55 dark:text-slate-200 dark:data-[state=active]:bg-slate-700`,
-  today: `${DATE_TAB_BASE} border-transparent bg-sky-50 text-sky-800 data-[state=active]:bg-sky-100 data-[state=active]:shadow-sm dark:bg-sky-950/35 dark:text-sky-200 dark:data-[state=active]:bg-sky-900/55`,
-  week: `${DATE_TAB_BASE} border-transparent bg-violet-50 text-violet-800 data-[state=active]:bg-violet-100 data-[state=active]:shadow-sm dark:bg-violet-950/35 dark:text-violet-200 dark:data-[state=active]:bg-violet-900/55`,
-  month: `${DATE_TAB_BASE} border-transparent bg-teal-50 text-teal-800 data-[state=active]:bg-teal-100 data-[state=active]:shadow-sm dark:bg-teal-950/35 dark:text-teal-200 dark:data-[state=active]:bg-teal-900/55`,
-  custom: `${DATE_TAB_BASE} border-transparent bg-amber-50 text-amber-900 data-[state=active]:bg-amber-100 data-[state=active]:shadow-sm dark:bg-amber-950/35 dark:text-amber-200 dark:data-[state=active]:bg-amber-900/55`,
+  all: cn(
+    DATE_TAB_BASE,
+    'border-transparent bg-slate-100/85 text-slate-700 dark:bg-slate-800/55 dark:text-slate-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-white data-[state=active]:!text-slate-950 data-[state=active]:border-slate-400/90 data-[state=active]:ring-slate-400/65',
+    'dark:data-[state=active]:!bg-slate-600 dark:data-[state=active]:!text-white dark:data-[state=active]:border-slate-500 dark:data-[state=active]:ring-slate-400/45',
+  ),
+  today: cn(
+    DATE_TAB_BASE,
+    'border-transparent bg-sky-50 text-sky-800 dark:bg-sky-950/35 dark:text-sky-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-sky-100 data-[state=active]:!text-sky-950 data-[state=active]:border-sky-400/75 data-[state=active]:ring-sky-400/55',
+    'dark:data-[state=active]:!bg-sky-900/70 dark:data-[state=active]:!text-sky-50 dark:data-[state=active]:border-sky-500 dark:data-[state=active]:ring-sky-400/40',
+  ),
+  week: cn(
+    DATE_TAB_BASE,
+    'border-transparent bg-violet-50 text-violet-800 dark:bg-violet-950/35 dark:text-violet-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-violet-100 data-[state=active]:!text-violet-950 data-[state=active]:border-violet-400/75 data-[state=active]:ring-violet-400/55',
+    'dark:data-[state=active]:!bg-violet-900/65 dark:data-[state=active]:!text-violet-50 dark:data-[state=active]:border-violet-500 dark:data-[state=active]:ring-violet-400/40',
+  ),
+  month: cn(
+    DATE_TAB_BASE,
+    'border-transparent bg-teal-50 text-teal-800 dark:bg-teal-950/35 dark:text-teal-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-teal-100 data-[state=active]:!text-teal-950 data-[state=active]:border-teal-400/75 data-[state=active]:ring-teal-400/55',
+    'dark:data-[state=active]:!bg-teal-900/65 dark:data-[state=active]:!text-teal-50 dark:data-[state=active]:border-teal-500 dark:data-[state=active]:ring-teal-400/40',
+  ),
+  custom: cn(
+    DATE_TAB_BASE,
+    'border-transparent bg-amber-50 text-amber-900 dark:bg-amber-950/35 dark:text-amber-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-amber-100 data-[state=active]:!text-amber-950 data-[state=active]:border-amber-400/80 data-[state=active]:ring-amber-400/55',
+    'dark:data-[state=active]:!bg-amber-900/65 dark:data-[state=active]:!text-amber-50 dark:data-[state=active]:border-amber-500 dark:data-[state=active]:ring-amber-400/40',
+  ),
 };
 
 const STATUS_COUNT_BADGE =
-  'me-1.5 rounded-md bg-white/65 px-1.5 py-0.5 font-mono text-[10px] tabular-nums dark:bg-black/25';
+  'me-1.5 rounded-md bg-white/65 px-1.5 py-0.5 font-mono text-[10px] tabular-nums dark:bg-black/25 group-data-[state=active]:bg-white/95 group-data-[state=active]:shadow-sm dark:group-data-[state=active]:bg-black/45';
 
 const STATUS_ALL_TRIGGER_CLASS = cn(
   DATE_TAB_BASE,
-  'border-transparent bg-slate-100/85 text-slate-700 data-[state=active]:bg-slate-200 data-[state=active]:shadow-sm dark:bg-slate-800/55 dark:text-slate-200 dark:data-[state=active]:bg-slate-700',
+  'group border-transparent bg-slate-100/85 text-slate-700 dark:bg-slate-800/55 dark:text-slate-200',
+  TAB_ACTIVE_SHELL,
+  'data-[state=active]:!bg-white data-[state=active]:!text-slate-950 data-[state=active]:border-slate-400/90 data-[state=active]:ring-slate-400/65',
+  'dark:data-[state=active]:!bg-slate-600 dark:data-[state=active]:!text-white dark:data-[state=active]:border-slate-500 dark:data-[state=active]:ring-slate-400/45',
 );
 
-/** ألوان خفيفة تُعاد بالتناوب لتبويبات الحالات */
+/** ألوان خفيفة بالتناوب لتبويبات الحالات */
 const STATUS_CYCLE_TRIGGER_CLASSES = [
-  'border-transparent bg-sky-50 text-sky-800 data-[state=active]:bg-sky-100 data-[state=active]:shadow-sm dark:bg-sky-950/35 dark:text-sky-200 dark:data-[state=active]:bg-sky-900/55',
-  'border-transparent bg-emerald-50 text-emerald-800 data-[state=active]:bg-emerald-100 data-[state=active]:shadow-sm dark:bg-emerald-950/35 dark:text-emerald-200 dark:data-[state=active]:bg-emerald-900/55',
-  'border-transparent bg-violet-50 text-violet-800 data-[state=active]:bg-violet-100 data-[state=active]:shadow-sm dark:bg-violet-950/35 dark:text-violet-200 dark:data-[state=active]:bg-violet-900/55',
-  'border-transparent bg-amber-50 text-amber-900 data-[state=active]:bg-amber-100 data-[state=active]:shadow-sm dark:bg-amber-950/35 dark:text-amber-200 dark:data-[state=active]:bg-amber-900/55',
-  'border-transparent bg-rose-50 text-rose-800 data-[state=active]:bg-rose-100 data-[state=active]:shadow-sm dark:bg-rose-950/35 dark:text-rose-200 dark:data-[state=active]:bg-rose-900/55',
-  'border-transparent bg-cyan-50 text-cyan-800 data-[state=active]:bg-cyan-100 data-[state=active]:shadow-sm dark:bg-cyan-950/35 dark:text-cyan-200 dark:data-[state=active]:bg-cyan-900/55',
-  'border-transparent bg-indigo-50 text-indigo-800 data-[state=active]:bg-indigo-100 data-[state=active]:shadow-sm dark:bg-indigo-950/35 dark:text-indigo-200 dark:data-[state=active]:bg-indigo-900/55',
-  'border-transparent bg-orange-50 text-orange-900 data-[state=active]:bg-orange-100 data-[state=active]:shadow-sm dark:bg-orange-950/35 dark:text-orange-200 dark:data-[state=active]:bg-orange-900/55',
+  cn(
+    'border-transparent bg-sky-50 text-sky-800 dark:bg-sky-950/35 dark:text-sky-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-sky-100 data-[state=active]:!text-sky-950 data-[state=active]:border-sky-400/75 data-[state=active]:ring-sky-400/55',
+    'dark:data-[state=active]:!bg-sky-900/70 dark:data-[state=active]:!text-sky-50 dark:data-[state=active]:border-sky-500 dark:data-[state=active]:ring-sky-400/40',
+  ),
+  cn(
+    'border-transparent bg-emerald-50 text-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-emerald-100 data-[state=active]:!text-emerald-950 data-[state=active]:border-emerald-400/75 data-[state=active]:ring-emerald-400/55',
+    'dark:data-[state=active]:!bg-emerald-900/65 dark:data-[state=active]:!text-emerald-50 dark:data-[state=active]:border-emerald-500 dark:data-[state=active]:ring-emerald-400/40',
+  ),
+  cn(
+    'border-transparent bg-violet-50 text-violet-800 dark:bg-violet-950/35 dark:text-violet-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-violet-100 data-[state=active]:!text-violet-950 data-[state=active]:border-violet-400/75 data-[state=active]:ring-violet-400/55',
+    'dark:data-[state=active]:!bg-violet-900/65 dark:data-[state=active]:!text-violet-50 dark:data-[state=active]:border-violet-500 dark:data-[state=active]:ring-violet-400/40',
+  ),
+  cn(
+    'border-transparent bg-amber-50 text-amber-900 dark:bg-amber-950/35 dark:text-amber-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-amber-100 data-[state=active]:!text-amber-950 data-[state=active]:border-amber-400/80 data-[state=active]:ring-amber-400/55',
+    'dark:data-[state=active]:!bg-amber-900/65 dark:data-[state=active]:!text-amber-50 dark:data-[state=active]:border-amber-500 dark:data-[state=active]:ring-amber-400/40',
+  ),
+  cn(
+    'border-transparent bg-rose-50 text-rose-800 dark:bg-rose-950/35 dark:text-rose-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-rose-100 data-[state=active]:!text-rose-950 data-[state=active]:border-rose-400/75 data-[state=active]:ring-rose-400/55',
+    'dark:data-[state=active]:!bg-rose-900/65 dark:data-[state=active]:!text-rose-50 dark:data-[state=active]:border-rose-500 dark:data-[state=active]:ring-rose-400/40',
+  ),
+  cn(
+    'border-transparent bg-cyan-50 text-cyan-800 dark:bg-cyan-950/35 dark:text-cyan-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-cyan-100 data-[state=active]:!text-cyan-950 data-[state=active]:border-cyan-400/75 data-[state=active]:ring-cyan-400/55',
+    'dark:data-[state=active]:!bg-cyan-900/65 dark:data-[state=active]:!text-cyan-50 dark:data-[state=active]:border-cyan-500 dark:data-[state=active]:ring-cyan-400/40',
+  ),
+  cn(
+    'border-transparent bg-indigo-50 text-indigo-800 dark:bg-indigo-950/35 dark:text-indigo-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-indigo-100 data-[state=active]:!text-indigo-950 data-[state=active]:border-indigo-400/75 data-[state=active]:ring-indigo-400/55',
+    'dark:data-[state=active]:!bg-indigo-900/65 dark:data-[state=active]:!text-indigo-50 dark:data-[state=active]:border-indigo-500 dark:data-[state=active]:ring-indigo-400/40',
+  ),
+  cn(
+    'border-transparent bg-orange-50 text-orange-900 dark:bg-orange-950/35 dark:text-orange-200',
+    TAB_ACTIVE_SHELL,
+    'data-[state=active]:!bg-orange-100 data-[state=active]:!text-orange-950 data-[state=active]:border-orange-400/75 data-[state=active]:ring-orange-400/55',
+    'dark:data-[state=active]:!bg-orange-900/65 dark:data-[state=active]:!text-orange-50 dark:data-[state=active]:border-orange-500 dark:data-[state=active]:ring-orange-400/40',
+  ),
 ];
+
+const VIEW_MODE_TAB_CLASS =
+  'discipline-toolbar-view-tab h-7 gap-1 px-2.5 text-[11px] transition-all duration-150 data-[state=active]:!font-semibold data-[state=active]:!shadow-sm data-[state=active]:ring-2 data-[state=active]:ring-primary/40 data-[state=active]:ring-offset-2 data-[state=active]:ring-offset-background data-[state=active]:border data-[state=active]:border-primary/35';
 
 export type DisciplineViewMode = 'cards' | 'list';
 
@@ -367,7 +447,11 @@ export const DisciplineFilterToolbar = React.forwardRef<
                         <TabsTrigger
                           key={s}
                           value={s}
-                          className={cn(DATE_TAB_BASE, STATUS_CYCLE_TRIGGER_CLASSES[i % STATUS_CYCLE_TRIGGER_CLASSES.length])}
+                          className={cn(
+                            'group',
+                            DATE_TAB_BASE,
+                            STATUS_CYCLE_TRIGGER_CLASSES[i % STATUS_CYCLE_TRIGGER_CLASSES.length],
+                          )}
                         >
                           {statusLabels[s] ?? s}
                           <span className={STATUS_COUNT_BADGE}>{statusCounts[s] ?? 0}</span>
@@ -384,11 +468,11 @@ export const DisciplineFilterToolbar = React.forwardRef<
             <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
             <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as DisciplineViewMode)}>
               <TabsList className="h-8 gap-0.5 bg-muted/70 p-0.5">
-                <TabsTrigger value="cards" className="h-7 gap-1 px-2.5 text-[11px]">
+                <TabsTrigger value="cards" className={VIEW_MODE_TAB_CLASS}>
                   <LayoutGrid className="h-3 w-3 shrink-0" />
                   بطاقات
                 </TabsTrigger>
-                <TabsTrigger value="list" className="h-7 gap-1 px-2.5 text-[11px]">
+                <TabsTrigger value="list" className={VIEW_MODE_TAB_CLASS}>
                   <List className="h-3 w-3 shrink-0" />
                   قائمة
                 </TabsTrigger>
