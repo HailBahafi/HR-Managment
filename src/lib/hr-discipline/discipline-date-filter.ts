@@ -1,6 +1,6 @@
 /** تصفية السجلات بتاريخ YYYY-MM-DD (إنذارات، تحقيقات، تظلمات، مخالفات، …) */
 
-export type DateFilterTab = 'all' | 'today' | 'week' | 'custom';
+export type DateFilterTab = 'all' | 'today' | 'week' | 'month' | 'custom';
 
 export function recordDateComparable(dateStr: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
@@ -29,6 +29,14 @@ export function thisWeekSunSatYMD(): { from: string; to: string } {
   const sat = new Date(sun);
   sat.setDate(sun.getDate() + 6);
   return { from: dateToYMD(sun), to: dateToYMD(sat) };
+}
+
+/** أول وآخر يوم من الشهر الحالي (التقويم المحلي) */
+export function thisCalendarMonthYMD(): { from: string; to: string } {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { from: dateToYMD(first), to: dateToYMD(last) };
 }
 
 export function hasDateRangeFilter(fromStr: string, toStr: string): boolean {
@@ -82,6 +90,8 @@ export function effectiveDateRange(tab: DateFilterTab, customFrom: string, custo
     }
     case 'week':
       return thisWeekSunSatYMD();
+    case 'month':
+      return thisCalendarMonthYMD();
     case 'custom':
       return { from: customFrom.trim(), to: customTo.trim() };
     default:

@@ -151,9 +151,11 @@ export function AppealsClient() {
               ? 'لا توجد تظلمات بتاريخ اليوم ضمن النتائج الحالية.'
               : dateMeta.tab === 'week'
                 ? 'لا توجد تظلمات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-                : dateMeta.tab === 'custom' && dateRangeActive
-                  ? 'لا توجد تظلمات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
-                  : 'لا توجد تظلمات ضمن النتائج الحالية.'}
+                : dateMeta.tab === 'month'
+                  ? 'لا توجد تظلمات ضمن هذا الشهر ضمن النتائج الحالية.'
+                  : dateMeta.tab === 'custom' && dateRangeActive
+                    ? 'لا توجد تظلمات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
+                    : 'لا توجد تظلمات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
             <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>

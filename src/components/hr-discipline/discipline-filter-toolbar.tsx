@@ -22,8 +22,41 @@ import {
   parseMDYToYMD,
   todayYMD,
   thisWeekSunSatYMD,
+  thisCalendarMonthYMD,
   ymdToMDYDisplay,
 } from '@/lib/hr-discipline/discipline-date-filter';
+
+const DATE_TAB_BASE =
+  'shrink-0 gap-1 px-3 text-[11px] transition-colors border';
+
+/** تلوين خفيف لتبويبات الفترة */
+const DATE_TAB_TRIGGER_CLASS: Record<DateFilterTab, string> = {
+  all: `${DATE_TAB_BASE} border-transparent bg-slate-100/85 text-slate-700 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:bg-slate-800/55 dark:text-slate-200 dark:data-[state=active]:bg-slate-700`,
+  today: `${DATE_TAB_BASE} border-transparent bg-sky-50 text-sky-800 data-[state=active]:bg-sky-100 data-[state=active]:shadow-sm dark:bg-sky-950/35 dark:text-sky-200 dark:data-[state=active]:bg-sky-900/55`,
+  week: `${DATE_TAB_BASE} border-transparent bg-violet-50 text-violet-800 data-[state=active]:bg-violet-100 data-[state=active]:shadow-sm dark:bg-violet-950/35 dark:text-violet-200 dark:data-[state=active]:bg-violet-900/55`,
+  month: `${DATE_TAB_BASE} border-transparent bg-teal-50 text-teal-800 data-[state=active]:bg-teal-100 data-[state=active]:shadow-sm dark:bg-teal-950/35 dark:text-teal-200 dark:data-[state=active]:bg-teal-900/55`,
+  custom: `${DATE_TAB_BASE} border-transparent bg-amber-50 text-amber-900 data-[state=active]:bg-amber-100 data-[state=active]:shadow-sm dark:bg-amber-950/35 dark:text-amber-200 dark:data-[state=active]:bg-amber-900/55`,
+};
+
+const STATUS_COUNT_BADGE =
+  'me-1.5 rounded-md bg-white/65 px-1.5 py-0.5 font-mono text-[10px] tabular-nums dark:bg-black/25';
+
+const STATUS_ALL_TRIGGER_CLASS = cn(
+  DATE_TAB_BASE,
+  'border-transparent bg-slate-100/85 text-slate-700 data-[state=active]:bg-slate-200 data-[state=active]:shadow-sm dark:bg-slate-800/55 dark:text-slate-200 dark:data-[state=active]:bg-slate-700',
+);
+
+/** ألوان خفيفة تُعاد بالتناوب لتبويبات الحالات */
+const STATUS_CYCLE_TRIGGER_CLASSES = [
+  'border-transparent bg-sky-50 text-sky-800 data-[state=active]:bg-sky-100 data-[state=active]:shadow-sm dark:bg-sky-950/35 dark:text-sky-200 dark:data-[state=active]:bg-sky-900/55',
+  'border-transparent bg-emerald-50 text-emerald-800 data-[state=active]:bg-emerald-100 data-[state=active]:shadow-sm dark:bg-emerald-950/35 dark:text-emerald-200 dark:data-[state=active]:bg-emerald-900/55',
+  'border-transparent bg-violet-50 text-violet-800 data-[state=active]:bg-violet-100 data-[state=active]:shadow-sm dark:bg-violet-950/35 dark:text-violet-200 dark:data-[state=active]:bg-violet-900/55',
+  'border-transparent bg-amber-50 text-amber-900 data-[state=active]:bg-amber-100 data-[state=active]:shadow-sm dark:bg-amber-950/35 dark:text-amber-200 dark:data-[state=active]:bg-amber-900/55',
+  'border-transparent bg-rose-50 text-rose-800 data-[state=active]:bg-rose-100 data-[state=active]:shadow-sm dark:bg-rose-950/35 dark:text-rose-200 dark:data-[state=active]:bg-rose-900/55',
+  'border-transparent bg-cyan-50 text-cyan-800 data-[state=active]:bg-cyan-100 data-[state=active]:shadow-sm dark:bg-cyan-950/35 dark:text-cyan-200 dark:data-[state=active]:bg-cyan-900/55',
+  'border-transparent bg-indigo-50 text-indigo-800 data-[state=active]:bg-indigo-100 data-[state=active]:shadow-sm dark:bg-indigo-950/35 dark:text-indigo-200 dark:data-[state=active]:bg-indigo-900/55',
+  'border-transparent bg-orange-50 text-orange-900 data-[state=active]:bg-orange-100 data-[state=active]:shadow-sm dark:bg-orange-950/35 dark:text-orange-200 dark:data-[state=active]:bg-orange-900/55',
+];
 
 export type DisciplineViewMode = 'cards' | 'list';
 
@@ -133,6 +166,12 @@ export const DisciplineFilterToolbar = React.forwardRef<
     setDialogToMDY(ymdToMDYDisplay(to));
   }, []);
 
+  const fillDialogThisMonth = React.useCallback(() => {
+    const { from, to } = thisCalendarMonthYMD();
+    setDialogFromMDY(ymdToMDYDisplay(from));
+    setDialogToMDY(ymdToMDYDisplay(to));
+  }, []);
+
   const toggleFilterStrip = React.useCallback((which: 'date' | 'status') => {
     setFilterStripOpen((prev) => (prev === which ? null : which));
   }, []);
@@ -162,6 +201,8 @@ export const DisciplineFilterToolbar = React.forwardRef<
         return 'اليوم';
       case 'week':
         return 'هذا الأسبوع';
+      case 'month':
+        return 'هذا الشهر';
       case 'custom':
         return hasDateRangeFilter(appliedCustomFrom, appliedCustomTo)
           ? `${ymdToMDYDisplay(appliedCustomFrom)} — ${ymdToMDYDisplay(appliedCustomTo)}`
@@ -269,17 +310,21 @@ export const DisciplineFilterToolbar = React.forwardRef<
                       setDateFilterTab(next);
                     }}
                   >
-                    <TabsList className="inline-flex h-auto min-h-8 w-max flex-nowrap gap-1 bg-muted/70 p-1">
-                      <TabsTrigger value="all" className="shrink-0 px-3 text-[11px]">كل الفترات</TabsTrigger>
-                      <TabsTrigger value="today" className="shrink-0 gap-1 px-3 text-[11px]">
+                    <TabsList className="inline-flex h-auto min-h-8 w-max flex-nowrap gap-1.5 bg-muted/30 p-1 dark:bg-muted/20">
+                      <TabsTrigger value="all" className={DATE_TAB_TRIGGER_CLASS.all}>كل الفترات</TabsTrigger>
+                      <TabsTrigger value="today" className={DATE_TAB_TRIGGER_CLASS.today}>
                         <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
                         اليوم
                       </TabsTrigger>
-                      <TabsTrigger value="week" className="shrink-0 gap-1 px-3 text-[11px]">
+                      <TabsTrigger value="week" className={DATE_TAB_TRIGGER_CLASS.week}>
                         <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
                         هذا الأسبوع
                       </TabsTrigger>
-                      <TabsTrigger value="custom" className="shrink-0 gap-1 px-3 text-[11px]">
+                      <TabsTrigger value="month" className={DATE_TAB_TRIGGER_CLASS.month}>
+                        <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
+                        هذا الشهر
+                      </TabsTrigger>
+                      <TabsTrigger value="custom" className={DATE_TAB_TRIGGER_CLASS.custom}>
                         <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
                         مخصص
                       </TabsTrigger>
@@ -313,15 +358,19 @@ export const DisciplineFilterToolbar = React.forwardRef<
               <div className="max-w-[min(100%,52rem)] border-t border-border/50 pt-2">
                 <div className="overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]">
                   <Tabs value={statusFilter} onValueChange={onStatusFilterChange}>
-                    <TabsList className="inline-flex h-auto min-h-9 w-max flex-nowrap gap-1 bg-muted/70 p-1">
-                      <TabsTrigger value="all" className="shrink-0 px-3 text-[11px]">
+                    <TabsList className="inline-flex h-auto min-h-9 w-max flex-nowrap gap-1.5 bg-muted/30 p-1 dark:bg-muted/20">
+                      <TabsTrigger value="all" className={STATUS_ALL_TRIGGER_CLASS}>
                         الكل
-                        <span className="me-1.5 rounded-md bg-background/90 px-1.5 py-0.5 font-mono text-[10px] tabular-nums">{statusCounts.all ?? 0}</span>
+                        <span className={STATUS_COUNT_BADGE}>{statusCounts.all ?? 0}</span>
                       </TabsTrigger>
-                      {statusOrder.map((s) => (
-                        <TabsTrigger key={s} value={s} className="shrink-0 px-3 text-[11px]">
+                      {statusOrder.map((s, i) => (
+                        <TabsTrigger
+                          key={s}
+                          value={s}
+                          className={cn(DATE_TAB_BASE, STATUS_CYCLE_TRIGGER_CLASSES[i % STATUS_CYCLE_TRIGGER_CLASSES.length])}
+                        >
                           {statusLabels[s] ?? s}
-                          <span className="me-1.5 rounded-md bg-background/90 px-1.5 py-0.5 font-mono text-[10px] tabular-nums">{statusCounts[s] ?? 0}</span>
+                          <span className={STATUS_COUNT_BADGE}>{statusCounts[s] ?? 0}</span>
                         </TabsTrigger>
                       ))}
                     </TabsList>
@@ -387,6 +436,10 @@ export const DisciplineFilterToolbar = React.forwardRef<
               <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={fillDialogThisWeek}>
                 <CalendarDays className="h-3 w-3 opacity-70" />
                 هذا الأسبوع
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={fillDialogThisMonth}>
+                <CalendarDays className="h-3 w-3 opacity-70" />
+                هذا الشهر
               </Button>
             </div>
           </div>

@@ -271,9 +271,11 @@ export function ViolationCasesClient() {
               ? 'لا توجد مخالفات بتاريخ اليوم ضمن النتائج الحالية.'
               : dateMeta.tab === 'week'
                 ? 'لا توجد مخالفات ضمن هذا الأسبوع (الأحد–السبت) ضمن النتائج الحالية.'
-                : dateMeta.tab === 'custom' && dateRangeActive
-                  ? 'لا توجد مخالفات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
-                  : 'لا توجد مخالفات ضمن النتائج الحالية.'}
+                : dateMeta.tab === 'month'
+                  ? 'لا توجد مخالفات ضمن هذا الشهر ضمن النتائج الحالية.'
+                  : dateMeta.tab === 'custom' && dateRangeActive
+                    ? 'لا توجد مخالفات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
+                    : 'لا توجد مخالفات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
             <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
