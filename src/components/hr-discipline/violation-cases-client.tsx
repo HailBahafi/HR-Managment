@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  Plus, Eye, Trash2, Send, CheckCircle2, XCircle, Edit3, ShieldAlert, CalendarDays, User, LayoutGrid, List, ChevronDown,
+  Plus, Eye, Trash2, Send, CheckCircle2, XCircle, Edit3, ShieldAlert, CalendarDays, User, LayoutGrid, List, ChevronDown, X,
 } from 'lucide-react';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { toast } from 'sonner';
@@ -341,6 +341,21 @@ export function ViolationCasesClient() {
     setFilterStripOpen((prev) => (prev === which ? null : which));
   }, []);
 
+  const resetDateFilter = React.useCallback(() => {
+    setDateFilterTab('all');
+    setAppliedCustomFrom('');
+    setAppliedCustomTo('');
+    setFilterStripOpen((prev) => (prev === 'date' ? null : prev));
+  }, []);
+
+  const resetStatusFilter = React.useCallback(() => {
+    setStatusFilter('all');
+    setFilterStripOpen((prev) => (prev === 'status' ? null : prev));
+  }, []);
+
+  const showDateReset = filterStripOpen === 'date' || dateFilterTab !== 'all';
+  const showStatusReset = filterStripOpen === 'status' || statusFilter !== 'all';
+
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
   const typeOptions = types.filter(t => t.isActive).map(t => ({ value: t.id, label: t.nameAr, sub: t.code }));
 
@@ -393,36 +408,72 @@ export function ViolationCasesClient() {
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           {/* تصفية: العناوين + الشرائح تحتها وبمحاذاة بداية السطر (يمين في الواجهة العربية) */}
           <div className="flex min-w-0 flex-col items-start gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Button
-                type="button"
-                variant={filterStripOpen === 'date' ? 'secondary' : 'outline'}
-                size="sm"
-                className="h-8 gap-1.5 px-2.5 text-xs font-medium"
-                onClick={() => toggleFilterStrip('date')}
-                aria-expanded={filterStripOpen === 'date'}
-              >
-                <CalendarDays className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                الفترات
-                <span className="max-w-40 truncate rounded-md bg-background/80 px-1.5 py-0.5 font-normal text-[10px] text-muted-foreground sm:max-w-56" title={dateStripSummary}>
-                  {dateStripSummary}
-                </span>
-                <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-60 transition-transform', filterStripOpen === 'date' && 'rotate-180')} />
-              </Button>
-              <Button
-                type="button"
-                variant={filterStripOpen === 'status' ? 'secondary' : 'outline'}
-                size="sm"
-                className="h-8 gap-1.5 px-2.5 text-xs font-medium"
-                onClick={() => toggleFilterStrip('status')}
-                aria-expanded={filterStripOpen === 'status'}
-              >
-                الحالات
-                <span className="max-w-36 truncate rounded-md bg-background/80 px-1.5 py-0.5 font-normal text-[10px] text-muted-foreground sm:max-w-48" title={statusStripSummary}>
-                  {statusStripSummary}
-                </span>
-                <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-60 transition-transform', filterStripOpen === 'status' && 'rotate-180')} />
-              </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-0.5">
+                <Button
+                  type="button"
+                  variant={filterStripOpen === 'date' ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="h-8 gap-1.5 px-2.5 text-xs font-medium"
+                  onClick={() => toggleFilterStrip('date')}
+                  aria-expanded={filterStripOpen === 'date'}
+                >
+                  <CalendarDays className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                  الفترات
+                  <span className="max-w-40 truncate rounded-md bg-background/80 px-1.5 py-0.5 font-normal text-[10px] text-muted-foreground sm:max-w-56" title={dateStripSummary}>
+                    {dateStripSummary}
+                  </span>
+                  <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-60 transition-transform', filterStripOpen === 'date' && 'rotate-180')} />
+                </Button>
+                {showDateReset ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="إعادة ضبط الفترات إلى كل الفترات وإخفاء الشريط"
+                    title="إعادة ضبط الفترات"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      resetDateFilter();
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  type="button"
+                  variant={filterStripOpen === 'status' ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="h-8 gap-1.5 px-2.5 text-xs font-medium"
+                  onClick={() => toggleFilterStrip('status')}
+                  aria-expanded={filterStripOpen === 'status'}
+                >
+                  الحالات
+                  <span className="max-w-36 truncate rounded-md bg-background/80 px-1.5 py-0.5 font-normal text-[10px] text-muted-foreground sm:max-w-48" title={statusStripSummary}>
+                    {statusStripSummary}
+                  </span>
+                  <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-60 transition-transform', filterStripOpen === 'status' && 'rotate-180')} />
+                </Button>
+                {showStatusReset ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="إعادة ضبط الحالات إلى الكل وإخفاء الشريط"
+                    title="إعادة ضبط الحالات"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      resetStatusFilter();
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             {filterStripOpen === 'date' ? (
@@ -547,16 +598,7 @@ export function ViolationCasesClient() {
                   : 'لا توجد مخالفات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
-            <Button
-              variant="link"
-              size="sm"
-              className="mt-2 text-xs"
-              onClick={() => {
-                setDateFilterTab('all');
-                setAppliedCustomFrom('');
-                setAppliedCustomTo('');
-              }}
-            >
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => resetDateFilter()}>
               عرض كل الفترات
             </Button>
           ) : null}
@@ -565,7 +607,7 @@ export function ViolationCasesClient() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <ShieldAlert className="mb-3 h-10 w-10 text-muted-foreground/25" />
           <p className="text-sm text-muted-foreground">لا توجد مخالفات ضمن مرحلة «{statusFilter === 'all' ? '' : CASE_STATUS_LABELS[statusFilter]}» مع عوامل البحث الحالية.</p>
-          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => setStatusFilter('all')}>
+          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => resetStatusFilter()}>
             عرض الكل
           </Button>
         </div>
