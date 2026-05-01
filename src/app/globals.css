@@ -76,6 +76,13 @@
   animation: nav-dropdown-in 0.18s cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
+/* شريط انضباط (فترة + حالة + بطاقات/قائمة): تمييز غير النشط — لا نستخدم Tailwind لـ inactive لتجنب أخطاء Turbopack */
+.discipline-tab-trigger[data-state='inactive'],
+.discipline-toolbar-view-tab[data-state='inactive'] {
+  opacity: 0.72;
+  filter: brightness(0.98);
+}
+
 @layer base {
   :root {
     /* ═══════════════════════════════════════════════════

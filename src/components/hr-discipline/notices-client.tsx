@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { EmployeePicker } from '@/components/ui/employee-picker';
+import { Plus, Trash2, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,9 +14,18 @@ import { useHRDisciplineNoticesStore } from '@/lib/hr-discipline/notices-store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
 import type { HRDisciplineNoticeKind } from '@/lib/hr-discipline/types';
-import { NOTICE_KIND_LABELS } from '@/lib/hr-discipline/types';
+import { NOTICE_KIND_LABELS, NOTICE_KIND_FILTER_ORDER } from '@/lib/hr-discipline/types';
+import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
+import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+import {
+  DisciplineFilterToolbar,
+  type DisciplineFilterToolbarHandle,
+  type DisciplineViewMode,
+} from '@/components/hr-discipline/discipline-filter-toolbar';
 
 const KIND_OPTIONS = (Object.entries(NOTICE_KIND_LABELS) as [HRDisciplineNoticeKind, string][]).map(([v, l]) => ({ value: v, label: l }));
+
+type KindFilter = 'all' | HRDisciplineNoticeKind;
 
 interface DraftForm {
   employeeId: string; kind: HRDisciplineNoticeKind; reasonAr: string;
@@ -33,6 +41,13 @@ export function NoticesClient() {
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم أو رقم المخالفة…' }]);
   const q = (values.q as string) ?? '';
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
+  const [kindFilter, setKindFilter] = React.useState<KindFilter>('all');
+  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
+  const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
+  const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
 
   const empPickerList = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -48,10 +63,34 @@ export function NoticesClient() {
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
-  const filtered = notices.filter(n =>
-    (n.employeeNameAr.includes(q) || n.reasonAr.includes(q)) &&
-    (selectedEmpIds.size === 0 || selectedEmpIds.has(n.employeeId))
+  const searchFiltered = React.useMemo(
+    () =>
+      notices.filter(
+        (n) =>
+          (n.employeeNameAr.includes(q) || n.reasonAr.includes(q)) &&
+          (selectedEmpIds.size === 0 || selectedEmpIds.has(n.employeeId)),
+      ),
+    [notices, q, selectedEmpIds],
   );
+
+  const filtered = React.useMemo(
+    () => searchFiltered.filter((n) => matchesDateRange(n.date, dateBounds.from, dateBounds.to)),
+    [searchFiltered, dateBounds.from, dateBounds.to],
+  );
+
+  const listFiltered = React.useMemo(
+    () => (kindFilter === 'all' ? filtered : filtered.filter((n) => n.kind === kindFilter)),
+    [filtered, kindFilter],
+  );
+
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { all: filtered.length };
+    for (const k of NOTICE_KIND_FILTER_ORDER) counts[k] = 0;
+    for (const n of filtered) counts[n.kind] = (counts[n.kind] ?? 0) + 1;
+    return counts;
+  }, [filtered]);
+
+  const dateRangeActive = dateMeta.hasRestriction;
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
@@ -69,29 +108,71 @@ export function NoticesClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-2 flex-wrap">
-        <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
-        <Button variant="luxe" size="sm" onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
-          <Plus className="h-4 w-4 ml-1" />إضافة إنذار
-        </Button>
-      </div>
+      <DisciplineFilterToolbar
+        ref={filterToolbarRef}
+        primaryActionLabel="إضافة إنذار"
+        onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={kindFilter}
+        onStatusFilterChange={(v) => setKindFilter(v as KindFilter)}
+        statusOrder={NOTICE_KIND_FILTER_ORDER}
+        statusLabels={NOTICE_KIND_LABELS as unknown as Record<string, string>}
+        statusCounts={statusCounts}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
+      />
 
-      {filtered.length === 0 ? (
-        <EmptyState title="لا توجد إنذارات" />
-      ) : (
+      {searchFiltered.length === 0 ? (
+        <EmptyState title="لا توجد إنذارات مطابقة للبحث أو الموظفين المحددين." />
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
+          <p className="text-sm text-muted-foreground">
+            {dateMeta.tab === 'today'
+              ? 'لا توجد إنذارات بتاريخ اليوم ضمن النتائج الحالية.'
+              : dateMeta.tab === 'week'
+                ? 'لا توجد إنذارات ضمن هذا الأسبوع ضمن النتائج الحالية.'
+                : dateMeta.tab === 'month'
+                  ? 'لا توجد إنذارات ضمن هذا الشهر ضمن النتائج الحالية.'
+                  : dateMeta.tab === 'custom' && dateRangeActive
+                    ? 'لا توجد إنذارات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
+                    : 'لا توجد إنذارات ضمن النتائج الحالية.'}
+          </p>
+          {dateRangeActive ? (
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
+              عرض كل الفترات
+            </Button>
+          ) : null}
+        </div>
+      ) : listFiltered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
+          <p className="text-sm text-muted-foreground">
+            لا توجد إنذارات من نوع «{kindFilter === 'all' ? '' : NOTICE_KIND_LABELS[kindFilter]}» مع عوامل البحث الحالية.
+          </p>
+          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>
+            عرض الكل
+          </Button>
+        </div>
+      ) : viewMode === 'cards' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map(n => (
-            <div key={n.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
+          {listFiltered.map(n => (
+            <div key={n.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-semibold truncate">{n.employeeNameAr}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{n.date}</p>
+                  <p className="truncate font-semibold">{n.employeeNameAr}</p>
+                  <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground" dir="ltr">
+                    <CalendarDays className="h-3 w-3 shrink-0" />
+                    {n.date}
+                  </p>
                 </div>
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                <span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
                   {NOTICE_KIND_LABELS[n.kind]}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-3">{n.reasonAr}</p>
+              <p className="line-clamp-3 text-xs text-muted-foreground">{n.reasonAr}</p>
               <div className="mt-auto flex justify-end border-t border-border pt-3">
                 <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(n.id)}>
                   <Trash2 className="h-3.5 w-3.5" /> حذف
@@ -99,6 +180,35 @@ export function NoticesClient() {
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
+          <table className="w-full min-w-[640px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/50 text-right">
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الموظف</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">نوع الإنذار</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
+                <th className="p-3 text-xs font-semibold text-muted-foreground">السبب</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listFiltered.map((n) => (
+                <tr key={n.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
+                  <td className="max-w-[12rem] truncate p-3 font-medium">{n.employeeNameAr}</td>
+                  <td className="whitespace-nowrap p-3 text-xs">{NOTICE_KIND_LABELS[n.kind]}</td>
+                  <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{n.date}</td>
+                  <td className="max-w-[20rem] truncate p-3 text-xs text-muted-foreground">{n.reasonAr}</td>
+                  <td className="p-2">
+                    <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(n.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

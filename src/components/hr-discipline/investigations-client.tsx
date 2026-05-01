@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,11 +12,19 @@ import {
 } from '@/components/hr-requests/shared-ui';
 import { useHRDisciplineInvestigationsStore } from '@/lib/hr-discipline/investigations-store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
 import type { HRInvestigationResult } from '@/lib/hr-discipline/types';
-import { INVESTIGATION_RESULT_LABELS } from '@/lib/hr-discipline/types';
+import { INVESTIGATION_RESULT_LABELS, INVESTIGATION_RESULT_FILTER_ORDER } from '@/lib/hr-discipline/types';
+import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
+import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+import {
+  DisciplineFilterToolbar,
+  type DisciplineFilterToolbarHandle,
+  type DisciplineViewMode,
+} from '@/components/hr-discipline/discipline-filter-toolbar';
 
 const RESULT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][]).map(([v, l]) => ({ value: v, label: l }));
+
+type ResultFilter = 'all' | HRInvestigationResult;
 
 interface DraftForm {
   caseId: string; caseNumber: string; employeeId: string; employeeNameAr: string;
@@ -32,10 +40,24 @@ const EMPTY: DraftForm = {
 export function InvestigationsClient() {
   const { investigations, add, remove } = useHRDisciplineInvestigationsStore();
   const { cases } = useHRViolationCasesStore();
-  const { activeEmployees } = useHREmployeeDirectoryStore();
 
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم الموظف…' }]);
   const q = (values.q as string) ?? '';
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
+  const [resultFilter, setResultFilter] = React.useState<ResultFilter>('all');
+  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
+  const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
+  const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
+
+  const empPickerList = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const i of investigations) map.set(i.employeeId, i.employeeNameAr);
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [investigations]);
+
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -43,7 +65,34 @@ export function InvestigationsClient() {
 
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
-  const filtered = investigations.filter(i => i.caseNumber.includes(q) || i.employeeNameAr.includes(q) || i.investigatorName.includes(q));
+  const searchFiltered = React.useMemo(
+    () =>
+      investigations.filter(
+        (i) =>
+          (i.caseNumber.includes(q) || i.employeeNameAr.includes(q) || i.investigatorName.includes(q)) &&
+          (selectedEmpIds.size === 0 || selectedEmpIds.has(i.employeeId)),
+      ),
+    [investigations, q, selectedEmpIds],
+  );
+
+  const filtered = React.useMemo(
+    () => searchFiltered.filter((i) => matchesDateRange(i.date, dateBounds.from, dateBounds.to)),
+    [searchFiltered, dateBounds.from, dateBounds.to],
+  );
+
+  const listFiltered = React.useMemo(
+    () => (resultFilter === 'all' ? filtered : filtered.filter((i) => i.result === resultFilter)),
+    [filtered, resultFilter],
+  );
+
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { all: filtered.length };
+    for (const r of INVESTIGATION_RESULT_FILTER_ORDER) counts[r] = 0;
+    for (const i of filtered) counts[i.result] = (counts[i.result] ?? 0) + 1;
+    return counts;
+  }, [filtered]);
+
+  const dateRangeActive = dateMeta.hasRestriction;
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
@@ -55,7 +104,7 @@ export function InvestigationsClient() {
 
   const handleSave = () => {
     setFormError(null);
-    if (!draft.caseId) { setFormError('الموظف مطلوب'); return; }
+    if (!draft.caseId) { setFormError('المخالفة مطلوبة'); return; }
     if (!draft.investigatorName.trim()) { setFormError('اسم المحقق مطلوب'); return; }
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
     add(draft);
@@ -66,30 +115,73 @@ export function InvestigationsClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant="luxe" size="sm" onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
-          <Plus className="h-4 w-4 ml-1" />إضافة تحقيق
-        </Button>
-      </div>
+      <DisciplineFilterToolbar
+        ref={filterToolbarRef}
+        primaryActionLabel="إضافة تحقيق"
+        onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={resultFilter}
+        onStatusFilterChange={(v) => setResultFilter(v as ResultFilter)}
+        statusOrder={INVESTIGATION_RESULT_FILTER_ORDER}
+        statusLabels={INVESTIGATION_RESULT_LABELS as unknown as Record<string, string>}
+        statusCounts={statusCounts}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
+      />
 
-      {filtered.length === 0 ? (
-        <EmptyState title="لا توجد تحقيقات" />
-      ) : (
+      {searchFiltered.length === 0 ? (
+        <EmptyState title="لا توجد تحقيقات مطابقة للبحث أو الموظفين المحددين." />
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
+          <p className="text-sm text-muted-foreground">
+            {dateMeta.tab === 'today'
+              ? 'لا توجد تحقيقات بتاريخ اليوم ضمن النتائج الحالية.'
+              : dateMeta.tab === 'week'
+                ? 'لا توجد تحقيقات ضمن هذا الأسبوع ضمن النتائج الحالية.'
+                : dateMeta.tab === 'month'
+                  ? 'لا توجد تحقيقات ضمن هذا الشهر ضمن النتائج الحالية.'
+                  : dateMeta.tab === 'custom' && dateRangeActive
+                    ? 'لا توجد تحقيقات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
+                    : 'لا توجد تحقيقات ضمن النتائج الحالية.'}
+          </p>
+          {dateRangeActive ? (
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
+              عرض كل الفترات
+            </Button>
+          ) : null}
+        </div>
+      ) : listFiltered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
+          <p className="text-sm text-muted-foreground">
+            لا توجد تحقيقات بنتيجة «{resultFilter === 'all' ? '' : INVESTIGATION_RESULT_LABELS[resultFilter]}» مع عوامل البحث الحالية.
+          </p>
+          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>
+            عرض الكل
+          </Button>
+        </div>
+      ) : viewMode === 'cards' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map(inv => (
-            <div key={inv.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
+          {listFiltered.map(inv => (
+            <div key={inv.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-mono text-[10px] font-bold text-muted-foreground">{inv.caseNumber}</p>
-                  <p className="font-semibold truncate mt-0.5">{inv.employeeNameAr}</p>
+                  <p className="font-mono text-[10px] font-bold text-muted-foreground" dir="ltr">{inv.caseNumber}</p>
+                  <p className="mt-0.5 truncate font-semibold">{inv.employeeNameAr}</p>
                 </div>
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary shrink-0">
+                <span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
                   {INVESTIGATION_RESULT_LABELS[inv.result]}
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground space-y-0.5">
+              <div className="space-y-0.5 text-xs text-muted-foreground">
                 <p>المحقق: {inv.investigatorName}</p>
-                <p>التاريخ: {inv.date}</p>
+                <p className="flex items-center gap-1 font-mono tabular-nums" dir="ltr">
+                  <CalendarDays className="h-3 w-3 shrink-0" />
+                  {inv.date}
+                </p>
               </div>
               <div className="mt-auto flex justify-end border-t border-border pt-3">
                 <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(inv.id)}>
@@ -98,6 +190,37 @@ export function InvestigationsClient() {
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
+          <table className="w-full min-w-[720px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/50 text-right">
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">المخالفة</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الموظف</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">المحقق</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">النتيجة</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listFiltered.map((inv) => (
+                <tr key={inv.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
+                  <td className="p-3 font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{inv.caseNumber}</td>
+                  <td className="max-w-[10rem] truncate p-3 font-medium">{inv.employeeNameAr}</td>
+                  <td className="max-w-[9rem] truncate p-3 text-xs">{inv.investigatorName}</td>
+                  <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{inv.date}</td>
+                  <td className="whitespace-nowrap p-3 text-xs">{INVESTIGATION_RESULT_LABELS[inv.result]}</td>
+                  <td className="p-2">
+                    <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(inv.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

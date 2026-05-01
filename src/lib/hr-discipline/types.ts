@@ -87,7 +87,7 @@ export function isDisciplineSection(s: string): s is HRDisciplineSection {
 export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDisciplineSection; labelAr: string }[] }[] = [
   {
     labelAr: 'مسار المخالفة', items: [
-      { slug: 'violation-cases',  labelAr: 'تسجيل المخالفات' },
+      { slug: 'violation-cases',  labelAr: 'سجل المخالفات' },
       { slug: 'notices',          labelAr: 'الإنذارات' },
       { slug: 'investigations',   labelAr: 'التحقيقات' },
       { slug: 'appeals',          labelAr: 'التظلمات' },
@@ -110,9 +110,13 @@ export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDiscipli
 export const NOTICE_KIND_LABELS: Record<HRDisciplineNoticeKind, string> = {
   verbal: 'شفهي', first: 'إنذار أول', second: 'إنذار ثانٍ', final: 'إنذار نهائي',
 };
+/** ترتيب عرض تبويبات التصفية في الإنذارات */
+export const NOTICE_KIND_FILTER_ORDER: HRDisciplineNoticeKind[] = ['verbal', 'first', 'second', 'final'];
+
 export const INVESTIGATION_RESULT_LABELS: Record<HRInvestigationResult, string> = {
   upheld: 'ثبتت المخالفة', cancelled: 'لم تثبت', to_warning: 'توجيه إنذار', to_deduction: 'استقطاع',
 };
+export const INVESTIGATION_RESULT_FILTER_ORDER: HRInvestigationResult[] = ['upheld', 'cancelled', 'to_warning', 'to_deduction'];
 export const PENALTY_TYPE_LABELS: Record<HRPenaltyType, string> = {
   reprimand: 'توبيخ', warning: 'إنذار رسمي', monetary: 'غرامة مالية',
   suspension: 'إيقاف عن العمل', termination_recommendation: 'توصية بالإنهاء',
@@ -123,6 +127,7 @@ export const APPEAL_CHANNEL_LABELS: Record<HRAppealChannel, string> = {
 export const APPEAL_STATUS_LABELS: Record<HRAppealStatus, string> = {
   submitted: 'مُقدَّم', in_review: 'قيد المراجعة', accepted: 'مقبول', rejected: 'مرفوض', closed: 'مغلق',
 };
+export const APPEAL_STATUS_FILTER_ORDER: HRAppealStatus[] = ['submitted', 'in_review', 'accepted', 'rejected', 'closed'];
 /** تسميات عربية لمسار المخالفة الإداري: مسودة → تقديم → سلسلة الموافقات → قرار → تنفيذ/إغلاق. */
 export const CASE_STATUS_LABELS: Record<HRViolationCaseStatus, string> = {
   draft: 'مسودة',
@@ -142,6 +147,34 @@ export const CASE_STATUS_COLORS: Record<HRViolationCaseStatus, string> = {
   executed: 'text-purple-700 border-purple-200 bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:bg-purple-950/30',
   closed: 'text-muted-foreground border-border bg-muted/30',
 };
+
+/** ترتيب عرض مراحل التصفية في الواجهة (مسار الطلب الإداري) */
+export const CASE_STATUS_FILTER_ORDER: HRViolationCaseStatus[] = [
+  'draft',
+  'submitted',
+  'under_review',
+  'approved',
+  'executed',
+  'closed',
+  'rejected',
+];
+
+/** خط سير الحالة الرئيسي (بدون مرفوض) لعرض شريط التقدم */
+export const CASE_MAIN_FLOW: HRViolationCaseStatus[] = [
+  'draft',
+  'submitted',
+  'under_review',
+  'approved',
+  'executed',
+  'closed',
+];
+
+/** أين تقف الحالة ضمن المسار الرئيسي (−1 إن لم تكن في المسار، مثل مرفوض) */
+export function caseMainFlowIndex(status: HRViolationCaseStatus): number {
+  if (status === 'rejected') return -1;
+  const i = CASE_MAIN_FLOW.indexOf(status);
+  return i >= 0 ? i : CASE_MAIN_FLOW.length - 1;
+}
 export const DEDUCTION_KIND_LABELS: Record<HRViolationDeductionKind, string> = {
   none: 'لا يوجد', amount: 'مبلغ ثابت', hours: 'بالساعات', day: 'بالأيام',
 };

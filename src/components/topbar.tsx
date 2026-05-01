@@ -46,7 +46,7 @@ type NavItem  = {
 export const navConfig: NavItem[] = [
   { key: 'dashboard', label: 'الرئيسية', href: '/dashboard', icon: LayoutDashboard },
   {
-    key: 'employees', label: 'الموظفين', icon: Users,
+    key: 'employees', label: 'الهيكل الإداري', icon: Users,
     groups: [{ items: [
       { label: 'سجل الموظفين',     href: '/employees',      icon: Users },
       { label: 'الفروع',           href: '/branches',       icon: Building2 },
@@ -95,14 +95,14 @@ export const navConfig: NavItem[] = [
     ],
   },
   {
-    key: 'discipline', label: 'الانضباط', icon: ShieldAlert,
+    key: 'discipline', label: 'الانضباط الوظيفي', icon: ShieldAlert,
     groups: hrDisciplineNavGroups.map(g => ({
       labelAr: g.labelAr,
       items: g.items.map(item => ({ label: item.labelAr, href: `/hr/discipline/${item.slug}` })),
     })),
   },
   {
-    key: 'contracts', label: 'الراتب والعقود', icon: Wallet,
+    key: 'contracts', label: 'الرواتب والعقود', icon: Wallet,
     groups: [
       { labelAr: 'الراتب', items: [
         { label: 'فترات الراتب',  href: '/hr/contracts/payroll-periods',  icon: CalendarRange },
