@@ -20,6 +20,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import {
   useHRContractsStore,
   CONTRACT_KIND_LABELS, CONTRACT_STATUS_LABELS, CONTRACT_STATUS_COLORS,
@@ -499,10 +500,22 @@ export function EmploymentContractsClient() {
 
         {/* Dates */}
         <FormField label="تاريخ البداية" required>
-          <Input type="date" value={form.startDate} onChange={e => patch({ startDate: e.target.value })} readOnly={readOnly} className={readOnly ? 'bg-muted/30' : ''} />
+          <SingleDatePicker
+            value={form.startDate || undefined}
+            onChange={(next) => patch({ startDate: next })}
+            placeholder="اختر تاريخ البداية"
+            disabled={readOnly}
+            max={form.endDate || undefined}
+          />
         </FormField>
         <FormField label="تاريخ الانتهاء" required>
-          <Input type="date" value={form.endDate} onChange={e => patch({ endDate: e.target.value })} readOnly={readOnly} className={readOnly ? 'bg-muted/30' : ''} />
+          <SingleDatePicker
+            value={form.endDate || undefined}
+            onChange={(next) => patch({ endDate: next })}
+            placeholder="اختر تاريخ الانتهاء"
+            disabled={readOnly}
+            min={form.startDate || undefined}
+          />
         </FormField>
 
         {/* Probation */}

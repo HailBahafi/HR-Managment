@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Plus, Trash2, Users, Building2, MapPin, CalendarDays, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SingleDatePicker } from '@/components/ui/single-date-picker';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -231,8 +231,14 @@ export function AssignmentsPanel() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>تاريخ التطبيق</Label>
-              <SingleDatePicker value={effectiveFrom} onChange={setEffectiveFrom} />
+              <Label htmlFor="assignment-effective-from">تاريخ التطبيق</Label>
+              <Input
+                id="assignment-effective-from"
+                type="date"
+                value={effectiveFrom}
+                onChange={(e) => setEffectiveFrom(e.target.value)}
+                className="font-mono"
+              />
             </div>
             <div className="space-y-2">
               <Label>تطبيق على</Label>

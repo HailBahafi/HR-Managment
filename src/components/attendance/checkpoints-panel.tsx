@@ -368,7 +368,7 @@ export function CheckpointsPanel() {
 
       {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[92vh] w-full min-w-0 max-w-4xl flex-col overflow-hidden border-border p-0">
+        <DialogContent className="flex max-h-[96vh] w-full min-w-0 max-w-5xl flex-col overflow-hidden border-border p-0">
           <div className="shrink-0 p-6 pb-4">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">
@@ -433,7 +433,6 @@ export function CheckpointsPanel() {
                         if (!navigator.geolocation) return;
                         navigator.geolocation.getCurrentPosition((pos) => {
                           setDraft((d) => d ? { ...d, latitude: pos.coords.latitude, longitude: pos.coords.longitude } : d);
-                          setGeoQuery('موقعي الحالي');
                           setGeoSuggestions([]);
                         }, undefined, { timeout: 8000 });
                       }}
@@ -444,9 +443,9 @@ export function CheckpointsPanel() {
                   {geoError && <p className="text-xs text-destructive">{geoError}</p>}
                 </div>
 
-                <div className="min-w-0">
+                <div className="min-w-0 mx-2 rounded-xl overflow-hidden ring-1 ring-border">
                   <MapPicker
-                    height={480}
+                    height={520}
                     value={{ latitude: draft.latitude, longitude: draft.longitude, radiusMeters: draft.radiusMeters }}
                     onChange={(v) => setDraft({ ...draft, latitude: v.latitude, longitude: v.longitude, radiusMeters: v.radiusMeters })}
                     interactive
