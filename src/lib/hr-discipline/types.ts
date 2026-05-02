@@ -86,7 +86,7 @@ export function isDisciplineSection(s: string): s is HRDisciplineSection {
 
 export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDisciplineSection; labelAr: string }[] }[] = [
   {
-    labelAr: 'مسار المخالفة', items: [
+    labelAr: 'مسارات الإنظباط', items: [
       { slug: 'violation-cases',  labelAr: 'سجل المخالفات' },
       { slug: 'notices',          labelAr: 'الإنذارات' },
       { slug: 'investigations',   labelAr: 'التحقيقات' },
@@ -128,7 +128,7 @@ export const APPEAL_STATUS_LABELS: Record<HRAppealStatus, string> = {
   submitted: 'مُقدَّم', in_review: 'قيد المراجعة', accepted: 'مقبول', rejected: 'مرفوض', closed: 'مغلق',
 };
 export const APPEAL_STATUS_FILTER_ORDER: HRAppealStatus[] = ['submitted', 'in_review', 'accepted', 'rejected', 'closed'];
-/** تسميات عربية لمسار المخالفة الإداري: مسودة → تقديم → سلسلة الموافقات → قرار → تنفيذ/إغلاق. */
+/** تسميات عربية لمسارات الإنظباط الإداري: مسودة → تقديم → سلسلة الموافقات → قرار → تنفيذ/إغلاق. */
 export const CASE_STATUS_LABELS: Record<HRViolationCaseStatus, string> = {
   draft: 'مسودة',
   submitted: 'مُقدَّم',
