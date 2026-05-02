@@ -25,9 +25,18 @@ export function EmployeePicker({
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  const safeEmployees = React.useMemo(
+    () =>
+      employees.filter(
+        (e): e is { id: string; name: string } =>
+          e != null && typeof e.id === 'string' && typeof e.name === 'string',
+      ),
+    [employees],
+  );
+
   const filtered = search.trim()
-    ? employees.filter(e => e.name.includes(search.trim()))
-    : employees;
+    ? safeEmployees.filter(e => e.name.includes(search.trim()))
+    : safeEmployees;
 
   const toggle = (id: string) => {
     const next = new Set(selected);
@@ -37,17 +46,17 @@ export function EmployeePicker({
 
   const clearAll = () => onChange(new Set());
 
-  const allSelected = employees.length > 0 && employees.every(e => selected.has(e.id));
+  const allSelected = safeEmployees.length > 0 && safeEmployees.every(e => selected.has(e.id));
 
   const toggleAll = () => {
     if (allSelected) onChange(new Set());
-    else onChange(new Set(employees.map(e => e.id)));
+    else onChange(new Set(safeEmployees.map(e => e.id)));
   };
 
   const label = (selected.size === 0 || allSelected)
     ? 'جميع الموظفين'
     : selected.size === 1
-      ? (employees.find(e => e.id === [...selected][0])?.name ?? '1 موظف')
+      ? (safeEmployees.find(e => e.id === [...selected][0])?.name ?? '1 موظف')
       : `${selected.size} موظفين`;
 
   return (

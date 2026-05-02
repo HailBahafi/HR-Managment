@@ -41,7 +41,7 @@ function buildPayrollRows(period: HRPayrollPeriodRecord): PayrollRow[] {
 }
 
 function amountWords(n: number): string {
-  return `${new Intl.NumberFormat('ar-SA', { minimumFractionDigits: 0 }).format(n)} ريال سعودي فقط لا غير`;
+  return `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)} ريال سعودي فقط لا غير`;
 }
 
 type DocTab = 'payroll' | 'receipt' | 'clearance';

@@ -6,7 +6,7 @@ import { arSA } from 'date-fns/locale';
 import { CalendarDays, X } from 'lucide-react';
 import type { Matcher } from 'react-day-picker';
 
-import { cn } from '@/lib/utils';
+import { cn, toWesternDigits } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -79,8 +79,8 @@ export function SingleDatePicker({
     return list.length === 1 ? list[0]! : list;
   }, [min, max]);
 
-  const dayLabel = selected ? format(selected, 'd', { locale: arSA }) : null;
-  const monthYearLabel = selected ? format(selected, 'MMMM yyyy', { locale: arSA }) : null;
+  const dayLabel = selected ? toWesternDigits(format(selected, 'd', { locale: arSA })) : null;
+  const monthYearLabel = selected ? toWesternDigits(format(selected, 'MMMM yyyy', { locale: arSA })) : null;
   const weekdayLabel = selected ? format(selected, 'EEEE', { locale: arSA }) : null;
 
   return (

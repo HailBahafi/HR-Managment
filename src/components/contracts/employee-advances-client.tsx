@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { Plus, Banknote, Download } from 'lucide-react';
-import { EmployeePicker } from '@/components/ui/employee-picker';
 import { Button } from '@/components/ui/button';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/set-page-title';
@@ -16,7 +16,7 @@ import {
   type HREmployeeAdvanceStatus,
 } from '@/lib/contracts/employee-advances-store';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 type StatusFilter = 'all' | HREmployeeAdvanceStatus;
 
@@ -53,18 +53,10 @@ export function EmployeeAdvancesClient() {
 
   const { values } = usePageFilters([
     { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث باسم الموظف…' },
-    {
-      key: 'status', label: 'الحالة', type: 'select',
-      options: [
-        { value: 'outstanding', label: ADVANCE_STATUS_LABELS.outstanding },
-        { value: 'repaid', label: ADVANCE_STATUS_LABELS.repaid },
-        { value: 'cancelled', label: ADVANCE_STATUS_LABELS.cancelled },
-      ],
-    },
   ]);
 
   const q = ((values.q as string) ?? '').toLowerCase();
-  const statusFilter = (values.status as StatusFilter) || 'all';
+  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
   const empPickerList = React.useMemo(() => {
@@ -79,16 +71,29 @@ export function EmployeeAdvancesClient() {
   const [error, setError] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
 
-  const filtered = React.useMemo(() =>
-    items
-      .filter(x => {
+  const narrowedForStatus = React.useMemo(
+    () =>
+      items.filter((x) => {
         const matchQ = !q || x.employeeNameAr.includes(q) || x.note.toLowerCase().includes(q);
-        const matchS = statusFilter === 'all' || x.status === statusFilter;
         const matchEmp = selectedEmpIds.size === 0 || selectedEmpIds.has(x.employeeId);
-        return matchQ && matchS && matchEmp;
-      })
-      .sort((a, b) => b.advanceDate.localeCompare(a.advanceDate)),
-    [items, q, statusFilter, selectedEmpIds],
+        return matchQ && matchEmp;
+      }),
+    [items, q, selectedEmpIds],
+  );
+
+  const advanceStatusCounts = React.useMemo((): Record<string, number> => ({
+    all: narrowedForStatus.length,
+    outstanding: narrowedForStatus.filter((x) => x.status === 'outstanding').length,
+    repaid: narrowedForStatus.filter((x) => x.status === 'repaid').length,
+    cancelled: narrowedForStatus.filter((x) => x.status === 'cancelled').length,
+  }), [narrowedForStatus]);
+
+  const filtered = React.useMemo(
+    () =>
+      narrowedForStatus
+        .filter((x) => statusFilter === 'all' || x.status === statusFilter)
+        .sort((a, b) => b.advanceDate.localeCompare(a.advanceDate)),
+    [narrowedForStatus, statusFilter],
   );
 
   const total = filtered.length;
@@ -141,20 +146,36 @@ export function EmployeeAdvancesClient() {
     <>
       <SetPageTitle titleAr="سلف الموظفين" descriptionAr="تسجيل وإدارة سلف الموظفين واسترداداتها." iconName="Banknote" />
 
-      {/* ── Toolbar ── */}
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <span className="text-sm text-muted-foreground">{total} سلفة</span>
-        <div className="flex items-center gap-2 flex-wrap">
-          <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
-          {filtered.length > 0 && (
-            <Button variant="outline" onClick={downloadCsv} className="gap-1.5">
-              <Download className="h-3.5 w-3.5" />تصدير
-            </Button>
+      <div className="mb-4 space-y-2">
+        <EntityFilterToolbar
+          showDateSection={false}
+          empPickerEmployees={empPickerList}
+          selectedEmpIds={selectedEmpIds}
+          onSelectedEmpIdsChange={setSelectedEmpIds}
+          statusFilter={statusFilter}
+          onStatusFilterChange={(v) => setStatusFilter(v as StatusFilter)}
+          statusOrder={['outstanding', 'repaid', 'cancelled']}
+          statusLabels={{
+            outstanding: ADVANCE_STATUS_LABELS.outstanding,
+            repaid: ADVANCE_STATUS_LABELS.repaid,
+            cancelled: ADVANCE_STATUS_LABELS.cancelled,
+          }}
+          statusCounts={advanceStatusCounts}
+          onDateBoundsChange={() => {}}
+          trailingActions={(
+            <>
+              {filtered.length > 0 && (
+                <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
+                  <Download className="h-3.5 w-3.5" />تصدير
+                </Button>
+              )}
+              <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
+                <Plus className="h-4 w-4" />سلفة جديدة
+              </Button>
+            </>
           )}
-          <Button onClick={openCreate} className="gap-1.5">
-            <Plus className="h-4 w-4" />سلفة جديدة
-          </Button>
-        </div>
+        />
+        <p className="text-sm text-muted-foreground">{total} سلفة</p>
       </div>
 
       {filtered.length === 0 ? (
@@ -178,7 +199,7 @@ export function EmployeeAdvancesClient() {
               </div>
               <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-center">
                 <p className="text-xl font-bold tabular-nums text-foreground">
-                  {x.amount.toLocaleString('ar-SA')}
+                  {formatNumber(x.amount)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">{x.currency}</p>
               </div>

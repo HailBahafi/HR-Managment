@@ -2,14 +2,14 @@
 
 import * as React from 'react';
 import {
-  Plus, Eye, Trash2, Send, CheckCircle2, XCircle, Edit3, ShieldAlert, CalendarDays, User,
+  Plus, Eye, Trash2, Send, CheckCircle2, XCircle, Edit3, ShieldAlert, CalendarDays, User, FileDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
@@ -26,7 +26,10 @@ import {
   CASE_MAIN_FLOW,
   caseMainFlowIndex,
 } from '@/lib/hr-discipline/types';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatTime } from '@/lib/utils';
+import { data } from '@/lib/data';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { ViolationCasesRegisterPdf } from '@/components/pdf/violation-cases-register-pdf';
 import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
 import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
 import {
@@ -89,8 +92,18 @@ interface DraftForm {
 }
 const EMPTY: DraftForm = { employeeId: '', date: '', violationTypeId: '', description: '', notes: '', attachmentsNote: '' };
 
+function isViolationCaseRecord(c: unknown): c is HRViolationCaseRecord {
+  return (
+    c != null &&
+    typeof (c as HRViolationCaseRecord).id === 'string' &&
+    typeof (c as HRViolationCaseRecord).caseNumber === 'string' &&
+    typeof (c as HRViolationCaseRecord).employeeId === 'string'
+  );
+}
+
 export function ViolationCasesClient() {
   const { cases, add, submit, remove, approve, reject, requestEdit } = useHRViolationCasesStore();
+  const safeCases = React.useMemo(() => cases.filter(isViolationCaseRecord), [cases]);
   const { types } = useHRViolationTypesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
@@ -100,9 +113,9 @@ export function ViolationCasesClient() {
 
   const empPickerList = React.useMemo(() => {
     const map = new Map<string, string>();
-    for (const c of cases) map.set(c.employeeId, c.employeeNameAr);
+    for (const c of safeCases) map.set(c.employeeId, c.employeeNameAr);
     return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [cases]);
+  }, [safeCases]);
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -121,6 +134,7 @@ export function ViolationCasesClient() {
     hasRestriction: false,
   });
   const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
+  const [pdfOpen, setPdfOpen] = React.useState(false);
 
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
     setDateBounds(b);
@@ -163,12 +177,12 @@ export function ViolationCasesClient() {
 
   const searchFiltered = React.useMemo(
     () =>
-      cases.filter(
+      safeCases.filter(
         (c) =>
           (c.caseNumber.includes(q) || c.employeeNameAr.includes(q) || c.typeNameAr.includes(q)) &&
           (selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId)),
       ),
-    [cases, q, selectedEmpIds],
+    [safeCases, q, selectedEmpIds],
   );
 
   const filtered = React.useMemo(
@@ -182,6 +196,35 @@ export function ViolationCasesClient() {
     () => filtered.filter((c) => statusFilter === 'all' || c.status === statusFilter),
     [filtered, statusFilter],
   );
+
+  const violationPdfRows = React.useMemo(
+    () =>
+      listFiltered.map((c) => ({
+        caseNumber: c.caseNumber,
+        employeeNameAr: c.employeeNameAr,
+        typeNameAr: c.typeNameAr,
+        date: c.date,
+        statusAr: CASE_STATUS_LABELS[c.status],
+        description: c.description,
+      })),
+    [listFiltered],
+  );
+
+  const violationPdfDoc = React.useMemo(
+    () =>
+      violationPdfRows.length === 0 ? null : (
+        <ViolationCasesRegisterPdf
+          companyNameAr={data.company.name}
+          companyNameEn={data.company.nameEn}
+          titleAr="سجل مخالفات الموظفين"
+          filterSummary={`الموظفون: ${selectedEmpIds.size === 0 ? 'الكل' : `${selectedEmpIds.size} محدد`} · الحالة: ${statusFilter === 'all' ? 'الكل' : CASE_STATUS_LABELS[statusFilter]} · التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}${q.trim() ? ` · بحث: ${q}` : ''}`}
+          rows={violationPdfRows}
+        />
+      ),
+    [violationPdfRows, selectedEmpIds.size, statusFilter, dateBounds.from, dateBounds.to, q],
+  );
+
+  const violationPdfFileName = 'violation-cases.pdf';
 
   const statusCounts = React.useMemo(() => {
     const counts: Partial<Record<StatusFilter, number>> = { all: filtered.length };
@@ -240,10 +283,35 @@ export function ViolationCasesClient() {
 
   return (
     <div className="space-y-4">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير سجل المخالفات"
+        fileName={violationPdfFileName}
+        document={violationPdfDoc}
+      />
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
         primaryActionLabel="مخالفة جديدة"
         onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
+        toolbarExtraTrailing={(
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => {
+              if (violationPdfRows.length === 0) {
+                toast.error('لا توجد مخالفات للتصدير ضمن الفلاتر الحالية.');
+                return;
+              }
+              setPdfOpen(true);
+            }}
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            تصدير PDF
+          </Button>
+        )}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -542,6 +610,7 @@ export function ViolationCasesClient() {
         <DialogContent className="sm:max-w-lg border-border">
           <DialogHeader>
             <DialogTitle className="font-display">{viewCase?.caseNumber}</DialogTitle>
+            <DialogDescription className="sr-only">تفاصيل المخالفة والموظف وحالة المسار.</DialogDescription>
           </DialogHeader>
           {viewCase && (
             <div className="space-y-4 text-sm">
@@ -575,7 +644,9 @@ export function ViolationCasesClient() {
                           <span className={cn('font-medium', entry.action === 'approved' ? 'text-emerald-600' : entry.action === 'rejected' ? 'text-red-600' : 'text-amber-600')}>{entry.action === 'approved' ? 'معتمد' : entry.action === 'rejected' ? 'مرفوض' : 'طلب تعديل'}</span>
                         </div>
                         {entry.note && <p className="mt-1 text-muted-foreground">{entry.note}</p>}
-                        <p className="mt-1 text-muted-foreground">{new Date(entry.at).toLocaleString('ar-SA')}</p>
+                        <p className="mt-1 text-muted-foreground">
+                          {formatDate(entry.at)} · {formatTime(entry.at)}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -596,7 +667,10 @@ export function ViolationCasesClient() {
       {/* Reject Modal */}
       <Dialog open={!!rejectModal} onOpenChange={v => !v && setRejectModal(null)}>
         <DialogContent className="sm:max-w-sm border-border">
-          <DialogHeader><DialogTitle>رفض المخالفة {rejectModal?.caseNumber}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>رفض المخالفة {rejectModal?.caseNumber}</DialogTitle>
+            <DialogDescription className="sr-only">أدخل سبب الرفض اختياريًا ثم أكّد.</DialogDescription>
+          </DialogHeader>
           <Input value={rejectNote} onChange={e => setRejectNote(e.target.value)} placeholder="سبب الرفض (اختياري)…" />
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setRejectModal(null)}>إلغاء</Button>
@@ -608,7 +682,10 @@ export function ViolationCasesClient() {
       {/* Request Edit Modal */}
       <Dialog open={!!editModal} onOpenChange={v => !v && setEditModal(null)}>
         <DialogContent className="sm:max-w-sm border-border">
-          <DialogHeader><DialogTitle>طلب تعديل {editModal?.caseNumber}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>طلب تعديل {editModal?.caseNumber}</DialogTitle>
+            <DialogDescription className="sr-only">صف الملاحظات المطلوبة للتعديل ثم أرسل الطلب.</DialogDescription>
+          </DialogHeader>
           <Input value={editNote} onChange={e => setEditNote(e.target.value)} placeholder="ملاحظة التعديل المطلوب…" />
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditModal(null)}>إلغاء</Button>

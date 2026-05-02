@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { Eye, Trash2, Plus, RefreshCw, Search, Check, X } from 'lucide-react';
-import { EmployeePicker } from '@/components/ui/employee-picker';
 import { Button } from '@/components/ui/button';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Separator } from '@/components/ui/separator';
 import { usePageFilters } from '@/components/filter-panel-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -26,7 +26,35 @@ import {
   approvalStageStateLabelAr,
   getPerStageApprovalUi,
 } from '@/lib/hr-requests/types';
-import { cn } from '@/lib/utils';
+import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+import { cn, formatDateShort } from '@/lib/utils';
+
+const REQUEST_APPROVAL_TAB_ORDER = ['in_progress', 'approved', 'rejected', 'no_approval'] as const;
+
+const REQUEST_APPROVAL_TAB_LABELS: Record<string, string> = {
+  in_progress: 'قيد الموافقة',
+  approved: 'معتمد',
+  rejected: 'مرفوض',
+  no_approval: 'بدون مسار موافقات',
+};
+
+function submissionCreatedYmd(s: HRRequestSubmissionRecord): string {
+  const raw = s.createdAt;
+  if (typeof raw === 'string' && raw.length >= 10) return raw.slice(0, 10);
+  try {
+    return new Date(raw as string).toISOString().slice(0, 10);
+  } catch {
+    return '';
+  }
+}
+
+function submissionApprovalTab(s: HRRequestSubmissionRecord): (typeof REQUEST_APPROVAL_TAB_ORDER)[number] {
+  const ap = s.approvalSnapshot;
+  if (!ap?.stages?.length) return 'no_approval';
+  const sum = deriveSubmissionApprovalSummary(ap);
+  if (!sum) return 'no_approval';
+  return sum.overall;
+}
 
 function formatFieldSummary(record: HRRequestSubmissionRecord, template: HRRequestTemplateEntity | undefined): string {
   if (!template) return '—';
@@ -95,6 +123,8 @@ export function GeneralRequestsClient() {
   const appliedDept = (values.dept as string) ?? 'all';
   const appliedEmp = (values.emp as string) ?? '';
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [approvalStatusFilter, setApprovalStatusFilter] = React.useState<string>('all');
 
   const empPickerList = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -114,17 +144,37 @@ export function GeneralRequestsClient() {
       ?? templates[0];
   }, [selectedRt, templates, getTemplateById]);
 
-  // Filter
-  const filtered = React.useMemo(() => {
+  const narrowedForStatusCounts = React.useMemo(() => {
     const q = appliedSearch.toLowerCase();
-    return submissions.filter(s => {
+    return submissions.filter((s) => {
       if (appliedDept !== 'all' && s.departmentId !== appliedDept) return false;
       if (appliedEmp && s.employeeId !== appliedEmp) return false;
       if (selectedEmpIds.size > 0 && !selectedEmpIds.has(s.employeeId)) return false;
       if (q && !s.departmentNameAr.includes(q) && !s.requestTypeNameAr.includes(q) && !s.employeeNameAr.includes(q) && !JSON.stringify(s.fieldValues).toLowerCase().includes(q)) return false;
+      const ymd = submissionCreatedYmd(s);
+      if (!matchesDateRange(ymd, dateBounds.from, dateBounds.to)) return false;
       return true;
     });
-  }, [submissions, appliedSearch, appliedDept, appliedEmp, selectedEmpIds]);
+  }, [submissions, appliedSearch, appliedDept, appliedEmp, selectedEmpIds, dateBounds.from, dateBounds.to]);
+
+  const approvalStatusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {
+      all: narrowedForStatusCounts.length,
+      in_progress: 0,
+      approved: 0,
+      rejected: 0,
+      no_approval: 0,
+    };
+    for (const s of narrowedForStatusCounts) {
+      counts[submissionApprovalTab(s)] += 1;
+    }
+    return counts;
+  }, [narrowedForStatusCounts]);
+
+  const filtered = React.useMemo(() => {
+    if (approvalStatusFilter === 'all') return narrowedForStatusCounts;
+    return narrowedForStatusCounts.filter((s) => submissionApprovalTab(s) === approvalStatusFilter);
+  }, [narrowedForStatusCounts, approvalStatusFilter]);
 
 
   const refresh = () => {
@@ -201,9 +251,18 @@ export function GeneralRequestsClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-2 flex-wrap">
-        {activeEmployees.length > 0 && (
-          <div className="flex items-center gap-2 me-auto">
+      <EntityFilterToolbar
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={approvalStatusFilter}
+        onStatusFilterChange={setApprovalStatusFilter}
+        statusOrder={REQUEST_APPROVAL_TAB_ORDER}
+        statusLabels={REQUEST_APPROVAL_TAB_LABELS}
+        statusCounts={approvalStatusCounts}
+        onDateBoundsChange={setDateBounds}
+        beforeEmployeePicker={activeEmployees.length > 0 ? (
+          <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground shrink-0">موافق كـ:</span>
             <MinimalDropdown
               value={actingReviewerId}
@@ -212,15 +271,18 @@ export function GeneralRequestsClient() {
               placeholder="المعتمد"
             />
           </div>
+        ) : undefined}
+        trailingActions={(
+          <>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={refresh} disabled={refreshing}>
+              <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> تحديث
+            </Button>
+            <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={() => { resetCreate(); setCreateOpen(true); }}>
+              <Plus className="h-4 w-4" /> طلب جديد
+            </Button>
+          </>
         )}
-        <EmployeePicker employees={empPickerList} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={refresh} disabled={refreshing}>
-          <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> تحديث
-        </Button>
-        <Button variant="luxe" className="gap-2" onClick={() => { resetCreate(); setCreateOpen(true); }}>
-          <Plus className="h-4 w-4" /> طلب جديد
-        </Button>
-      </div>
+      />
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
@@ -355,7 +417,7 @@ export function GeneralRequestsClient() {
                     </div>
                   )}
                   <p className="text-[10px] text-muted-foreground">
-                    {new Date(r.createdAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {formatDateShort(r.createdAt)}
                   </p>
                   <div className="mt-auto flex gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
                     <Button variant="ghost" size="sm" className="gap-1.5 flex-1" onClick={() => setViewRecord(r)}>

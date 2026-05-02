@@ -51,7 +51,7 @@ import { useAttendanceStore } from '@/lib/attendance/store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
 import { CASE_STATUS_LABELS, type HRViolationCaseStatus } from '@/lib/hr-discipline/types';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
-import { cn, formatCurrency, formatDate, getInitials } from '@/lib/utils';
+import { cn, formatCurrency, formatDate, formatNumber, getInitials } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1733,7 +1733,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 {c.allowanceLines.map((al, i) => (
                                   <span key={i} className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
-                                    {ALLOW_LABELS[al.allowanceTypeId] ?? al.allowanceTypeId} {al.amount.toLocaleString()}
+                                    {ALLOW_LABELS[al.allowanceTypeId] ?? al.allowanceTypeId} {formatNumber(al.amount)}
                                   </span>
                                 ))}
                               </div>

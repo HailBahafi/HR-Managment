@@ -1,19 +1,28 @@
 'use client';
 
 import * as React from 'react';
-import { TrendingUp, Users, CalendarOff, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  TrendingUp, Users, CalendarOff, Clock, ChevronLeft, ChevronRight, FileDown,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, toWesternDigits } from '@/lib/utils';
 import {
   MOCK_ANALYTICS_EMPLOYEES,
   MOCK_ANALYTICS_TIMELINE_BARS,
   MOCK_BRANCHES,
   MOCK_UNIFIED_LEAVES,
+  STATUS_LABELS,
 } from '@/lib/leaves/unified-mock';
-import type { EmployeeLeaveAnalyticsRow, TimelineLeaveBar } from '@/lib/leaves/types';
+import type { EmployeeLeaveAnalyticsRow, UnifiedLeaveRecord } from '@/lib/leaves/types';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { LeavesAnalyticsPdf } from '@/components/pdf/leaves-analytics-pdf';
+import { data } from '@/lib/data';
+import { hasDateRangeFilter, intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
 
 // ─── colour maps ─────────────────────────────────────────────────────────────
 
@@ -48,13 +57,13 @@ function KpiCard({ label, value, sub, icon: Icon, accent }: { label: string; val
 
 // ─── Branch breakdown bar ─────────────────────────────────────────────────────
 
-function BranchBar() {
+function BranchBar({ leaves }: { leaves: UnifiedLeaveRecord[] }) {
   const counts = React.useMemo(() => {
     const map: Record<string, number> = {};
-    MOCK_UNIFIED_LEAVES.forEach((l) => { map[l.requestBranchId] = (map[l.requestBranchId] ?? 0) + 1; });
+    leaves.forEach((l) => { map[l.requestBranchId] = (map[l.requestBranchId] ?? 0) + 1; });
     const total = Object.values(map).reduce((a, b) => a + b, 0) || 1;
     return MOCK_BRANCHES.map((b) => ({ ...b, count: map[b.id] ?? 0, pct: Math.round(((map[b.id] ?? 0) / total) * 100) }));
-  }, []);
+  }, [leaves]);
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-4">
@@ -135,7 +144,9 @@ function TimelineView() {
   const year = now.getFullYear();
   const month = now.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = now.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' });
+  const monthLabel = toWesternDigits(
+    now.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric', numberingSystem: 'latn' }),
+  );
 
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
@@ -213,36 +224,197 @@ function TimelineView() {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+const ANALYTICS_LEAVE_STATUS_ORDER = ['pending', 'approved', 'rejected', 'cancelled'] as const;
+
 export function AnalyticsClient() {
   const [branchFilter, setBranchFilter] = React.useState('all');
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+  const [leaveStatusFilter, setLeaveStatusFilter] = React.useState<string>('all');
+  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [pdfOpen, setPdfOpen] = React.useState(false);
 
-  const totalLeaves = MOCK_UNIFIED_LEAVES.length;
-  const approved = MOCK_UNIFIED_LEAVES.filter((l) => l.status === 'approved').length;
-  const pending = MOCK_UNIFIED_LEAVES.filter((l) => l.status === 'pending').length;
-  const totalDays = MOCK_UNIFIED_LEAVES.reduce((s, l) => s + l.workingDays, 0);
+  const empPickerList = React.useMemo(
+    () => MOCK_ANALYTICS_EMPLOYEES.map((e) => ({ id: e.id, name: e.nameAr })),
+    [],
+  );
 
-  const filteredEmployees = branchFilter === 'all'
-    ? MOCK_ANALYTICS_EMPLOYEES
-    : MOCK_ANALYTICS_EMPLOYEES.filter((e) => e.branchId === branchFilter);
+  const leavesInRange = React.useMemo(
+    () => MOCK_UNIFIED_LEAVES.filter((l) => intervalOverlapsYmdRange(l.start, l.end, dateBounds.from, dateBounds.to)),
+    [dateBounds.from, dateBounds.to],
+  );
+
+  const leaveStatusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {
+      all: leavesInRange.length,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      cancelled: 0,
+    };
+    for (const l of leavesInRange) counts[l.status] = (counts[l.status] ?? 0) + 1;
+    return counts;
+  }, [leavesInRange]);
+
+  const leavesMatchingToolbar = React.useMemo(() => {
+    return leavesInRange.filter((l) => leaveStatusFilter === 'all' || l.status === leaveStatusFilter);
+  }, [leavesInRange, leaveStatusFilter]);
+
+  const totalLeaves = leavesMatchingToolbar.length;
+  const approved = leavesMatchingToolbar.filter((l) => l.status === 'approved').length;
+  const pending = leavesMatchingToolbar.filter((l) => l.status === 'pending').length;
+  const totalDays = leavesMatchingToolbar.reduce((s, l) => s + l.workingDays, 0);
+
+  const visibleEmployeeIds = React.useMemo(() => {
+    const ids = new Set(leavesMatchingToolbar.map((l) => l.employeeId));
+    const restrict = hasDateRangeFilter(dateBounds.from, dateBounds.to) || leaveStatusFilter !== 'all';
+    return { ids, restrict };
+  }, [leavesMatchingToolbar, dateBounds.from, dateBounds.to, leaveStatusFilter]);
+
+  const filteredEmployees = React.useMemo(() => {
+    return MOCK_ANALYTICS_EMPLOYEES
+      .filter((e) => branchFilter === 'all' || e.branchId === branchFilter)
+      .filter((e) => selectedEmpIds.size === 0 || selectedEmpIds.has(e.id))
+      .filter((e) => {
+        if (!visibleEmployeeIds.restrict) return true;
+        return visibleEmployeeIds.ids.has(e.id);
+      });
+  }, [branchFilter, selectedEmpIds, visibleEmployeeIds]);
+
+  const statusLabelsForToolbar: Record<string, string> = {
+    pending: STATUS_LABELS.pending,
+    approved: STATUS_LABELS.approved,
+    rejected: STATUS_LABELS.rejected,
+    cancelled: STATUS_LABELS.cancelled,
+  };
+
+  const empNameById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of MOCK_ANALYTICS_EMPLOYEES) m.set(e.id, e.nameAr);
+    return m;
+  }, []);
+
+  const leavePdfRows = React.useMemo(
+    () =>
+      leavesMatchingToolbar.map((l) => ({
+        employeeNameAr: empNameById.get(l.employeeId) ?? l.employeeId,
+        start: l.start,
+        end: l.end,
+        typeAr: TYPE_LABEL[l.type] ?? l.type,
+        statusAr: STATUS_LABELS[l.status] ?? l.status,
+        workingDays: l.workingDays,
+      })),
+    [leavesMatchingToolbar, empNameById],
+  );
+
+  const employeePdfRows = React.useMemo(
+    () =>
+      filteredEmployees.map((row) => {
+        const branch = MOCK_BRANCHES.find((b) => b.id === row.branchId);
+        return {
+          nameAr: row.nameAr,
+          annual: `${row.annualConsumed}/${row.annualTotal}`,
+          sick: `${row.sickUsed}/${row.sickCap}`,
+          branch: branch?.nameAr ?? row.branchId,
+        };
+      }),
+    [filteredEmployees],
+  );
+
+  const analyticsPdfDoc = React.useMemo(() => {
+    const hasLeaves = leavePdfRows.length > 0;
+    const hasEmps = employeePdfRows.length > 0;
+    if (!hasLeaves && !hasEmps) return null;
+    return (
+      <LeavesAnalyticsPdf
+        companyNameAr={data.company.name}
+        companyNameEn={data.company.nameEn}
+        filterSummary={`الفرع: ${branchFilter === 'all' ? 'الكل' : (MOCK_BRANCHES.find((b) => b.id === branchFilter)?.nameAr ?? branchFilter)} · الموظفون: ${selectedEmpIds.size === 0 ? 'الكل' : `${selectedEmpIds.size} محدد`} · حالة الإجازة: ${leaveStatusFilter === 'all' ? 'الكل' : (statusLabelsForToolbar[leaveStatusFilter] ?? leaveStatusFilter)} · التاريخ: ${hasDateRangeFilter(dateBounds.from, dateBounds.to) ? `${dateBounds.from} — ${dateBounds.to}` : 'غير محدد (كل الفترات في العينة)'}`}
+        kpi={{ total: totalLeaves, approved, pending, workDays: totalDays }}
+        leaveRows={leavePdfRows}
+        employeeRows={employeePdfRows}
+      />
+    );
+  }, [
+    leavePdfRows,
+    employeePdfRows,
+    branchFilter,
+    selectedEmpIds.size,
+    leaveStatusFilter,
+    dateBounds.from,
+    dateBounds.to,
+    totalLeaves,
+    approved,
+    pending,
+    totalDays,
+  ]);
+
+  const analyticsPdfFileName = 'leaves-analytics.pdf';
 
   return (
     <div className="space-y-6">
-      {/* Employee cards */}
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير تحليلات الإجازات"
+        fileName={analyticsPdfFileName}
+        document={analyticsPdfDoc}
+      />
+      <EntityFilterToolbar
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={leaveStatusFilter}
+        onStatusFilterChange={setLeaveStatusFilter}
+        statusOrder={ANALYTICS_LEAVE_STATUS_ORDER}
+        statusLabels={statusLabelsForToolbar}
+        statusCounts={leaveStatusCounts}
+        onDateBoundsChange={setDateBounds}
+        trailingActions={(
+          <>
+            <Select value={branchFilter} onValueChange={setBranchFilter}>
+              <SelectTrigger className="h-8 w-[160px] text-xs">
+                <SelectValue placeholder="الفرع" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الفروع</SelectItem>
+                {MOCK_BRANCHES.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => {
+                if (!analyticsPdfDoc) {
+                  toast.error('لا توجد بيانات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              تصدير PDF
+            </Button>
+          </>
+        )}
+      />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <KpiCard label="إجمالي الطلبات" value={totalLeaves} icon={Users} accent="bg-primary text-primary-foreground" />
+        <KpiCard label="موافق عليها" value={approved} icon={TrendingUp} accent="bg-emerald-600 text-white" />
+        <KpiCard label="قيد الانتظار" value={pending} icon={Clock} accent="bg-amber-500 text-white" />
+        <KpiCard label="أيام عمل (محاكاة)" value={totalDays} sub="مجموع أيام العمل في الطلبات المصفّاة" icon={CalendarOff} accent="bg-pink-500 text-white" />
+      </div>
+
+      <BranchBar leaves={leavesMatchingToolbar} />
+
+      <TimelineView />
+
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <p className="font-semibold">أرصدة الموظفين</p>
-          <Select value={branchFilter} onValueChange={setBranchFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="الفرع" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">جميع الفروع</SelectItem>
-              {MOCK_BRANCHES.map((b) => (
-                <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <p className="mb-4 font-semibold">أرصدة الموظفين</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredEmployees.map((row) => (
             <EmployeeCard key={row.id} row={row} />

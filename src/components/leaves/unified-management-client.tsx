@@ -17,11 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { usePageFilters } from '@/components/filter-panel-context';
 import { LeavesManagementToolbar } from '@/components/leaves/leaves-management-toolbar';
-import {
-  hasDateRangeFilter,
-  recordDateComparable,
-  comparableRangeBounds,
-} from '@/lib/hr-discipline/discipline-date-filter';
+import { intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -31,7 +27,7 @@ import {
   LEAVE_TYPE_LABELS, STATUS_LABELS,
 } from '@/lib/leaves/unified-mock';
 import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/lib/leaves/types';
-import { cn } from '@/lib/utils';
+import { cn, toWesternDigits } from '@/lib/utils';
 
 // ─── Style config ─────────────────────────────────────────────────────────────
 
@@ -60,16 +56,8 @@ function wDays(start: string, end: string): number {
   return Math.max(1, Math.round((e - s) / 86400000) + 1);
 }
 
-/** تقاطع طلب الإجازة مع نطاق YYYY-MM-DD */
 function leaveOverlapsYmdRange(leave: UnifiedLeaveRecord, from: string, to: string): boolean {
-  if (!hasDateRangeFilter(from, to)) return true;
-  const { lo, hi } = comparableRangeBounds(from, to);
-  const ls = recordDateComparable(leave.start);
-  const le = recordDateComparable(leave.end);
-  if (ls == null || le == null) return false;
-  if (lo != null && le < lo) return false;
-  if (hi != null && ls > hi) return false;
-  return true;
+  return intervalOverlapsYmdRange(leave.start, leave.end, from, to);
 }
 
 const LEAVE_STATUS_TOOLBAR_ORDER: LeaveStatus[] = ['pending', 'approved', 'rejected', 'cancelled'];
@@ -431,7 +419,7 @@ function LeaveCalendar({ leaves, month, onMonthChange, onDetail }: {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onMonthChange(subMonths(month, 1))}>
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <span className="font-display font-semibold">{format(month, 'MMMM yyyy', { locale: arSA })}</span>
+        <span className="font-display font-semibold">{toWesternDigits(format(month, 'MMMM yyyy', { locale: arSA }))}</span>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onMonthChange(addMonths(month, 1))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>

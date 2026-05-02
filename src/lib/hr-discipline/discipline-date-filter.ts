@@ -60,6 +60,18 @@ export function matchesDateRange(dateStr: string, fromStr: string, toStr: string
   return true;
 }
 
+/** Whether a closed interval [startYmd, endYmd] intersects the filter range (inclusive). */
+export function intervalOverlapsYmdRange(startYmd: string, endYmd: string, fromStr: string, toStr: string): boolean {
+  if (!hasDateRangeFilter(fromStr, toStr)) return true;
+  const { lo, hi } = comparableRangeBounds(fromStr, toStr);
+  const ls = recordDateComparable(startYmd);
+  const le = recordDateComparable(endYmd);
+  if (ls == null || le == null) return false;
+  if (lo != null && le < lo) return false;
+  if (hi != null && ls > hi) return false;
+  return true;
+}
+
 export function ymdToMDYDisplay(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
   if (!m) return '';

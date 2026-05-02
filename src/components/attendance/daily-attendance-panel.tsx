@@ -1,21 +1,25 @@
 'use client';
 
 import * as React from 'react';
-import { format, subDays, parseISO, startOfMonth, endOfMonth, isFriday } from 'date-fns';
+import { format, parseISO, isFriday } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import {
   Clock3,
-  TrendingUp, Users, Timer, CalendarDays, Calendar,
+  TrendingUp, Users, Timer, FileDown,
 } from 'lucide-react';
-import { EmployeePicker } from '@/components/ui/employee-picker';
-import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { AttendanceRegisterPdf } from '@/components/pdf/attendance-register-pdf';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { usePageFilters } from '@/components/filter-panel-context';
+import { hasDateRangeFilter, thisCalendarMonthYMD } from '@/lib/hr-discipline/discipline-date-filter';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import type { AttendanceDaySummary, AttendanceEvent, DaySummaryStatus } from '@/lib/attendance/types';
 import { enumerateDates, minutesFromMidnight, todayIso } from '@/lib/attendance/utils';
 import { data } from '@/lib/data';
-import { cn } from '@/lib/utils';
+import { cn, toWesternDigits } from '@/lib/utils';
 
 // ─── Status config (عرض المستخدم فقط — بدون «غير مكتمل» و«تمديد») ───────────
 
@@ -111,8 +115,6 @@ function densifySummaries(
   return out.sort((a, b) => a.employeeId.localeCompare(b.employeeId) || a.date.localeCompare(b.date));
 }
 
-type Preset   = 'day' | 'week' | 'month' | 'custom';
-
 // Full Arabic day name
 function fmtDayFull(iso: string) {
   return format(parseISO(iso + 'T12:00:00'), 'EEEE', { locale: arSA });
@@ -123,10 +125,12 @@ function fmtDayShort(iso: string) {
   const dow = parseISO(iso + 'T12:00:00').getDay();
   return DAY_NAMES_AR[dow] ?? '';
 }
-function fmtDay(iso: string) { return format(parseISO(iso), 'd', { locale: arSA }); }
-function fmtFull(iso: string) { return format(parseISO(iso + 'T12:00:00'), 'EEEE d MMMM yyyy', { locale: arSA }); }
-function fmtMonthYear(iso: string) { return format(parseISO(iso + 'T12:00:00'), 'MMMM yyyy', { locale: arSA }); }
-
+function fmtDay(iso: string) {
+  return toWesternDigits(format(parseISO(iso), 'd', { locale: arSA }));
+}
+function fmtFull(iso: string) {
+  return toWesternDigits(format(parseISO(iso + 'T12:00:00'), 'EEEE d MMMM yyyy', { locale: arSA }));
+}
 function minutesToHHMM(m: number) {
   const h = Math.floor(m / 60) % 24;
   const mn = m % 60;
@@ -143,58 +147,38 @@ function fmtDecimalHours(hours: number): string {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
+const ATT_VISUAL_STATUS_ORDER: StatusVisualKey[] = ['present', 'late', 'absent', 'early_leave', 'holiday'];
+
 export function DailyAttendancePanel() {
   const daySummaries = useAttendanceStore((s) => s.daySummaries);
   const events       = useAttendanceStore((s) => s.events);
 
-  const [preset, setPreset] = React.useState<Preset>('month');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [customFrom, setCustomFrom] = React.useState('');
-  const [customTo, setCustomTo]   = React.useState('');
-
-  const defaultFrom = format(subDays(new Date(), 6), 'yyyy-MM-dd');
-  const defaultTo   = todayIso();
+  const [dateBounds, setDateBounds] = React.useState(() => thisCalendarMonthYMD());
+  const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [pdfOpen, setPdfOpen] = React.useState(false);
 
   const { values, setValue } = usePageFilters([
-    { key: 'date', label: 'نطاق التاريخ', type: 'daterange' },
-    { key: 'q',    label: 'بحث الموظف',  type: 'text', placeholder: 'اسم الموظف…' },
+    { key: 'q', label: 'بحث الموظف', type: 'text', placeholder: 'اسم الموظف…' },
   ]);
 
-  const from = (values.date_from as string) || defaultFrom;
-  const to   = (values.date_to   as string) || defaultTo;
-  const q    = (values.q as string) ?? '';
-
-  React.useEffect(() => {
-    const start = format(startOfMonth(new Date()), 'yyyy-MM-dd');
-    const end   = format(endOfMonth(new Date()),   'yyyy-MM-dd');
-    setValue('date_from', start);
-    setValue('date_to',   end);
-    setPreset('month');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const applyPreset = (p: Preset) => {
-    setPreset(p);
-    const t = todayIso();
-    if (p === 'day')   { setValue('date_from', t); setValue('date_to', t); }
-    if (p === 'week')  { setValue('date_from', format(subDays(new Date(), 6),  'yyyy-MM-dd')); setValue('date_to', t); }
-    if (p === 'month') {
-      const start = format(startOfMonth(new Date()), 'yyyy-MM-dd');
-      const end   = format(endOfMonth(new Date()),   'yyyy-MM-dd');
-      setValue('date_from', start); setValue('date_to', end);
+  const spanFromStore = React.useMemo(() => {
+    let lo = '';
+    let hi = '';
+    for (const s of daySummaries) {
+      if (!lo || s.date < lo) lo = s.date;
+      if (!hi || s.date > hi) hi = s.date;
     }
-    if (p === 'custom') {
-      setCustomFrom(from);
-      setCustomTo(to);
-    }
-  };
+    if (!lo) return thisCalendarMonthYMD();
+    return { from: lo, to: hi };
+  }, [daySummaries]);
 
-  const applyCustomRange = () => {
-    if (customFrom && customTo && customFrom <= customTo) {
-      setValue('date_from', customFrom);
-      setValue('date_to',   customTo);
-    }
-  };
+  const { from, to } = React.useMemo(() => {
+    if (hasDateRangeFilter(dateBounds.from, dateBounds.to)) return dateBounds;
+    return spanFromStore;
+  }, [dateBounds, spanFromStore]);
+
+  const q = (values.q as string) ?? '';
 
   const dates = React.useMemo(() => enumerateDates(from, to), [from, to]);
 
@@ -229,25 +213,142 @@ export function DailyAttendancePanel() {
     [filtered, dates, roster],
   );
 
-  const stats = React.useMemo(() => {
-    const workedM   = denseSummaries.reduce((a, s) => a + s.workedMinutes, 0);
-    const lateM     = denseSummaries.reduce((a, s) => a + s.lateMinutes, 0);
-    const absentDays = denseSummaries.filter((s) => s.status === 'absent').length;
-    const denom = denseSummaries.length || 1;
-    return {
-      workHours:    workedM / 60,
-      lateHours:    lateM / 60,
-      absentHours:  absentDays * DEFAULT_ABSENT_DAY_HOURS,
-      avgWorkHours: workedM / 60 / denom,
-    };
+  const attendanceStatusLabels = React.useMemo(
+    () => Object.fromEntries(ATT_VISUAL_STATUS_ORDER.map((k) => [k, STATUS[k].label])) as Record<string, string>,
+    [],
+  );
+
+  const attendanceStatusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { all: denseSummaries.length };
+    for (const k of ATT_VISUAL_STATUS_ORDER) counts[k] = 0;
+    for (const s of denseSummaries) {
+      counts[resolveVisualKey(s.status)] += 1;
+    }
+    return counts;
   }, [denseSummaries]);
 
-  const PRESET_LABELS: Record<Preset, string> = {
-    day: 'اليوم', week: 'أسبوع', month: 'شهر', custom: 'مخصص',
-  };
+  const denseForView = React.useMemo(() => {
+    if (statusFilter === 'all') return denseSummaries;
+    return denseSummaries.filter((s) => resolveVisualKey(s.status) === statusFilter);
+  }, [denseSummaries, statusFilter]);
+
+  const eventsForView = React.useMemo(() => {
+    const keys = new Set(denseForView.map((s) => `${s.employeeId}|${s.date}`));
+    return eventsFiltered.filter((e) => keys.has(`${e.employeeId}|${e.date}`));
+  }, [eventsFiltered, denseForView]);
+
+  const attendancePdfRows = React.useMemo(
+    () =>
+      denseForView.map((s) => ({
+        employeeName: s.employeeName,
+        date: s.date,
+        statusLabel: STATUS[resolveVisualKey(s.status)].label,
+        worked: minutesToHHMM(s.workedMinutes),
+        late: minutesToHHMM(s.lateMinutes),
+      })),
+    [denseForView],
+  );
+
+  const attendancePdfDoc = React.useMemo(
+    () =>
+      attendancePdfRows.length === 0 ? null : (
+        <AttendanceRegisterPdf
+          companyNameAr={data.company.name}
+          companyNameEn={data.company.nameEn}
+          titleAr="تقرير الحضور اليومي"
+          periodDateFrom={from}
+          periodDateTo={to}
+          employeesFilterAll={selectedEmpIds.size === 0}
+          employeesSelectedCount={selectedEmpIds.size}
+          statusFilterLabelAr={
+            statusFilter === 'all' ? 'الكل' : attendanceStatusLabels[statusFilter] ?? statusFilter
+          }
+          rows={attendancePdfRows}
+        />
+      ),
+    [attendancePdfRows, from, to, selectedEmpIds.size, statusFilter, attendanceStatusLabels],
+  );
+
+  const attendancePdfFileName = `attendance-${from}-${to}.pdf`;
+
+  const stats = React.useMemo(() => {
+    const workedM = denseForView.reduce((a, s) => a + s.workedMinutes, 0);
+    const lateM = denseForView.reduce((a, s) => a + s.lateMinutes, 0);
+    const absentDays = denseForView.filter((s) => resolveVisualKey(s.status) === 'absent').length;
+    const denom = denseForView.length || 1;
+    return {
+      workHours: workedM / 60,
+      lateHours: lateM / 60,
+      absentHours: absentDays * DEFAULT_ABSENT_DAY_HOURS,
+      avgWorkHours: workedM / 60 / denom,
+    };
+  }, [denseForView]);
 
   return (
     <div className="space-y-4">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير الحضور"
+        fileName={attendancePdfFileName}
+        document={attendancePdfDoc}
+      />
+      <EntityFilterToolbar
+        defaultDateFilterTab="month"
+        empPickerEmployees={allEmployees}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        statusOrder={ATT_VISUAL_STATUS_ORDER}
+        statusLabels={attendanceStatusLabels}
+        statusCounts={attendanceStatusCounts}
+        onDateBoundsChange={setDateBounds}
+        trailingActions={(
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => {
+                if (attendancePdfRows.length === 0) {
+                  toast.error('لا توجد سجلات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              تصدير PDF
+            </Button>
+            <Input
+              value={q}
+              onChange={(e) => setValue('q', e.target.value)}
+              placeholder="اسم الموظف…"
+              className="h-8 w-44 text-xs"
+            />
+          </>
+        )}
+      />
+      <p className="text-xs text-muted-foreground">
+        {fmtFull(from)}
+        {dates.length > 1 ? (
+          <>
+            {' '}
+            —
+            {' '}
+            {fmtFull(to)}
+            {' '}
+            ·
+            {' '}
+            <span className="tabular-nums">{dates.length}</span>
+            {' '}
+            يوم
+          </>
+        ) : null}
+      </p>
+
       {/* ── Stats strip ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -268,92 +369,10 @@ export function DailyAttendancePanel() {
         ))}
       </div>
 
-      {/* ── Controls ── */}
-      <div className="rounded-xl border border-border bg-card shadow-soft">
-        {/* Preset tabs */}
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 pt-3 pb-0 flex-wrap">
-          <div className="flex gap-0">
-            {(['day','week','month','custom'] as Preset[]).map((p) => (
-              <button key={p} type="button" onClick={() => applyPreset(p)}
-                className={cn(
-                  'relative px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
-                  preset === p
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                )}
-              >
-                {PRESET_LABELS[p]}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2 pb-3">
-            <EmployeePicker employees={allEmployees} selected={selectedEmpIds} onChange={setSelectedEmpIds} />
-          </div>
-        </div>
-
-        {/* Custom date range picker */}
-        {preset === 'custom' && (
-          <div className="flex flex-wrap items-end gap-3 px-4 py-3 border-b border-border bg-muted/20">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground">من</span>
-              <Input
-                type="date"
-                value={customFrom}
-                onChange={e => setCustomFrom(e.target.value)}
-                className="h-8 w-36 text-xs"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">إلى</span>
-              <Input
-                type="date"
-                value={customTo}
-                min={customFrom}
-                onChange={e => setCustomTo(e.target.value)}
-                className="h-8 w-36 text-xs"
-              />
-            </div>
-            <Button
-              size="sm"
-              variant="luxe"
-              className="h-8 text-xs"
-              onClick={applyCustomRange}
-              disabled={!customFrom || !customTo || customFrom > customTo}
-            >
-              <Calendar className="h-3.5 w-3.5 ml-1" />
-              تطبيق
-            </Button>
-            {from && to && (
-              <span className="text-xs text-muted-foreground">
-                {fmtFull(from)} ← {fmtFull(to)} · {dates.length} يوم
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Date range label for non-custom */}
-        {preset !== 'custom' && (
-          <div className="px-4 py-2 flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">
-              {preset === 'day'
-                ? fmtFull(from)
-                : preset === 'month'
-                  ? fmtMonthYear(from)
-                  : `${fmtFull(from)} — ${fmtFull(to)}`
-              }
-              {dates.length > 1 && <> · <span className="tabular-nums">{dates.length}</span> يوم</>}
-            </span>
-          </div>
-        )}
-      </div>
-
       {/* ── خط زمني فقط (مع إكمال كل الخلايا) ── */}
       <SmartTimeline
-        summaries={denseSummaries}
-        events={eventsFiltered}
+        summaries={denseForView}
+        events={eventsForView}
         dates={dates}
         from={from}
         to={to}

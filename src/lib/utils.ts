@@ -5,42 +5,64 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Arabic-Indic (٠–٩) and Persian (۰–۹) → Western ASCII digits (0–9). */
+export function toWesternDigits(input: string): string {
+  return input.replace(/[\u0660-\u0669\u06f0-\u06f9]/g, (ch) => {
+    const code = ch.codePointAt(0)!;
+    if (code >= 0x0660 && code <= 0x0669) return String(code - 0x0660);
+    if (code >= 0x06f0 && code <= 0x06f9) return String(code - 0x06f0);
+    return ch;
+  });
+}
+
+const LATN: Pick<Intl.NumberFormatOptions, 'numberingSystem'> = { numberingSystem: 'latn' };
+
 export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('ar-SA', {
-    style: 'currency',
-    currency: 'SAR',
+  const n = Math.round(value);
+  const s = new Intl.NumberFormat('en-US', {
+    ...LATN,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(n);
+  return `${s} ر.س`;
 }
 
 export function formatNumber(value: number): string {
-  return new Intl.NumberFormat('ar-SA').format(value);
+  return new Intl.NumberFormat('en-US', {
+    ...LATN,
+    maximumFractionDigits: 20,
+  }).format(value);
 }
 
 export function formatDate(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('ar-SA', {
+  const s = new Intl.DateTimeFormat('ar-SA', {
+    ...LATN,
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   }).format(d);
+  return toWesternDigits(s);
 }
 
 export function formatDateShort(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('ar-SA', {
+  const s = new Intl.DateTimeFormat('ar-SA', {
+    ...LATN,
     month: 'short',
     day: 'numeric',
   }).format(d);
+  return toWesternDigits(s);
 }
 
 export function formatTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('ar-SA', {
+  const s = new Intl.DateTimeFormat('ar-SA', {
+    ...LATN,
     hour: '2-digit',
     minute: '2-digit',
   }).format(d);
+  return toWesternDigits(s);
 }
 
 export function getInitials(name: string): string {

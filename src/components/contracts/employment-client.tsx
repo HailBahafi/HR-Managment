@@ -30,7 +30,7 @@ import { useHRContractTemplatesStore } from '@/lib/contracts/contract-templates-
 import { useHRAllowanceTypesStore } from '@/lib/contracts/allowance-types-store';
 import { useHRContractArticlesStore } from '@/lib/contracts/contract-articles-store';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 const HR_CONTRACTS_MODE_PARAM = 'mode';
 const CURRENCIES = ['SAR', 'USD', 'EUR', 'GBP'];
@@ -438,7 +438,7 @@ export function EmploymentContractsClient() {
               </div>
               <div className="flex items-center gap-1 text-sm font-bold tabular-nums text-foreground">
                 <Coins className="h-3.5 w-3.5 text-gold" />
-                {c.baseSalary.toLocaleString('ar-SA')}
+                {formatNumber(c.baseSalary)}
                 <span className="text-[10px] font-normal text-muted-foreground">{c.currency}</span>
               </div>
               <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>

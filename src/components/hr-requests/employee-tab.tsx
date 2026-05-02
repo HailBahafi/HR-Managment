@@ -9,7 +9,7 @@ import { useHREmployeeDirectoryStore, type HREmployeeDirectoryRow, type HREmploy
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import { buildEmployeeForest, HIERARCHY_ROLE_LABELS, STATUS_LABELS, STATUS_COLORS, type EmpTreeNode } from '@/lib/hr-requests/hierarchy-utils';
 import { MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, Pagination } from './shared-ui';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatDateShort } from '@/lib/utils';
 
 const LS_VIEW = 'hr_employees_list_view_mode';
 const LS_PAGE = 'hr_employees_list_page';
@@ -323,7 +323,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
                         <td className="px-3 py-3 text-xs lg:px-4"><span className="line-clamp-2">{HIERARCHY_ROLE_LABELS[emp.hierarchyRole]}</span></td>
                         <td className="px-3 py-3 text-xs lg:px-4"><span className="line-clamp-2">{emp.jobTitleAr}</span></td>
                         <td className="px-3 py-3 text-xs text-muted-foreground lg:px-4">
-                          {emp.hireDate ? new Date(emp.hireDate).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                          {emp.hireDate ? formatDateShort(emp.hireDate) : '—'}
                         </td>
                         <td className="px-3 py-3 lg:px-4"><StatusBadge status={emp.status} /></td>
                         <td className="px-2 py-3 lg:px-4" onClick={e => e.stopPropagation()}>
@@ -424,7 +424,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
                 ['القسم',        getDeptName(selected.departmentId)],
                 ['المسمى',       selected.jobTitleAr],
                 ['المستوى',      HIERARCHY_ROLE_LABELS[selected.hierarchyRole]],
-                ['تاريخ التعيين', selected.hireDate ? new Date(selected.hireDate).toLocaleDateString('ar-SA') : '—'],
+                ['تاريخ التعيين', selected.hireDate ? formatDate(selected.hireDate) : '—'],
                 ['الهوية',       selected.nationalId],
                 ['الجوال',       selected.mobile ?? '—'],
                 ['البريد',       selected.email ?? '—', true],

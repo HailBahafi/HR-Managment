@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { data, getEmployee } from '@/lib/data';
-import { getInitials, cn } from '@/lib/utils';
+import { getInitials, cn, formatNumber, toWesternDigits } from '@/lib/utils';
 import { useSetPageTitle } from '@/components/page-title-context';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
@@ -80,9 +80,15 @@ export default function DashboardPage() {
   const activeContracts  = contracts.filter(c => c.status === 'active').length;
   const pendingLeaves    = MOCK_UNIFIED_LEAVES.filter(l => l.status === 'pending').length;
 
-  const dateAr = new Intl.DateTimeFormat('ar-SA', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  }).format(new Date());
+  const dateAr = toWesternDigits(
+    new Intl.DateTimeFormat('ar-SA', {
+      numberingSystem: 'latn',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(new Date()),
+  );
 
   return (
     <div className="space-y-5 animate-fade-in" dir="rtl">
@@ -140,7 +146,7 @@ export default function DashboardPage() {
         {[
           {
             label: 'إجمالي الموظفين',
-            value: totalEmployees.toLocaleString('ar-SA'),
+            value: formatNumber(totalEmployees),
             sub: `${data.branches.length} فروع`,
             delta: '+4.2%', positive: true,
             icon: Users,

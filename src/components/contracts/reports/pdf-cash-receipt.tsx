@@ -1,5 +1,7 @@
 import React from 'react';
 import { Document, Page, View, Text } from '@react-pdf/renderer';
+import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
+import { hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
 import { PdfHeader, SectionTitle, SignaturesRow, LabeledField, S, C, fmt, fmtDate, type CompanyInfo } from './pdf-shared';
 
 export type CashReceiptReason =
@@ -37,7 +39,7 @@ function CheckRow({ checked, label, detail }: { checked: boolean; label: string;
         width: 10, height: 10, border: `1pt solid #000`, marginLeft: 6, marginRight: 2,
         backgroundColor: checked ? C.primary : 'transparent',
       }} />
-      <Text style={{ fontSize: 9 }}>
+      <Text style={[HR.ar, { fontSize: 7 }]}>
         {label}{detail ? ` ${detail}` : ''}
       </Text>
     </View>
@@ -45,6 +47,7 @@ function CheckRow({ checked, label, detail }: { checked: boolean; label: string;
 }
 
 export function CashReceiptDoc({ company, employeeNameAr, branchNameAr, amountNumeric, amountWritten, reason, reasonDetail, date }: CashReceiptProps) {
+  ensureHrPdfFonts();
   return (
     <Document>
       <Page size="A4" style={S.page}>
@@ -66,11 +69,11 @@ export function CashReceiptDoc({ company, employeeNameAr, branchNameAr, amountNu
         <View style={[S.mt16, { backgroundColor: '#f9f9f9', border: `1pt solid ${C.border}`, padding: 10, borderRadius: 3 }]}>
           <View style={{ flexDirection: 'row-reverse', gap: 12, flexWrap: 'wrap' }}>
             <LabeledField label="مبلغ وقدره (" value={fmt(amountNumeric)} width={140} />
-            <Text style={{ fontSize: 9, alignSelf: 'flex-end', marginBottom: 12, marginLeft: 4 }}>)</Text>
+            <Text style={[HR.ar, { fontSize: 7, alignSelf: 'flex-end', marginBottom: 12, marginLeft: 4 }]}>)</Text>
             <LabeledField label="ريال سعودي ( كتابةً )" value={amountWritten || `${fmt(amountNumeric)} ريال سعودي`} width={180} />
           </View>
           <View style={{ flexDirection: 'row-reverse', marginTop: 4 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 9, marginLeft: 8 }}>وذلك مقابل:</Text>
+            <Text style={[HR.ar, { fontWeight: 700, fontSize: 7, marginLeft: 8 }]}>وذلك مقابل:</Text>
           </View>
         </View>
 
@@ -88,7 +91,7 @@ export function CashReceiptDoc({ company, employeeNameAr, branchNameAr, amountNu
         </View>
 
         <View style={[S.mt32, { backgroundColor: '#f5f5f5', border: `1pt solid ${C.border}`, padding: 12, borderRadius: 3 }]}>
-          <Text style={{ fontWeight: 'bold', textAlign: 'right', marginBottom: 12, fontSize: 10 }}>و على ذلك جرى التوقيع ،،،</Text>
+          <Text style={[HR.ar, { fontWeight: 700, textAlign: 'right', marginBottom: 12, fontSize: 9 }]}>و على ذلك جرى التوقيع ،،،</Text>
           <LabeledField label="الاسم :" value={employeeNameAr} width={300} />
           <LabeledField label="التوقيع :" value="" width={300} />
           <LabeledField label="التاريخ :" value={fmtDate(date)} width={300} />

@@ -1,13 +1,7 @@
 import React from 'react';
-import { Font, StyleSheet, View, Text } from '@react-pdf/renderer';
-
-Font.register({
-  family: 'Cairo',
-  fonts: [
-    { src: '/fonts/Cairo-Regular.woff', fontWeight: 'normal' },
-    { src: '/fonts/Cairo-Bold.woff',    fontWeight: 'bold'   },
-  ],
-});
+import { StyleSheet, View, Text } from '@react-pdf/renderer';
+import { HR_PDF_PAGE_STYLE, hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
+import { toWesternDigits } from '@/lib/utils';
 
 export const C = {
   primary:   '#1a3a5c',
@@ -20,12 +14,8 @@ export const C = {
 
 export const S = StyleSheet.create({
   page: {
-    fontFamily: 'Cairo',
-    fontSize: 10,
+    ...HR_PDF_PAGE_STYLE,
     backgroundColor: '#ffffff',
-    paddingTop: 36,
-    paddingBottom: 48,
-    paddingHorizontal: 36,
   },
   row: { flexDirection: 'row' },
   rowReverse: { flexDirection: 'row-reverse' },
@@ -48,15 +38,21 @@ export function PdfHeader({ company }: { company: CompanyInfo }) {
   return (
     <View style={{ marginBottom: 18 }}>
       <View style={[S.rowReverse, { justifyContent: 'space-between', alignItems: 'center' }]}>
-        <Text style={{ fontSize: 15, fontWeight: 'bold', color: C.primary }}>{company.nameAr}</Text>
-        <Text style={{ fontSize: 11, fontWeight: 'bold', color: C.primary, letterSpacing: 1 }}>
+        <Text style={[HR.ar, { fontSize: 15, fontWeight: 700, color: C.primary }]}>{company.nameAr}</Text>
+        <Text style={[HR.lat, { fontSize: 11, fontWeight: 700, color: C.primary, letterSpacing: 1 }]}>
           {company.nameEn.toUpperCase()}
         </Text>
       </View>
       {company.crNumber ? (
         <View style={[S.rowReverse, { justifyContent: 'space-between', marginTop: 2 }]}>
-          <Text style={{ fontSize: 8, color: C.muted }}>س.ت: {company.crNumber}</Text>
-          <Text style={{ fontSize: 8, color: C.muted }}>C.R: {company.crNumber}</Text>
+          <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+            <Text style={[HR.lat, { fontSize: 8, color: C.muted }]}>{company.crNumber}</Text>
+            <Text style={[HR.ar, { fontSize: 8, color: C.muted }]}>س.ت: </Text>
+          </View>
+          <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
+            <Text style={[HR.lat, { fontSize: 8, color: C.muted }]}>{company.crNumber}</Text>
+            <Text style={[HR.lat, { fontSize: 8, color: C.muted }]}>C.R: </Text>
+          </View>
         </View>
       ) : null}
       <View style={{ height: 2.5, backgroundColor: C.gold, marginTop: 6 }} />
@@ -68,7 +64,7 @@ export function PdfHeader({ company }: { company: CompanyInfo }) {
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: 12 }}>
-      <Text style={{ fontSize: 14, fontWeight: 'bold', textAlign: 'center', textDecoration: 'underline' }}>
+      <Text style={[HR.ar, { fontSize: 14, fontWeight: 700, textAlign: 'center', textDecoration: 'underline' }]}>
         {children as string}
       </Text>
     </View>
@@ -78,9 +74,9 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 export function LabeledField({ label, value, width }: { label: string; value: string; width?: number | string }) {
   return (
     <View style={{ flexDirection: 'row-reverse', alignItems: 'flex-end', width: width ?? 'auto', marginBottom: 10 }}>
-      <Text style={{ fontWeight: 'bold', marginLeft: 4 }}>{label}</Text>
+      <Text style={[HR.ar, { fontWeight: 700, marginLeft: 4 }]}>{label}</Text>
       <View style={{ flex: 1, borderBottom: '1pt solid #000', marginLeft: 6, paddingBottom: 1 }}>
-        <Text style={{ textAlign: 'right' }}>{value}</Text>
+        <Text style={[HR.ar, { textAlign: 'right' }]}>{value}</Text>
       </View>
     </View>
   );
@@ -91,9 +87,9 @@ export function SignaturesRow({ labels }: { labels: string[] }) {
     <View style={[S.rowReverse, { justifyContent: 'space-around', marginTop: 40 }]}>
       {labels.map((label) => (
         <View key={label} style={{ alignItems: 'center', minWidth: 80 }}>
-          <Text style={{ fontSize: 9, fontWeight: 'bold', marginBottom: 24 }}>{`توقيع\n${label}`}</Text>
+          <Text style={[HR.ar, { fontSize: 9, fontWeight: 700, marginBottom: 24 }]}>{`توقيع\n${label}`}</Text>
           <View style={{ width: 80, height: 1, backgroundColor: '#000' }} />
-          <Text style={{ fontSize: 8, color: C.muted, marginTop: 3 }}>.......................</Text>
+          <Text style={[HR.ar, { fontSize: 8, color: C.muted, marginTop: 3 }]}>.......................</Text>
         </View>
       ))}
     </View>
@@ -106,7 +102,14 @@ export function fmt(n: number): string {
 
 export function fmtDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('ar-SA-u-ca-gregory', { year: 'numeric', month: 'long', day: 'numeric' });
+    return toWesternDigits(
+      new Date(iso).toLocaleDateString('ar-SA-u-ca-gregory', {
+        numberingSystem: 'latn',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+    );
   } catch {
     return iso;
   }

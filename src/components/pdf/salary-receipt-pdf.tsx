@@ -2,29 +2,10 @@
 
 import * as React from 'react';
 import {
-  Document, Page, Text, View, StyleSheet, Font, Image, pdf,
+  Document, Page, Text, View, StyleSheet, Image, pdf,
 } from '@react-pdf/renderer';
-import { CAIRO_AR_400, CAIRO_AR_700, CAIRO_LA_400, CAIRO_LA_700 } from '@/lib/cairo-fonts';
-
-/* ─── Font registration ─────────────────────────────────────────────
-   Two families: 'Ar' for Arabic text, 'Lat' for numbers/codes/English
-   ──────────────────────────────────────────────────────────────────── */
-Font.register({
-  family: 'Ar',
-  fonts: [
-    { src: CAIRO_AR_400, fontWeight: 400 },
-    { src: CAIRO_AR_700, fontWeight: 700 },
-  ],
-});
-Font.register({
-  family: 'Lat',
-  fonts: [
-    { src: CAIRO_LA_400, fontWeight: 400 },
-    { src: CAIRO_LA_700, fontWeight: 700 },
-  ],
-});
-
-Font.registerHyphenationCallback(word => [word]);
+import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
+import { HR_PDF_PAGE_STYLE } from '@/lib/pdf/hr-pdf-base-styles';
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 export interface ReceiptEmployee {
@@ -98,12 +79,8 @@ function SectionLabel({ children }: { children: string }) {
 /* ─── Styles ────────────────────────────────────────────────────────── */
 const ss = StyleSheet.create({
   page: {
-    fontFamily: 'Ar',
+    ...HR_PDF_PAGE_STYLE,
     backgroundColor: C.bg,
-    paddingHorizontal: 32,
-    paddingTop: 28,
-    paddingBottom: 24,
-    direction: 'rtl',
   },
 
   /* header */
@@ -272,6 +249,8 @@ function SalaryReceiptDocument({
   logoUrl?: string;
   receiptNumber?: string;
 }) {
+  ensureHrPdfFonts();
+
   const totalDeductions =
     payslip.gosi + payslip.absenceDeduction + payslip.latenessDeduction +
     payslip.loanDeduction + payslip.otherDeductions;

@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Plus, Pencil, Trash2, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { usePageFilters } from '@/components/filter-panel-context';
@@ -29,6 +30,8 @@ interface DraftForm {
   approvalStages: HRApprovalStage[];
 }
 
+const EMPTY_EMP_SELECTION = new Set<string>();
+
 const EMPTY: DraftForm = {
   scope: 'global',
   departmentId: '',
@@ -46,11 +49,10 @@ export function RequestTypesClient() {
 
   const { values } = usePageFilters([
     { key: 'q', label: 'بحث', type: 'text', placeholder: 'الاسم…' },
-    { key: 'active', label: 'الحالة', type: 'select', options: [{ value: 'active', label: 'نشط فقط' }] },
   ]);
   const search = (values.q as string) ?? '';
   const filterDepts: string[] = [];
-  const filterActive = (values.active as string) === 'active';
+  const [typeStatusFilter, setTypeStatusFilter] = React.useState<string>('all');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -64,15 +66,31 @@ export function RequestTypesClient() {
     [approvalAssignmentTemplates],
   );
 
-  const filtered = React.useMemo(() => {
+  const afterSearch = React.useMemo(() => {
     const q = search.toLowerCase();
-    return requestTypes.filter(rt => {
-      if (filterActive && !rt.isActive) return false;
+    return requestTypes.filter((rt) => {
       if (filterDepts.length && !filterDepts.includes(rt.departmentId)) return false;
       if (q && !rt.nameAr.toLowerCase().includes(q)) return false;
       return true;
-    }).sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [requestTypes, search, filterDepts, filterActive]);
+    });
+  }, [requestTypes, search, filterDepts]);
+
+  const typeStatusCounts = React.useMemo(() => ({
+    all: afterSearch.length,
+    active: afterSearch.filter((rt) => rt.isActive).length,
+    inactive: afterSearch.filter((rt) => !rt.isActive).length,
+  }), [afterSearch]);
+
+  const filtered = React.useMemo(() => {
+    return afterSearch
+      .filter((rt) => {
+        if (typeStatusFilter === 'all') return true;
+        if (typeStatusFilter === 'active') return rt.isActive;
+        if (typeStatusFilter === 'inactive') return !rt.isActive;
+        return true;
+      })
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [afterSearch, typeStatusFilter]);
 
   const openCreate = () => {
     setEditId(null);
@@ -138,11 +156,24 @@ export function RequestTypesClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant="luxe" className="gap-2" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> نوع جديد
-        </Button>
-      </div>
+      <EntityFilterToolbar
+        showDateSection={false}
+        showEmployeePicker={false}
+        empPickerEmployees={[]}
+        selectedEmpIds={EMPTY_EMP_SELECTION}
+        onSelectedEmpIdsChange={() => {}}
+        statusFilter={typeStatusFilter}
+        onStatusFilterChange={setTypeStatusFilter}
+        statusOrder={['active', 'inactive']}
+        statusLabels={{ active: 'نشط', inactive: 'غير نشط' }}
+        statusCounts={typeStatusCounts}
+        onDateBoundsChange={() => {}}
+        trailingActions={(
+          <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> نوع جديد
+          </Button>
+        )}
+      />
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">

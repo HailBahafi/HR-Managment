@@ -531,6 +531,18 @@ const SEED: HRViolationCaseRecord[] = [
   },
 ];
 
+/** localStorage JSON turns holes into `null`; bad merges can leave nullish entries. */
+function sanitizeViolationCases(raw: unknown): HRViolationCaseRecord[] {
+  if (!Array.isArray(raw)) return [...SEED];
+  const out = raw.filter(
+    (c): c is HRViolationCaseRecord =>
+      c != null &&
+      typeof (c as HRViolationCaseRecord).id === 'string' &&
+      typeof (c as HRViolationCaseRecord).caseNumber === 'string',
+  );
+  return out.length > 0 ? out : [...SEED];
+}
+
 interface CasesState {
   cases: HRViolationCaseRecord[];
   _seq: number;
@@ -642,6 +654,27 @@ export const useHRViolationCasesStore = create<CasesState>()(
         cases: s.cases.map(x => x.id === id ? { ...x, postedToPayroll:true, updatedAt:now() } : x),
       })),
     }),
-    { name:'hr_discipline_cases_v1', storage: createJSONStorage(() => localStorage), version:6, migrate: () => ({ cases: SEED, _seq: 31 }) },
+    {
+      name: 'hr_discipline_cases_v1',
+      storage: createJSONStorage(() => localStorage),
+      version: 7,
+      migrate: (persisted, fromVersion) => {
+        if (fromVersion < 6) return { cases: [...SEED], _seq: 31 };
+        const p = persisted as Partial<CasesState> | undefined;
+        return {
+          cases: sanitizeViolationCases(p?.cases),
+          _seq: typeof p?._seq === 'number' && Number.isFinite(p._seq) ? p._seq : 31,
+        };
+      },
+      onRehydrateStorage: () => (state) => {
+        if (!state?.cases || !Array.isArray(state.cases)) return;
+        const dirty = state.cases.some(
+          (c) => c == null || typeof c.id !== 'string' || typeof c.caseNumber !== 'string',
+        );
+        if (dirty) {
+          useHRViolationCasesStore.setState({ cases: sanitizeViolationCases(state.cases) });
+        }
+      },
+    },
   ),
 );

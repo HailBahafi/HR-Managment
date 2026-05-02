@@ -13,7 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { data } from '@/lib/data';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -116,12 +116,12 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
     setErrors({});
   };
 
-  const totalComp = (
+  const totalComp = formatNumber(
     (Number(form.baseSalary) || 0) +
-    (Number(form.housingAllowance) || 0) +
-    (Number(form.transportAllowance) || 0) +
-    (Number(form.otherAllowances) || 0)
-  ).toLocaleString('ar-SA');
+      (Number(form.housingAllowance) || 0) +
+      (Number(form.transportAllowance) || 0) +
+      (Number(form.otherAllowances) || 0),
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

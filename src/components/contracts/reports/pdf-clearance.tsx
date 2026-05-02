@@ -1,5 +1,7 @@
 import React from 'react';
 import { Document, Page, View, Text } from '@react-pdf/renderer';
+import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
+import { hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
 import { PdfHeader, SectionTitle, S, C, fmtDate, type CompanyInfo } from './pdf-shared';
 
 export type ClearanceProps = {
@@ -24,10 +26,10 @@ function InfoTable({ rows }: { rows: [string, string][] }) {
           }}
         >
           <View style={{ width: 100, backgroundColor: C.tableHead, padding: '5pt 8pt', borderLeft: `1pt solid ${C.border}` }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 9, textAlign: 'right' }}>{label}</Text>
+            <Text style={[HR.ar, { fontWeight: 700, fontSize: 7, textAlign: 'right' }]}>{label}</Text>
           </View>
           <View style={{ flex: 1, padding: '5pt 8pt' }}>
-            <Text style={{ fontSize: 9, textAlign: 'right' }}>{value}</Text>
+            <Text style={[HR.ar, { fontSize: 7, textAlign: 'right' }]}>{value}</Text>
           </View>
         </View>
       ))}
@@ -36,6 +38,7 @@ function InfoTable({ rows }: { rows: [string, string][] }) {
 }
 
 export function ClearanceDoc({ company, employeeNameAr, nationalId, nationality, startDate, endDate, date }: ClearanceProps) {
+  ensureHrPdfFonts();
   return (
     <Document>
       <Page size="A4" style={S.page}>
@@ -43,31 +46,31 @@ export function ClearanceDoc({ company, employeeNameAr, nationalId, nationality,
         <SectionTitle>مخالصة موظف — إبراء ذمة</SectionTitle>
 
         <View style={[S.mt16, { border: `1pt solid ${C.border}`, padding: 14, borderRadius: 3 }]}>
-          <Text style={{ fontSize: 10, textAlign: 'right', lineHeight: 1.8, fontWeight: 'bold', marginBottom: 6 }}>
+          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8, fontWeight: 700, marginBottom: 6 }]}>
             أقر أنا / ...........................................................................، الجنسية ..........................
           </Text>
-          <Text style={{ fontSize: 10, textAlign: 'right', lineHeight: 1.8, marginBottom: 4 }}>
-            بموجب بطاقة أحوال رقم ({nationalId}) الموقعة أدناه، اعتباراً من
+          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8, marginBottom: 4 }]}>
+            {`بموجب بطاقة أحوال رقم (${nationalId}) الموقعة أدناه، اعتباراً من`}
           </Text>
-          <Text style={{ fontSize: 10, textAlign: 'right', lineHeight: 1.8, marginBottom: 4 }}>
-            تاريخ {fmtDate(endDate)} الموافق {fmtDate(endDate)}م قد وصلني جميع الأموال
+          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8, marginBottom: 4 }]}>
+            {`تاريخ ${fmtDate(endDate)} الموافق ${fmtDate(endDate)}م قد وصلني جميع الأموال`}
           </Text>
-          <Text style={{ fontSize: 10, textAlign: 'right', lineHeight: 1.8 }}>
+          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8 }]}>
             والمبالغ المستحقة لي وكافة حقوقي على مختلف أنواعها وحتى إنهاء فترة خدمتي.
           </Text>
         </View>
 
         <View style={[S.mt16, { border: `1pt solid ${C.border}`, padding: 14, borderRadius: 3, backgroundColor: '#fafafa' }]}>
-          <Text style={{ fontSize: 10, textAlign: 'right', lineHeight: 2 }}>
+          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 2 }]}>
             وتبعاً لذلك فإنني أبرئ ذمة مؤسسة {company.nameAr} للتجارة إبراءً شاملاً لا رجوع منه مطلقاً لأي
           </Text>
-          <Text style={{ fontSize: 10, textAlign: 'right', lineHeight: 2 }}>
+          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 2 }]}>
             حق أو مطالبة حالية أو مستقبلية ومن أي نوع أو شكل كان.
           </Text>
-          <Text style={{ fontSize: 10, textAlign: 'right', lineHeight: 2, marginTop: 6 }}>
+          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 2, marginTop: 6 }]}>
             وبذلك فإننا نبرئ ذمة الموظفة / الموظف المذكورة أعلاه إبراءً شاملاً لا رجوع منه مطلقاً لأي حق
           </Text>
-          <Text style={{ fontSize: 10, textAlign: 'right', lineHeight: 2 }}>
+          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 2 }]}>
             أو مطالبة حالية أو مستقبلية ومن أي نوع أو شكل كان.
           </Text>
         </View>
@@ -84,24 +87,24 @@ export function ClearanceDoc({ company, employeeNameAr, nationalId, nationality,
 
         <View style={[S.mt32, { border: `1pt solid ${C.border}`, padding: 12, borderRadius: 3 }]}>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 14 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 9 }}>الاسم :</Text>
+            <Text style={[HR.ar, { fontWeight: 700, fontSize: 7 }]}>الاسم :</Text>
             <View style={{ flex: 1, borderBottom: `1pt solid ${C.border}`, marginLeft: 60, marginRight: 8 }} />
           </View>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 14 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 9 }}>التوقيع :</Text>
+            <Text style={[HR.ar, { fontWeight: 700, fontSize: 7 }]}>التوقيع :</Text>
             <View style={{ flex: 1, borderBottom: `1pt solid ${C.border}`, marginLeft: 60, marginRight: 8 }} />
           </View>
           <View style={{ flexDirection: 'row-reverse', justifyContent: 'space-between' }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 9 }}>التاريخ :</Text>
+            <Text style={[HR.ar, { fontWeight: 700, fontSize: 7 }]}>التاريخ :</Text>
             <View style={{ flex: 1, marginLeft: 60, marginRight: 8 }}>
-              <Text style={{ fontSize: 9, textAlign: 'right', borderBottom: `1pt solid ${C.border}`, paddingBottom: 2 }}>{fmtDate(date)}</Text>
+              <Text style={[HR.lat, { fontSize: 7, textAlign: 'right', borderBottom: `1pt solid ${C.border}`, paddingBottom: 2 }]}>{fmtDate(date)}</Text>
             </View>
           </View>
         </View>
 
         <View style={[S.mt16, { flexDirection: 'row-reverse', justifyContent: 'center', gap: 6 }]}>
-          <Text style={{ fontSize: 8, color: C.muted, textAlign: 'center' }}>
-            هذه الوثيقة صادرة من نظام {company.nameAr} لإدارة الموارد البشرية — {fmtDate(date)}
+          <Text style={[HR.ar, { fontSize: 7, color: C.muted, textAlign: 'center' }]}>
+            {`هذه الوثيقة صادرة من نظام ${company.nameAr} لإدارة الموارد البشرية — ${fmtDate(date)}`}
           </Text>
         </View>
       </Page>

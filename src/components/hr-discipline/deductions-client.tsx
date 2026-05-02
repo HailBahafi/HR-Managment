@@ -8,7 +8,7 @@ import {
 import { useHRDisciplinePayrollDeductionsStore } from '@/lib/hr-discipline/payroll-deductions-store';
 import { DEDUCTION_KIND_LABELS, DEDUCTION_STATUS_LABELS } from '@/lib/hr-discipline/types';
 import type { HRDeductionStatus } from '@/lib/hr-discipline/types';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 const STATUS_COLORS: Record<HRDeductionStatus, string> = {
   ready: 'text-blue-700 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/30',
@@ -54,7 +54,7 @@ export function DeductionsClient() {
               </div>
               <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
                 <span className="text-[10px] text-muted-foreground">المبلغ</span>
-                <span className="font-semibold">{d.amount.toLocaleString('ar-SA')} ر.س</span>
+                <span className="font-semibold">{formatNumber(d.amount)} ر.س</span>
               </div>
             </div>
           ))}
