@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
@@ -68,15 +67,13 @@ function StageEditor({ stage, index, onChange, onRemove }: {
 
 export function DisciplineApprovalClient() {
   const { templates, add, update, remove } = useHRDisciplineApprovalAssignmentTemplatesStore();
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' }]);
-  const search = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [error, setError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  const filtered = templates.filter(t => !search || t.nameAr.includes(search));
+  const filtered = templates;
 
   const openCreate = () => { setEditId(null); setDraft({ ...EMPTY }); setError(null); setDrawerOpen(true); };
   const openEdit = (t: HRApprovalAssignmentTemplate) => { setEditId(t.id); setDraft({ nameAr: t.nameAr, description: t.description ?? '', isActive: t.isActive, stages: t.stages }); setError(null); setDrawerOpen(true); };

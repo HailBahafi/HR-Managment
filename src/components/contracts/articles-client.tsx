@@ -38,7 +38,6 @@ export function ContractArticlesClient() {
   const { articles, add, update, remove } = useHRContractArticlesStore();
 
   const { values } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالعنوان…' },
     {
       key: 'kind', label: 'النوع', type: 'select',
       options: [
@@ -52,7 +51,6 @@ export function ContractArticlesClient() {
     },
   ]);
 
-  const q = ((values.q as string) ?? '').toLowerCase();
   const kindFilter = (values.kind as string) || 'all';
   const activeOnly = (values.active as string) === 'active';
 
@@ -68,13 +66,12 @@ export function ContractArticlesClient() {
   const filtered = React.useMemo(() =>
     articles
       .filter(a => {
-        const matchQ = !q || a.title.toLowerCase().includes(q);
         const matchK = kindFilter === 'all' || (kindFilter === 'basic' ? a.isBasic : !a.isBasic);
         const matchA = !activeOnly || a.isActive;
-        return matchQ && matchK && matchA;
+        return matchK && matchA;
       })
       .sort((a, b) => a.code.localeCompare(b.code)),
-    [articles, q, kindFilter, activeOnly],
+    [articles, kindFilter, activeOnly],
   );
 
   const total = filtered.length;

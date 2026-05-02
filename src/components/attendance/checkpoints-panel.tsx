@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { MapPin, Pencil, Plus, Trash2, Navigation2, Radio, Loader2, LocateFixed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { usePageFilters } from '@/components/filter-panel-context';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -49,29 +48,9 @@ export function CheckpointsPanel() {
   const [geoQuery, setGeoQuery] = React.useState('');
   const justPickedRef = React.useRef(false);
 
-  const { values } = usePageFilters([
-    { key: 'q', label: 'بحث النقاط', type: 'text', placeholder: 'الاسم أو الإحداثيات…' },
-  ]);
-  const listQ = (values.q as string) ?? '';
   const [geoLoading, setGeoLoading] = React.useState(false);
   const [geoError, setGeoError] = React.useState<string | null>(null);
   const [geoSuggestions, setGeoSuggestions] = React.useState<GeocodingResult[]>([]);
-
-  const visibleCheckpoints = React.useMemo(() => {
-    const t = listQ.trim().toLowerCase();
-    if (!t) return checkpoints;
-    return checkpoints.filter((p) => {
-      const blob = [
-        p.nameAr,
-        String(p.latitude),
-        String(p.longitude),
-        String(p.radiusMeters),
-      ]
-        .join(' ')
-        .toLowerCase();
-      return blob.includes(t);
-    });
-  }, [checkpoints, listQ]);
 
   const openCreate = () => {
     setDraft({
@@ -190,13 +169,7 @@ export function CheckpointsPanel() {
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           النقاط (
-          <span className="number-ar">{visibleCheckpoints.length}</span>
-          {listQ.trim() ? (
-            <>
-              {' '}
-              من <span className="number-ar">{checkpoints.length}</span>
-            </>
-          ) : null}
+          <span className="number-ar">{checkpoints.length}</span>
           )
         </p>
 
@@ -207,14 +180,8 @@ export function CheckpointsPanel() {
           </div>
         )}
 
-        {checkpoints.length > 0 && visibleCheckpoints.length === 0 && (
-          <p className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-4 text-center text-sm text-muted-foreground">
-            لا توجد نقاط مطابقة للبحث
-          </p>
-        )}
-
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {visibleCheckpoints.map((p) => (
+          {checkpoints.map((p) => (
             <div
               key={p.id}
               role="button"

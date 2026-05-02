@@ -301,11 +301,7 @@ function LeaveBalanceCard({
   );
 }
 
-export default function EmployeeProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const employee = getEmployee(id);
-  if (!employee) return notFound();
-
+function EmployeeProfileBody({ employee }: { employee: NonNullable<ReturnType<typeof getEmployee>> }) {
   const branch = getBranch(employee.branchId);
   const department = getDepartment(employee.departmentId);
   const manager = employee.managerId ? getEmployee(employee.managerId) : null;
@@ -1908,4 +1904,11 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
       />
     </div>
   );
+}
+
+export default function EmployeeProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const employee = getEmployee(id);
+  if (!employee) notFound();
+  return <EmployeeProfileBody employee={employee} />;
 }

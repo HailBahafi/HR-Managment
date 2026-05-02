@@ -31,11 +31,9 @@ export function FormTemplatesClient() {
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useHRConfigurationStore();
 
   const { values } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' },
     { key: 'kind', label: 'النوع', type: 'select', options: [{ value: 'universal', label: 'شامل' }, { value: 'custom', label: 'مخصص' }] },
     { key: 'active', label: 'الحالة', type: 'select', options: [{ value: 'active', label: 'نشط فقط' }] },
   ]);
-  const search = (values.q as string) ?? '';
   const filterKind = ((values.kind as FilterKind) || 'all');
   const filterActive = (values.active as string) === 'active';
 
@@ -48,15 +46,13 @@ export function FormTemplatesClient() {
   const [previewValues, setPreviewValues] = React.useState<Record<string, unknown>>({});
 
   const filtered = React.useMemo(() => {
-    const q = search.toLowerCase();
     return templates.filter(t => {
       if (filterActive && !t.isActive) return false;
       if (filterKind === 'universal' && !t.isUniversalDefault) return false;
       if (filterKind === 'custom' && t.isUniversalDefault) return false;
-      if (q && !t.nameAr.toLowerCase().includes(q)) return false;
       return true;
     }).sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [templates, search, filterActive, filterKind]);
+  }, [templates, filterActive, filterKind]);
 
   const openCreate = () => {
     setEditId(null);

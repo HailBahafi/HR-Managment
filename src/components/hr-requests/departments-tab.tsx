@@ -5,7 +5,8 @@ import { Plus, Pencil, Trash2, ChevronRight, Building2, Network } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import { buildDepartmentForest, flattenDepartmentsTree, getDescendantDepartmentIds } from '@/lib/hr-requests/hierarchy-utils';
 import type { HRDepartmentEntity } from '@/lib/hr-requests/types';
@@ -24,12 +25,8 @@ export function DepartmentsTab() {
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
-  const { values } = usePageFilters([
-    { key: 'search', label: 'بحث', type: 'text', placeholder: 'اسم القسم…' },
-    { key: 'active', label: 'الحالة', type: 'select', options: [{ value: 'active', label: 'نشط فقط' }] },
-  ]);
-  const search = (values.search as string) ?? '';
-  const filterActive = (values.active as string) === 'active';
+  const [activeMode, setActiveMode] = React.useState<'all' | 'active'>('all');
+  const filterActive = activeMode === 'active';
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -41,8 +38,6 @@ export function DepartmentsTab() {
 
   const filtered = flat.filter(n => {
     if (filterActive && !n.dept.isActive) return false;
-    const q = search.toLowerCase();
-    if (q && !n.dept.nameAr.includes(q)) return false;
     return true;
   });
 
@@ -83,14 +78,37 @@ export function DepartmentsTab() {
     ...departments.filter(d => !excludeIds.has(d.id)).map(d => ({ value: d.id, label: `${'　'.repeat(d.parentId ? 1 : 0)}${d.nameAr}` })),
   ];
 
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showDateSection={false}
+        showStatusSection={false}
+        showEmployeePicker={false}
+        onDateBoundsChange={() => {}}
+        inlineSelects={[
+          {
+            id: 'active',
+            value: activeMode,
+            onChange: (v) => setActiveMode(v as 'all' | 'active'),
+            placeholder: 'العرض',
+            options: [
+              { value: 'all', label: 'كل الأقسام' },
+              { value: 'active', label: 'نشط فقط' },
+            ],
+          },
+        ]}
+        trailingActions={(
+          <Button variant="luxe" size="sm" className="h-8 shrink-0 gap-2" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> قسم جديد
+          </Button>
+        )}
+      />
+    ),
+    [activeMode],
+  );
+
   return (
     <div className="w-full min-w-0 space-y-4 pt-2">
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="luxe" className="shrink-0 gap-2" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> قسم جديد
-        </Button>
-      </div>
-
       {filtered.length === 0 ? (
         <EmptyState icon={Building2} title="لا توجد أقسام" />
       ) : (

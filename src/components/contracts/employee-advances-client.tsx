@@ -7,7 +7,7 @@ import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/set-page-title';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown, MinimalDropdown,
 } from '@/components/hr-requests/shared-ui';
@@ -51,11 +51,6 @@ export function EmployeeAdvancesClient() {
     [employees],
   );
 
-  const { values } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث باسم الموظف…' },
-  ]);
-
-  const q = ((values.q as string) ?? '').toLowerCase();
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
@@ -74,11 +69,10 @@ export function EmployeeAdvancesClient() {
   const narrowedForStatus = React.useMemo(
     () =>
       items.filter((x) => {
-        const matchQ = !q || x.employeeNameAr.includes(q) || x.note.toLowerCase().includes(q);
         const matchEmp = selectedEmpIds.size === 0 || selectedEmpIds.has(x.employeeId);
-        return matchQ && matchEmp;
+        return matchEmp;
       }),
-    [items, q, selectedEmpIds],
+    [items, selectedEmpIds],
   );
 
   const advanceStatusCounts = React.useMemo((): Record<string, number> => ({
@@ -142,41 +136,56 @@ export function EmployeeAdvancesClient() {
     a.download = 'employee-advances.csv'; a.click();
   };
 
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showDateSection={false}
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(v) => setStatusFilter(v as StatusFilter)}
+        statusOrder={['outstanding', 'repaid', 'cancelled']}
+        statusLabels={{
+          outstanding: ADVANCE_STATUS_LABELS.outstanding,
+          repaid: ADVANCE_STATUS_LABELS.repaid,
+          cancelled: ADVANCE_STATUS_LABELS.cancelled,
+        }}
+        statusCounts={advanceStatusCounts}
+        onDateBoundsChange={() => {}}
+        trailingActions={(
+          <>
+            {filtered.length > 0 && (
+              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
+                <Download className="h-3.5 w-3.5" />تصدير
+              </Button>
+            )}
+            <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
+              <Plus className="h-4 w-4" />سلفة جديدة
+            </Button>
+          </>
+        )}
+      />
+    ),
+    [
+      statusFilter,
+      selectedEmpKey,
+      advanceStatusCounts.all,
+      advanceStatusCounts.outstanding,
+      advanceStatusCounts.repaid,
+      advanceStatusCounts.cancelled,
+      filtered.length,
+      empPickerList,
+    ],
+  );
+
   return (
     <>
       <SetPageTitle titleAr="سلف الموظفين" descriptionAr="تسجيل وإدارة سلف الموظفين واسترداداتها." iconName="Banknote" />
 
-      <div className="mb-4 space-y-2">
-        <EntityFilterToolbar
-          showDateSection={false}
-          empPickerEmployees={empPickerList}
-          selectedEmpIds={selectedEmpIds}
-          onSelectedEmpIdsChange={setSelectedEmpIds}
-          statusFilter={statusFilter}
-          onStatusFilterChange={(v) => setStatusFilter(v as StatusFilter)}
-          statusOrder={['outstanding', 'repaid', 'cancelled']}
-          statusLabels={{
-            outstanding: ADVANCE_STATUS_LABELS.outstanding,
-            repaid: ADVANCE_STATUS_LABELS.repaid,
-            cancelled: ADVANCE_STATUS_LABELS.cancelled,
-          }}
-          statusCounts={advanceStatusCounts}
-          onDateBoundsChange={() => {}}
-          trailingActions={(
-            <>
-              {filtered.length > 0 && (
-                <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
-                  <Download className="h-3.5 w-3.5" />تصدير
-                </Button>
-              )}
-              <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
-                <Plus className="h-4 w-4" />سلفة جديدة
-              </Button>
-            </>
-          )}
-        />
-        <p className="text-sm text-muted-foreground">{total} سلفة</p>
-      </div>
+      <p className="text-sm text-muted-foreground">{total} سلفة</p>
 
       {filtered.length === 0 ? (
         <EmptyState icon={Banknote} title="لا توجد سلف" description="أضف سلفة جديدة لموظف للبدء." />

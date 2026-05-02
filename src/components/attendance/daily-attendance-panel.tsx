@@ -5,21 +5,21 @@ import { format, parseISO, isFriday } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import {
   Clock3,
-  TrendingUp, Users, Timer, FileDown,
+  TrendingUp, Users, Timer, FileDown, FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { AttendanceRegisterPdf } from '@/components/pdf/attendance-register-pdf';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import { hasDateRangeFilter, thisCalendarMonthYMD } from '@/lib/hr-discipline/discipline-date-filter';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import type { AttendanceDaySummary, AttendanceEvent, DaySummaryStatus } from '@/lib/attendance/types';
 import { enumerateDates, minutesFromMidnight, todayIso } from '@/lib/attendance/utils';
 import { data } from '@/lib/data';
 import { cn, toWesternDigits } from '@/lib/utils';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 
 // ─── Status config (عرض المستخدم فقط — بدون «غير مكتمل» و«تمديد») ───────────
 
@@ -158,10 +158,6 @@ export function DailyAttendancePanel() {
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [pdfOpen, setPdfOpen] = React.useState(false);
 
-  const { values, setValue } = usePageFilters([
-    { key: 'q', label: 'بحث الموظف', type: 'text', placeholder: 'اسم الموظف…' },
-  ]);
-
   const spanFromStore = React.useMemo(() => {
     let lo = '';
     let hi = '';
@@ -178,8 +174,6 @@ export function DailyAttendancePanel() {
     return spanFromStore;
   }, [dateBounds, spanFromStore]);
 
-  const q = (values.q as string) ?? '';
-
   const dates = React.useMemo(() => enumerateDates(from, to), [from, to]);
 
   const allEmployees = React.useMemo(
@@ -189,24 +183,23 @@ export function DailyAttendancePanel() {
 
   const roster = React.useMemo(() => {
     let emps = allEmployees;
-    if (q.trim()) emps = emps.filter(e => e.name.includes(q) || e.id.includes(q));
     if (selectedEmpIds.size > 0) emps = emps.filter(e => selectedEmpIds.has(e.id));
     return emps;
-  }, [allEmployees, q, selectedEmpIds]);
+  }, [allEmployees, selectedEmpIds]);
 
   const filtered = React.useMemo(() =>
     daySummaries.filter((s) =>
       s.date >= from && s.date <= to &&
-      (!q.trim() || s.employeeName.includes(q) || s.employeeId.includes(q)) &&
       (selectedEmpIds.size === 0 || selectedEmpIds.has(s.employeeId)),
-    ), [daySummaries, from, to, q, selectedEmpIds]);
+    ), [daySummaries, from, to, selectedEmpIds]);
 
   const eventsFiltered = React.useMemo(() =>
     events.filter((e) =>
+      e != null &&
+      typeof e.id === 'string' &&
       e.date >= from && e.date <= to &&
-      (!q.trim() || e.employeeName.includes(q)) &&
       (selectedEmpIds.size === 0 || selectedEmpIds.has(e.employeeId)),
-    ), [events, from, to, q, selectedEmpIds]);
+    ), [events, from, to, selectedEmpIds]);
 
   const denseSummaries = React.useMemo(
     () => densifySummaries(filtered, dates, roster),
@@ -271,6 +264,33 @@ export function DailyAttendancePanel() {
 
   const attendancePdfFileName = `attendance-${from}-${to}.pdf`;
 
+  const handleExportAttendanceExcel = React.useCallback(async () => {
+    if (denseForView.length === 0) {
+      toast.error('لا توجد سجلات للتصدير ضمن الفلاتر الحالية.');
+      return;
+    }
+    const rows: XlsxCell[][] = [[
+      'الموظف',
+      'معرف الموظف',
+      'اليوم',
+      'الحالة',
+      'دقائق العمل',
+      'دقائق التأخير',
+    ]];
+    for (const s of denseForView) {
+      rows.push([
+        s.employeeName,
+        s.employeeId,
+        s.date,
+        STATUS[resolveVisualKey(s.status)].label,
+        s.workedMinutes,
+        s.lateMinutes,
+      ]);
+    }
+    await downloadXlsxFromAoA(`attendance-${from}-${to}.xlsx`, 'الحضور', rows);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [denseForView, from, to]);
+
   const stats = React.useMemo(() => {
     const workedM = denseForView.reduce((a, s) => a + s.workedMinutes, 0);
     const lateM = denseForView.reduce((a, s) => a + s.lateMinutes, 0);
@@ -284,15 +304,10 @@ export function DailyAttendancePanel() {
     };
   }, [denseForView]);
 
-  return (
-    <div className="space-y-4">
-      <PdfPreviewExportDialog
-        open={pdfOpen}
-        onOpenChange={setPdfOpen}
-        title="معاينة تصدير الحضور"
-        fileName={attendancePdfFileName}
-        document={attendancePdfDoc}
-      />
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  useEntityFilterSlot(
+    () => (
       <EntityFilterToolbar
         defaultDateFilterTab="month"
         empPickerEmployees={allEmployees}
@@ -320,16 +335,44 @@ export function DailyAttendancePanel() {
               }}
             >
               <FileDown className="h-3.5 w-3.5" />
-              تصدير PDF
+              PDF
             </Button>
-            <Input
-              value={q}
-              onChange={(e) => setValue('q', e.target.value)}
-              placeholder="اسم الموظف…"
-              className="h-8 w-44 text-xs"
-            />
+            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportAttendanceExcel()}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Excel
+            </Button>
           </>
         )}
+      />
+    ),
+    [
+      statusFilter,
+      selectedEmpKey,
+      dateBounds.from,
+      dateBounds.to,
+      from,
+      to,
+      attendanceStatusCounts.all,
+      attendanceStatusCounts.present,
+      attendanceStatusCounts.late,
+      attendanceStatusCounts.absent,
+      attendanceStatusCounts.early_leave,
+      attendanceStatusCounts.holiday,
+      attendanceStatusLabels,
+      attendancePdfRows.length,
+      handleExportAttendanceExcel,
+      allEmployees,
+    ],
+  );
+
+  return (
+    <div className="space-y-4">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير الحضور"
+        fileName={attendancePdfFileName}
+        document={attendancePdfDoc}
       />
       <p className="text-xs text-muted-foreground">
         {fmtFull(from)}
@@ -496,7 +539,7 @@ function GanttTimeline({
                         }}
                       />
                     )}
-                    {sorted.map((e) => {
+                    {sorted.filter((e) => e != null && e.id).map((e) => {
                       const mins = minutesFromMidnight(e.at);
                       return (
                         <div

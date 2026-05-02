@@ -1,11 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
@@ -22,6 +21,11 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/components/hr-discipline/discipline-filter-toolbar';
+import { data } from '@/lib/data';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { GenericRegisterPdf } from '@/components/pdf/generic-register-pdf';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 
 const KIND_OPTIONS = (Object.entries(NOTICE_KIND_LABELS) as [HRDisciplineNoticeKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -38,8 +42,6 @@ export function NoticesClient() {
   const { cases } = useHRViolationCasesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم أو رقم المخالفة…' }]);
-  const q = (values.q as string) ?? '';
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [kindFilter, setKindFilter] = React.useState<KindFilter>('all');
@@ -59,6 +61,7 @@ export function NoticesClient() {
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [pdfOpen, setPdfOpen] = React.useState(false);
 
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
@@ -66,11 +69,9 @@ export function NoticesClient() {
   const searchFiltered = React.useMemo(
     () =>
       notices.filter(
-        (n) =>
-          (n.employeeNameAr.includes(q) || n.reasonAr.includes(q)) &&
-          (selectedEmpIds.size === 0 || selectedEmpIds.has(n.employeeId)),
+        (n) => selectedEmpIds.size === 0 || selectedEmpIds.has(n.employeeId),
       ),
-    [notices, q, selectedEmpIds],
+    [notices, selectedEmpIds],
   );
 
   const filtered = React.useMemo(
@@ -92,6 +93,62 @@ export function NoticesClient() {
 
   const dateRangeActive = dateMeta.hasRestriction;
 
+  const noticesFilterSummary = React.useMemo(() => {
+    const parts: string[] = [];
+    parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل' : `الموظفون: ${selectedEmpIds.size} محدد`);
+    parts.push(`نوع الإنذار: ${kindFilter === 'all' ? 'الكل' : NOTICE_KIND_LABELS[kindFilter]}`);
+    parts.push(`التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`);
+    return parts.join(' · ');
+  }, [selectedEmpIds.size, kindFilter, dateBounds.from, dateBounds.to]);
+
+  const noticesPdfRows = React.useMemo(
+    () =>
+      listFiltered.map((n) => [
+        n.employeeNameAr,
+        n.date,
+        NOTICE_KIND_LABELS[n.kind],
+        n.reasonAr,
+        n.attachmentsNote || '—',
+      ]),
+    [listFiltered],
+  );
+
+  const noticesPdfDoc = React.useMemo(
+    () =>
+      noticesPdfRows.length === 0 ? null : (
+        <GenericRegisterPdf
+          companyNameAr={data.company.name}
+          companyNameEn={data.company.nameEn}
+          titleAr="سجل الإنذارات"
+          filterSummary={noticesFilterSummary}
+          headers={['الموظف', 'التاريخ', 'النوع', 'السبب', 'المرفقات']}
+          rows={noticesPdfRows}
+          landscape
+        />
+      ),
+    [noticesPdfRows, noticesFilterSummary],
+  );
+
+  const handleExportNoticesExcel = React.useCallback(async () => {
+    if (listFiltered.length === 0) {
+      toast.error('لا توجد إنذارات للتصدير ضمن الفلاتر الحالية.');
+      return;
+    }
+    const header: XlsxCell[] = ['الموظف', 'التاريخ', 'النوع', 'السبب', 'المرفقات'];
+    const rows: XlsxCell[][] = [
+      header,
+      ...listFiltered.map((n) => [
+        n.employeeNameAr,
+        n.date,
+        NOTICE_KIND_LABELS[n.kind],
+        n.reasonAr,
+        n.attachmentsNote || '—',
+      ]),
+    ];
+    await downloadXlsxFromAoA('discipline-notices.xlsx', 'الإنذارات', rows);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [listFiltered]);
+
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
   const handleSave = () => {
@@ -106,12 +163,36 @@ export function NoticesClient() {
     setDraft(EMPTY);
   };
 
-  return (
-    <div className="space-y-4">
+  useEntityFilterSlot(
+    () => (
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
         primaryActionLabel="إضافة إنذار"
         onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
+        toolbarExtraTrailing={(
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => {
+                if (noticesPdfRows.length === 0) {
+                  toast.error('لا توجد إنذارات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              PDF
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportNoticesExcel()}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Excel
+            </Button>
+          </>
+        )}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -124,6 +205,28 @@ export function NoticesClient() {
         onViewModeChange={setViewMode}
         onDateBoundsChange={onDateBoundsChange}
         onDateFilterMetaChange={onDateFilterMetaChange}
+      />
+    ),
+    [
+      empPickerList,
+      selectedEmpIds,
+      kindFilter,
+      statusCounts,
+      viewMode,
+      listFiltered,
+      onDateBoundsChange,
+      onDateFilterMetaChange,
+    ],
+  );
+
+  return (
+    <div className="space-y-4">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير الإنذارات"
+        fileName="discipline-notices.pdf"
+        document={noticesPdfDoc}
       />
 
       {searchFiltered.length === 0 ? (

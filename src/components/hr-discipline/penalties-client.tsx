@@ -5,7 +5,6 @@ import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
@@ -30,8 +29,6 @@ export function PenaltiesClient() {
   const { cases } = useHRViolationCasesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'اسم الموظف أو رقم المخالفة…' }]);
-  const q = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -40,7 +37,7 @@ export function PenaltiesClient() {
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
-  const filtered = penalties.filter(p => p.employeeNameAr.includes(q) || p.caseNumber.includes(q));
+  const filtered = penalties;
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 

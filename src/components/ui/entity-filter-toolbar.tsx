@@ -1,7 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { CalendarDays, ChevronDown, X } from 'lucide-react';
+import {
+  CalendarDays, LayoutGrid, List, X,
+} from 'lucide-react';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,6 +13,9 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormField } from '@/components/hr-requests/shared-ui';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
 import {
@@ -135,18 +140,66 @@ export type EntityFilterToolbarHandle = {
   resetStatusFilter: () => void;
 };
 
+export type EntityDataViewIcon = 'list' | 'layout-grid' | 'calendar-days';
+
+export type EntityDataViewOption = {
+  value: string;
+  label: string;
+  icon?: EntityDataViewIcon;
+};
+
+export type EntityDataViewConfig = {
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly EntityDataViewOption[];
+};
+
+/** قائمة منسدلة واحدة بجانب شريط الأدوات (فرع، قسم، …) */
+export type EntityFilterInlineSelect = {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly { value: string; label: string }[];
+  placeholder?: string;
+  className?: string;
+};
+
+const EMPTY_EMP_PICKER_LIST: { id: string; name: string }[] = [];
+const EMPTY_SELECTED_EMP_IDS = new Set<string>();
+const EMPTY_STATUS_ORDER_LIST: readonly string[] = [];
+const EMPTY_STATUS_LABELS: Record<string, string> = {};
+const DEFAULT_STATUS_COUNTS: Record<string, number> = { all: 0 };
+const noopBounds = () => {};
+const noopSetEmp = () => {};
+const noopStatus = () => {};
+
+const DATA_VIEW_TAB_CLASS =
+  'entity-toolbar-view-tab h-7 gap-1 px-2.5 text-[11px] transition-all duration-150 data-[state=active]:!font-semibold data-[state=active]:!shadow-sm data-[state=active]:ring-2 data-[state=active]:ring-primary/40 data-[state=active]:ring-offset-2 data-[state=active]:ring-offset-background data-[state=active]:border data-[state=active]:border-primary/35';
+
+function DataViewIcon({ name }: { name?: EntityDataViewIcon }) {
+  switch (name) {
+    case 'layout-grid':
+      return <LayoutGrid className="h-3 w-3 shrink-0" />;
+    case 'calendar-days':
+      return <CalendarDays className="h-3 w-3 shrink-0" />;
+    case 'list':
+    default:
+      return <List className="h-3 w-3 shrink-0" />;
+  }
+}
+
 export interface EntityFilterToolbarProps {
-  empPickerEmployees: { id: string; name: string }[];
-  selectedEmpIds: Set<string>;
-  onSelectedEmpIdsChange: (s: Set<string>) => void;
+  empPickerEmployees?: { id: string; name: string }[];
+  selectedEmpIds?: Set<string>;
+  onSelectedEmpIdsChange?: (s: Set<string>) => void;
 
-  statusFilter: string;
-  onStatusFilterChange: (v: string) => void;
-  statusOrder: readonly string[];
-  statusLabels: Record<string, string>;
-  statusCounts: Record<string, number>;
+  statusFilter?: string;
+  onStatusFilterChange?: (v: string) => void;
+  statusOrder?: readonly string[];
+  statusLabels?: Record<string, string>;
+  statusCounts?: Record<string, number>;
 
-  onDateBoundsChange: (bounds: { from: string; to: string }) => void;
+  onDateBoundsChange?: (bounds: { from: string; to: string }) => void;
   onDateFilterMetaChange?: (meta: { tab: DateFilterTab; hasRestriction: boolean }) => void;
 
   showDateSection?: boolean;
@@ -157,6 +210,18 @@ export interface EntityFilterToolbarProps {
 
   trailingActions?: React.ReactNode;
   beforeEmployeePicker?: React.ReactNode;
+
+  /** قوائم فرعية (فرع، قسم، نوع، …) بدون تكرار في الشريط الجانبي */
+  inlineSelects?: readonly EntityFilterInlineSelect[];
+
+  /**
+   * `tabs` — قوائم منسدلة للفترات والحالات (الافتراضي).
+   * `collapsible` — نفس عرض القوائم المنسدلة (متوافق مع الاسم السابق).
+   */
+  filterLayout?: 'tabs' | 'collapsible';
+
+  /** تبديل عرض البيانات (جدول / شبكة / بطاقات / تقويم …) قبل `trailingActions` */
+  dataView?: EntityDataViewConfig;
 }
 
 export const EntityFilterToolbar = React.forwardRef<
@@ -164,15 +229,15 @@ export const EntityFilterToolbar = React.forwardRef<
   EntityFilterToolbarProps
 >(function EntityFilterToolbar(
   {
-    empPickerEmployees,
-    selectedEmpIds,
-    onSelectedEmpIdsChange,
-    statusFilter,
-    onStatusFilterChange,
-    statusOrder,
-    statusLabels,
-    statusCounts,
-    onDateBoundsChange,
+    empPickerEmployees = EMPTY_EMP_PICKER_LIST,
+    selectedEmpIds = EMPTY_SELECTED_EMP_IDS,
+    onSelectedEmpIdsChange = noopSetEmp,
+    statusFilter = 'all',
+    onStatusFilterChange = noopStatus,
+    statusOrder = EMPTY_STATUS_ORDER_LIST,
+    statusLabels = EMPTY_STATUS_LABELS,
+    statusCounts = DEFAULT_STATUS_COUNTS,
+    onDateBoundsChange = noopBounds,
     onDateFilterMetaChange,
     showDateSection = true,
     showStatusSection = true,
@@ -180,6 +245,9 @@ export const EntityFilterToolbar = React.forwardRef<
     defaultDateFilterTab = 'all',
     trailingActions,
     beforeEmployeePicker,
+    inlineSelects,
+    filterLayout = 'tabs',
+    dataView,
   },
   ref,
 ) {
@@ -189,27 +257,30 @@ export const EntityFilterToolbar = React.forwardRef<
   const [customDialogOpen, setCustomDialogOpen] = React.useState(false);
   const [dialogFromMDY, setDialogFromMDY] = React.useState('');
   const [dialogToMDY, setDialogToMDY] = React.useState('');
-  const [filterStripOpen, setFilterStripOpen] = React.useState<'date' | 'status' | null>(null);
 
   const effectiveBounds = React.useMemo(
     () => (showDateSection ? effectiveDateRange(dateFilterTab, appliedCustomFrom, appliedCustomTo) : { from: '', to: '' }),
     [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo],
   );
 
+  const onDateBoundsChangeRef = React.useRef(onDateBoundsChange);
+  onDateBoundsChangeRef.current = onDateBoundsChange;
   React.useEffect(() => {
-    onDateBoundsChange(effectiveBounds);
-  }, [effectiveBounds, onDateBoundsChange]);
+    onDateBoundsChangeRef.current(effectiveBounds);
+  }, [effectiveBounds]);
 
+  const onDateFilterMetaChangeRef = React.useRef(onDateFilterMetaChange);
+  onDateFilterMetaChangeRef.current = onDateFilterMetaChange;
   React.useEffect(() => {
     if (!showDateSection) {
-      onDateFilterMetaChange?.({ tab: 'all', hasRestriction: false });
+      onDateFilterMetaChangeRef.current?.({ tab: 'all', hasRestriction: false });
       return;
     }
-    onDateFilterMetaChange?.({
+    onDateFilterMetaChangeRef.current?.({
       tab: dateFilterTab,
       hasRestriction: dateFilterHasRestriction(dateFilterTab, appliedCustomFrom, appliedCustomTo),
     });
-  }, [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo, onDateFilterMetaChange]);
+  }, [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo]);
 
   const openCustomDateDialog = React.useCallback(() => {
     setDialogFromMDY(appliedCustomFrom ? ymdToMDYDisplay(appliedCustomFrom) : '');
@@ -247,229 +318,170 @@ export const EntityFilterToolbar = React.forwardRef<
     setDialogToMDY(ymdToMDYDisplay(to));
   }, []);
 
-  const toggleFilterStrip = React.useCallback((which: 'date' | 'status') => {
-    setFilterStripOpen((prev) => (prev === which ? null : which));
-  }, []);
-
   const resetDateFilter = React.useCallback(() => {
     setDateFilterTab('all');
     setAppliedCustomFrom('');
     setAppliedCustomTo('');
-    setFilterStripOpen((prev) => (prev === 'date' ? null : prev));
   }, []);
 
   const resetStatusFilter = React.useCallback(() => {
     onStatusFilterChange('all');
-    setFilterStripOpen((prev) => (prev === 'status' ? null : prev));
   }, [onStatusFilterChange]);
+
+  const handleDatePeriodSelect = React.useCallback((v: string) => {
+    const next = v as DateFilterTab;
+    if (next === 'custom') {
+      setDateFilterTab('custom');
+      openCustomDateDialog();
+      return;
+    }
+    setDateFilterTab(next);
+  }, [openCustomDateDialog]);
 
   React.useImperativeHandle(ref, () => ({
     resetDateFilter,
     resetStatusFilter,
   }), [resetDateFilter, resetStatusFilter]);
 
-  const dateStripSummary = React.useMemo(() => {
-    if (!showDateSection) return '';
-    switch (dateFilterTab) {
-      case 'all':
-        return 'كل الفترات';
-      case 'today':
-        return 'اليوم';
-      case 'week':
-        return 'هذا الأسبوع';
-      case 'month':
-        return 'هذا الشهر';
-      case 'custom':
-        return hasDateRangeFilter(appliedCustomFrom, appliedCustomTo)
-          ? `${ymdToMDYDisplay(appliedCustomFrom)} — ${ymdToMDYDisplay(appliedCustomTo)}`
-          : 'مخصص';
-      default:
-        return '';
-    }
-  }, [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo]);
+  const showDateReset = showDateSection && dateFilterTab !== 'all';
+  const showStatusReset = showStatusSection && statusFilter !== 'all';
 
-  const statusStripSummary = React.useMemo(() => {
-    if (!showStatusSection) return '';
-    if (statusFilter === 'all') return `الكل · ${statusCounts.all ?? 0}`;
-    return `${statusLabels[statusFilter] ?? statusFilter} · ${statusCounts[statusFilter] ?? 0}`;
-  }, [showStatusSection, statusFilter, statusCounts, statusLabels]);
+  const useFilterDropdowns = filterLayout === 'tabs' || filterLayout === 'collapsible';
 
-  const showDateReset = showDateSection && (filterStripOpen === 'date' || dateFilterTab !== 'all');
-  const showStatusReset = showStatusSection && (filterStripOpen === 'status' || statusFilter !== 'all');
+  const dateCustomRangeRow = showDateSection && dateFilterTab === 'custom' ? (
+    <div className="flex w-full max-w-full flex-wrap items-center justify-between gap-2 border-border/40 border-dashed bg-muted/15 px-2 py-1.5 rounded-md">
+      <p className="min-w-0 text-[11px] text-muted-foreground" dir="ltr">
+        {hasDateRangeFilter(appliedCustomFrom, appliedCustomTo)
+          ? (
+            <>
+              <span className="text-foreground/80">المحدد:</span>
+              {' '}
+              {ymdToMDYDisplay(appliedCustomFrom) || '…'}
+              {' — '}
+              {ymdToMDYDisplay(appliedCustomTo) || '…'}
+            </>
+            )
+          : 'لم يُحدَّد نطاق. استخدم «اختيار التواريخ» ثم تأكيد.'}
+      </p>
+      <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 text-[11px]" onClick={openCustomDateDialog}>
+        {hasDateRangeFilter(appliedCustomFrom, appliedCustomTo) ? 'تعديل النطاق' : 'اختيار التواريخ'}
+      </Button>
+    </div>
+  ) : null;
 
-  const showDateStripPanel = showDateSection && filterStripOpen === 'date';
-  const showStatusStripPanel = showStatusSection && filterStripOpen === 'status';
+  const filterDropdownRow = useFilterDropdowns && (showDateSection || showStatusSection) ? (
+    <div className="flex w-full min-w-0 flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {showDateSection ? (
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 text-[11px] font-medium text-muted-foreground">الفترات</span>
+            <Select value={dateFilterTab} onValueChange={handleDatePeriodSelect}>
+              <SelectTrigger className="h-8 w-[min(100%,12.5rem)] text-xs" dir="rtl" aria-label="فلتر الفترة">
+                <SelectValue placeholder="الفترة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الفترات</SelectItem>
+                <SelectItem value="today">اليوم</SelectItem>
+                <SelectItem value="week">هذا الأسبوع</SelectItem>
+                <SelectItem value="month">هذا الشهر</SelectItem>
+                <SelectItem value="custom">مخصص…</SelectItem>
+              </SelectContent>
+            </Select>
+            {showDateReset ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label="إعادة ضبط الفترات"
+                title="إعادة ضبط الفترات"
+                onClick={(e) => {
+                  e.preventDefault();
+                  resetDateFilter();
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {showStatusSection ? (
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 text-[11px] font-medium text-muted-foreground">الحالات</span>
+            <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+              <SelectTrigger className="h-8 w-[min(100%,14rem)] text-xs" dir="rtl" aria-label="فلتر الحالة">
+                <SelectValue placeholder="الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {`الكل (${statusCounts.all ?? 0})`}
+                </SelectItem>
+                {statusOrder.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {`${statusLabels[s] ?? s} (${statusCounts[s] ?? 0})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {showStatusReset ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                aria-label="إعادة ضبط الحالات"
+                title="إعادة ضبط الحالات"
+                onClick={(e) => {
+                  e.preventDefault();
+                  resetStatusFilter();
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {dateCustomRangeRow}
+    </div>
+  ) : null;
 
   return (
     <>
       <div className="rounded-lg border border-border/50 bg-card/50 px-3 py-2 shadow-sm sm:px-4">
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <div className="flex min-w-0 flex-col items-start gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {showDateSection ? (
-                <div className="flex items-center gap-0.5">
-                  <Button
-                    type="button"
-                    variant={filterStripOpen === 'date' ? 'secondary' : 'outline'}
-                    size="sm"
-                    className="h-8 gap-1.5 px-2.5 text-xs font-medium"
-                    onClick={() => toggleFilterStrip('date')}
-                    aria-expanded={filterStripOpen === 'date'}
-                  >
-                    <CalendarDays className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                    الفترات
-                    <span className="max-w-40 truncate rounded-md bg-background/80 px-1.5 py-0.5 font-normal text-[10px] text-muted-foreground sm:max-w-56" title={dateStripSummary}>
-                      {dateStripSummary}
-                    </span>
-                    <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-60 transition-transform', filterStripOpen === 'date' && 'rotate-180')} />
-                  </Button>
-                  {showDateReset ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      aria-label="إعادة ضبط الفترات إلى كل الفترات وإخفاء الشريط"
-                      title="إعادة ضبط الفترات"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        resetDateFilter();
-                      }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-              {showStatusSection ? (
-                <div className="flex items-center gap-0.5">
-                  <Button
-                    type="button"
-                    variant={filterStripOpen === 'status' ? 'secondary' : 'outline'}
-                    size="sm"
-                    className="h-8 gap-1.5 px-2.5 text-xs font-medium"
-                    onClick={() => toggleFilterStrip('status')}
-                    aria-expanded={filterStripOpen === 'status'}
-                  >
-                    الحالات
-                    <span className="max-w-36 truncate rounded-md bg-background/80 px-1.5 py-0.5 font-normal text-[10px] text-muted-foreground sm:max-w-48" title={statusStripSummary}>
-                      {statusStripSummary}
-                    </span>
-                    <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-60 transition-transform', filterStripOpen === 'status' && 'rotate-180')} />
-                  </Button>
-                  {showStatusReset ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      aria-label="إعادة ضبط الحالات إلى الكل وإخفاء الشريط"
-                      title="إعادة ضبط الحالات"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        resetStatusFilter();
-                      }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
-            {showDateStripPanel ? (
-              <div className="max-w-[min(100%,42rem)] border-t border-border/50 pt-2">
-                <div className="overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]">
-                  <Tabs
-                    value={dateFilterTab}
-                    onValueChange={(v) => {
-                      const next = v as DateFilterTab;
-                      if (next === 'custom') {
-                        setDateFilterTab('custom');
-                        openCustomDateDialog();
-                        return;
-                      }
-                      setDateFilterTab(next);
-                    }}
-                  >
-                    <TabsList className="inline-flex h-auto min-h-8 w-max flex-nowrap gap-1.5 bg-muted/30 p-1 dark:bg-muted/20">
-                      <TabsTrigger value="all" className={DATE_TAB_TRIGGER_CLASS.all}>كل الفترات</TabsTrigger>
-                      <TabsTrigger value="today" className={DATE_TAB_TRIGGER_CLASS.today}>
-                        <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
-                        اليوم
-                      </TabsTrigger>
-                      <TabsTrigger value="week" className={DATE_TAB_TRIGGER_CLASS.week}>
-                        <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
-                        هذا الأسبوع
-                      </TabsTrigger>
-                      <TabsTrigger value="month" className={DATE_TAB_TRIGGER_CLASS.month}>
-                        <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
-                        هذا الشهر
-                      </TabsTrigger>
-                      <TabsTrigger value="custom" className={DATE_TAB_TRIGGER_CLASS.custom}>
-                        <CalendarDays className="h-3 w-3 shrink-0 opacity-70" />
-                        مخصص
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                {dateFilterTab === 'custom' ? (
-                  <div className="mt-2 flex w-full max-w-full flex-wrap items-center justify-between gap-2 border-border/40 border-dashed bg-muted/15 px-2 py-1.5">
-                    <p className="min-w-0 text-[11px] text-muted-foreground" dir="ltr">
-                      {hasDateRangeFilter(appliedCustomFrom, appliedCustomTo)
-                        ? (
-                          <>
-                            <span className="text-foreground/80">المحدد:</span>
-                            {' '}
-                            {ymdToMDYDisplay(appliedCustomFrom) || '…'}
-                            {' — '}
-                            {ymdToMDYDisplay(appliedCustomTo) || '…'}
-                          </>
-                          )
-                        : 'لم يُحدَّد نطاق. استخدم «اختيار التواريخ» ثم تأكيد.'}
-                    </p>
-                    <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 text-[11px]" onClick={openCustomDateDialog}>
-                      {hasDateRangeFilter(appliedCustomFrom, appliedCustomTo) ? 'تعديل النطاق' : 'اختيار التواريخ'}
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {showStatusStripPanel ? (
-              <div className="max-w-[min(100%,52rem)] border-t border-border/50 pt-2">
-                <div className="overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]">
-                  <Tabs value={statusFilter} onValueChange={onStatusFilterChange}>
-                    <TabsList className="inline-flex h-auto min-h-9 w-max flex-nowrap gap-1.5 bg-muted/30 p-1 dark:bg-muted/20">
-                      <TabsTrigger value="all" className={STATUS_ALL_TRIGGER_CLASS}>
-                        الكل
-                        <span className={STATUS_COUNT_BADGE}>{statusCounts.all ?? 0}</span>
-                      </TabsTrigger>
-                      {statusOrder.map((s, i) => (
-                        <TabsTrigger
-                          key={s}
-                          value={s}
-                          className={cn(
-                            'group',
-                            DATE_TAB_BASE,
-                            STATUS_CYCLE_TRIGGER_CLASSES[i % STATUS_CYCLE_TRIGGER_CLASSES.length],
-                          )}
-                        >
-                          {statusLabels[s] ?? s}
-                          <span className={STATUS_COUNT_BADGE}>{statusCounts[s] ?? 0}</span>
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </div>
-            ) : null}
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+            {filterDropdownRow}
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {inlineSelects?.map((sel) => (
+              <Select key={sel.id} value={sel.value} onValueChange={sel.onChange}>
+                <SelectTrigger className={cn('h-8 min-w-[8.5rem] max-w-[13rem] text-xs', sel.className)}>
+                  <SelectValue placeholder={sel.placeholder ?? '—'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sel.options.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ))}
             {beforeEmployeePicker}
             {showEmployeePicker ? (
               <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
+            ) : null}
+            {dataView && dataView.options.length >= 2 ? (
+              <Tabs value={dataView.value} onValueChange={dataView.onChange}>
+                <TabsList className="h-8 gap-0.5 bg-muted/70 p-0.5">
+                  {dataView.options.map((opt) => (
+                    <TabsTrigger key={opt.value} value={opt.value} className={DATA_VIEW_TAB_CLASS}>
+                      <DataViewIcon name={opt.icon} />
+                      {opt.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
             ) : null}
             {trailingActions}
           </div>

@@ -1,12 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Search, Building2, Users, ChevronDown, ChevronLeft, Network, ZoomIn, ZoomOut } from 'lucide-react';
+import { Building2, Users, ChevronDown, ChevronLeft, Network, ZoomIn, ZoomOut } from 'lucide-react';
 import { useSetPageTitle } from '@/components/page-title-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { data, getEmployee } from '@/lib/data';
 import { getInitials, cn } from '@/lib/utils';
 
@@ -60,7 +59,6 @@ function buildTree(): TreeNode {
 export default function OrganizationPage() {
   useSetPageTitle({ titleAr: 'خريطة المنظمة', descriptionAr: 'استكشف هيكل الشركة التفاعلي', iconName: 'Building2' });
   const tree = React.useMemo(buildTree, []);
-  const [search, setSearch] = React.useState('');
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set(['company', ...data.branches.map((b) => b.id)]));
 
   const toggle = (id: string) => {
@@ -77,7 +75,7 @@ export default function OrganizationPage() {
       <div className="relative overflow-auto rounded-lg border border-border bg-card p-6 shadow-soft">
         <div className="absolute inset-0 dotted-bg opacity-30" />
         <div className="relative">
-          <TreeNodeRender node={tree} expanded={expanded} onToggle={toggle} level={0} search={search} />
+          <TreeNodeRender node={tree} expanded={expanded} onToggle={toggle} level={0} />
         </div>
       </div>
     </div>
@@ -89,21 +87,14 @@ function TreeNodeRender({
   expanded,
   onToggle,
   level,
-  search,
 }: {
   node: TreeNode;
   expanded: Set<string>;
   onToggle: (id: string) => void;
   level: number;
-  search: string;
 }) {
   const isOpen = expanded.has(node.id);
   const hasChildren = node.children && node.children.length > 0;
-
-  const matchesSearch = !search || node.name.toLowerCase().includes(search.toLowerCase()) ||
-    (node.children?.some(c => hasDescendantMatch(c, search)));
-
-  if (!matchesSearch && level > 0) return null;
 
   const containerStyle = {
     borderColor: node.color ? `${node.color}40` : undefined,
@@ -185,18 +176,12 @@ function TreeNodeRender({
               expanded={expanded}
               onToggle={onToggle}
               level={level + 1}
-              search={search}
             />
           ))}
         </div>
       )}
     </div>
   );
-}
-
-function hasDescendantMatch(node: TreeNode, search: string): boolean {
-  if (node.name.toLowerCase().includes(search.toLowerCase())) return true;
-  return node.children?.some((c) => hasDescendantMatch(c, search)) ?? false;
 }
 
 function StatBlock({ label, value, icon: Icon, accent }: { label: string; value: string; icon: React.ElementType; accent: string }) {

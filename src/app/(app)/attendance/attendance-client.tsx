@@ -28,7 +28,9 @@ export function AttendanceClient() {
   const resetToSeed = useAttendanceStore((s) => s.resetToSeed);
 
   const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const copy = SECTION_COPY[section];
   useSetPageTitle({ titleAr: 'إدارة الحضور', descriptionAr: copy.desc, iconName: 'Clock' });

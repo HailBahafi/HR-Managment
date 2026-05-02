@@ -2,12 +2,11 @@
 
 import * as React from 'react';
 import {
-  Plus, Eye, Trash2, Send, CheckCircle2, XCircle, Edit3, ShieldAlert, CalendarDays, User, FileDown,
+  Plus, Eye, Trash2, Send, CheckCircle2, XCircle, Edit3, ShieldAlert, CalendarDays, User, FileDown, FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePageFilters } from '@/components/filter-panel-context';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -37,6 +36,8 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/components/hr-discipline/discipline-filter-toolbar';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 
 type StatusFilter = 'all' | HRViolationCaseStatus;
 
@@ -107,8 +108,6 @@ export function ViolationCasesClient() {
   const { types } = useHRViolationTypesStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم الموظف…' }]);
-  const q = (values.q as string) ?? '';
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
   const empPickerList = React.useMemo(() => {
@@ -178,11 +177,9 @@ export function ViolationCasesClient() {
   const searchFiltered = React.useMemo(
     () =>
       safeCases.filter(
-        (c) =>
-          (c.caseNumber.includes(q) || c.employeeNameAr.includes(q) || c.typeNameAr.includes(q)) &&
-          (selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId)),
+        (c) => selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId),
       ),
-    [safeCases, q, selectedEmpIds],
+    [safeCases, selectedEmpIds],
   );
 
   const filtered = React.useMemo(
@@ -217,14 +214,35 @@ export function ViolationCasesClient() {
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="سجل مخالفات الموظفين"
-          filterSummary={`الموظفون: ${selectedEmpIds.size === 0 ? 'الكل' : `${selectedEmpIds.size} محدد`} · الحالة: ${statusFilter === 'all' ? 'الكل' : CASE_STATUS_LABELS[statusFilter]} · التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}${q.trim() ? ` · بحث: ${q}` : ''}`}
+          filterSummary={`الموظفون: ${selectedEmpIds.size === 0 ? 'الكل' : `${selectedEmpIds.size} محدد`} · الحالة: ${statusFilter === 'all' ? 'الكل' : CASE_STATUS_LABELS[statusFilter]} · التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`}
           rows={violationPdfRows}
         />
       ),
-    [violationPdfRows, selectedEmpIds.size, statusFilter, dateBounds.from, dateBounds.to, q],
+    [violationPdfRows, selectedEmpIds.size, statusFilter, dateBounds.from, dateBounds.to],
   );
 
   const violationPdfFileName = 'violation-cases.pdf';
+
+  const handleExportViolationExcel = React.useCallback(async () => {
+    if (listFiltered.length === 0) {
+      toast.error('لا توجد مخالفات للتصدير ضمن الفلاتر الحالية.');
+      return;
+    }
+    const header: XlsxCell[] = ['رقم القضية', 'الموظف', 'نوع المخالفة', 'التاريخ', 'الحالة', 'الوصف'];
+    const rows: XlsxCell[][] = [
+      header,
+      ...listFiltered.map((c) => [
+        c.caseNumber,
+        c.employeeNameAr,
+        c.typeNameAr,
+        c.date,
+        CASE_STATUS_LABELS[c.status],
+        c.description,
+      ]),
+    ];
+    await downloadXlsxFromAoA('violation-cases.xlsx', 'المخالفات', rows);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [listFiltered]);
 
   const statusCounts = React.useMemo(() => {
     const counts: Partial<Record<StatusFilter, number>> = { all: filtered.length };
@@ -281,36 +299,35 @@ export function ViolationCasesClient() {
     setDraft(EMPTY);
   };
 
-  return (
-    <div className="space-y-4">
-      <PdfPreviewExportDialog
-        open={pdfOpen}
-        onOpenChange={setPdfOpen}
-        title="معاينة تصدير سجل المخالفات"
-        fileName={violationPdfFileName}
-        document={violationPdfDoc}
-      />
+  useEntityFilterSlot(
+    () => (
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
         primaryActionLabel="مخالفة جديدة"
         onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
         toolbarExtraTrailing={(
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
-            onClick={() => {
-              if (violationPdfRows.length === 0) {
-                toast.error('لا توجد مخالفات للتصدير ضمن الفلاتر الحالية.');
-                return;
-              }
-              setPdfOpen(true);
-            }}
-          >
-            <FileDown className="h-3.5 w-3.5" />
-            تصدير PDF
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => {
+                if (violationPdfRows.length === 0) {
+                  toast.error('لا توجد مخالفات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              PDF
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportViolationExcel()}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Excel
+            </Button>
+          </>
         )}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
@@ -325,11 +342,33 @@ export function ViolationCasesClient() {
         onDateBoundsChange={onDateBoundsChange}
         onDateFilterMetaChange={onDateFilterMetaChange}
       />
+    ),
+    [
+      empPickerList,
+      selectedEmpIds,
+      statusFilter,
+      statusCounts,
+      viewMode,
+      listFiltered,
+      onDateBoundsChange,
+      onDateFilterMetaChange,
+    ],
+  );
+
+  return (
+    <div className="space-y-4">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير سجل المخالفات"
+        fileName={violationPdfFileName}
+        document={violationPdfDoc}
+      />
 
       {searchFiltered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
           <ShieldAlert className="mb-3 h-10 w-10 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">لا توجد مخالفات مطابقة للبحث أو الموظفين المحددين.</p>
+          <p className="text-sm text-muted-foreground">لا توجد مخالفات ضمن الموظفين المحددين.</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">

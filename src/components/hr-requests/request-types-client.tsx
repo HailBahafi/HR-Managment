@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import {
   MinimalDropdown, ConfirmationModal, HRSettingsFormDrawer,
   FormField, ActiveBadge,
@@ -30,8 +30,6 @@ interface DraftForm {
   approvalStages: HRApprovalStage[];
 }
 
-const EMPTY_EMP_SELECTION = new Set<string>();
-
 const EMPTY: DraftForm = {
   scope: 'global',
   departmentId: '',
@@ -47,10 +45,7 @@ export function RequestTypesClient() {
   const { departments, requestTypes, templates, addRequestType, updateRequestType, deleteRequestType } = useHRConfigurationStore();
   const approvalAssignmentTemplates = useHRApprovalAssignmentTemplatesStore(s => s.templates);
 
-  const { values } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'الاسم…' },
-  ]);
-  const search = (values.q as string) ?? '';
+  const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
   const filterDepts: string[] = [];
   const [typeStatusFilter, setTypeStatusFilter] = React.useState<string>('all');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -67,13 +62,11 @@ export function RequestTypesClient() {
   );
 
   const afterSearch = React.useMemo(() => {
-    const q = search.toLowerCase();
     return requestTypes.filter((rt) => {
       if (filterDepts.length && !filterDepts.includes(rt.departmentId)) return false;
-      if (q && !rt.nameAr.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [requestTypes, search, filterDepts]);
+  }, [requestTypes, filterDepts]);
 
   const typeStatusCounts = React.useMemo(() => ({
     all: afterSearch.length,
@@ -154,33 +147,50 @@ export function RequestTypesClient() {
     ...activeApprovalAssignmentTemplates.map(t => ({ value: t.id, label: t.nameAr })),
   ];
 
-  return (
-    <div className="space-y-4">
+  useEntityFilterSlot(
+    () => (
       <EntityFilterToolbar
         showDateSection={false}
         showEmployeePicker={false}
-        empPickerEmployees={[]}
-        selectedEmpIds={EMPTY_EMP_SELECTION}
-        onSelectedEmpIdsChange={() => {}}
         statusFilter={typeStatusFilter}
         onStatusFilterChange={setTypeStatusFilter}
         statusOrder={['active', 'inactive']}
         statusLabels={{ active: 'نشط', inactive: 'غير نشط' }}
         statusCounts={typeStatusCounts}
         onDateBoundsChange={() => {}}
+        dataView={{
+          value: layoutView,
+          onChange: (v) => setLayoutView(v as 'grid' | 'table'),
+          options: [
+            { value: 'table', label: 'جدول', icon: 'list' },
+            { value: 'grid', label: 'شبكة', icon: 'layout-grid' },
+          ],
+        }}
         trailingActions={(
           <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
             <Plus className="h-4 w-4" /> نوع جديد
           </Button>
         )}
       />
+    ),
+    [
+      typeStatusFilter,
+      typeStatusCounts.all,
+      typeStatusCounts.active,
+      typeStatusCounts.inactive,
+      layoutView,
+    ],
+  );
+
+  return (
+    <div className="space-y-4">
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
           <Filter className="mb-3 h-10 w-10 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">لا توجد أنواع. أضف نوعاً جديداً أو عدّل الفلاتر</p>
         </div>
-      ) : (
+      ) : layoutView === 'grid' ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map(rt => {
@@ -229,6 +239,49 @@ export function RequestTypesClient() {
             })}
           </div>
         </>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground">
+                  <th className="px-4 py-3 text-right">القسم</th>
+                  <th className="px-4 py-3 text-right">النوع</th>
+                  <th className="px-4 py-3 text-right">القالب</th>
+                  <th className="px-4 py-3 text-right">الحالة</th>
+                  <th className="px-4 py-3 text-left w-28">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((rt) => {
+                  const tpl = templates.find((t) => t.id === rt.templateId);
+                  return (
+                    <tr
+                      key={rt.id}
+                      className="border-b border-border/60 cursor-pointer hover:bg-muted/25"
+                      onClick={() => openEdit(rt)}
+                    >
+                      <td className="px-4 py-3 text-muted-foreground">{getDeptLabel(rt.departmentId)}</td>
+                      <td className="px-4 py-3 font-medium">{rt.nameAr}</td>
+                      <td className="px-4 py-3">{tpl ? `${tpl.nameAr}${tpl.isUniversalDefault ? ' ★' : ''}` : '—'}</td>
+                      <td className="px-4 py-3"><ActiveBadge active={rt.isActive} /></td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(rt)} aria-label="تعديل">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(rt.id)} aria-label="حذف">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* Drawer */}

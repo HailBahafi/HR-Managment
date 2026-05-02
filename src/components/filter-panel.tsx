@@ -106,7 +106,9 @@ export function FilterPanel() {
                     <SelectValue placeholder={field.placeholder ?? 'اختر...'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">الكل</SelectItem>
+                    {!field.options?.some((o) => o.value === 'all') ? (
+                      <SelectItem value="all">الكل</SelectItem>
+                    ) : null}
                     {field.options?.map(opt => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}

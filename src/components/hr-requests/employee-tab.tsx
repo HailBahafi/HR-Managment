@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Search, RefreshCw, Pencil, Trash2, Eye, ChevronRight, ChevronDown, User, SlidersHorizontal, X } from 'lucide-react';
+import { Plus, RefreshCw, Pencil, Trash2, Eye, ChevronRight, ChevronDown, User, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -127,7 +127,6 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   const { departments } = useHRConfigurationStore();
 
   const [view, setView]           = React.useState<'list' | 'chart'>(() => (typeof window !== 'undefined' ? localStorage.getItem(LS_VIEW) as 'list' | 'chart' : null) ?? 'list');
-  const [search, setSearch]       = React.useState('');
   const [filterDept, setFilterDept]     = React.useState('all');
   const [filterStatus, setFilterStatus] = React.useState('all');
   const [filtersOpen, setFiltersOpen]   = React.useState(false);
@@ -157,14 +156,12 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   const deptOptions = [{ value: 'all', label: 'جميع الأقسام' }, ...departments.map(d => ({ value: d.id, label: d.nameAr }))];
 
   const filtered = React.useMemo(() => {
-    const q = search.toLowerCase();
     return employees.filter(e => {
       if (filterDept !== 'all' && e.departmentId !== filterDept) return false;
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
-      if (q && !e.nameAr.includes(q) && !e.bridgeId.toLowerCase().includes(q) && !e.jobTitleAr.includes(q)) return false;
       return true;
     });
-  }, [employees, search, filterDept, filterStatus]);
+  }, [employees, filterDept, filterStatus]);
 
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
@@ -196,7 +193,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   const forest     = React.useMemo(() => buildEmployeeForest(filtered), [filtered]);
   const getDeptName = (id: string) => departments.find(d => d.id === id)?.nameAr ?? id;
 
-  const hasActiveFilters = filterDept !== 'all' || filterStatus !== 'all' || search !== '';
+  const hasActiveFilters = filterDept !== 'all' || filterStatus !== 'all';
 
   return (
     <div className="w-full min-w-0 space-y-3">
@@ -211,15 +208,6 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
               {v === 'list' ? 'قائمة' : 'مخطط'}
             </button>
           ))}
-        </div>
-
-        {/* Search — hidden on mobile when filter panel open */}
-        <div className="relative hidden sm:block">
-          <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="بحث عن موظف…" className="pr-9 h-9 w-48 text-xs"
-          />
         </div>
 
         {/* Filter toggle (mobile) */}
@@ -263,7 +251,7 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">الفلاتر</span>
             <div className="flex items-center gap-2">
               {hasActiveFilters && (
-                <button type="button" className="text-xs text-muted-foreground underline" onClick={() => { setSearch(''); setFilterDept('all'); setFilterStatus('all'); setPage(1); }}>
+                <button type="button" className="text-xs text-muted-foreground underline" onClick={() => { setFilterDept('all'); setFilterStatus('all'); setPage(1); }}>
                   مسح الكل
                 </button>
               )}
@@ -271,10 +259,6 @@ export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
                 <X className="h-4 w-4" />
               </button>
             </div>
-          </div>
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="بحث عن موظف…" className="pr-9 h-9 text-xs" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <MinimalDropdown value={filterDept} onChange={v => { setFilterDept(v); setPage(1); }} options={deptOptions} placeholder="القسم" />

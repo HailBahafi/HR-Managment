@@ -124,10 +124,6 @@ export function AppPagination({
   pageSizeOptions = [10, 20, 50],
 }: PaginationProps) {
   const totalPages = Math.ceil(total / pageSize);
-  if (totalPages <= 1 && !onPageSizeChange) return null;
-
-  const start = (page - 1) * pageSize + 1;
-  const end   = Math.min(page * pageSize, total);
 
   const pages = React.useMemo(() => {
     const arr: (number | '…')[] = [];
@@ -142,6 +138,11 @@ export function AppPagination({
     }
     return arr;
   }, [page, totalPages]);
+
+  if (totalPages <= 1 && !onPageSizeChange) return null;
+
+  const start = (page - 1) * pageSize + 1;
+  const end   = Math.min(page * pageSize, total);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-3">

@@ -7,7 +7,7 @@ import { Button } from './button';
 import type { MapPickerValue } from './map-picker';
 
 // HERE Maps types are loaded at runtime via CDN; use `any` to avoid missing @types/heremaps.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type AnyH = any;
 
 interface Props {

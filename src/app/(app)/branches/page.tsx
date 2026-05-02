@@ -8,7 +8,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { useSetPageTitle } from '@/components/page-title-context';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import {
   EmptyState, HRSettingsFormDrawer, FormField, ConfirmationModal,
 } from '@/components/hr-requests/shared-ui';
@@ -36,10 +37,7 @@ function uid() {
 export default function BranchesPage() {
   useSetPageTitle({ titleAr: 'الفروع', descriptionAr: 'إدارة فروع الشركة وتوزيع الموظفين.', iconName: 'Building2' });
 
-  const { values } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'اسم الفرع أو المدينة…' },
-  ]);
-  const q = ((values.q as string) ?? '').toLowerCase();
+  const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
 
   const [branches, setBranches] = React.useState<Branch[]>(() =>
     data.branches.map(b => ({
@@ -55,12 +53,7 @@ export default function BranchesPage() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewBranch, setViewBranch] = React.useState<Branch | null>(null);
 
-  const filtered = branches.filter(b => {
-    if (!q) return true;
-    const n = b.name.toLowerCase();
-    const c = b.city.toLowerCase();
-    return n.includes(q) || c.includes(q);
-  });
+  const filtered = branches;
 
   const openCreate = () => {
     setEditId(null); setForm(EMPTY_FORM); setError(null); setDrawerOpen(true);
@@ -97,21 +90,38 @@ export default function BranchesPage() {
     setConfirmId(null);
   };
 
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showDateSection={false}
+        showStatusSection={false}
+        showEmployeePicker={false}
+        onDateBoundsChange={() => {}}
+        dataView={{
+          value: layoutView,
+          onChange: (v) => setLayoutView(v as 'grid' | 'table'),
+          options: [
+            { value: 'table', label: 'جدول', icon: 'list' },
+            { value: 'grid', label: 'شبكة', icon: 'layout-grid' },
+          ],
+        }}
+        trailingActions={(
+          <Button onClick={openCreate} size="sm" className="h-8 gap-1.5">
+            <Plus className="h-4 w-4" />فرع جديد
+          </Button>
+        )}
+      />
+    ),
+    [layoutView],
+  );
+
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-muted-foreground">
-          {branches.length} فرع
-        </span>
-        <Button onClick={openCreate} className="gap-1.5">
-          <Plus className="h-4 w-4" />فرع جديد
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">{branches.length} فرع</p>
 
       {filtered.length === 0 ? (
-        <EmptyState icon={Building2} title="لا توجد فروع" description="لم تُطابق نتائج البحث الحالية أي فرع." />
-      ) : (
+        <EmptyState icon={Building2} title="لا توجد فروع" description="لا توجد فروع في القائمة." />
+      ) : layoutView === 'grid' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map(b => (
             <div
@@ -140,6 +150,42 @@ export default function BranchesPage() {
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground">
+                  <th className="px-4 py-3 text-right">الفرع</th>
+                  <th className="px-4 py-3 text-right">المدينة</th>
+                  <th className="px-4 py-3 text-left w-28">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((b) => (
+                  <tr
+                    key={b.id}
+                    className="border-b border-border/60 cursor-pointer hover:bg-muted/25"
+                    onClick={() => setViewBranch(b)}
+                  >
+                    <td className="px-4 py-3 font-medium">{b.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{b.city}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(b)} aria-label="تعديل">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setConfirmId(b.id)} aria-label="حذف">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

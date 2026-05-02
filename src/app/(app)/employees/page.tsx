@@ -3,10 +3,10 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, FileDown, LayoutGrid, List, Mail, Building2 } from 'lucide-react';
+import { Plus, FileDown, FileSpreadsheet, Mail, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSetPageTitle } from '@/components/page-title-context';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import { NewEmployeeDrawer } from '@/components/employees/new-employee-drawer';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
@@ -17,6 +17,7 @@ import { formatCurrency, formatDateShort, getInitials } from '@/lib/utils';
 import { matchesDateRange, hasDateRangeFilter } from '@/lib/hr-discipline/discipline-date-filter';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmployeesRegisterPdf } from '@/components/pdf/employees-register-pdf';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 
 const EMP_CONTRACT_STATUS_ORDER = ['active', 'suspended', 'ended'] as const;
 
@@ -47,11 +48,8 @@ export default function EmployeesPage() {
   useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
   const router = useRouter();
 
-  const { values } = usePageFilters([
-    { key: 'search', label: 'بحث', type: 'text', placeholder: 'الاسم، رقم الموظف، أو المنصب…' },
-    { key: 'branch', label: 'الفرع', type: 'select', options: data.branches.map(b => ({ value: b.id, label: b.name })) },
-    { key: 'dept', label: 'القسم', type: 'select', options: data.departments.map(d => ({ value: d.id, label: d.name })) },
-  ]);
+  const [branchFilter, setBranchFilter] = React.useState('all');
+  const [deptFilter, setDeptFilter] = React.useState('all');
 
   const [view, setView] = React.useState<'table' | 'grid'>('table');
   const [newEmpOpen, setNewEmpOpen] = React.useState(false);
@@ -59,10 +57,6 @@ export default function EmployeesPage() {
   const [toolbarStatus, setToolbarStatus] = React.useState<string>('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [pdfOpen, setPdfOpen] = React.useState(false);
-
-  const search = (values.search as string) ?? '';
-  const branchFilter = (values.branch as string) ?? 'all';
-  const deptFilter = (values.dept as string) ?? 'all';
 
   const empPickerList = React.useMemo(
     () => data.employees.map((e) => ({ id: e.id, name: e.name })),
@@ -72,14 +66,13 @@ export default function EmployeesPage() {
   const narrowedForToolbar = React.useMemo(
     () =>
       data.employees.filter((e) => {
-        if (search && !e.name.includes(search) && !e.employeeCode.includes(search) && !e.position.includes(search)) return false;
         if (branchFilter !== 'all' && e.branchId !== branchFilter) return false;
         if (deptFilter !== 'all' && e.departmentId !== deptFilter) return false;
         if (selectedEmpIds.size > 0 && !selectedEmpIds.has(e.id)) return false;
         if (!matchesDateRange(employeeStartYmd(e), dateBounds.from, dateBounds.to)) return false;
         return true;
       }),
-    [search, branchFilter, deptFilter, selectedEmpIds, dateBounds.from, dateBounds.to],
+    [branchFilter, deptFilter, selectedEmpIds, dateBounds.from, dateBounds.to],
   );
 
   const contractStatusCounts = React.useMemo(
@@ -119,7 +112,6 @@ export default function EmployeesPage() {
 
   const employeesFilterSummary = React.useMemo(() => {
     const parts: string[] = [];
-    if (search.trim()) parts.push(`بحث: ${search}`);
     if (branchFilter !== 'all') parts.push(`فرع: ${data.branches.find((b) => b.id === branchFilter)?.name ?? branchFilter}`);
     if (deptFilter !== 'all') parts.push(`قسم: ${data.departments.find((d) => d.id === deptFilter)?.name ?? deptFilter}`);
     parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل (ضمن الفلاتر)' : `الموظفون: ${selectedEmpIds.size} محدد من القائمة`);
@@ -128,7 +120,42 @@ export default function EmployeesPage() {
     }
     parts.push(`حالة العقد: ${toolbarStatus === 'all' ? 'الكل' : (EMP_CONTRACT_STATUS_LABELS[toolbarStatus] ?? toolbarStatus)}`);
     return parts.join(' · ');
-  }, [search, branchFilter, deptFilter, selectedEmpIds.size, dateBounds.from, dateBounds.to, toolbarStatus]);
+  }, [branchFilter, deptFilter, selectedEmpIds.size, dateBounds.from, dateBounds.to, toolbarStatus]);
+
+  const handleExportExcel = React.useCallback(async () => {
+    if (filtered.length === 0) {
+      toast.error('لا يوجد موظفون للتصدير ضمن الفلاتر الحالية.');
+      return;
+    }
+    const rows: XlsxCell[][] = [[
+      'الموظف',
+      'رقم الموظف',
+      'المسمى',
+      'القسم',
+      'الفرع',
+      'نوع العقد',
+      'تاريخ الالتحاق',
+      'الراتب الأساسي',
+      'حالة العقد',
+    ]];
+    for (const emp of filtered) {
+      const dept = getDepartment(emp.departmentId);
+      const branch = getBranch(emp.branchId);
+      rows.push([
+        emp.name,
+        emp.employeeCode,
+        emp.position,
+        dept?.name ?? '—',
+        branch?.city ?? '—',
+        CONTRACT_TYPE_AR[emp.contractType] ?? emp.contractType,
+        employeeStartYmd(emp),
+        formatCurrency(emp.baseSalary),
+        EMP_CONTRACT_STATUS_LABELS[emp.contractStatus] ?? emp.contractStatus,
+      ]);
+    }
+    await downloadXlsxFromAoA('employees-register.xlsx', 'الموظفون', rows);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [filtered]);
 
   const employeesPdfDoc = React.useMemo(
     () =>
@@ -144,18 +171,36 @@ export default function EmployeesPage() {
     [employeesPdfRows, employeesFilterSummary],
   );
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <PdfPreviewExportDialog
-        open={pdfOpen}
-        onOpenChange={setPdfOpen}
-        title="معاينة تصدير سجل الموظفين"
-        fileName="employees-register.pdf"
-        document={employeesPdfDoc}
-      />
-      <NewEmployeeDrawer open={newEmpOpen} onOpenChange={setNewEmpOpen} />
+  const branchSelectOptions = React.useMemo(
+    () => [{ value: 'all', label: 'كل الفروع' }, ...data.branches.map((b) => ({ value: b.id, label: b.name }))],
+    [],
+  );
+  const deptSelectOptions = React.useMemo(
+    () => [{ value: 'all', label: 'كل الأقسام' }, ...data.departments.map((d) => ({ value: d.id, label: d.name }))],
+    [],
+  );
 
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  useEntityFilterSlot(
+    () => (
       <EntityFilterToolbar
+        inlineSelects={[
+          {
+            id: 'branch',
+            value: branchFilter,
+            onChange: setBranchFilter,
+            placeholder: 'الفرع',
+            options: branchSelectOptions,
+          },
+          {
+            id: 'dept',
+            value: deptFilter,
+            onChange: setDeptFilter,
+            placeholder: 'القسم',
+            options: deptSelectOptions,
+          },
+        ]}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -165,24 +210,16 @@ export default function EmployeesPage() {
         statusLabels={EMP_CONTRACT_STATUS_LABELS}
         statusCounts={contractStatusCounts}
         onDateBoundsChange={setDateBounds}
+        dataView={{
+          value: view,
+          onChange: (v) => setView(v as 'table' | 'grid'),
+          options: [
+            { value: 'table', label: 'جدول', icon: 'list' },
+            { value: 'grid', label: 'شبكة', icon: 'layout-grid' },
+          ],
+        }}
         trailingActions={(
           <>
-            <div className="flex items-center gap-0.5 rounded-xl border border-border bg-muted/30 p-0.5">
-              <button
-                type="button"
-                onClick={() => setView('table')}
-                className={`rounded-lg p-1.5 transition ${view === 'table' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setView('grid')}
-                className={`rounded-lg p-1.5 transition ${view === 'grid' ? 'bg-background shadow-soft' : 'text-muted-foreground'}`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-            </div>
             <Button
               type="button"
               variant="outline"
@@ -197,12 +234,48 @@ export default function EmployeesPage() {
               }}
             >
               <FileDown className="h-4 w-4" />
-              تصدير PDF
+              PDF
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-8 gap-2" onClick={() => void handleExportExcel()}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Excel
             </Button>
             <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={() => setNewEmpOpen(true)}><Plus className="h-4 w-4" />موظف جديد</Button>
           </>
         )}
       />
+    ),
+    [
+      branchFilter,
+      deptFilter,
+      view,
+      toolbarStatus,
+      selectedEmpKey,
+      dateBounds.from,
+      dateBounds.to,
+      contractStatusCounts.all,
+      contractStatusCounts.active,
+      contractStatusCounts.suspended,
+      contractStatusCounts.ended,
+      employeesPdfRows.length,
+      employeesFilterSummary,
+      handleExportExcel,
+      empPickerList,
+      branchSelectOptions,
+      deptSelectOptions,
+    ],
+  );
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير سجل الموظفين"
+        fileName="employees-register.pdf"
+        document={employeesPdfDoc}
+      />
+      <NewEmployeeDrawer open={newEmpOpen} onOpenChange={setNewEmpOpen} />
 
       {view === 'table' ? (
         <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
@@ -263,7 +336,7 @@ export default function EmployeesPage() {
           </div>
           {filtered.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-sm text-muted-foreground">لا توجد نتائج — جرّب تعديل الفلاتر أعلاه أو من اللوحة الجانبية</p>
+              <p className="text-sm text-muted-foreground">لا توجد نتائج — جرّب تعديل الفلاتر أعلاه</p>
             </div>
           )}
           {filtered.length > 0 && (

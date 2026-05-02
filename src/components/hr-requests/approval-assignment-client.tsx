@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
@@ -100,8 +99,6 @@ function StageEditor({ stage, index, total, onChange, onRemove }: {
 export function ApprovalAssignmentClient() {
   const { templates, add, update, remove } = useHRApprovalAssignmentTemplatesStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' }]);
-  const search = (values.q as string) ?? '';
   const [page, setPage] = React.useState(1);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -110,7 +107,7 @@ export function ApprovalAssignmentClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
   const PER = 9;
-  const filtered = templates.filter(t => !search || t.nameAr.includes(search));
+  const filtered = templates;
   const paginated = filtered.slice((page - 1) * PER, page * PER);
   const pages = Math.max(1, Math.ceil(filtered.length / PER));
 

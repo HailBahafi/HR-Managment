@@ -1,94 +1,27 @@
 'use client';
 
 import * as React from 'react';
-import {
-  TrendingUp, Users, CalendarOff, Clock, ChevronLeft, ChevronRight, FileDown,
-} from 'lucide-react';
+import { FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { cn, toWesternDigits } from '@/lib/utils';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import {
   MOCK_ANALYTICS_EMPLOYEES,
-  MOCK_ANALYTICS_TIMELINE_BARS,
   MOCK_BRANCHES,
   MOCK_UNIFIED_LEAVES,
   STATUS_LABELS,
 } from '@/lib/leaves/unified-mock';
-import type { EmployeeLeaveAnalyticsRow, UnifiedLeaveRecord } from '@/lib/leaves/types';
+import type { EmployeeLeaveAnalyticsRow } from '@/lib/leaves/types';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { LeavesAnalyticsPdf } from '@/components/pdf/leaves-analytics-pdf';
 import { data } from '@/lib/data';
 import { hasDateRangeFilter, intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
-
-// ─── colour maps ─────────────────────────────────────────────────────────────
-
-const TYPE_COLOR: Record<string, string> = {
-  annual: 'bg-primary/80 text-primary-foreground',
-  sick: 'bg-amber-500/80 text-white',
-  unpaid: 'bg-muted text-muted-foreground border border-border',
-  maternity: 'bg-pink-500/80 text-white',
-  emergency: 'bg-destructive/80 text-white',
-};
+import { downloadXlsxMultiSheet, type XlsxCell } from '@/lib/export/download-xlsx';
 
 const TYPE_LABEL: Record<string, string> = {
   annual: 'سنوية', sick: 'مرضية', unpaid: 'بدون راتب', maternity: 'أمومة', emergency: 'طارئة',
 };
-
-// ─── KPI card ────────────────────────────────────────────────────────────────
-
-function KpiCard({ label, value, sub, icon: Icon, accent }: { label: string; value: string | number; sub?: string; icon: React.ElementType; accent?: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-soft flex items-start gap-4">
-      <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', accent ?? 'bg-primary/10')}>
-        <Icon className={cn('h-5 w-5', accent ? 'text-white' : 'text-primary')} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="mt-0.5 font-display text-2xl font-bold tracking-tight">{value}</p>
-        {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
-// ─── Branch breakdown bar ─────────────────────────────────────────────────────
-
-function BranchBar({ leaves }: { leaves: UnifiedLeaveRecord[] }) {
-  const counts = React.useMemo(() => {
-    const map: Record<string, number> = {};
-    leaves.forEach((l) => { map[l.requestBranchId] = (map[l.requestBranchId] ?? 0) + 1; });
-    const total = Object.values(map).reduce((a, b) => a + b, 0) || 1;
-    return MOCK_BRANCHES.map((b) => ({ ...b, count: map[b.id] ?? 0, pct: Math.round(((map[b.id] ?? 0) / total) * 100) }));
-  }, [leaves]);
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-4">
-      <p className="font-semibold">توزيع الإجازات حسب الفرع</p>
-      <div className="flex h-3 overflow-hidden rounded-full">
-        {counts.map((b, i) => (
-          <div
-            key={b.id}
-            className={cn('h-full transition-all', i === 0 ? 'bg-primary' : i === 1 ? 'bg-amber-500' : 'bg-pink-500')}
-            style={{ width: `${b.pct}%` }}
-          />
-        ))}
-      </div>
-      <div className="flex gap-4">
-        {counts.map((b, i) => (
-          <div key={b.id} className="flex items-center gap-1.5 text-xs">
-            <span className={cn('h-2.5 w-2.5 rounded-full', i === 0 ? 'bg-primary' : i === 1 ? 'bg-amber-500' : 'bg-pink-500')} />
-            <span className="text-muted-foreground">{b.nameAr}</span>
-            <span className="font-semibold">{b.pct}%</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ─── Employee card ────────────────────────────────────────────────────────────
 
@@ -131,92 +64,6 @@ function EmployeeCard({ row }: { row: EmployeeLeaveAnalyticsRow }) {
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${sickPct}%` }} />
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Timeline ─────────────────────────────────────────────────────────────────
-
-function TimelineView() {
-  const [monthOffset, setMonthOffset] = React.useState(0);
-  const now = new Date(2026, 3 + monthOffset, 1); // April 2026 base
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = toWesternDigits(
-    now.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric', numberingSystem: 'latn' }),
-  );
-
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-  const barsInView = MOCK_ANALYTICS_TIMELINE_BARS.filter((bar) => {
-    const s = new Date(bar.rangeStart);
-    const e = new Date(bar.rangeEnd);
-    const mStart = new Date(year, month, 1);
-    const mEnd = new Date(year, month, daysInMonth);
-    return s <= mEnd && e >= mStart;
-  });
-
-  const employees = MOCK_ANALYTICS_EMPLOYEES.filter((e) => barsInView.some((b) => b.employeeId === e.id));
-
-  return (
-    <div className="rounded-xl border border-border bg-card shadow-soft overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <p className="font-semibold">الجدول الزمني للإجازات</p>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setMonthOffset((o) => o - 1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[120px] text-center text-sm font-medium">{monthLabel}</span>
-          <Button variant="ghost" size="icon" onClick={() => setMonthOffset((o) => o + 1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-      <div className="overflow-x-auto">
-        <div className="min-w-[700px]">
-          {/* Day header */}
-          <div className="flex border-b border-border bg-muted/40">
-            <div className="w-40 shrink-0 px-4 py-2 text-xs font-semibold text-muted-foreground">الموظف</div>
-            {days.map((d) => (
-              <div key={d} className="flex-1 py-2 text-center text-[10px] text-muted-foreground font-mono">{d}</div>
-            ))}
-          </div>
-          {/* Rows */}
-          {employees.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">لا توجد إجازات في هذا الشهر</div>
-          ) : employees.map((emp) => {
-            const empBars = barsInView.filter((b) => b.employeeId === emp.id);
-            return (
-              <div key={emp.id} className="flex items-center border-b border-border/50 last:border-0">
-                <div className="w-40 shrink-0 px-4 py-3 text-xs font-medium truncate">{emp.nameAr}</div>
-                <div className="relative flex flex-1 items-center" style={{ height: 36 }}>
-                  {days.map((d) => {
-                    const date = new Date(year, month, d);
-                    const bar = empBars.find((b) => new Date(b.rangeStart) <= date && new Date(b.rangeEnd) >= date);
-                    return (
-                      <div
-                        key={d}
-                        className={cn('flex-1 h-6 mx-px rounded-sm transition-colors', bar ? TYPE_COLOR[bar.leaveType] : 'bg-transparent')}
-                        title={bar ? TYPE_LABEL[bar.leaveType] : undefined}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 border-t border-border px-5 py-3">
-        {Object.entries(TYPE_LABEL).map(([k, v]) => (
-          <div key={k} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className={cn('h-2.5 w-2.5 rounded-sm', TYPE_COLOR[k]?.split(' ')[0])} />
-            {v}
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -350,15 +197,52 @@ export function AnalyticsClient() {
 
   const analyticsPdfFileName = 'leaves-analytics.pdf';
 
-  return (
-    <div className="space-y-6">
-      <PdfPreviewExportDialog
-        open={pdfOpen}
-        onOpenChange={setPdfOpen}
-        title="معاينة تصدير تحليلات الإجازات"
-        fileName={analyticsPdfFileName}
-        document={analyticsPdfDoc}
-      />
+  const handleExportAnalyticsExcel = React.useCallback(async () => {
+    const leaveHeader: XlsxCell[] = ['الموظف', 'من', 'إلى', 'نوع الإجازة', 'الحالة', 'أيام عمل'];
+    const leaveRows: XlsxCell[][] = [
+      leaveHeader,
+      ...leavesMatchingToolbar.map((l) => [
+        empNameById.get(l.employeeId) ?? l.employeeId,
+        l.start,
+        l.end,
+        TYPE_LABEL[l.type] ?? l.type,
+        STATUS_LABELS[l.status] ?? l.status,
+        l.workingDays,
+      ]),
+    ];
+    const empHeader: XlsxCell[] = ['الموظف', 'سنوية (مستخدم/إجمالي)', 'مرضية (مستخدم/سقف)', 'الفرع'];
+    const empRows: XlsxCell[][] = [
+      empHeader,
+      ...filteredEmployees.map((row) => {
+        const branch = MOCK_BRANCHES.find((b) => b.id === row.branchId);
+        return [
+          row.nameAr,
+          `${row.annualConsumed}/${row.annualTotal}`,
+          `${row.sickUsed}/${row.sickCap}`,
+          branch?.nameAr ?? row.branchId,
+        ];
+      }),
+    ];
+    const sheets: { name: string; data: XlsxCell[][] }[] = [];
+    if (leaveRows.length > 1) sheets.push({ name: 'الإجازات', data: leaveRows });
+    if (empRows.length > 1) sheets.push({ name: 'الموظفون', data: empRows });
+    if (sheets.length === 0) {
+      toast.error('لا توجد بيانات للتصدير ضمن الفلاتر الحالية.');
+      return;
+    }
+    await downloadXlsxMultiSheet('leaves-analytics.xlsx', sheets);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [leavesMatchingToolbar, filteredEmployees, empNameById]);
+
+  const branchSelectOptions = React.useMemo(
+    () => [{ value: 'all', label: 'جميع الفروع' }, ...MOCK_BRANCHES.map((b) => ({ value: b.id, label: b.nameAr }))],
+    [],
+  );
+
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  useEntityFilterSlot(
+    () => (
       <EntityFilterToolbar
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
@@ -369,19 +253,17 @@ export function AnalyticsClient() {
         statusLabels={statusLabelsForToolbar}
         statusCounts={leaveStatusCounts}
         onDateBoundsChange={setDateBounds}
+        inlineSelects={[
+          {
+            id: 'branch',
+            value: branchFilter,
+            onChange: setBranchFilter,
+            placeholder: 'الفرع',
+            options: branchSelectOptions,
+          },
+        ]}
         trailingActions={(
           <>
-            <Select value={branchFilter} onValueChange={setBranchFilter}>
-              <SelectTrigger className="h-8 w-[160px] text-xs">
-                <SelectValue placeholder="الفرع" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">جميع الفروع</SelectItem>
-                {MOCK_BRANCHES.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Button
               type="button"
               variant="outline"
@@ -396,22 +278,44 @@ export function AnalyticsClient() {
               }}
             >
               <FileDown className="h-3.5 w-3.5" />
-              تصدير PDF
+              PDF
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportAnalyticsExcel()}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Excel
             </Button>
           </>
         )}
       />
+    ),
+    [
+      branchFilter,
+      selectedEmpKey,
+      leaveStatusFilter,
+      dateBounds.from,
+      dateBounds.to,
+      leaveStatusCounts.all,
+      leaveStatusCounts.pending,
+      leaveStatusCounts.approved,
+      leaveStatusCounts.rejected,
+      leaveStatusCounts.cancelled,
+      leavePdfRows.length,
+      employeePdfRows.length,
+      handleExportAnalyticsExcel,
+      empPickerList,
+      branchSelectOptions,
+    ],
+  );
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard label="إجمالي الطلبات" value={totalLeaves} icon={Users} accent="bg-primary text-primary-foreground" />
-        <KpiCard label="موافق عليها" value={approved} icon={TrendingUp} accent="bg-emerald-600 text-white" />
-        <KpiCard label="قيد الانتظار" value={pending} icon={Clock} accent="bg-amber-500 text-white" />
-        <KpiCard label="أيام عمل (محاكاة)" value={totalDays} sub="مجموع أيام العمل في الطلبات المصفّاة" icon={CalendarOff} accent="bg-pink-500 text-white" />
-      </div>
-
-      <BranchBar leaves={leavesMatchingToolbar} />
-
-      <TimelineView />
+  return (
+    <div className="space-y-6">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير تحليلات الإجازات"
+        fileName={analyticsPdfFileName}
+        document={analyticsPdfDoc}
+      />
 
       <div>
         <p className="mb-4 font-semibold">أرصدة الموظفين</p>

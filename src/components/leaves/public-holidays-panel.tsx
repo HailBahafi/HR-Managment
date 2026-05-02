@@ -5,7 +5,6 @@ import { Plus, Pencil, Trash2, RefreshCw, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { usePageFilters } from '@/components/filter-panel-context';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -35,8 +34,6 @@ function formatDate(date: string) {
 
 export function PublicHolidaysPanel() {
   const { items, add, update, remove } = useHolidaysStore();
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' }]);
-  const search = (values.q as string) ?? '';
   const [open, setOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftState>(EMPTY_DRAFT);
@@ -45,12 +42,8 @@ export function PublicHolidaysPanel() {
 
   const sorted = React.useMemo(() =>
     [...items]
-      .filter((x) => {
-        const q = search.toLowerCase();
-        return !q || x.nameAr.toLowerCase().includes(q);
-      })
       .sort((a, b) => a.sortOrder - b.sortOrder),
-    [items, search],
+    [items],
   );
 
   const openCreate = () => {

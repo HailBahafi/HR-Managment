@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, ActiveBadge, MinimalDropdown,
@@ -41,17 +40,13 @@ export function ViolationTypesClient() {
   const { types, add, update, remove } = useHRViolationTypesStore();
   const { templates } = useHRDisciplineApprovalAssignmentTemplatesStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث…' }]);
-  const q = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  const filtered = types.filter(t =>
-    t.nameAr.toLowerCase().includes(q.toLowerCase())
-  );
+  const filtered = types;
 
 
   const openCreate = () => { setDraft(EMPTY); setEditId(null); setFormError(null); setDrawerOpen(true); };

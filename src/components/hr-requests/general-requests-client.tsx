@@ -1,11 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Eye, Trash2, Plus, RefreshCw, Search, Check, X } from 'lucide-react';
+import { Eye, Trash2, Plus, RefreshCw, Search, Check, X, FileDown, FileSpreadsheet } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Separator } from '@/components/ui/separator';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer,
@@ -28,6 +29,10 @@ import {
 } from '@/lib/hr-requests/types';
 import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
 import { cn, formatDateShort } from '@/lib/utils';
+import { data } from '@/lib/data';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { GenericRegisterPdf } from '@/components/pdf/generic-register-pdf';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 
 const REQUEST_APPROVAL_TAB_ORDER = ['in_progress', 'approved', 'rejected', 'no_approval'] as const;
 
@@ -92,6 +97,7 @@ export function GeneralRequestsClient() {
   const [refreshing, setRefreshing] = React.useState(false);
 
   // Drawer / modals
+  const [pdfOpen, setPdfOpen] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [viewRecord, setViewRecord] = React.useState<HRRequestSubmissionRecord | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
@@ -111,17 +117,16 @@ export function GeneralRequestsClient() {
 
   // Derived
   const activeDepts = departments.filter(d => d.isActive);
-  const deptOptions = [{ value: 'all', label: 'جميع الأقسام' }, ...activeDepts.map(d => ({ value: d.id, label: d.nameAr }))];
-  const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
+  const deptOptions = React.useMemo(
+    () => [{ value: 'all', label: 'جميع الأقسام' }, ...activeDepts.map((d) => ({ value: d.id, label: d.nameAr }))],
+    [activeDepts],
+  );
+  const empOptions = React.useMemo(
+    () => activeEmployees.map((e) => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr })),
+    [activeEmployees],
+  );
 
-  const { values } = usePageFilters([
-    { key: 'search', label: 'بحث', type: 'text', placeholder: 'اسم الموظف، القسم، أو نوع الطلب…' },
-    { key: 'dept', label: 'القسم', type: 'select', options: activeDepts.map(d => ({ value: d.id, label: d.nameAr })) },
-    { key: 'emp', label: 'الموظف', type: 'select', options: empOptions.map(e => ({ value: e.value, label: e.label })) },
-  ]);
-  const appliedSearch = (values.search as string) ?? '';
-  const appliedDept = (values.dept as string) ?? 'all';
-  const appliedEmp = (values.emp as string) ?? '';
+  const [appliedDept, setAppliedDept] = React.useState('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
   const [approvalStatusFilter, setApprovalStatusFilter] = React.useState<string>('all');
@@ -145,17 +150,14 @@ export function GeneralRequestsClient() {
   }, [selectedRt, templates, getTemplateById]);
 
   const narrowedForStatusCounts = React.useMemo(() => {
-    const q = appliedSearch.toLowerCase();
     return submissions.filter((s) => {
       if (appliedDept !== 'all' && s.departmentId !== appliedDept) return false;
-      if (appliedEmp && s.employeeId !== appliedEmp) return false;
       if (selectedEmpIds.size > 0 && !selectedEmpIds.has(s.employeeId)) return false;
-      if (q && !s.departmentNameAr.includes(q) && !s.requestTypeNameAr.includes(q) && !s.employeeNameAr.includes(q) && !JSON.stringify(s.fieldValues).toLowerCase().includes(q)) return false;
       const ymd = submissionCreatedYmd(s);
       if (!matchesDateRange(ymd, dateBounds.from, dateBounds.to)) return false;
       return true;
     });
-  }, [submissions, appliedSearch, appliedDept, appliedEmp, selectedEmpIds, dateBounds.from, dateBounds.to]);
+  }, [submissions, appliedDept, selectedEmpIds, dateBounds.from, dateBounds.to]);
 
   const approvalStatusCounts = React.useMemo(() => {
     const counts: Record<string, number> = {
@@ -176,6 +178,71 @@ export function GeneralRequestsClient() {
     return narrowedForStatusCounts.filter((s) => submissionApprovalTab(s) === approvalStatusFilter);
   }, [narrowedForStatusCounts, approvalStatusFilter]);
 
+  const generalFilterSummary = React.useMemo(() => {
+    const parts: string[] = [];
+    if (appliedDept !== 'all') {
+      parts.push(`قسم: ${activeDepts.find((d) => d.id === appliedDept)?.nameAr ?? appliedDept}`);
+    }
+    parts.push(selectedEmpIds.size === 0 ? 'جدول الموظفين: الكل' : `جدول الموظفين: ${selectedEmpIds.size} محدد`);
+    if (dateBounds.from || dateBounds.to) {
+      parts.push(`التاريخ: ${dateBounds.from || '…'} — ${dateBounds.to || '…'}`);
+    }
+    parts.push(
+      `الموافقات: ${approvalStatusFilter === 'all' ? 'الكل' : (REQUEST_APPROVAL_TAB_LABELS[approvalStatusFilter] ?? approvalStatusFilter)}`,
+    );
+    return parts.join(' · ');
+  }, [
+    appliedDept,
+    selectedEmpIds.size,
+    dateBounds.from,
+    dateBounds.to,
+    approvalStatusFilter,
+    activeDepts,
+  ]);
+
+  const generalPdfRows = React.useMemo(
+    () =>
+      filtered.map((r) => {
+        const tpl = getTemplateById(r.templateId);
+        const apSum = deriveSubmissionApprovalSummary(r.approvalSnapshot);
+        return [
+          r.employeeNameAr,
+          r.departmentNameAr,
+          r.requestTypeNameAr,
+          formatFieldSummary(r, tpl),
+          apSum?.labelAr ?? '—',
+          formatDateShort(r.createdAt),
+        ];
+      }),
+    [filtered, getTemplateById],
+  );
+
+  const generalPdfDoc = React.useMemo(
+    () =>
+      generalPdfRows.length === 0 ? null : (
+        <GenericRegisterPdf
+          companyNameAr={data.company.name}
+          companyNameEn={data.company.nameEn}
+          titleAr="طلبات الموارد البشرية العامة"
+          filterSummary={generalFilterSummary}
+          headers={['الموظف', 'القسم', 'نوع الطلب', 'ملخص الحقول', 'حالة الموافقة', 'تاريخ الإنشاء']}
+          rows={generalPdfRows}
+          landscape
+        />
+      ),
+    [generalPdfRows, generalFilterSummary],
+  );
+
+  const handleExportGeneralExcel = React.useCallback(async () => {
+    if (filtered.length === 0) {
+      toast.error('لا توجد طلبات للتصدير ضمن الفلاتر الحالية.');
+      return;
+    }
+    const header: XlsxCell[] = ['الموظف', 'القسم', 'نوع الطلب', 'ملخص الحقول', 'حالة الموافقة', 'تاريخ الإنشاء'];
+    const rows: XlsxCell[][] = [header, ...generalPdfRows.map((r) => [...r])];
+    await downloadXlsxFromAoA('hr-general-requests.xlsx', 'الطلبات', rows);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [filtered.length, generalPdfRows]);
 
   const refresh = () => {
     setRefreshing(true);
@@ -249,9 +316,20 @@ export function GeneralRequestsClient() {
     [patchSubmissionApprovalStage, syncViewRecordAfterPatch],
   );
 
-  return (
-    <div className="space-y-4">
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  useEntityFilterSlot(
+    () => (
       <EntityFilterToolbar
+        inlineSelects={[
+          {
+            id: 'dept',
+            value: appliedDept,
+            onChange: setAppliedDept,
+            placeholder: 'القسم',
+            options: deptOptions,
+          },
+        ]}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -267,13 +345,33 @@ export function GeneralRequestsClient() {
             <MinimalDropdown
               value={actingReviewerId}
               onChange={setActingReviewerId}
-              options={activeEmployees.map(e => ({ value: e.id, label: e.nameAr }))}
+              options={activeEmployees.map((e) => ({ value: e.id, label: e.nameAr }))}
               placeholder="المعتمد"
             />
           </div>
         ) : undefined}
         trailingActions={(
           <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => {
+                if (!generalPdfDoc) {
+                  toast.error('لا توجد طلبات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              PDF
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => void handleExportGeneralExcel()}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Excel
+            </Button>
             <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={refresh} disabled={refreshing}>
               <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} /> تحديث
             </Button>
@@ -282,6 +380,38 @@ export function GeneralRequestsClient() {
             </Button>
           </>
         )}
+      />
+    ),
+    [
+      appliedDept,
+      actingReviewerId,
+      approvalStatusFilter,
+      selectedEmpKey,
+      dateBounds.from,
+      dateBounds.to,
+      approvalStatusCounts.all,
+      approvalStatusCounts.in_progress,
+      approvalStatusCounts.approved,
+      approvalStatusCounts.rejected,
+      approvalStatusCounts.no_approval,
+      generalPdfRows.length,
+      generalFilterSummary,
+      handleExportGeneralExcel,
+      refreshing,
+      empPickerList,
+      deptOptions,
+      activeEmployees,
+    ],
+  );
+
+  return (
+    <div className="space-y-4">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير الطلبات العامة"
+        fileName="hr-general-requests.pdf"
+        document={generalPdfDoc}
       />
 
       {filtered.length === 0 ? (

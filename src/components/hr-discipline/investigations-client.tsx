@@ -1,11 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePageFilters } from '@/components/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
@@ -21,6 +20,11 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/components/hr-discipline/discipline-filter-toolbar';
+import { data } from '@/lib/data';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { GenericRegisterPdf } from '@/components/pdf/generic-register-pdf';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 
 const RESULT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -41,8 +45,6 @@ export function InvestigationsClient() {
   const { investigations, add, remove } = useHRDisciplineInvestigationsStore();
   const { cases } = useHRViolationCasesStore();
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'رقم الموظف…' }]);
-  const q = (values.q as string) ?? '';
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [resultFilter, setResultFilter] = React.useState<ResultFilter>('all');
@@ -62,17 +64,16 @@ export function InvestigationsClient() {
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [pdfOpen, setPdfOpen] = React.useState(false);
 
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
   const searchFiltered = React.useMemo(
     () =>
       investigations.filter(
-        (i) =>
-          (i.caseNumber.includes(q) || i.employeeNameAr.includes(q) || i.investigatorName.includes(q)) &&
-          (selectedEmpIds.size === 0 || selectedEmpIds.has(i.employeeId)),
+        (i) => selectedEmpIds.size === 0 || selectedEmpIds.has(i.employeeId),
       ),
-    [investigations, q, selectedEmpIds],
+    [investigations, selectedEmpIds],
   );
 
   const filtered = React.useMemo(
@@ -94,6 +95,64 @@ export function InvestigationsClient() {
 
   const dateRangeActive = dateMeta.hasRestriction;
 
+  const investigationsFilterSummary = React.useMemo(() => {
+    const parts: string[] = [];
+    parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل' : `الموظفون: ${selectedEmpIds.size} محدد`);
+    parts.push(`النتيجة: ${resultFilter === 'all' ? 'الكل' : INVESTIGATION_RESULT_LABELS[resultFilter]}`);
+    parts.push(`التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`);
+    return parts.join(' · ');
+  }, [selectedEmpIds.size, resultFilter, dateBounds.from, dateBounds.to]);
+
+  const investigationsPdfRows = React.useMemo(
+    () =>
+      listFiltered.map((inv) => [
+        inv.caseNumber,
+        inv.employeeNameAr,
+        inv.investigatorName,
+        inv.date,
+        INVESTIGATION_RESULT_LABELS[inv.result],
+        inv.recommendation,
+      ]),
+    [listFiltered],
+  );
+
+  const investigationsPdfDoc = React.useMemo(
+    () =>
+      investigationsPdfRows.length === 0 ? null : (
+        <GenericRegisterPdf
+          companyNameAr={data.company.name}
+          companyNameEn={data.company.nameEn}
+          titleAr="سجل التحقيقات"
+          filterSummary={investigationsFilterSummary}
+          headers={['رقم القضية', 'الموظف', 'المحقق', 'التاريخ', 'النتيجة', 'التوصية']}
+          rows={investigationsPdfRows}
+          landscape
+        />
+      ),
+    [investigationsPdfRows, investigationsFilterSummary],
+  );
+
+  const handleExportInvestigationsExcel = React.useCallback(async () => {
+    if (listFiltered.length === 0) {
+      toast.error('لا توجد تحقيقات للتصدير ضمن الفلاتر الحالية.');
+      return;
+    }
+    const header: XlsxCell[] = ['رقم القضية', 'الموظف', 'المحقق', 'التاريخ', 'النتيجة', 'التوصية'];
+    const rows: XlsxCell[][] = [
+      header,
+      ...listFiltered.map((inv) => [
+        inv.caseNumber,
+        inv.employeeNameAr,
+        inv.investigatorName,
+        inv.date,
+        INVESTIGATION_RESULT_LABELS[inv.result],
+        inv.recommendation,
+      ]),
+    ];
+    await downloadXlsxFromAoA('discipline-investigations.xlsx', 'التحقيقات', rows);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [listFiltered]);
+
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
   const handleCaseSelect = (caseId: string) => {
@@ -113,12 +172,36 @@ export function InvestigationsClient() {
     setDraft(EMPTY);
   };
 
-  return (
-    <div className="space-y-4">
+  useEntityFilterSlot(
+    () => (
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
         primaryActionLabel="إضافة تحقيق"
         onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
+        toolbarExtraTrailing={(
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => {
+                if (investigationsPdfRows.length === 0) {
+                  toast.error('لا توجد تحقيقات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              PDF
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportInvestigationsExcel()}>
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              Excel
+            </Button>
+          </>
+        )}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -131,6 +214,28 @@ export function InvestigationsClient() {
         onViewModeChange={setViewMode}
         onDateBoundsChange={onDateBoundsChange}
         onDateFilterMetaChange={onDateFilterMetaChange}
+      />
+    ),
+    [
+      empPickerList,
+      selectedEmpIds,
+      resultFilter,
+      statusCounts,
+      viewMode,
+      listFiltered,
+      onDateBoundsChange,
+      onDateFilterMetaChange,
+    ],
+  );
+
+  return (
+    <div className="space-y-4">
+      <PdfPreviewExportDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title="معاينة تصدير التحقيقات"
+        fileName="discipline-investigations.pdf"
+        document={investigationsPdfDoc}
       />
 
       {searchFiltered.length === 0 ? (

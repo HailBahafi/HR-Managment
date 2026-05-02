@@ -188,7 +188,6 @@ export function EmploymentContractsClient() {
   );
 
   const { values, setValue } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث برقم العقد أو الموظف…' },
     {
       key: 'status', label: 'الحالة', type: 'select',
       options: EMPLOYMENT_STATUS_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
@@ -199,7 +198,6 @@ export function EmploymentContractsClient() {
     },
   ]);
 
-  const q = ((values.q as string) ?? '').toLowerCase();
   const statusFilter = (values.status as StatusFilter) || 'all';
   const kindFilter = (values.kind as KindFilter) || 'all';
 
@@ -333,13 +331,11 @@ export function EmploymentContractsClient() {
 
   const filtered = React.useMemo(() =>
     contracts.filter(c => {
-      const empName = getEmpName(c.employeeId);
-      const matchQ = !q || c.contractNumber.toLowerCase().includes(q) || empName.includes(q);
       const matchS = statusFilter === 'all' || c.status === statusFilter;
       const matchK = kindFilter === 'all' || c.contractType === kindFilter;
-      return matchQ && matchS && matchK;
+      return matchS && matchK;
     }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [contracts, q, statusFilter, kindFilter, allEmployees],
+    [contracts, statusFilter, kindFilter],
   );
 
   const total = filtered.length;
@@ -374,25 +370,36 @@ export function EmploymentContractsClient() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 min-w-0">
           <span className="text-sm text-muted-foreground shrink-0">{total} عقد</span>
-          <div className="flex items-center gap-2 min-w-0 flex-1 sm:max-w-sm">
+          <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1 sm:max-w-2xl">
             <ListFilter className="h-4 w-4 text-primary shrink-0" aria-hidden />
-            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">حالة العقد</span>
-            <Label htmlFor="employment-contract-status" className="sr-only">حالة العقد</Label>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => setValue('status', v)}
-            >
-              <SelectTrigger id="employment-contract-status" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
-                <SelectValue placeholder="كل الحالات" />
-              </SelectTrigger>
-              <SelectContent>
-                {EMPLOYMENT_STATUS_FILTER_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[13rem]">
+              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">الحالة</span>
+              <Label htmlFor="employment-contract-status" className="sr-only">حالة العقد</Label>
+              <Select value={statusFilter} onValueChange={(v) => setValue('status', v)}>
+                <SelectTrigger id="employment-contract-status" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
+                  <SelectValue placeholder="كل الحالات" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMPLOYMENT_STATUS_FILTER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[13rem]">
+              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">نوع العقد</span>
+              <Label htmlFor="employment-contract-kind" className="sr-only">نوع العقد</Label>
+              <Select value={kindFilter} onValueChange={(v) => setValue('kind', v)}>
+                <SelectTrigger id="employment-contract-kind" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
+                  <SelectValue placeholder="كل الأنواع" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMPLOYMENT_KIND_FILTER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">

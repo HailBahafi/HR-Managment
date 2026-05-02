@@ -44,17 +44,17 @@ export function FilterPanelProvider({ children }: { children: React.ReactNode })
   const [fields, setFields] = React.useState<FilterField[]>([]);
   const [values, setValues] = React.useState<FilterValues>({});
 
-  // Reset on page change
+  // Reset filter values on navigation (fields are owned by `usePageFilters` per page).
   React.useEffect(() => {
     setValues({});
-    setFields([]);
     setOpen(false);
   }, [pathname]);
 
-  const setValue = (key: string, val: string | string[]) =>
+  const setValue = React.useCallback((key: string, val: string | string[]) => {
     setValues(prev => ({ ...prev, [key]: val }));
+  }, []);
 
-  const reset = () => setValues({});
+  const reset = React.useCallback(() => setValues({}), []);
 
   const activeCount = Object.entries(values).filter(([, v]) =>
     Array.isArray(v) ? v.length > 0 : v && v !== 'all' && v !== '',
@@ -71,14 +71,15 @@ export function useFilterPanel() {
   return React.useContext(FilterPanelContext);
 }
 
-/** Register page-level filters; cleans up on unmount */
+/** Register page-level filters; cleans up on unmount / route change */
 export function usePageFilters(config: FilterField[]) {
+  const pathname = usePathname();
   const { setFields, values, setValue, reset } = useFilterPanel();
-  // stable ref to avoid re-registering on each render
   const configRef = React.useRef(config);
-  React.useEffect(() => {
+  configRef.current = config;
+  React.useLayoutEffect(() => {
     setFields(configRef.current);
     return () => setFields([]);
-  }, []); // eslint-disable-line
+  }, [pathname, setFields]);
   return { values, setValue, reset };
 }

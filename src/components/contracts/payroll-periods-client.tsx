@@ -9,6 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SetPageTitle } from '@/components/set-page-title';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
@@ -41,8 +43,7 @@ const COMP_STATUS_BADGE: Record<HRPayrollCompensationReviewStatus, string> = {
 export function PayrollPeriodsClient() {
   const { periods, add, update, remove, open: openPeriod, close: closePeriod, setCompensationStatus } = useHRPayrollPeriodsStore();
 
-  const { values } = usePageFilters([
-    { key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالكود أو الاسم…' },
+  const { values, setValue } = usePageFilters([
     {
       key: 'status', label: 'الحالة', type: 'select',
       options: [
@@ -53,7 +54,6 @@ export function PayrollPeriodsClient() {
     },
   ]);
 
-  const q = ((values.q as string) ?? '').toLowerCase();
   const statusFilter = (values.status as StatusFilter) || 'all';
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -64,13 +64,9 @@ export function PayrollPeriodsClient() {
 
   const filtered = React.useMemo(() =>
     periods
-      .filter(p => {
-        const matchQ = !q || p.code.toLowerCase().includes(q) || p.nameAr.includes(q) || p.nameEn.toLowerCase().includes(q);
-        const matchS = statusFilter === 'all' || p.status === statusFilter;
-        return matchQ && matchS;
-      })
+      .filter(p => statusFilter === 'all' || p.status === statusFilter)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [periods, q, statusFilter],
+    [periods, statusFilter],
   );
 
   const total = filtered.length;
@@ -120,9 +116,26 @@ export function PayrollPeriodsClient() {
       <SetPageTitle titleAr="فترات الراتب" descriptionAr="إنشاء وإدارة فترات الرواتب الشهرية." iconName="CalendarRange" />
 
       {/* ── Toolbar ── */}
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <span className="text-sm text-muted-foreground">{total} فترة</span>
-        <Button onClick={openCreate} className="gap-1.5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 min-w-0">
+          <span className="text-sm text-muted-foreground shrink-0">{total} فترة</span>
+          <div className="flex items-center gap-2 min-w-0 flex-1 sm:max-w-xs">
+            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">الحالة</span>
+            <Label htmlFor="payroll-period-status" className="sr-only">حالة الفترة</Label>
+            <Select value={statusFilter} onValueChange={(v) => setValue('status', v)}>
+              <SelectTrigger id="payroll-period-status" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
+                <SelectValue placeholder="كل الحالات" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الحالات</SelectItem>
+                <SelectItem value="draft">{PERIOD_STATUS_LABELS.draft}</SelectItem>
+                <SelectItem value="open">{PERIOD_STATUS_LABELS.open}</SelectItem>
+                <SelectItem value="closed">{PERIOD_STATUS_LABELS.closed}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Button onClick={openCreate} className="gap-1.5 shrink-0">
           <Plus className="h-4 w-4" />فترة جديدة
         </Button>
       </div>

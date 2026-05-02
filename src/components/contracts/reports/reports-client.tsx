@@ -140,7 +140,7 @@ export function ReportsClient() {
       }
 
       if (!docEl) return;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const blob = await pdf(docEl as any).toBlob();
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);

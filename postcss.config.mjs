@@ -13,8 +13,10 @@ const projectDir = path.dirname(fileURLToPath(import.meta.url));
  * LightningCSS produces. Skipping LightningCSS here is safe: Next.js runs its
  * own CSS minification/optimisation pass over the final output.
  */
-export default {
+const postcssConfig = {
   plugins: {
     '@tailwindcss/postcss': { base: projectDir, optimize: false },
   },
 };
+
+export default postcssConfig;

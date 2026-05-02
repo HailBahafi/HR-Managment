@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  Plus, ChevronLeft, ChevronRight, CalendarDays, List,
+  Plus, ChevronLeft, ChevronRight,
   CheckCircle2, XCircle, Clock,
 } from 'lucide-react';
 import { format, addMonths, subMonths, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, getDay, isValid } from 'date-fns';
@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import { LeavesManagementToolbar } from '@/components/leaves/leaves-management-toolbar';
 import { intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
 import {
@@ -75,12 +75,41 @@ export function UnifiedManagementClient() {
   const [leaves, setLeaves] = React.useState<UnifiedLeaveRecord[]>(() =>
     MOCK_UNIFIED_LEAVES.map((l) => ({ ...l })),
   );
-  const { values } = usePageFilters([
-    { key: 'branch', label: 'الفرع', type: 'select', options: [{ value: 'all', label: 'جميع الفروع' }, ...MOCK_BRANCHES.map(b => ({ value: b.id, label: b.nameAr }))] },
-    { key: 'dept', label: 'القسم', type: 'select', options: [{ value: 'all', label: 'جميع الأقسام' }, ...MOCK_DEPARTMENTS.map(d => ({ value: d.id, label: d.nameAr }))] },
-    { key: 'type', label: 'نوع الإجازة', type: 'select', options: [{ value: 'all', label: 'جميع الأنواع' }, { value: 'annual', label: 'سنوية' }, { value: 'sick', label: 'مرضية' }, { value: 'emergency', label: 'طارئة' }, { value: 'unpaid', label: 'بدون راتب' }, { value: 'maternity', label: 'أمومة' }] },
-    { key: 'stage', label: 'مرحلة الاعتماد', type: 'select', options: [{ value: 'all', label: 'الكل' }, { value: 'fully_approved', label: 'مكتمل' }, { value: 'awaiting_first', label: 'بانتظار الأول' }, { value: 'awaiting_second', label: 'بانتظار الثاني' }, { value: 'awaiting_third', label: 'بانتظار الثالث' }] },
-  ]);
+  const [branchId, setBranchId] = React.useState('all');
+  const [departmentId, setDepartmentId] = React.useState('all');
+  const [leaveType, setLeaveType] = React.useState<string>('all');
+  const [approvalStageFilter, setApprovalStageFilter] = React.useState<string>('all');
+
+  const branchInlineOptions = React.useMemo(
+    () => [{ value: 'all', label: 'جميع الفروع' }, ...MOCK_BRANCHES.map((b) => ({ value: b.id, label: b.nameAr }))],
+    [],
+  );
+  const deptInlineOptions = React.useMemo(
+    () => [{ value: 'all', label: 'جميع الأقسام' }, ...MOCK_DEPARTMENTS.map((d) => ({ value: d.id, label: d.nameAr }))],
+    [],
+  );
+  const typeInlineOptions = React.useMemo(
+    () => [
+      { value: 'all', label: 'جميع الأنواع' },
+      { value: 'annual', label: 'سنوية' },
+      { value: 'sick', label: 'مرضية' },
+      { value: 'emergency', label: 'طارئة' },
+      { value: 'unpaid', label: 'بدون راتب' },
+      { value: 'maternity', label: 'أمومة' },
+    ],
+    [],
+  );
+  const stageInlineOptions = React.useMemo(
+    () => [
+      { value: 'all', label: 'الكل' },
+      { value: 'fully_approved', label: 'مكتمل' },
+      { value: 'awaiting_first', label: 'بانتظار الأول' },
+      { value: 'awaiting_second', label: 'بانتظار الثاني' },
+      { value: 'awaiting_third', label: 'بانتظار الثالث' },
+    ],
+    [],
+  );
+
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
@@ -91,11 +120,11 @@ export function UnifiedManagementClient() {
   );
 
   const filters: UnifiedFilterState = {
-    branchId: (values.branch as string) || 'all',
-    departmentId: (values.dept as string) || 'all',
+    branchId: branchId || 'all',
+    departmentId: departmentId || 'all',
     status: (statusFilter as UnifiedFilterState['status']) || 'all',
-    type: (values.type as UnifiedFilterState['type']) || 'all',
-    approvalStage: (values.stage as UnifiedFilterState['approvalStage']) || 'all',
+    type: (leaveType as UnifiedFilterState['type']) || 'all',
+    approvalStage: (approvalStageFilter as UnifiedFilterState['approvalStage']) || 'all',
     employeeIds: [...selectedEmpIds],
   };
 
@@ -165,9 +194,17 @@ export function UnifiedManagementClient() {
     if (detailLeave?.id === updated.id) setDetailLeave(updated);
   };
 
-  return (
-    <div className="space-y-5 animate-fade-in">
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  useEntityFilterSlot(
+    () => (
       <LeavesManagementToolbar
+        inlineSelects={[
+          { id: 'branch', value: branchId, onChange: setBranchId, placeholder: 'الفرع', options: branchInlineOptions },
+          { id: 'dept', value: departmentId, onChange: setDepartmentId, placeholder: 'القسم', options: deptInlineOptions },
+          { id: 'type', value: leaveType, onChange: setLeaveType, placeholder: 'نوع الإجازة', options: typeInlineOptions },
+          { id: 'stage', value: approvalStageFilter, onChange: setApprovalStageFilter, placeholder: 'مرحلة الاعتماد', options: stageInlineOptions },
+        ]}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -177,25 +214,47 @@ export function UnifiedManagementClient() {
         statusLabels={LEAVE_STATUS_LABELS_FOR_TOOLBAR}
         statusCounts={statusCounts}
         onDateBoundsChange={setDateBounds}
+        dataView={{
+          value: view,
+          onChange: (v) => setView(v as 'table' | 'calendar'),
+          options: [
+            { value: 'table', label: 'جدول', icon: 'list' },
+            { value: 'calendar', label: 'تقويم', icon: 'calendar-days' },
+          ],
+        }}
         trailingActions={(
-          <>
-            <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/30 p-1">
-              <button type="button" onClick={() => setView('table')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all', view === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-                <List className="h-3.5 w-3.5" />
-                جدول
-              </button>
-              <button type="button" onClick={() => setView('calendar')} className={cn('flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all', view === 'calendar' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-                <CalendarDays className="h-3.5 w-3.5" />
-                تقويم
-              </button>
-            </div>
-            <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
-              <Plus className="h-3.5 w-3.5" />
-              إضافة إجازة
-            </Button>
-          </>
+          <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
+            <Plus className="h-3.5 w-3.5" />
+            إضافة إجازة
+          </Button>
         )}
       />
+    ),
+    [
+      branchId,
+      departmentId,
+      leaveType,
+      approvalStageFilter,
+      statusFilter,
+      selectedEmpKey,
+      dateBounds.from,
+      dateBounds.to,
+      statusCounts.all,
+      statusCounts.pending,
+      statusCounts.approved,
+      statusCounts.rejected,
+      statusCounts.cancelled,
+      view,
+      empPickerList,
+      branchInlineOptions,
+      deptInlineOptions,
+      typeInlineOptions,
+      stageInlineOptions,
+    ],
+  );
+
+  return (
+    <div className="space-y-5 animate-fade-in">
 
       {/* Content */}
       {view === 'table'
