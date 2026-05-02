@@ -51,7 +51,11 @@ function StageEditor({ stage, index, total, onChange, onRemove }: {
   stage: HRApprovalTemplateStage; index: number; total: number;
   onChange: (s: HRApprovalTemplateStage) => void; onRemove: () => void;
 }) {
-  const { activeEmployees } = useHREmployeeDirectoryStore();
+  const employees = useHREmployeeDirectoryStore((s) => s.employees);
+  const activeEmployees = React.useMemo(
+    () => employees.filter((e) => e.status === 'active'),
+    [employees],
+  );
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
   const available = empOptions.filter(o => !stage.approvers.find(a => a.employeeId === o.value));
 
@@ -111,7 +115,11 @@ function StageEditor({ stage, index, total, onChange, onRemove }: {
 
 export function ApprovalAssignmentClient() {
   const { templates, add, update, remove } = useHRApprovalAssignmentTemplatesStore();
-  const { activeEmployees } = useHREmployeeDirectoryStore();
+  const employees = useHREmployeeDirectoryStore((s) => s.employees);
+  const activeEmployees = React.useMemo(
+    () => employees.filter((e) => e.status === 'active'),
+    [employees],
+  );
 
   const [page, setPage] = React.useState(1);
   const [drawerOpen, setDrawerOpen] = React.useState(false);

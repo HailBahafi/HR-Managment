@@ -44,7 +44,11 @@ function StageEditor({ stage, index, onChange, onRemove }: {
   stage: HRApprovalTemplateStage; index: number;
   onChange: (s: HRApprovalTemplateStage) => void; onRemove: () => void;
 }) {
-  const { activeEmployees } = useHREmployeeDirectoryStore();
+  const employees = useHREmployeeDirectoryStore((s) => s.employees);
+  const activeEmployees = React.useMemo(
+    () => employees.filter((e) => e.status === 'active'),
+    [employees],
+  );
   const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
   const available = empOptions.filter(o => !stage.approvers.find(a => a.employeeId === o.value));
 
@@ -80,7 +84,11 @@ function StageEditor({ stage, index, onChange, onRemove }: {
 
 export function DisciplineApprovalClient() {
   const { templates, add, update, remove } = useHRDisciplineApprovalAssignmentTemplatesStore();
-  const activeEmployees = useHREmployeeDirectoryStore(s => s.activeEmployees);
+  const employees = useHREmployeeDirectoryStore((s) => s.employees);
+  const activeEmployees = React.useMemo(
+    () => employees.filter((e) => e.status === 'active'),
+    [employees],
+  );
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);

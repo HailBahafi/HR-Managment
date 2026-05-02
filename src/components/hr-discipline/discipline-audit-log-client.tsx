@@ -384,7 +384,9 @@ export function DisciplineAuditLogClient() {
       ) : listFiltered.length === 0 ? (
         <EmptyState title="لا توجد عمليات مطابقة لنوع العملية المحدد." />
       ) : viewMode === 'cards' ? (
-        <div className="space-y-4">{listFiltered.map(renderEntryCard)}</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {listFiltered.map(renderEntryCard)}
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
           <table className="w-full min-w-[860px] border-collapse text-sm" dir="rtl">
