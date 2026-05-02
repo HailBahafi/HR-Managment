@@ -79,7 +79,11 @@ export function GeneralRequestsClient() {
   const { departments, requestTypes, templates, getTemplateById } = useHRConfigurationStore();
   const { submissions, addSubmission, deleteSubmission, patchSubmissionApprovalStage } = useHRRequestSubmissionsStore();
   const approvalTemplates = useHRApprovalAssignmentTemplatesStore(s => s.templates);
-  const { activeEmployees } = useHREmployeeDirectoryStore();
+  const employees = useHREmployeeDirectoryStore(s => s.employees);
+  const activeEmployees = React.useMemo(
+    () => employees.filter((e) => e.status === 'active'),
+    [employees],
+  );
 
   const [actingReviewerId, setActingReviewerId] = React.useState('');
   React.useEffect(() => {
@@ -115,11 +119,13 @@ export function GeneralRequestsClient() {
     [approvalTemplates],
   );
 
-  // Derived
-  const activeDepts = departments.filter(d => d.isActive);
+  const activeDeptsList = React.useMemo(
+    () => departments.filter((d) => d.isActive),
+    [departments],
+  );
   const deptOptions = React.useMemo(
-    () => [{ value: 'all', label: 'جميع الأقسام' }, ...activeDepts.map((d) => ({ value: d.id, label: d.nameAr }))],
-    [activeDepts],
+    () => [{ value: 'all', label: 'جميع الأقسام' }, ...activeDeptsList.map((d) => ({ value: d.id, label: d.nameAr }))],
+    [activeDeptsList],
   );
   const empOptions = React.useMemo(
     () => activeEmployees.map((e) => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr })),
@@ -181,7 +187,7 @@ export function GeneralRequestsClient() {
   const generalFilterSummary = React.useMemo(() => {
     const parts: string[] = [];
     if (appliedDept !== 'all') {
-      parts.push(`قسم: ${activeDepts.find((d) => d.id === appliedDept)?.nameAr ?? appliedDept}`);
+      parts.push(`قسم: ${departments.find((d) => d.id === appliedDept)?.nameAr ?? appliedDept}`);
     }
     parts.push(selectedEmpIds.size === 0 ? 'جدول الموظفين: الكل' : `جدول الموظفين: ${selectedEmpIds.size} محدد`);
     if (dateBounds.from || dateBounds.to) {
@@ -197,7 +203,7 @@ export function GeneralRequestsClient() {
     dateBounds.from,
     dateBounds.to,
     approvalStatusFilter,
-    activeDepts,
+    departments,
   ]);
 
   const generalPdfRows = React.useMemo(
@@ -398,9 +404,9 @@ export function GeneralRequestsClient() {
       generalFilterSummary,
       handleExportGeneralExcel,
       refreshing,
-      empPickerList,
-      deptOptions,
-      activeEmployees,
+      submissions,
+      departments,
+      employees,
     ],
   );
 
@@ -584,7 +590,7 @@ export function GeneralRequestsClient() {
                 setFormValues({});
                 setFormApprovalTemplateId('');
               }}
-              options={activeDepts.map(d => ({ value: d.id, label: d.nameAr }))}
+              options={activeDeptsList.map((d) => ({ value: d.id, label: d.nameAr }))}
               placeholder="اختر القسم"
             />
           </FormField>
