@@ -7,6 +7,7 @@ import { ViolationTypesClient } from './violation-types-client';
 import { DisciplineApprovalClient } from './discipline-approval-client';
 import { ViolationCasesClient } from './violation-cases-client';
 import { NoticesClient } from './notices-client';
+import { CircularsClient } from './circulars-client';
 import { InvestigationsClient } from './investigations-client';
 import { PenaltiesClient } from './penalties-client';
 import { DeductionsClient } from './deductions-client';
@@ -26,6 +27,7 @@ export function HRDisciplineSectionRoot({ section, titleAr }: Props) {
       {section === 'approval-assignment' && <DisciplineApprovalClient />}
       {section === 'violation-cases' && <ViolationCasesClient />}
       {section === 'notices' && <NoticesClient />}
+      {section === 'circulars' && <CircularsClient />}
       {section === 'investigations' && <InvestigationsClient />}
       {section === 'deductions' && <DeductionsClient />}
       {section === 'appeals' && <AppealsClient />}
