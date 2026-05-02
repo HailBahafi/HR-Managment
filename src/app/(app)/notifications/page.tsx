@@ -5,8 +5,6 @@ import { Bell, Check, Circle, Eye, EyeOff, FileDown, LayoutGrid, List } from 'lu
 import { toast } from 'sonner';
 import { useSetPageTitle } from '@/components/page-title-context';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/hr-requests/shared-ui';
@@ -78,7 +76,6 @@ export default function NotificationsPage() {
     hasRestriction: false,
   });
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [showDismissed, setShowDismissed] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<ViewMode>('cards');
   const [pdfOpen, setPdfOpen] = React.useState(false);
 
@@ -96,7 +93,7 @@ export default function NotificationsPage() {
       if (!employeePickerShowsAll(selectedEmpIds, activeEmployees)) {
         rows = rows.filter((r) => selectedEmpIds.has(r.recipientEmployeeId));
       }
-      if (!showDismissed) rows = rows.filter((r) => !r.dismissedAt);
+      rows = rows.filter((r) => !r.dismissedAt);
     }
 
     rows = rows.filter((r) => matchesDateRange(r.createdAt.slice(0, 10), dateBounds.from, dateBounds.to));
@@ -107,7 +104,6 @@ export default function NotificationsPage() {
     session.employeeId,
     selectedEmpIds,
     activeEmployees,
-    showDismissed,
     dateBounds.from,
     dateBounds.to,
   ]);
@@ -135,10 +131,9 @@ export default function NotificationsPage() {
           ? 'الموظفون: الجميع'
           : `الموظفون: ${selectedEmpIds.size} محدد`,
       );
-      if (showDismissed) parts.push('يشمل المخفية من الصندوق');
     }
     return parts.join(' · ');
-  }, [dateMeta.tab, statusFilter, session.isSystemOwner, selectedEmpIds, activeEmployees, showDismissed]);
+  }, [dateMeta.tab, statusFilter, session.isSystemOwner, selectedEmpIds, activeEmployees]);
 
   const pdfDoc = React.useMemo(() => {
     if (filtered.length === 0) return null;
@@ -215,16 +210,6 @@ export default function NotificationsPage() {
         onDateBoundsChange={onDateBoundsChange}
         onDateFilterMetaChange={onDateFilterMetaChange}
         showEmployeePicker={session.isSystemOwner}
-        beforeEmployeePicker={
-          session.isSystemOwner ? (
-            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-2.5 py-1.5">
-              <Switch id="notif-dismissed" checked={showDismissed} onCheckedChange={setShowDismissed} />
-              <Label htmlFor="notif-dismissed" className="cursor-pointer text-xs leading-snug text-muted-foreground">
-                إظهار المخفية من الصندوق
-              </Label>
-            </div>
-          ) : undefined
-        }
         trailingActions={
           <>
             <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs shadow-xs" onClick={openPdf}>
