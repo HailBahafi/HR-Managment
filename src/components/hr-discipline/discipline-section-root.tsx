@@ -12,6 +12,7 @@ import { InvestigationsClient } from './investigations-client';
 import { PenaltiesClient } from './penalties-client';
 import { DeductionsClient } from './deductions-client';
 import { AppealsClient } from './appeals-client';
+import { DisciplineAuditLogClient } from './discipline-audit-log-client';
 
 interface Props {
   section: HRDisciplineSection;
@@ -31,6 +32,7 @@ export function HRDisciplineSectionRoot({ section, titleAr }: Props) {
       {section === 'investigations' && <InvestigationsClient />}
       {section === 'deductions' && <DeductionsClient />}
       {section === 'appeals' && <AppealsClient />}
+      {section === 'audit-log' && <DisciplineAuditLogClient />}
     </div>
   );
 }

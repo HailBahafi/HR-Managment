@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { MOCK_APP_SESSION } from '@/lib/app-session';
 import type { HRDisciplineAppealRecord } from './types';
+import { APPEAL_STATUS_LABELS } from './types';
+import { summarizeAppeal } from './discipline-audit-log';
+import { appendDisciplineAuditLog } from './discipline-audit-log-store';
 
 function uid() { return `apl-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`; }
 function now() { return new Date().toISOString(); }
@@ -31,11 +35,54 @@ interface AppealsState {
 
 export const useHRDisciplineAppealsStore = create<AppealsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       appeals: SEED,
-      add: (d) => set(s => ({ appeals: [...s.appeals, { ...d, id:uid(), createdAt:now(), updatedAt:now() }] })),
-      update: (id, patch) => set(s => ({ appeals: s.appeals.map(a => a.id === id ? { ...a, ...patch, updatedAt:now() } : a) })),
-      remove: (id) => set(s => ({ appeals: s.appeals.filter(a => a.id !== id) })),
+      add: (d) => {
+        const rec: HRDisciplineAppealRecord = { ...d, id: uid(), createdAt: now(), updatedAt: now() };
+        set(s => ({ appeals: [...s.appeals, rec] }));
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'appeal',
+          actionType: 'create',
+          recordId: rec.id,
+          recordRefAr: rec.caseNumber,
+          recordStatusAfterAr: APPEAL_STATUS_LABELS[rec.status],
+          previousSnapshotAr: '—',
+          currentSnapshotAr: summarizeAppeal(rec),
+        });
+      },
+      update: (id, patch) => {
+        const prev = get().appeals.find(a => a.id === id);
+        if (!prev) return;
+        const merged: HRDisciplineAppealRecord = { ...prev, ...patch, updatedAt: now() };
+        set(s => ({ appeals: s.appeals.map(a => a.id === id ? merged : a) }));
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'appeal',
+          actionType: 'update',
+          recordId: id,
+          recordRefAr: merged.caseNumber,
+          recordStatusAfterAr: APPEAL_STATUS_LABELS[merged.status],
+          previousSnapshotAr: summarizeAppeal(prev),
+          currentSnapshotAr: summarizeAppeal(merged),
+        });
+      },
+      remove: (id) => {
+        const prev = get().appeals.find(a => a.id === id);
+        set(s => ({ appeals: s.appeals.filter(a => a.id !== id) }));
+        if (prev) {
+          appendDisciplineAuditLog({
+            actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+            category: 'appeal',
+            actionType: 'delete',
+            recordId: id,
+            recordRefAr: prev.caseNumber,
+            recordStatusAfterAr: 'محذوف',
+            previousSnapshotAr: summarizeAppeal(prev),
+            currentSnapshotAr: '—',
+          });
+        }
+      },
     }),
     { name:'hr_discipline_appeals_v1', storage: createJSONStorage(() => localStorage), version:1 },
   ),

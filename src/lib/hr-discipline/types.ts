@@ -103,6 +103,7 @@ export const hrDisciplineSections = [
   { slug: 'investigations',       titleAr: 'التحقيقات',            titleEn: 'Investigations' },
   { slug: 'deductions',           titleAr: 'كشف الخصومات',          titleEn: 'Payroll Deductions' },
   { slug: 'appeals',              titleAr: 'التظلمات',             titleEn: 'Appeals' },
+  { slug: 'audit-log',            titleAr: 'سجل العمليات',          titleEn: 'Audit Log' },
 ] as const;
 
 export type HRDisciplineSection = (typeof hrDisciplineSections)[number]['slug'];
@@ -118,6 +119,7 @@ export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDiscipli
       { slug: 'circulars',        labelAr: 'التعميمات' },
       { slug: 'investigations',   labelAr: 'التحقيقات' },
       { slug: 'appeals',          labelAr: 'التظلمات' },
+      { slug: 'audit-log',        labelAr: 'سجل العمليات' },
     ],
   },
   {
