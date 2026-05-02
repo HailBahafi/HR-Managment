@@ -3,14 +3,15 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, ListFilter } from 'lucide-react';
+import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { SetPageTitle } from '@/components/set-page-title';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
@@ -201,6 +202,19 @@ export function EmploymentContractsClient() {
   const statusFilter = (values.status as StatusFilter) || 'all';
   const kindFilter = (values.kind as KindFilter) || 'all';
 
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+
+  const empPickerList = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of contracts) {
+      const name = allEmployees.find(e => e.id === c.employeeId)?.nameAr ?? c.employeeId;
+      map.set(c.employeeId, name);
+    }
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [contracts, allEmployees]);
+
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [panelMode, setPanelMode] = React.useState<PanelMode>('create');
   const [selected, setSelected] = React.useState<HRContractRecord | null>(null);
@@ -329,17 +343,78 @@ export function EmploymentContractsClient() {
     }));
   };
 
-  const filtered = React.useMemo(() =>
-    contracts.filter(c => {
-      const matchS = statusFilter === 'all' || c.status === statusFilter;
-      const matchK = kindFilter === 'all' || c.contractType === kindFilter;
-      return matchS && matchK;
-    }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [contracts, statusFilter, kindFilter],
+  const narrowedEmp = React.useMemo(
+    () => contracts.filter(c => selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId)),
+    [contracts, selectedEmpIds],
+  );
+
+  const narrowedForKind = React.useMemo(
+    () => narrowedEmp.filter(c => kindFilter === 'all' || c.contractType === kindFilter),
+    [narrowedEmp, kindFilter],
+  );
+
+  const employmentStatusOrder = React.useMemo(
+    () => EMPLOYMENT_STATUS_FILTER_OPTIONS.filter((o): o is { value: HRContractLifecycleStatus; label: string } => o.value !== 'all').map(o => o.value),
+    [],
+  );
+
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { all: narrowedForKind.length };
+    for (const s of employmentStatusOrder) {
+      counts[s] = narrowedForKind.filter(c => c.status === s).length;
+    }
+    return counts;
+  }, [narrowedForKind, employmentStatusOrder]);
+
+  const filtered = React.useMemo(
+    () =>
+      narrowedForKind
+        .filter(c => statusFilter === 'all' || c.status === statusFilter)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [narrowedForKind, statusFilter],
   );
 
   const total = filtered.length;
   const readOnly = panelMode === 'view';
+
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showDateSection={false}
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(v) => setValue('status', v)}
+        statusOrder={employmentStatusOrder}
+        statusLabels={CONTRACT_STATUS_LABELS as unknown as Record<string, string>}
+        statusCounts={statusCounts}
+        onDateBoundsChange={() => {}}
+        inlineSelects={[
+          {
+            id: 'contract-kind',
+            value: kindFilter,
+            onChange: (v) => setValue('kind', v),
+            options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
+            placeholder: 'نوع العقد',
+          },
+        ]}
+        trailingActions={(
+          <Button onClick={openCreate} className="h-8 gap-1.5 px-3 text-xs shadow-sm">
+            <Plus className="h-4 w-4" />عقد جديد
+          </Button>
+        )}
+      />
+    ),
+    [
+      statusFilter,
+      kindFilter,
+      selectedEmpKey,
+      statusCounts,
+      empPickerList,
+      employmentStatusOrder,
+    ],
+  );
 
   const ContractActions = ({ c }: { c: HRContractRecord }) => (
     <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
@@ -366,48 +441,7 @@ export function EmploymentContractsClient() {
     <>
       <SetPageTitle titleAr="عقود العمل" descriptionAr="إدارة دورة حياة عقود العمل الوظيفية." iconName="FileText" />
 
-      {/* ── Toolbar ── */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 min-w-0">
-          <span className="text-sm text-muted-foreground shrink-0">{total} عقد</span>
-          <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1 sm:max-w-2xl">
-            <ListFilter className="h-4 w-4 text-primary shrink-0" aria-hidden />
-            <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[13rem]">
-              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">الحالة</span>
-              <Label htmlFor="employment-contract-status" className="sr-only">حالة العقد</Label>
-              <Select value={statusFilter} onValueChange={(v) => setValue('status', v)}>
-                <SelectTrigger id="employment-contract-status" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
-                  <SelectValue placeholder="كل الحالات" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EMPLOYMENT_STATUS_FILTER_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[13rem]">
-              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">نوع العقد</span>
-              <Label htmlFor="employment-contract-kind" className="sr-only">نوع العقد</Label>
-              <Select value={kindFilter} onValueChange={(v) => setValue('kind', v)}>
-                <SelectTrigger id="employment-contract-kind" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
-                  <SelectValue placeholder="كل الأنواع" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EMPLOYMENT_KIND_FILTER_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button onClick={openCreate} className="gap-1.5">
-            <Plus className="h-4 w-4" />عقد جديد
-          </Button>
-        </div>
-      </div>
+      <p className="mb-2 text-sm text-muted-foreground">{total} عقد</p>
 
       {filtered.length === 0 ? (
         <EmptyState icon={FileText} title="لا توجد عقود" description="أنشئ عقد عمل جديداً للبدء." />

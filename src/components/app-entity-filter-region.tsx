@@ -22,7 +22,7 @@ export function AppEntityFilterRegion({ className }: { className?: string }) {
 
   if (excluded || !slot) return null;
   return (
-    <div className={cn('mb-4 animate-fade-in', className)}>
+    <div className={cn('mb-5 mt-1 animate-fade-in sm:mt-2', className)}>
       {slot}
     </div>
   );
