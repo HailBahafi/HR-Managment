@@ -22,6 +22,8 @@ export type DisciplineViewMode = 'cards' | 'list';
 export type DisciplineFilterToolbarHandle = EntityFilterToolbarHandle;
 
 export interface DisciplineFilterToolbarProps {
+  /** افتراضي true؛ عيّنها false لصفحات العرض فقط (مثل سجل العمليات) */
+  showPrimaryAction?: boolean;
   primaryActionLabel: string;
   onPrimaryAction: () => void;
   primaryActionIcon?: React.ReactNode;
@@ -44,6 +46,9 @@ export interface DisciplineFilterToolbarProps {
 
   /** Optional controls before زر الإضافة (e.g. PDF export) */
   toolbarExtraTrailing?: React.ReactNode;
+
+  /** عناصر قبل منتقي الموظفين (مثل فئة السجل في سجل العمليات) */
+  beforeEmployeePicker?: React.ReactNode;
 }
 
 export const DisciplineFilterToolbar = React.forwardRef<
@@ -51,6 +56,7 @@ export const DisciplineFilterToolbar = React.forwardRef<
   DisciplineFilterToolbarProps
 >(function DisciplineFilterToolbar(
   {
+    showPrimaryAction = true,
     primaryActionLabel,
     onPrimaryAction,
     primaryActionIcon,
@@ -67,6 +73,7 @@ export const DisciplineFilterToolbar = React.forwardRef<
     onDateBoundsChange,
     onDateFilterMetaChange,
     toolbarExtraTrailing,
+    beforeEmployeePicker,
   },
   ref,
 ) {
@@ -85,6 +92,7 @@ export const DisciplineFilterToolbar = React.forwardRef<
       statusCounts={statusCounts}
       onDateBoundsChange={onDateBoundsChange}
       onDateFilterMetaChange={onDateFilterMetaChange}
+      beforeEmployeePicker={beforeEmployeePicker}
       dataView={{
         value: viewMode,
         onChange: (v) => onViewModeChange(v as DisciplineViewMode),
@@ -96,10 +104,12 @@ export const DisciplineFilterToolbar = React.forwardRef<
       trailingActions={(
         <>
           {toolbarExtraTrailing}
-          <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm" onClick={onPrimaryAction}>
-            {icon}
-            {primaryActionLabel}
-          </Button>
+          {showPrimaryAction ? (
+            <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm" onClick={onPrimaryAction}>
+              {icon}
+              {primaryActionLabel}
+            </Button>
+          ) : null}
         </>
       )}
     />

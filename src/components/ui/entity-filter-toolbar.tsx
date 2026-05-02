@@ -265,20 +265,33 @@ export const EntityFilterToolbar = React.forwardRef<
 
   const onDateBoundsChangeRef = React.useRef(onDateBoundsChange);
   onDateBoundsChangeRef.current = onDateBoundsChange;
+  const lastEmittedBoundsKeyRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    onDateBoundsChangeRef.current(effectiveBounds);
+    const b = effectiveBounds;
+    const key = `${b.from}\u0000${b.to}`;
+    if (lastEmittedBoundsKeyRef.current === key) return;
+    lastEmittedBoundsKeyRef.current = key;
+    onDateBoundsChangeRef.current(b);
   }, [effectiveBounds]);
 
   const onDateFilterMetaChangeRef = React.useRef(onDateFilterMetaChange);
   onDateFilterMetaChangeRef.current = onDateFilterMetaChange;
+  const lastEmittedMetaKeyRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (!showDateSection) {
+      const key = 'all|0';
+      if (lastEmittedMetaKeyRef.current === key) return;
+      lastEmittedMetaKeyRef.current = key;
       onDateFilterMetaChangeRef.current?.({ tab: 'all', hasRestriction: false });
       return;
     }
+    const hasR = dateFilterHasRestriction(dateFilterTab, appliedCustomFrom, appliedCustomTo);
+    const key = `${dateFilterTab}|${hasR ? 1 : 0}`;
+    if (lastEmittedMetaKeyRef.current === key) return;
+    lastEmittedMetaKeyRef.current = key;
     onDateFilterMetaChangeRef.current?.({
       tab: dateFilterTab,
-      hasRestriction: dateFilterHasRestriction(dateFilterTab, appliedCustomFrom, appliedCustomTo),
+      hasRestriction: hasR,
     });
   }, [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo]);
 
@@ -346,6 +359,14 @@ export const EntityFilterToolbar = React.forwardRef<
   const showDateReset = showDateSection && dateFilterTab !== 'all';
   const showStatusReset = showStatusSection && statusFilter !== 'all';
 
+  const dateTabForSelect: DateFilterTab =
+    dateFilterTab === 'all' || dateFilterTab === 'today' || dateFilterTab === 'week' || dateFilterTab === 'month' || dateFilterTab === 'custom'
+      ? dateFilterTab
+      : 'all';
+
+  const statusSelectValue =
+    statusFilter === 'all' || statusOrder.includes(statusFilter) ? statusFilter : 'all';
+
   const useFilterDropdowns = filterLayout === 'tabs' || filterLayout === 'collapsible';
 
   const dateCustomRangeRow = showDateSection && dateFilterTab === 'custom' ? (
@@ -375,7 +396,7 @@ export const EntityFilterToolbar = React.forwardRef<
         {showDateSection ? (
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="shrink-0 text-[11px] font-medium text-muted-foreground">الفترات</span>
-            <Select value={dateFilterTab} onValueChange={handleDatePeriodSelect}>
+            <Select value={dateTabForSelect} onValueChange={handleDatePeriodSelect}>
               <SelectTrigger className="h-8 w-[min(100%,12.5rem)] text-xs" dir="rtl" aria-label="فلتر الفترة">
                 <SelectValue placeholder="الفترة" />
               </SelectTrigger>
@@ -408,7 +429,7 @@ export const EntityFilterToolbar = React.forwardRef<
         {showStatusSection ? (
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="shrink-0 text-[11px] font-medium text-muted-foreground">الحالات</span>
-            <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+            <Select value={statusSelectValue} onValueChange={onStatusFilterChange}>
               <SelectTrigger className="h-8 w-[min(100%,14rem)] text-xs" dir="rtl" aria-label="فلتر الحالة">
                 <SelectValue placeholder="الحالة" />
               </SelectTrigger>

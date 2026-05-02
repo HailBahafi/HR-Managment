@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { MOCK_APP_SESSION } from '@/lib/app-session';
 import type { HRViolationCaseRecord, HRApproverRole } from './types';
+import { CASE_STATUS_LABELS } from './types';
+import { summarizeViolationCase } from './discipline-audit-log';
+import { appendDisciplineAuditLog } from './discipline-audit-log-store';
 
 function uid() { return `case-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`; }
 function now() { return new Date().toISOString(); }
@@ -575,32 +579,62 @@ export const useHRViolationCasesStore = create<CasesState>()(
           createdAt:now(), updatedAt:now(),
         };
         set(s => ({ cases:[...s.cases, rec], _seq: newSeq }));
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'violation_case',
+          actionType: 'create',
+          recordId: rec.id,
+          recordRefAr: rec.caseNumber,
+          recordStatusAfterAr: CASE_STATUS_LABELS[rec.status],
+          previousSnapshotAr: '—',
+          currentSnapshotAr: summarizeViolationCase(rec),
+        });
         return { ok:true, id: rec.id };
       },
 
       submit: (id) => {
-        const c = get().cases.find(x => x.id === id);
-        if (!c) return { ok:false, error:'المخالفة غير موجودة' };
-        if (!c.typeNeedsApproval) {
-          // auto approve
+        const prev = get().cases.find(x => x.id === id);
+        if (!prev) return { ok:false, error:'المخالفة غير موجودة' };
+        if (!prev.typeNeedsApproval) {
           set(s => ({ cases: s.cases.map(x => x.id === id ? { ...x, status:'approved', updatedAt:now() } : x) }));
           const updated = get().cases.find(x => x.id === id)!;
+          appendDisciplineAuditLog({
+            actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+            category: 'violation_case',
+            actionType: 'submit',
+            recordId: id,
+            recordRefAr: prev.caseNumber,
+            recordStatusAfterAr: CASE_STATUS_LABELS[updated.status],
+            previousSnapshotAr: summarizeViolationCase(prev),
+            currentSnapshotAr: summarizeViolationCase(updated),
+          });
           if (updated.typeHasDeduction) {
             const month = new Date().toISOString().slice(0,7);
             import('./payroll-deductions-store').then(m => m.useHRDisciplinePayrollDeductionsStore.getState().syncFromCase(updated, month));
           }
         } else {
           set(s => ({ cases: s.cases.map(x => x.id === id ? { ...x, status:'under_review', updatedAt:now() } : x) }));
+          const updated = get().cases.find(x => x.id === id)!;
+          appendDisciplineAuditLog({
+            actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+            category: 'violation_case',
+            actionType: 'submit',
+            recordId: id,
+            recordRefAr: prev.caseNumber,
+            recordStatusAfterAr: CASE_STATUS_LABELS[updated.status],
+            previousSnapshotAr: summarizeViolationCase(prev),
+            currentSnapshotAr: summarizeViolationCase(updated),
+          });
         }
         return { ok:true };
       },
 
       approve: (id, role, note) => {
-        const c = get().cases.find(x => x.id === id);
-        if (!c) return { ok:false, error:'المخالفة غير موجودة' };
+        const prev = get().cases.find(x => x.id === id);
+        if (!prev) return { ok:false, error:'المخالفة غير موجودة' };
         const logEntry = { role, action: 'approved' as const, note, at: now() };
-        const newIndex = c.currentApprovalIndex + 1;
-        const isLast = newIndex >= c.requiredApprovers.length;
+        const newIndex = prev.currentApprovalIndex + 1;
+        const isLast = newIndex >= prev.requiredApprovers.length;
         const newStatus = isLast ? 'approved' : 'under_review';
         set(s => ({
           cases: s.cases.map(x => x.id === id ? {
@@ -610,8 +644,18 @@ export const useHRViolationCasesStore = create<CasesState>()(
             updatedAt: now(),
           } : x),
         }));
+        const updated = get().cases.find(x => x.id === id)!;
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'violation_case',
+          actionType: 'approve',
+          recordId: id,
+          recordRefAr: prev.caseNumber,
+          recordStatusAfterAr: CASE_STATUS_LABELS[updated.status],
+          previousSnapshotAr: summarizeViolationCase(prev),
+          currentSnapshotAr: summarizeViolationCase(updated),
+        });
         if (isLast) {
-          const updated = get().cases.find(x => x.id === id)!;
           if (updated.typeHasDeduction) {
             const month = new Date().toISOString().slice(0,7);
             import('./payroll-deductions-store').then(m => m.useHRDisciplinePayrollDeductionsStore.getState().syncFromCase(updated, month));
@@ -621,6 +665,8 @@ export const useHRViolationCasesStore = create<CasesState>()(
       },
 
       reject: (id, role, note) => {
+        const prev = get().cases.find(x => x.id === id);
+        if (!prev) return { ok:false, error:'المخالفة غير موجودة' };
         const logEntry = { role, action: 'rejected' as const, note, at: now() };
         set(s => ({
           cases: s.cases.map(x => x.id === id ? {
@@ -629,10 +675,23 @@ export const useHRViolationCasesStore = create<CasesState>()(
             updatedAt: now(),
           } : x),
         }));
+        const updated = get().cases.find(x => x.id === id)!;
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'violation_case',
+          actionType: 'reject',
+          recordId: id,
+          recordRefAr: prev.caseNumber,
+          recordStatusAfterAr: CASE_STATUS_LABELS[updated.status],
+          previousSnapshotAr: summarizeViolationCase(prev),
+          currentSnapshotAr: summarizeViolationCase(updated),
+        });
         return { ok:true };
       },
 
       requestEdit: (id, role, note) => {
+        const prev = get().cases.find(x => x.id === id);
+        if (!prev) return { ok:false, error:'المخالفة غير موجودة' };
         const logEntry = { role, action: 'edit_requested' as const, note, at: now() };
         set(s => ({
           cases: s.cases.map(x => x.id === id ? {
@@ -641,18 +700,72 @@ export const useHRViolationCasesStore = create<CasesState>()(
             updatedAt: now(),
           } : x),
         }));
+        const updated = get().cases.find(x => x.id === id)!;
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'violation_case',
+          actionType: 'request_edit',
+          recordId: id,
+          recordRefAr: prev.caseNumber,
+          recordStatusAfterAr: CASE_STATUS_LABELS[updated.status],
+          previousSnapshotAr: summarizeViolationCase(prev),
+          currentSnapshotAr: summarizeViolationCase(updated),
+        });
         return { ok:true };
       },
 
-      update: (id, patch) => set(s => ({
-        cases: s.cases.map(x => x.id === id ? { ...x, ...patch, updatedAt:now() } : x),
-      })),
+      update: (id, patch) => {
+        const prev = get().cases.find(x => x.id === id);
+        if (!prev) return;
+        const merged: HRViolationCaseRecord = { ...prev, ...patch, updatedAt: now() };
+        set(s => ({ cases: s.cases.map(x => x.id === id ? merged : x) }));
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'violation_case',
+          actionType: 'update',
+          recordId: id,
+          recordRefAr: merged.caseNumber,
+          recordStatusAfterAr: CASE_STATUS_LABELS[merged.status],
+          previousSnapshotAr: summarizeViolationCase(prev),
+          currentSnapshotAr: summarizeViolationCase(merged),
+        });
+      },
 
-      remove: (id) => set(s => ({ cases: s.cases.filter(x => x.id !== id) })),
+      remove: (id) => {
+        const prev = get().cases.find(x => x.id === id);
+        set(s => ({ cases: s.cases.filter(x => x.id !== id) }));
+        if (prev) {
+          appendDisciplineAuditLog({
+            actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+            category: 'violation_case',
+            actionType: 'delete',
+            recordId: id,
+            recordRefAr: prev.caseNumber,
+            recordStatusAfterAr: 'محذوف',
+            previousSnapshotAr: summarizeViolationCase(prev),
+            currentSnapshotAr: '—',
+          });
+        }
+      },
 
-      markPayrollPosted: (id) => set(s => ({
-        cases: s.cases.map(x => x.id === id ? { ...x, postedToPayroll:true, updatedAt:now() } : x),
-      })),
+      markPayrollPosted: (id) => {
+        const prev = get().cases.find(x => x.id === id);
+        if (!prev) return;
+        set(s => ({
+          cases: s.cases.map(x => x.id === id ? { ...x, postedToPayroll:true, updatedAt:now() } : x),
+        }));
+        const updated = get().cases.find(x => x.id === id)!;
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'violation_case',
+          actionType: 'payroll_posted',
+          recordId: id,
+          recordRefAr: prev.caseNumber,
+          recordStatusAfterAr: `${CASE_STATUS_LABELS[updated.status]} · مُدرَج في الرواتب`,
+          previousSnapshotAr: summarizeViolationCase(prev),
+          currentSnapshotAr: summarizeViolationCase(updated),
+        });
+      },
     }),
     {
       name: 'hr_discipline_cases_v1',

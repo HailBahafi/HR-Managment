@@ -37,7 +37,10 @@ export function useEntityFilterSlot(render: () => React.ReactNode, deps: React.D
   const renderRef = React.useRef(render);
   renderRef.current = render;
 
-  React.useLayoutEffect(() => {
+  // useEffect (not useLayoutEffect): updating the slot synchronously in layout caused
+  // cascades with EntityFilterToolbar's date/status sync → parent setState → same deps
+  // churn → "Maximum update depth exceeded" on Radix Select.
+  React.useEffect(() => {
     setSlot(renderRef.current());
     return () => {
       setSlot(null);

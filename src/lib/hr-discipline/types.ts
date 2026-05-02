@@ -38,6 +38,31 @@ export interface HRDisciplineNoticeRecord {
   linkedCaseId: string; attachmentsNote: string; createdAt: string;
 }
 
+/** نطاق استلام التعميم */
+export type HRDisciplineCircularAudience = 'all' | 'employees' | 'branch' | 'department';
+
+export interface HRDisciplineCircularRecord {
+  id: string;
+  date: string;
+  titleAr: string;
+  bodyAr: string;
+  audience: HRDisciplineCircularAudience;
+  /** عند `audience === 'employees'` */
+  targetEmployeeIds: string[];
+  /** عند `audience === 'branch'` — واحد أو أكثر */
+  branchIds: string[];
+  /** أسماء الفروع مفصولة بـ «،» للعرض والبحث */
+  branchNamesArSnapshot: string;
+  /** عند `audience === 'department'` — واحد أو أكثر */
+  departmentIds: string[];
+  departmentNamesArSnapshot: string;
+  /** وصف مختصر يظهر في البطاقات والجدول */
+  audienceSummaryAr: string;
+  /** وقت إرسال التعميم إلى المستلمين؛ `null` = لم يُرسل بعد */
+  sentAt: string | null;
+  createdAt: string;
+}
+
 export interface HRDisciplineInvestigationRecord {
   id: string; caseId: string; caseNumber: string;
   employeeId: string; employeeNameAr: string;
@@ -74,9 +99,11 @@ export const hrDisciplineSections = [
   { slug: 'approval-assignment',  titleAr: 'إسناد الموافقات',        titleEn: 'Approval Assignment' },
   { slug: 'violation-cases',      titleAr: 'تسجيل  المخالفات',      titleEn: 'Violation Cases' },
   { slug: 'notices',              titleAr: 'الإنذارات والتحذيرات', titleEn: 'Notices' },
+  { slug: 'circulars',            titleAr: 'التعميمات',            titleEn: 'Circulars' },
   { slug: 'investigations',       titleAr: 'التحقيقات',            titleEn: 'Investigations' },
   { slug: 'deductions',           titleAr: 'كشف الخصومات',          titleEn: 'Payroll Deductions' },
   { slug: 'appeals',              titleAr: 'التظلمات',             titleEn: 'Appeals' },
+  { slug: 'audit-log',            titleAr: 'سجل العمليات',          titleEn: 'Audit Log' },
 ] as const;
 
 export type HRDisciplineSection = (typeof hrDisciplineSections)[number]['slug'];
@@ -86,11 +113,13 @@ export function isDisciplineSection(s: string): s is HRDisciplineSection {
 
 export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDisciplineSection; labelAr: string }[] }[] = [
   {
-    labelAr: 'مسار المخالفة', items: [
+    labelAr: 'مسارات الإنظباط', items: [
       { slug: 'violation-cases',  labelAr: 'سجل المخالفات' },
       { slug: 'notices',          labelAr: 'الإنذارات' },
+      { slug: 'circulars',        labelAr: 'التعميمات' },
       { slug: 'investigations',   labelAr: 'التحقيقات' },
       { slug: 'appeals',          labelAr: 'التظلمات' },
+      { slug: 'audit-log',        labelAr: 'سجل العمليات' },
     ],
   },
   {
@@ -113,6 +142,15 @@ export const NOTICE_KIND_LABELS: Record<HRDisciplineNoticeKind, string> = {
 /** ترتيب عرض تبويبات التصفية في الإنذارات */
 export const NOTICE_KIND_FILTER_ORDER: HRDisciplineNoticeKind[] = ['verbal', 'first', 'second', 'final'];
 
+export const CIRCULAR_AUDIENCE_LABELS: Record<HRDisciplineCircularAudience, string> = {
+  all: 'جميع الموظفين',
+  employees: 'موظفون محددون',
+  branch: 'فرع',
+  department: 'قسم',
+};
+/** ترتيب تبويبات نطاق التعميم في الواجهة */
+export const CIRCULAR_AUDIENCE_FILTER_ORDER: HRDisciplineCircularAudience[] = ['all', 'employees', 'branch', 'department'];
+
 export const INVESTIGATION_RESULT_LABELS: Record<HRInvestigationResult, string> = {
   upheld: 'ثبتت المخالفة', cancelled: 'لم تثبت', to_warning: 'توجيه إنذار', to_deduction: 'استقطاع',
 };
@@ -128,7 +166,7 @@ export const APPEAL_STATUS_LABELS: Record<HRAppealStatus, string> = {
   submitted: 'مُقدَّم', in_review: 'قيد المراجعة', accepted: 'مقبول', rejected: 'مرفوض', closed: 'مغلق',
 };
 export const APPEAL_STATUS_FILTER_ORDER: HRAppealStatus[] = ['submitted', 'in_review', 'accepted', 'rejected', 'closed'];
-/** تسميات عربية لمسار المخالفة الإداري: مسودة → تقديم → سلسلة الموافقات → قرار → تنفيذ/إغلاق. */
+/** تسميات عربية لمسارات الإنظباط الإداري: مسودة → تقديم → سلسلة الموافقات → قرار → تنفيذ/إغلاق. */
 export const CASE_STATUS_LABELS: Record<HRViolationCaseStatus, string> = {
   draft: 'مسودة',
   submitted: 'مُقدَّم',

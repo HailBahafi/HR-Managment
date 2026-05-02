@@ -25,6 +25,7 @@ import { useSidebar } from '@/components/sidebar-context';
 import { usePageTitle } from '@/components/page-title-context';
 import { FilterTrigger } from '@/components/filter-panel';
 import { Logo } from '@/components/logo';
+import { NotificationBellPopover } from '@/components/notifications/notification-bell-popover';
 import { cn } from '@/lib/utils';
 import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
 
@@ -32,7 +33,7 @@ import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
 export const PAGE_ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
-  CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet,
+  CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet, Bell,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */
@@ -319,13 +320,7 @@ export function Topbar() {
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
-          <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-xl">
-            <Bell className="h-4 w-4" />
-            <span className="absolute right-1.5 top-1 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold/70" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
-            </span>
-          </Button>
+          <NotificationBellPopover />
 
           <div className="mx-1 h-5 w-px bg-border/70" />
 

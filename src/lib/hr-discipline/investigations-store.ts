@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { MOCK_APP_SESSION } from '@/lib/app-session';
 import type { HRDisciplineInvestigationRecord } from './types';
+import { INVESTIGATION_RESULT_LABELS } from './types';
+import { summarizeInvestigation } from './discipline-audit-log';
+import { appendDisciplineAuditLog } from './discipline-audit-log-store';
 
 const SEED: HRDisciplineInvestigationRecord[] = [
   {
@@ -89,11 +93,54 @@ interface InvestigationsState {
 
 export const useHRDisciplineInvestigationsStore = create<InvestigationsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       investigations: SEED,
-      add: (d) => set(s => ({ investigations: [...s.investigations, { ...d, id:uid(), createdAt:now(), updatedAt:now() }] })),
-      update: (id, patch) => set(s => ({ investigations: s.investigations.map(i => i.id === id ? { ...i, ...patch, updatedAt:now() } : i) })),
-      remove: (id) => set(s => ({ investigations: s.investigations.filter(i => i.id !== id) })),
+      add: (d) => {
+        const rec: HRDisciplineInvestigationRecord = { ...d, id: uid(), createdAt: now(), updatedAt: now() };
+        set(s => ({ investigations: [...s.investigations, rec] }));
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'investigation',
+          actionType: 'create',
+          recordId: rec.id,
+          recordRefAr: rec.caseNumber,
+          recordStatusAfterAr: INVESTIGATION_RESULT_LABELS[rec.result],
+          previousSnapshotAr: '—',
+          currentSnapshotAr: summarizeInvestigation(rec),
+        });
+      },
+      update: (id, patch) => {
+        const prev = get().investigations.find(i => i.id === id);
+        if (!prev) return;
+        const merged: HRDisciplineInvestigationRecord = { ...prev, ...patch, updatedAt: now() };
+        set(s => ({ investigations: s.investigations.map(i => i.id === id ? merged : i) }));
+        appendDisciplineAuditLog({
+          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+          category: 'investigation',
+          actionType: 'update',
+          recordId: id,
+          recordRefAr: merged.caseNumber,
+          recordStatusAfterAr: INVESTIGATION_RESULT_LABELS[merged.result],
+          previousSnapshotAr: summarizeInvestigation(prev),
+          currentSnapshotAr: summarizeInvestigation(merged),
+        });
+      },
+      remove: (id) => {
+        const prev = get().investigations.find(i => i.id === id);
+        set(s => ({ investigations: s.investigations.filter(i => i.id !== id) }));
+        if (prev) {
+          appendDisciplineAuditLog({
+            actorNameAr: MOCK_APP_SESSION.employeeNameAr,
+            category: 'investigation',
+            actionType: 'delete',
+            recordId: id,
+            recordRefAr: prev.caseNumber,
+            recordStatusAfterAr: 'محذوف',
+            previousSnapshotAr: summarizeInvestigation(prev),
+            currentSnapshotAr: '—',
+          });
+        }
+      },
     }),
     { name:'hr_discipline_investigations_v1', storage: createJSONStorage(() => localStorage), version:2, migrate: () => ({ investigations: SEED }) },
   ),

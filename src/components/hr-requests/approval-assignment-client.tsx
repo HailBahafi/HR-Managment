@@ -13,7 +13,13 @@ import {
 } from './shared-ui';
 import { useHRApprovalAssignmentTemplatesStore } from '@/lib/hr-requests/approval-assignment-store';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import type { HRApprovalAssignmentTemplate, HRApprovalTemplateStage, HRApprovalStageMode } from '@/lib/hr-requests/types';
+import {
+  approvalStageModeLabelAr,
+  type HRApprovalAssignmentTemplate,
+  type HRApprovalTemplateStage,
+  type HRApprovalStageMode,
+} from '@/lib/hr-requests/types';
+import type { HREmployeeDirectoryRow } from '@/lib/hr-requests/employee-directory-store';
 import { cn } from '@/lib/utils';
 
 function uid() { return `ats-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; }
@@ -33,6 +39,13 @@ interface DraftForm {
 }
 
 const EMPTY: DraftForm = { nameAr: '', description: '', isActive: true, stages: [] };
+
+function approverNamesForStage(
+  stage: HRApprovalTemplateStage,
+  activeEmployees: HREmployeeDirectoryRow[],
+): string[] {
+  return stage.approvers.map((a) => activeEmployees.find((e) => e.id === a.employeeId)?.nameAr ?? a.employeeId);
+}
 
 function StageEditor({ stage, index, total, onChange, onRemove }: {
   stage: HRApprovalTemplateStage; index: number; total: number;
@@ -98,6 +111,7 @@ function StageEditor({ stage, index, total, onChange, onRemove }: {
 
 export function ApprovalAssignmentClient() {
   const { templates, add, update, remove } = useHRApprovalAssignmentTemplatesStore();
+  const { activeEmployees } = useHREmployeeDirectoryStore();
 
   const [page, setPage] = React.useState(1);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -161,6 +175,28 @@ export function ApprovalAssignmentClient() {
                   </span>
                 ))}
                 {t.stages.length === 0 && <span className="text-xs text-muted-foreground">بدون مراحل</span>}
+              </div>
+              <div className="rounded-lg border border-border/70 bg-muted/25 p-3 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">عرض المعتمدين</p>
+                {[...t.stages].sort((a, b) => a.sortOrder - b.sortOrder).map((s, i) => {
+                  const names = approverNamesForStage(s, activeEmployees);
+                  return (
+                    <div key={s.id} className="text-xs">
+                      <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
+                        <span className="font-semibold text-foreground">المرحلة {i + 1}</span>
+                        <span className="text-muted-foreground">· {approvalStageModeLabelAr(s.mode)}</span>
+                      </div>
+                      {names.length > 0 ? (
+                        <p className="mt-1 text-[11px] leading-relaxed text-foreground">{names.join('، ')}</p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">لا معتمدين معيّنين في هذه المرحلة</p>
+                      )}
+                    </div>
+                  );
+                })}
+                {t.stages.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">لا توجد مراحل في هذا القالب</p>
+                ) : null}
               </div>
               <div className="mt-auto flex gap-1 border-t border-border pt-3">
                 <Button variant="ghost" size="sm" className="gap-1.5 flex-1" onClick={() => openEdit(t)}>
