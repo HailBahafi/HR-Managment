@@ -4,6 +4,7 @@ import { FilterPanelProvider } from '@/components/filter-panel-context';
 import { Sidebar } from '@/components/sidebar';
 import { Topbar } from '@/components/topbar';
 import { FilterPanel } from '@/components/filter-panel';
+import { Toaster } from 'sonner';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Sidebar />
             <FilterPanel />
             <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4">{children}</main>
+            <Toaster richColors position="top-center" dir="rtl" />
           </div>
         </FilterPanelProvider>
       </PageTitleProvider>
