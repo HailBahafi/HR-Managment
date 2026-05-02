@@ -13,7 +13,13 @@ import {
 } from '@/components/hr-requests/shared-ui';
 import { useHRDisciplineApprovalAssignmentTemplatesStore } from '@/lib/hr-discipline/discipline-approval-store';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import type { HRApprovalAssignmentTemplate, HRApprovalTemplateStage, HRApprovalStageMode } from '@/lib/hr-requests/types';
+import {
+  approvalStageModeLabelAr,
+  type HRApprovalAssignmentTemplate,
+  type HRApprovalTemplateStage,
+  type HRApprovalStageMode,
+} from '@/lib/hr-requests/types';
+import type { HREmployeeDirectoryRow } from '@/lib/hr-requests/employee-directory-store';
 import { cn } from '@/lib/utils';
 
 function uid() { return `dats-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; }
@@ -27,6 +33,13 @@ const MODE_OPTIONS: { value: HRApprovalStageMode; label: string }[] = [
 
 interface DraftForm { nameAr: string; description: string; isActive: boolean; stages: HRApprovalTemplateStage[]; }
 const EMPTY: DraftForm = { nameAr: '', description: '', isActive: true, stages: [] };
+
+function approverNamesForStage(
+  stage: HRApprovalTemplateStage,
+  activeEmployees: HREmployeeDirectoryRow[],
+): string[] {
+  return stage.approvers.map((a) => activeEmployees.find((e) => e.id === a.employeeId)?.nameAr ?? a.employeeId);
+}
 
 function StageEditor({ stage, index, onChange, onRemove }: {
   stage: HRApprovalTemplateStage; index: number;
@@ -68,6 +81,7 @@ function StageEditor({ stage, index, onChange, onRemove }: {
 
 export function DisciplineApprovalClient() {
   const { templates, add, update, remove } = useHRDisciplineApprovalAssignmentTemplatesStore();
+  const { activeEmployees } = useHREmployeeDirectoryStore();
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث بالاسم…' }]);
   const search = (values.q as string) ?? '';
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -114,6 +128,28 @@ export function DisciplineApprovalClient() {
                 <ActiveBadge active={t.isActive} />
               </div>
               <p className="text-xs text-muted-foreground">{t.stages.length} مرحلة اعتماد</p>
+              <div className="rounded-lg border border-border/70 bg-muted/25 p-3 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">عرض المعتمدين</p>
+                {[...t.stages].sort((a, b) => a.sortOrder - b.sortOrder).map((s, i) => {
+                  const names = approverNamesForStage(s, activeEmployees);
+                  return (
+                    <div key={s.id} className="text-xs">
+                      <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
+                        <span className="font-semibold text-foreground">المرحلة {i + 1}</span>
+                        <span className="text-muted-foreground">· {approvalStageModeLabelAr(s.mode)}</span>
+                      </div>
+                      {names.length > 0 ? (
+                        <p className="mt-1 text-[11px] leading-relaxed text-foreground">{names.join('، ')}</p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">لا معتمدين معيّنين في هذه المرحلة</p>
+                      )}
+                    </div>
+                  );
+                })}
+                {t.stages.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">لا توجد مراحل في هذا القالب</p>
+                ) : null}
+              </div>
               <div className="flex items-center gap-1.5 mt-auto pt-2 border-t border-border">
                 <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" />تعديل</Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
