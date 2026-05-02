@@ -130,7 +130,7 @@ export function PayrollMultiPeriodExplorer() {
 
       {/* ── Period + employee filters ── */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
-        <div className="flex flex-wrap items-end justify-between gap-3 gap-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-end gap-4">
             <div className="w-fit shrink-0 space-y-1.5">
               <span className="block text-xs font-medium text-muted-foreground">فترات الرواتب</span>
