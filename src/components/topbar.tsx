@@ -91,6 +91,7 @@ export const navConfig: NavItem[] = [
       { labelAr: 'الطلبات', items: [
         { label: 'إدارة الطلبات', href: '/hr/requests/general', icon: InboxIcon },
         { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
+        { label: 'إدارة طلبات الإجازات', href: '/hr/leaves/unified-management', icon: LayoutList },
       ] },
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الطلبات', href: '/hr/requests/request-types',   icon: ListChecks },

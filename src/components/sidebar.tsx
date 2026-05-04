@@ -65,6 +65,7 @@ const mobileNav: MobileNavItem[] = [
     children: [
       { label: 'الطلبات العامة', href: '/hr/requests/general', icon: InboxIcon },
       { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
+      { label: 'إدارة طلبات الإجازات', href: '/hr/leaves/unified-management', icon: LayoutList, match: 'exact' },
       { label: 'أنواع الطلبات', href: '/hr/requests/request-types', icon: ListChecks },
       { label: 'قوالب النماذج', href: '/hr/requests/form-templates', icon: FileText },
       { label: 'قوالب الموافقة', href: '/hr/requests/approval-assignment', icon: ShieldCheck },

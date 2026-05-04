@@ -325,6 +325,7 @@
   .rose-rdp-calendar .rdp-disabled {
     @apply text-muted-foreground opacity-50;
   }
+
 }
 
 @layer utilities {
