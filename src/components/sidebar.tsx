@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Shield,
   LayoutGrid, MapPin, Link2, CalendarRange,
-  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList,
+  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList, CirclePlus,
   ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen, FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,7 +15,9 @@ import { Logo } from '@/components/logo';
 import { useSidebar } from '@/components/sidebar-context';
 import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
 
-type MobileNavChild = { label: string; href: string; icon?: React.ElementType } | { separator: true };
+type MobileNavChild =
+  | { label: string; href: string; icon?: React.ElementType; match?: 'exact' | 'prefix' }
+  | { separator: true };
 
 type MobileNavItem = {
   key: string;
@@ -52,8 +54,8 @@ const mobileNav: MobileNavItem[] = [
     key: 'leaves', label: 'الإجازات', icon: CalendarDays,
     children: [
       { label: 'التحليلات', href: '/hr/leaves/analytics', icon: BarChart3 },
-      { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList },
-      { label: 'اضافة رصيد اجازة', href: '', icon: LayoutList },
+      { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList, match: 'exact' },
+      { label: 'إضافة رصيد إجازات', href: '/hr/leaves/unified-management/balance-credit', icon: CirclePlus },
       { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types', icon: ListChecks },
       { label: 'العطل الرسمية', href: '/hr/leaves/public-holidays', icon: CalendarDays },
     ],
@@ -113,7 +115,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
     });
   };
 
-  function isChildMatch(href: string) {
+  function isChildMatch(href: string, match: 'exact' | 'prefix' = 'prefix') {
     const [base, qs] = href.split('?');
     if (qs) {
       const childParams = new URLSearchParams(qs);
@@ -123,12 +125,18 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
       }
       return pathname === base;
     }
-    return pathname === base || pathname.startsWith(base + '/');
+    if (match === 'exact') return pathname === base;
+    return pathname === base || pathname.startsWith(`${base}/`);
   }
 
   const isParentActive = (item: MobileNavItem) => {
-    if (item.href) return pathname === item.href || pathname.startsWith(item.href + '/');
-    if (item.children) return item.children.some(c => !('separator' in c) && isChildMatch(c.href));
+    if (item.href) return pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (item.children) {
+      return item.children.some((c) => {
+        if ('separator' in c) return false;
+        return isChildMatch(c.href, c.match ?? 'prefix');
+      });
+    }
     return false;
   };
 
@@ -208,7 +216,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                       return <div key={`sep-${idx}`} className="my-1 border-t border-sidebar-border/30" />;
                     }
                     const ChildIcon = child.icon;
-                    const childActive = isChildMatch(child.href);
+                    const childActive = isChildMatch(child.href, child.match ?? 'prefix');
                     return (
                       <Link
                         key={child.href}

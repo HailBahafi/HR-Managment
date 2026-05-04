@@ -4,21 +4,35 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { ListChecks, CalendarDays, LayoutList, BarChart3 } from 'lucide-react';
+import { ListChecks, CalendarDays, LayoutList, BarChart3, CirclePlus } from 'lucide-react';
 
-const TABS = [
+type LeavesTab = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  /** إن وُجدت، يُفعَّل التبويب فقط عند تطابق المسار بالكامل (مثل إدارة الطلبات دون صفحة إضافة الرصيد) */
+  activeExact?: boolean;
+};
+
+const TABS: LeavesTab[] = [
   { href: '/hr/leaves/analytics', label: 'التحليلات', icon: BarChart3 },
-  { href: '/hr/leaves/unified-management', label: 'إدارة الطلبات', icon: LayoutList },
+  { href: '/hr/leaves/unified-management', label: 'إدارة الطلبات', icon: LayoutList, activeExact: true },
+  { href: '/hr/leaves/unified-management/balance-credit', label: 'إضافة رصيد إجازات', icon: CirclePlus },
   { href: '/hr/leaves/leave-types', label: 'أنواع الإجازات', icon: ListChecks },
   { href: '/hr/leaves/public-holidays', label: 'العطل الرسمية', icon: CalendarDays },
 ];
+
+function isTabActive(pathname: string, tab: LeavesTab): boolean {
+  if (tab.activeExact) return pathname === tab.href;
+  return pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+}
 
 export function LeavesNav() {
   const pathname = usePathname();
   return (
     <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-muted/30 p-1">
       {TABS.map((tab) => {
-        const active = pathname === tab.href || pathname.startsWith(tab.href + '/');
+        const active = isTabActive(pathname, tab);
         return (
           <Link
             key={tab.href}

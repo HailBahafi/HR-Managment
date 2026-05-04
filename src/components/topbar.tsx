@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
-  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList,
+  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList, CirclePlus,
   Banknote, FileSignature, BookOpen, FileSpreadsheet,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -77,6 +77,7 @@ export const navConfig: NavItem[] = [
       { labelAr: 'المتابعة', items: [
         { label: 'التحليلات',     href: '/hr/leaves/analytics',         icon: BarChart3 },
         { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList },
+        { label: 'إضافة رصيد إجازات', href: '/hr/leaves/unified-management/balance-credit', icon: CirclePlus },
       ]},
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types',     icon: ListChecks },

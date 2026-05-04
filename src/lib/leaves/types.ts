@@ -80,6 +80,19 @@ export interface EmployeeLeaveBalanceRow {
   emergency: { used: number; total: number };
 }
 
+/** طلب إضافة رصيد إجازة (اعتماد يدوي) */
+export interface LeaveBalanceCreditRequest {
+  id: string;
+  employeeId: string;
+  employeeNameAr: string;
+  /** يُضاف إلى سقف الرصيد السنوي عند الموافقة */
+  daysAdded: number;
+  reasonAr: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  decidedAt?: string;
+}
+
 export interface UnifiedFilterState {
   branchId: string;
   departmentId: string;
