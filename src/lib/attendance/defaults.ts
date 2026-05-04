@@ -1,4 +1,4 @@
-import type { CheckInWindowConfig, CheckOutWindowConfig, ShiftPeriod, TemplateDayConfig, WeekDayIndex } from './types';
+import type { CheckInWindowConfig, CheckOutWindowConfig, ShiftPeriod, ShiftTemplate, TemplateDayConfig, WeekDayIndex } from './types';
 
 export function defaultCheckInWindow(): CheckInWindowConfig {
   return { beforeStartMinutes: 30, graceMinutes: 10, afterStartMinutes: 60 };
@@ -22,6 +22,52 @@ export function defaultShiftPeriod(id: string): ShiftPeriod {
     checkOut: defaultCheckOutWindow(),
     checkOutNotRequired: false,
     autoOvertime: false,
+    strictMode: false,
+    strictPenaltyWarning: false,
+    strictPenaltyBalanceEnabled: false,
+    strictPenaltyBalanceDays: 1,
+    strictPenaltyVacationEnabled: false,
+  };
+}
+
+/** حقول قديمة في localStorage قبل إعادة التسمية */
+type LegacyPeriodFields = {
+  strictAbsenceDeductEnabled?: boolean;
+  strictAbsenceDeductDays?: number;
+  strictAbsenceWarningEnabled?: boolean;
+};
+
+/** يدمج الحقول الجديدة مع بيانات قديمة من التخزين المحلي */
+export function normalizeShiftPeriod(p: ShiftPeriod): ShiftPeriod {
+  const base = defaultShiftPeriod(p.id);
+  const leg = p as ShiftPeriod & LegacyPeriodFields & { strictPenaltyVacationDays?: number };
+  const { strictPenaltyVacationDays: _legacyVacDays, ...rest } = leg as ShiftPeriod & {
+    strictPenaltyVacationDays?: number;
+  };
+  const balanceDays = Math.min(
+    99,
+    Math.max(1, Number(leg.strictPenaltyBalanceDays ?? leg.strictAbsenceDeductDays) || 1),
+  );
+  return {
+    ...base,
+    ...rest,
+    checkIn: { ...base.checkIn, ...p.checkIn },
+    checkOut: { ...base.checkOut, ...p.checkOut },
+    strictMode: Boolean(p.strictMode),
+    strictPenaltyWarning: Boolean(leg.strictPenaltyWarning ?? leg.strictAbsenceWarningEnabled),
+    strictPenaltyBalanceEnabled: Boolean(leg.strictPenaltyBalanceEnabled ?? leg.strictAbsenceDeductEnabled),
+    strictPenaltyBalanceDays: balanceDays,
+    strictPenaltyVacationEnabled: Boolean(leg.strictPenaltyVacationEnabled),
+  };
+}
+
+export function normalizeShiftTemplate(t: ShiftTemplate): ShiftTemplate {
+  return {
+    ...t,
+    weekDays: t.weekDays.map((wd) => ({
+      ...wd,
+      periods: wd.periods.map(normalizeShiftPeriod),
+    })),
   };
 }
 

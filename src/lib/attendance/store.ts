@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { normalizeShiftTemplate } from './defaults';
 import { buildInitialAttendanceState } from './seed-state';
 import type {
   AssignmentTargetType,
@@ -59,12 +60,14 @@ export const useAttendanceStore = create<AttendanceStore>()(
       ...seed(),
       resetToSeed: () => set(seed()),
 
-      upsertTemplate: (t) =>
+      upsertTemplate: (t) => {
+        const normalized = normalizeShiftTemplate(t);
         set((s) => ({
-          shiftTemplates: s.shiftTemplates.some((x) => x.id === t.id)
-            ? s.shiftTemplates.map((x) => (x.id === t.id ? t : x))
-            : [...s.shiftTemplates, t],
-        })),
+          shiftTemplates: s.shiftTemplates.some((x) => x.id === normalized.id)
+            ? s.shiftTemplates.map((x) => (x.id === normalized.id ? normalized : x))
+            : [...s.shiftTemplates, normalized],
+        }));
+      },
 
       removeTemplate: (id) =>
         set((s) => ({

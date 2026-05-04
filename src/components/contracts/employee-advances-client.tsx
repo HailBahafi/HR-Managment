@@ -12,7 +12,13 @@ import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown, MinimalDropdown,
 } from '@/components/hr-requests/shared-ui';
 import {
-  useHREmployeeAdvancesStore, ADVANCE_STATUS_LABELS,
+  useHREmployeeAdvancesStore,
+  ADVANCE_STATUS_LABELS,
+  ADVANCE_KIND_LABELS,
+  REPAYMENT_MODE_LABELS,
+  type HREmployeeAdvance,
+  type HREmployeeAdvanceKind,
+  type HREmployeeAdvanceRepaymentMode,
   type HREmployeeAdvanceStatus,
 } from '@/lib/contracts/employee-advances-store';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
@@ -34,12 +40,32 @@ type DraftForm = {
   advanceDate: string;
   note: string;
   status: HREmployeeAdvanceStatus;
+  advanceKind: HREmployeeAdvanceKind;
+  repaymentMode: HREmployeeAdvanceRepaymentMode;
+  repaymentMonths: string;
+  monthlyInstallment: string;
 };
 
 const EMPTY_FORM: DraftForm = {
   employeeId: '', employeeNameAr: '', amount: '', currency: 'SAR',
   advanceDate: new Date().toISOString().slice(0, 10), note: '', status: 'outstanding',
+  advanceKind: 'personal',
+  repaymentMode: 'by_months',
+  repaymentMonths: '12',
+  monthlyInstallment: '',
 };
+
+function repaymentLine(x: HREmployeeAdvance): string {
+  if (x.repaymentMode === 'by_months' && x.repaymentMonths != null && x.repaymentMonths > 0) {
+    const per = x.amount / x.repaymentMonths;
+    return `${x.repaymentMonths} شهر · ≈ ${formatNumber(Math.round(per * 100) / 100)} ${x.currency}/شهر`;
+  }
+  if (x.repaymentMode === 'by_monthly_amount' && x.monthlyInstallmentAmount != null && x.monthlyInstallmentAmount > 0) {
+    const approxMonths = Math.ceil(x.amount / x.monthlyInstallmentAmount);
+    return `${formatNumber(x.monthlyInstallmentAmount)} ${x.currency}/شهر · ~${approxMonths} شهر`;
+  }
+  return '—';
+}
 
 export function EmployeeAdvancesClient() {
   const { items, add, update, remove } = useHREmployeeAdvancesStore();
@@ -103,6 +129,10 @@ export function EmployeeAdvancesClient() {
       employeeId: x.employeeId, employeeNameAr: x.employeeNameAr,
       amount: String(x.amount), currency: x.currency,
       advanceDate: x.advanceDate, note: x.note, status: x.status,
+      advanceKind: x.advanceKind,
+      repaymentMode: x.repaymentMode,
+      repaymentMonths: x.repaymentMonths != null ? String(x.repaymentMonths) : '12',
+      monthlyInstallment: x.monthlyInstallmentAmount != null ? String(x.monthlyInstallmentAmount) : '',
     });
     setError(null); setDrawerOpen(true);
   };
@@ -112,10 +142,35 @@ export function EmployeeAdvancesClient() {
     const amount = parseFloat(form.amount);
     if (!form.amount || isNaN(amount) || amount <= 0) { setError('المبلغ يجب أن يكون أكبر من صفر'); return; }
     if (!form.advanceDate) { setError('تاريخ السلفة مطلوب'); return; }
+    let repaymentMonths: number | null = null;
+    let monthlyInstallmentAmount: number | null = null;
+    if (form.repaymentMode === 'by_months') {
+      const m = parseInt(form.repaymentMonths, 10);
+      if (!Number.isFinite(m) || m < 1 || m > 600) {
+        setError('أدخل عدد أشهر صحيحاً (1–600)');
+        return;
+      }
+      repaymentMonths = m;
+    } else {
+      const inst = parseFloat(form.monthlyInstallment);
+      if (!form.monthlyInstallment.trim() || Number.isNaN(inst) || inst <= 0) {
+        setError('أدخل مبلغ القسط الشهري');
+        return;
+      }
+      if (inst > amount) {
+        setError('المبلغ الشهري لا يجوز أن يتجاوز إجمالي السلفة');
+        return;
+      }
+      monthlyInstallmentAmount = inst;
+    }
     const payload = {
       employeeId: form.employeeId, employeeNameAr: form.employeeNameAr,
       amount, currency: form.currency,
       advanceDate: form.advanceDate, note: form.note, status: form.status,
+      advanceKind: form.advanceKind,
+      repaymentMode: form.repaymentMode,
+      repaymentMonths,
+      monthlyInstallmentAmount,
     };
     if (editId) { update(editId, payload); } else { add(payload); }
     setDrawerOpen(false);
@@ -129,8 +184,19 @@ export function EmployeeAdvancesClient() {
   };
 
   const downloadCsv = () => {
-    const rows = [['الموظف', 'المبلغ', 'العملة', 'التاريخ', 'الحالة', 'ملاحظة']];
-    filtered.forEach(x => rows.push([x.employeeNameAr, String(x.amount), x.currency, x.advanceDate, ADVANCE_STATUS_LABELS[x.status], x.note]));
+    const rows = [['الموظف', 'المبلغ', 'العملة', 'نوع السلفة', 'آلية القسط', 'عدد الأشهر', 'القسط الشهري', 'التاريخ', 'الحالة', 'ملاحظة']];
+    filtered.forEach(x => rows.push([
+      x.employeeNameAr,
+      String(x.amount),
+      x.currency,
+      ADVANCE_KIND_LABELS[x.advanceKind],
+      REPAYMENT_MODE_LABELS[x.repaymentMode],
+      x.repaymentMonths != null ? String(x.repaymentMonths) : '',
+      x.monthlyInstallmentAmount != null ? String(x.monthlyInstallmentAmount) : '',
+      x.advanceDate,
+      ADVANCE_STATUS_LABELS[x.status],
+      x.note,
+    ]));
     const csv = rows.map(r => r.join(',')).join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
     a.download = 'employee-advances.csv'; a.click();
@@ -206,11 +272,17 @@ export function EmployeeAdvancesClient() {
                   {ADVANCE_STATUS_LABELS[x.status]}
                 </Badge>
               </div>
+              <div className="flex flex-wrap gap-1">
+                <Badge variant="secondary" className="text-[10px] font-normal">
+                  {ADVANCE_KIND_LABELS[x.advanceKind]}
+                </Badge>
+              </div>
               <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-center">
                 <p className="text-xl font-bold tabular-nums text-foreground">
                   {formatNumber(x.amount)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">{x.currency}</p>
+                <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{repaymentLine(x)}</p>
               </div>
               {x.note && (
                 <p className="text-[11px] text-muted-foreground line-clamp-2">{x.note}</p>
@@ -239,6 +311,47 @@ export function EmployeeAdvancesClient() {
         </FormField>
         <FormField label="المبلغ" required>
           <Input type="number" min="0" value={form.amount} onChange={e => patch({ amount: e.target.value })} placeholder="0" />
+        </FormField>
+        <FormField label="نوع السلفة" required>
+          <MinimalDropdown
+            value={form.advanceKind}
+            onChange={v => patch({ advanceKind: v as HREmployeeAdvanceKind })}
+            options={Object.entries(ADVANCE_KIND_LABELS).map(([value, label]) => ({ value, label }))}
+          />
+        </FormField>
+        <FormField label="آلية حساب القسط الشهري" span2>
+          <MinimalDropdown
+            value={form.repaymentMode}
+            onChange={v => patch({ repaymentMode: v as HREmployeeAdvanceRepaymentMode })}
+            options={Object.entries(REPAYMENT_MODE_LABELS).map(([value, label]) => ({ value, label }))}
+          />
+          {form.repaymentMode === 'by_months' ? (
+            <div className="mt-2 space-y-1">
+              <p className="text-[11px] text-muted-foreground">يُقسَّط إجمالي السلفة على عدد الأشهر التي تدخلها.</p>
+              <Input
+                type="number"
+                min={1}
+                max={600}
+                className="max-w-[10rem]"
+                value={form.repaymentMonths}
+                onChange={e => patch({ repaymentMonths: e.target.value })}
+                placeholder="مثال: 12"
+              />
+            </div>
+          ) : (
+            <div className="mt-2 space-y-1">
+              <p className="text-[11px] text-muted-foreground">يُخصم شهرياً المبلغ التالي حتى اكتمال السداد.</p>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                className="max-w-[10rem]"
+                value={form.monthlyInstallment}
+                onChange={e => patch({ monthlyInstallment: e.target.value })}
+                placeholder="مبلغ القسط"
+              />
+            </div>
+          )}
         </FormField>
         <FormField label="العملة">
           <MinimalDropdown

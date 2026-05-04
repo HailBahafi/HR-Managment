@@ -34,6 +34,15 @@ export interface ShiftPeriod {
   checkOut: CheckOutWindowConfig;
   checkOutNotRequired: boolean;
   autoOvertime: boolean;
+  /** دوام صارم — تفعيل قواعد عقوبة الغياب عن هذه الفترة */
+  strictMode: boolean;
+  /** إنذار عند الغياب عن الفترة */
+  strictPenaltyWarning: boolean;
+  /** خصم أيام من رصيد الحضور/الراتب */
+  strictPenaltyBalanceEnabled: boolean;
+  strictPenaltyBalanceDays: number;
+  /** خصم يوم واحد من رصيد الإجازة (ثابت — لا يُعدَّل) */
+  strictPenaltyVacationEnabled: boolean;
 }
 
 export interface TemplateDayConfig {
