@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  CalendarRange, Download, FileSpreadsheet, Loader2,
+  Download, FileSpreadsheet, Loader2,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -130,15 +130,37 @@ export function PayrollMultiPeriodExplorer() {
 
       {/* ── Period + employee filters ── */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CalendarRange className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold">كشف المسير</span>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-end gap-4">
+            <div className="w-fit shrink-0 space-y-1.5">
+              <span className="block text-xs font-medium text-muted-foreground">فترات الرواتب</span>
+              <MinimalDropdown
+                value={selectedId ?? ''}
+                onChange={(v) => setSelectedId(v || null)}
+                options={periodDropdownOptions}
+                placeholder="لا توجد فترات"
+                disabled={sortedPeriods.length === 0}
+                className="h-9 w-[13rem] max-w-[min(13rem,100vw-2rem)] justify-between text-start"
+              />
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-1.5 sm:max-w-md">
+              <span className="block text-xs font-medium text-muted-foreground">تصفية الموظفين</span>
+              <EmployeePicker
+                employees={periodEmployees}
+                selected={empFilter}
+                onChange={setEmpFilter}
+              />
+              {selectedPeriod && periodEmployees.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">لا يوجد موظفون في سجلات هذه الفترة.</p>
+              )}
+            </div>
           </div>
+
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="shrink-0 gap-2"
             disabled={downloading || !selectedId}
             onClick={handleDownloadExcel}
           >
@@ -147,32 +169,6 @@ export function PayrollMultiPeriodExplorer() {
               : <Download className="h-3.5 w-3.5" />}
             تحميل Excel
           </Button>
-        </div>
-
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="w-fit shrink-0 space-y-1.5">
-            <span className="block text-xs font-medium text-muted-foreground">فترات الرواتب</span>
-            <MinimalDropdown
-              value={selectedId ?? ''}
-              onChange={(v) => setSelectedId(v || null)}
-              options={periodDropdownOptions}
-              placeholder="لا توجد فترات"
-              disabled={sortedPeriods.length === 0}
-              className="h-9 w-[13rem] max-w-[min(13rem,100vw-2rem)] justify-between text-start"
-            />
-          </div>
-
-          <div className="min-w-0 flex-1 space-y-1.5 sm:max-w-md">
-            <span className="block text-xs font-medium text-muted-foreground">تصفية الموظفين</span>
-            <EmployeePicker
-              employees={periodEmployees}
-              selected={empFilter}
-              onChange={setEmpFilter}
-            />
-            {selectedPeriod && periodEmployees.length === 0 && (
-              <p className="text-[11px] text-muted-foreground">لا يوجد موظفون في سجلات هذه الفترة.</p>
-            )}
-          </div>
         </div>
       </div>
 

@@ -28,6 +28,11 @@ function periodFromMock(shiftId: string, day: WeekDayIndex, idx: number, p: { st
     checkOut: defaultCheckOutWindow(),
     checkOutNotRequired: false,
     autoOvertime: false,
+    strictMode: false,
+    strictPenaltyWarning: false,
+    strictPenaltyBalanceEnabled: false,
+    strictPenaltyBalanceDays: 1,
+    strictPenaltyVacationEnabled: false,
   };
 }
 

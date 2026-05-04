@@ -60,19 +60,19 @@ export function EmployeePicker({
       : `${selected.size} موظفين`;
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
         className={cn(
-          'flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all',
+          'flex h-8 max-w-[10rem] items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-all',
           selected.size > 0 && !allSelected
             ? 'border-primary/50 bg-primary/10 text-primary'
             : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground',
         )}
       >
         <Users className="h-3.5 w-3.5 shrink-0" />
-        <span className="max-w-[140px] truncate">{label}</span>
+        <span className="min-w-0 max-w-[6.5rem] flex-1 truncate text-start">{label}</span>
         {selected.size > 0 && !allSelected && (
           <span
             role="button"

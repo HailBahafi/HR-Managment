@@ -9,10 +9,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SetPageTitle } from '@/components/set-page-title';
 import { usePageFilters } from '@/components/filter-panel-context';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
 } from '@/components/hr-requests/shared-ui';
@@ -56,17 +57,44 @@ export function PayrollPeriodsClient() {
 
   const statusFilter = (values.status as StatusFilter) || 'all';
 
+  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
+    setDateBounds(b);
+  }, []);
+
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<HRPayrollPeriodDraft>(EMPTY_DRAFT);
   const [error, setError] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
 
-  const filtered = React.useMemo(() =>
-    periods
-      .filter(p => statusFilter === 'all' || p.status === statusFilter)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [periods, statusFilter],
+  const narrowedByDate = React.useMemo(
+    () =>
+      periods.filter((p) =>
+        intervalOverlapsYmdRange(p.periodStart, p.periodEnd, dateBounds.from, dateBounds.to),
+      ),
+    [periods, dateBounds.from, dateBounds.to],
+  );
+
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {
+      all: narrowedByDate.length,
+      draft: 0,
+      open: 0,
+      closed: 0,
+    };
+    for (const p of narrowedByDate) {
+      counts[p.status] = (counts[p.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [narrowedByDate]);
+
+  const filtered = React.useMemo(
+    () =>
+      narrowedByDate
+        .filter(p => statusFilter === 'all' || p.status === statusFilter)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [narrowedByDate, statusFilter],
   );
 
   const total = filtered.length;
@@ -97,6 +125,39 @@ export function PayrollPeriodsClient() {
 
   const set = (patch: Partial<HRPayrollPeriodDraft>) => setDraft(d => ({ ...d, ...patch }));
 
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showEmployeePicker={false}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(v) => setValue('status', v)}
+        statusOrder={['draft', 'open', 'closed']}
+        statusLabels={{
+          draft: PERIOD_STATUS_LABELS.draft,
+          open: PERIOD_STATUS_LABELS.open,
+          closed: PERIOD_STATUS_LABELS.closed,
+        }}
+        statusCounts={statusCounts}
+        onDateBoundsChange={onDateBoundsChange}
+        trailingActions={(
+          <Button onClick={openCreate} className="h-8 gap-1.5 px-3 text-xs shadow-sm">
+            <Plus className="h-4 w-4" />فترة جديدة
+          </Button>
+        )}
+      />
+    ),
+    [
+      statusFilter,
+      statusCounts.all,
+      statusCounts.draft,
+      statusCounts.open,
+      statusCounts.closed,
+      dateBounds.from,
+      dateBounds.to,
+      total,
+    ],
+  );
+
   const PeriodActions = ({ p }: { p: typeof periods[0] }) => (
     <div className="flex items-center gap-1 flex-wrap">
       <Link href={`/hr/contracts/period/${encodeURIComponent(p.id)}/compensation`}>
@@ -115,30 +176,7 @@ export function PayrollPeriodsClient() {
     <>
       <SetPageTitle titleAr="فترات الراتب" descriptionAr="إنشاء وإدارة فترات الرواتب الشهرية." iconName="CalendarRange" />
 
-      {/* ── Toolbar ── */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 min-w-0">
-          <span className="text-sm text-muted-foreground shrink-0">{total} فترة</span>
-          <div className="flex items-center gap-2 min-w-0 flex-1 sm:max-w-xs">
-            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">الحالة</span>
-            <Label htmlFor="payroll-period-status" className="sr-only">حالة الفترة</Label>
-            <Select value={statusFilter} onValueChange={(v) => setValue('status', v)}>
-              <SelectTrigger id="payroll-period-status" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
-                <SelectValue placeholder="كل الحالات" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">كل الحالات</SelectItem>
-                <SelectItem value="draft">{PERIOD_STATUS_LABELS.draft}</SelectItem>
-                <SelectItem value="open">{PERIOD_STATUS_LABELS.open}</SelectItem>
-                <SelectItem value="closed">{PERIOD_STATUS_LABELS.closed}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <Button onClick={openCreate} className="gap-1.5 shrink-0">
-          <Plus className="h-4 w-4" />فترة جديدة
-        </Button>
-      </div>
+      <p className="mb-2 text-sm text-muted-foreground">{total} فترة</p>
 
       {filtered.length === 0 ? (
         <EmptyState icon={CalendarRange} title="لا توجد فترات" description="أنشئ فترة راتب جديدة للبدء." />

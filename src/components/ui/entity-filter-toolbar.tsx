@@ -370,7 +370,7 @@ export const EntityFilterToolbar = React.forwardRef<
   const useFilterDropdowns = filterLayout === 'tabs' || filterLayout === 'collapsible';
 
   const dateCustomRangeRow = showDateSection && dateFilterTab === 'custom' ? (
-    <div className="flex w-full max-w-full flex-wrap items-center justify-between gap-2 border-border/40 border-dashed bg-muted/15 px-2 py-1.5 rounded-md">
+    <div className="flex w-full min-w-0 max-w-full basis-full shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-border/40 bg-muted/15 px-2 py-1.5">
       <p className="min-w-0 text-[11px] text-muted-foreground" dir="ltr">
         {hasDateRangeFilter(appliedCustomFrom, appliedCustomTo)
           ? (
@@ -391,13 +391,13 @@ export const EntityFilterToolbar = React.forwardRef<
   ) : null;
 
   const filterDropdownRow = useFilterDropdowns && (showDateSection || showStatusSection) ? (
-    <div className="flex w-full min-w-0 flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <>
+      <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-2 gap-y-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {showDateSection ? (
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
             <span className="shrink-0 text-[11px] font-medium text-muted-foreground">الفترات</span>
             <Select value={dateTabForSelect} onValueChange={handleDatePeriodSelect}>
-              <SelectTrigger className="h-8 w-[min(100%,12.5rem)] text-xs" dir="rtl" aria-label="فلتر الفترة">
+              <SelectTrigger className="h-8 w-[9.25rem] max-w-[9.25rem] shrink-0 text-xs overflow-hidden [&_span]:truncate" dir="rtl" aria-label="فلتر الفترة">
                 <SelectValue placeholder="الفترة" />
               </SelectTrigger>
               <SelectContent>
@@ -427,10 +427,10 @@ export const EntityFilterToolbar = React.forwardRef<
           </div>
         ) : null}
         {showStatusSection ? (
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
             <span className="shrink-0 text-[11px] font-medium text-muted-foreground">الحالات</span>
             <Select value={statusSelectValue} onValueChange={onStatusFilterChange}>
-              <SelectTrigger className="h-8 w-[min(100%,14rem)] text-xs" dir="rtl" aria-label="فلتر الحالة">
+              <SelectTrigger className="h-8 w-[9.25rem] max-w-[9.25rem] shrink-0 text-xs overflow-hidden [&_span]:truncate" dir="rtl" aria-label="فلتر الحالة">
                 <SelectValue placeholder="الحالة" />
               </SelectTrigger>
               <SelectContent>
@@ -464,48 +464,74 @@ export const EntityFilterToolbar = React.forwardRef<
         ) : null}
       </div>
       {dateCustomRangeRow}
-    </div>
+    </>
   ) : null;
+
+  const hasSecondaryFilters =
+    Boolean(inlineSelects?.length) || Boolean(beforeEmployeePicker) || showEmployeePicker;
+  const hasDataView = Boolean(dataView && dataView.options.length >= 2);
+  const hasActionStrip = hasDataView || Boolean(trailingActions);
 
   return (
     <>
-      <div className="rounded-lg border border-border/50 bg-card/50 px-3 py-2 shadow-sm sm:px-4">
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+      <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-3 shadow-sm backdrop-blur-sm sm:px-4">
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2">
+          {/* صف واحد يتفاف: فترة/حالة ثم فروع وأقسام… ثم الموظفين — بدون عمود بعرض الشاشة يفرغ المساحة */}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
             {filterDropdownRow}
+            {hasSecondaryFilters ? (
+              <>
+                {inlineSelects?.map((sel) => {
+                  const allowed = new Set(sel.options.map((o) => o.value));
+                  const coerced =
+                    allowed.has(sel.value)
+                      ? sel.value
+                      : (sel.options.find((o) => o.value === 'all')?.value ?? sel.options[0]?.value ?? '');
+                  if (!sel.options.length) return null;
+                  return (
+                    <Select key={sel.id} value={coerced} onValueChange={sel.onChange}>
+                      <SelectTrigger
+                        className={cn(
+                          'h-8 w-[9rem] max-w-[9rem] shrink-0 text-xs overflow-hidden [&_span]:truncate',
+                          sel.className,
+                        )}
+                      >
+                        <SelectValue placeholder={sel.placeholder ?? '—'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sel.options.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })}
+                {beforeEmployeePicker}
+                {showEmployeePicker ? (
+                  <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
+                ) : null}
+              </>
+            ) : null}
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {inlineSelects?.map((sel) => (
-              <Select key={sel.id} value={sel.value} onValueChange={sel.onChange}>
-                <SelectTrigger className={cn('h-8 min-w-[8.5rem] max-w-[13rem] text-xs', sel.className)}>
-                  <SelectValue placeholder={sel.placeholder ?? '—'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {sel.options.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ))}
-            {beforeEmployeePicker}
-            {showEmployeePicker ? (
-              <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
-            ) : null}
-            {dataView && dataView.options.length >= 2 ? (
-              <Tabs value={dataView.value} onValueChange={dataView.onChange}>
-                <TabsList className="h-8 gap-0.5 bg-muted/70 p-0.5">
-                  {dataView.options.map((opt) => (
-                    <TabsTrigger key={opt.value} value={opt.value} className={DATA_VIEW_TAB_CLASS}>
-                      <DataViewIcon name={opt.icon} />
-                      {opt.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            ) : null}
-            {trailingActions}
-          </div>
+          {/* عرض + أزرار التصدير والإضافة — سطر واحد دون تفاف يقطع الأزرار */}
+          {hasActionStrip ? (
+            <div className="flex min-h-[2rem] w-full shrink-0 flex-nowrap items-center justify-end gap-2 border-t border-border/45 pt-2.5 sm:ms-auto sm:w-auto sm:border-t-0 sm:border-s sm:border-border/45 sm:ps-3 sm:pt-0">
+              {hasDataView && dataView ? (
+                <Tabs value={dataView.value} onValueChange={dataView.onChange}>
+                  <TabsList className="h-8 shrink-0 gap-0.5 bg-muted/70 p-0.5">
+                    {dataView.options.map((opt) => (
+                      <TabsTrigger key={opt.value} value={opt.value} className={DATA_VIEW_TAB_CLASS}>
+                        <DataViewIcon name={opt.icon} />
+                        {opt.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              ) : null}
+              {trailingActions}
+            </div>
+          ) : null}
         </div>
       </div>
 

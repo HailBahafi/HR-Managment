@@ -3,14 +3,15 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, ListFilter } from 'lucide-react';
+import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { SetPageTitle } from '@/components/set-page-title';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
@@ -23,8 +24,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import {
   useHRContractsStore,
-  CONTRACT_KIND_LABELS, CONTRACT_STATUS_LABELS, CONTRACT_STATUS_COLORS,
-  type HRContractDraft, type HRContractKind, type HRContractLifecycleStatus, type HRContractRecord,
+  CONTRACT_NATURE_LABELS,
+  WORK_ARRANGEMENT_LABELS,
+  CONTRACT_STATUS_LABELS,
+  CONTRACT_STATUS_COLORS,
+  type HRContractDraft,
+  type HRContractLifecycleStatus,
+  type HRContractNature,
+  type HRContractRecord,
+  type HRWorkArrangement,
 } from '@/lib/contracts/contracts-store';
 import { useHRContractTemplatesStore } from '@/lib/contracts/contract-templates-store';
 import { useHRAllowanceTypesStore } from '@/lib/contracts/allowance-types-store';
@@ -48,7 +56,8 @@ type AllowanceLine = { allowanceTypeId: string; amount: string };
 type FormValues = {
   employeeId: string;
   contractNumber: string;
-  contractType: HRContractKind;
+  contractType: HRContractNature;
+  workArrangement: HRWorkArrangement;
   startDate: string;
   endDate: string;
   probationDays: string;
@@ -64,7 +73,7 @@ type FormValues = {
 
 function emptyForm(): FormValues {
   return {
-    employeeId: '', contractNumber: '', contractType: 'full_time',
+    employeeId: '', contractNumber: '', contractType: 'fixed_term', workArrangement: 'full_time',
     startDate: '', endDate: '', probationDays: '90', annualLeaveDays: '21', baseSalary: '',
     currency: 'SAR', templateId: '', allowanceLines: [{ allowanceTypeId: '', amount: '' }],
     allowancesNote: '', deductionsNote: '', articleIds: [],
@@ -76,6 +85,7 @@ function recordToForm(r: HRContractRecord): FormValues {
     employeeId: r.employeeId,
     contractNumber: r.contractNumber,
     contractType: r.contractType,
+    workArrangement: r.workArrangement,
     startDate: r.startDate, endDate: r.endDate,
     probationDays: r.probationDays != null ? String(r.probationDays) : '',
     annualLeaveDays: r.annualLeaveDays != null ? String(r.annualLeaveDays) : '',
@@ -89,6 +99,17 @@ function recordToForm(r: HRContractRecord): FormValues {
   };
 }
 
+/** نسخ حقول عقد موجود لمسودة جديدة: يُبقى `employeeId` للموظف المستهدف ويُولَّد رقم عقد جديد */
+function cloneFormFromContract(preserveEmployeeId: string, source: HRContractRecord): FormValues {
+  const merged = recordToForm(source);
+  return {
+    ...merged,
+    employeeId: preserveEmployeeId,
+    contractNumber: suggestContractNumber(),
+    templateId: source.templateId ?? '',
+  };
+}
+
 function formToDraft(v: FormValues, status: HRContractLifecycleStatus = 'draft'): HRContractDraft {
   const al = v.annualLeaveDays.trim();
   const annualLeaveDays = al === '' ? null : (() => {
@@ -98,6 +119,7 @@ function formToDraft(v: FormValues, status: HRContractLifecycleStatus = 'draft')
   return {
     employeeId: v.employeeId, contractNumber: v.contractNumber.trim(),
     contractType: v.contractType,
+    workArrangement: v.workArrangement,
     startDate: v.startDate, endDate: v.endDate,
     probationDays: v.probationDays ? parseInt(v.probationDays) : null,
     annualLeaveDays,
@@ -115,7 +137,7 @@ function formToDraft(v: FormValues, status: HRContractLifecycleStatus = 'draft')
 
 type PanelMode = 'create' | 'edit' | 'view';
 type StatusFilter = 'all' | HRContractLifecycleStatus;
-type KindFilter = 'all' | HRContractKind;
+type KindFilter = 'all' | HRContractNature;
 
 const EMPLOYMENT_STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'كل الحالات' },
@@ -124,7 +146,7 @@ const EMPLOYMENT_STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[]
 
 const EMPLOYMENT_KIND_FILTER_OPTIONS: { value: KindFilter; label: string }[] = [
   { value: 'all', label: 'كل الأنواع' },
-  ...(Object.entries(CONTRACT_KIND_LABELS) as [HRContractKind, string][]).map(([v, l]) => ({ value: v, label: l })),
+  ...(Object.entries(CONTRACT_NATURE_LABELS) as [HRContractNature, string][]).map(([v, l]) => ({ value: v, label: l })),
 ];
 
 function TerminateModal({ open, reason, onReasonChange, onConfirm, onCancel }: {
@@ -201,6 +223,19 @@ export function EmploymentContractsClient() {
   const statusFilter = (values.status as StatusFilter) || 'all';
   const kindFilter = (values.kind as KindFilter) || 'all';
 
+  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+
+  const empPickerList = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of contracts) {
+      const name = allEmployees.find(e => e.id === c.employeeId)?.nameAr ?? c.employeeId;
+      map.set(c.employeeId, name);
+    }
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [contracts, allEmployees]);
+
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [panelMode, setPanelMode] = React.useState<PanelMode>('create');
   const [selected, setSelected] = React.useState<HRContractRecord | null>(null);
@@ -209,14 +244,34 @@ export function EmploymentContractsClient() {
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
   const [terminateId, setTerminateId] = React.useState<string | null>(null);
   const [terminateReason, setTerminateReason] = React.useState('');
+  const [copyFromEmployeeId, setCopyFromEmployeeId] = React.useState('');
+  const [copyFromContractId, setCopyFromContractId] = React.useState('');
 
   const getEmpName = (id: string) => allEmployees.find(e => e.id === id)?.nameAr ?? id;
+
+  const copySourceEmpOptions = React.useMemo(() => {
+    const ids = new Set(contracts.map(c => c.employeeId));
+    return employees.filter(e => ids.has(e.id)).map(e => ({ value: e.id, label: `${e.nameAr} — ${e.jobTitleAr}` }));
+  }, [contracts, employees]);
+
+  const copySourceContractOptions = React.useMemo(() => {
+    if (!copyFromEmployeeId) return [];
+    return [...contracts]
+      .filter(c => c.employeeId === copyFromEmployeeId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .map(c => ({
+        value: c.id,
+        label: `${c.contractNumber} · ${CONTRACT_NATURE_LABELS[c.contractType]} · ${CONTRACT_STATUS_LABELS[c.status]} · ${c.startDate}`,
+      }));
+  }, [contracts, copyFromEmployeeId]);
 
   /* ── URL mode sync ── */
   React.useEffect(() => {
     if (modeParam === 'createContract') {
       const f = { ...emptyForm(), contractNumber: suggestContractNumber(), articleIds: [...essentialArticleIds] };
-      setSelected(null); setForm(f); setPanelMode('create'); setError(null); setDrawerOpen(true);
+      setSelected(null); setForm(f); setPanelMode('create'); setError(null);
+      setCopyFromEmployeeId(''); setCopyFromContractId('');
+      setDrawerOpen(true);
     }
   }, [modeParam]);
 
@@ -229,9 +284,21 @@ export function EmploymentContractsClient() {
 
   const closeDrawer = () => {
     setDrawerOpen(false);
+    setCopyFromEmployeeId('');
+    setCopyFromContractId('');
     if (modeParam) {
       router.replace('/hr/contracts/employment', { scroll: false });
     }
+  };
+
+  const handleApplyCopyFromContract = () => {
+    const src = contracts.find(c => c.id === copyFromContractId);
+    if (!src) {
+      toast.error('اختر عقد المصدر أولاً');
+      return;
+    }
+    setForm(f => cloneFormFromContract(f.employeeId, src));
+    toast.success('تم نسخ بيانات العقد. راجع الموظف المستهدف والتواريخ ثم احفظ.');
   };
 
   const openCreate = () => {
@@ -304,7 +371,9 @@ export function EmploymentContractsClient() {
     const t = templates.find(x => x.id === tplId);
     if (!t) { patch({ templateId: '' }); return; }
     patch({
-      templateId: tplId, contractType: t.contractType,
+      templateId: tplId,
+      contractType: t.defaultContractNature,
+      workArrangement: t.defaultWorkArrangement,
       probationDays: t.defaultProbationDays != null ? String(t.defaultProbationDays) : '',
       baseSalary: String(t.suggestedBaseSalary), currency: t.currency,
       allowanceLines: t.allowanceTypeIds.length > 0
@@ -329,17 +398,78 @@ export function EmploymentContractsClient() {
     }));
   };
 
-  const filtered = React.useMemo(() =>
-    contracts.filter(c => {
-      const matchS = statusFilter === 'all' || c.status === statusFilter;
-      const matchK = kindFilter === 'all' || c.contractType === kindFilter;
-      return matchS && matchK;
-    }).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [contracts, statusFilter, kindFilter],
+  const narrowedEmp = React.useMemo(
+    () => contracts.filter(c => selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId)),
+    [contracts, selectedEmpIds],
+  );
+
+  const narrowedForKind = React.useMemo(
+    () => narrowedEmp.filter(c => kindFilter === 'all' || c.contractType === kindFilter),
+    [narrowedEmp, kindFilter],
+  );
+
+  const employmentStatusOrder = React.useMemo(
+    () => EMPLOYMENT_STATUS_FILTER_OPTIONS.filter((o): o is { value: HRContractLifecycleStatus; label: string } => o.value !== 'all').map(o => o.value),
+    [],
+  );
+
+  const statusCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { all: narrowedForKind.length };
+    for (const s of employmentStatusOrder) {
+      counts[s] = narrowedForKind.filter(c => c.status === s).length;
+    }
+    return counts;
+  }, [narrowedForKind, employmentStatusOrder]);
+
+  const filtered = React.useMemo(
+    () =>
+      narrowedForKind
+        .filter(c => statusFilter === 'all' || c.status === statusFilter)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [narrowedForKind, statusFilter],
   );
 
   const total = filtered.length;
   const readOnly = panelMode === 'view';
+
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showDateSection={false}
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(v) => setValue('status', v)}
+        statusOrder={employmentStatusOrder}
+        statusLabels={CONTRACT_STATUS_LABELS as unknown as Record<string, string>}
+        statusCounts={statusCounts}
+        onDateBoundsChange={() => {}}
+        inlineSelects={[
+          {
+            id: 'contract-kind',
+            value: kindFilter,
+            onChange: (v) => setValue('kind', v),
+            options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
+            placeholder: 'نوع العقد',
+          },
+        ]}
+        trailingActions={(
+          <Button onClick={openCreate} className="h-8 gap-1.5 px-3 text-xs shadow-sm">
+            <Plus className="h-4 w-4" />عقد جديد
+          </Button>
+        )}
+      />
+    ),
+    [
+      statusFilter,
+      kindFilter,
+      selectedEmpKey,
+      statusCounts,
+      empPickerList,
+      employmentStatusOrder,
+    ],
+  );
 
   const ContractActions = ({ c }: { c: HRContractRecord }) => (
     <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
@@ -366,48 +496,7 @@ export function EmploymentContractsClient() {
     <>
       <SetPageTitle titleAr="عقود العمل" descriptionAr="إدارة دورة حياة عقود العمل الوظيفية." iconName="FileText" />
 
-      {/* ── Toolbar ── */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 min-w-0">
-          <span className="text-sm text-muted-foreground shrink-0">{total} عقد</span>
-          <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1 sm:max-w-2xl">
-            <ListFilter className="h-4 w-4 text-primary shrink-0" aria-hidden />
-            <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[13rem]">
-              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">الحالة</span>
-              <Label htmlFor="employment-contract-status" className="sr-only">حالة العقد</Label>
-              <Select value={statusFilter} onValueChange={(v) => setValue('status', v)}>
-                <SelectTrigger id="employment-contract-status" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
-                  <SelectValue placeholder="كل الحالات" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EMPLOYMENT_STATUS_FILTER_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[13rem]">
-              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">نوع العقد</span>
-              <Label htmlFor="employment-contract-kind" className="sr-only">نوع العقد</Label>
-              <Select value={kindFilter} onValueChange={(v) => setValue('kind', v)}>
-                <SelectTrigger id="employment-contract-kind" className="h-9 w-full rounded-lg border-border bg-background shadow-xs">
-                  <SelectValue placeholder="كل الأنواع" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EMPLOYMENT_KIND_FILTER_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button onClick={openCreate} className="gap-1.5">
-            <Plus className="h-4 w-4" />عقد جديد
-          </Button>
-        </div>
-      </div>
+      <p className="mb-2 text-sm text-muted-foreground">{total} عقد</p>
 
       {filtered.length === 0 ? (
         <EmptyState icon={FileText} title="لا توجد عقود" description="أنشئ عقد عمل جديداً للبدء." />
@@ -435,7 +524,12 @@ export function EmploymentContractsClient() {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  <FileText className="h-3 w-3" />{CONTRACT_KIND_LABELS[c.contractType]}
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="min-w-0 leading-tight">
+                    {CONTRACT_NATURE_LABELS[c.contractType]}
+                    <span className="text-muted-foreground"> · </span>
+                    {WORK_ARRANGEMENT_LABELS[c.workArrangement]}
+                  </span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
                   <CalendarRange className="h-3 w-3" />{c.startDate}
@@ -465,7 +559,7 @@ export function EmploymentContractsClient() {
             ? 'عرض تفاصيل العقد دون تعديل.'
             : panelMode === 'edit'
               ? 'عدّل الحقول ثم احفظ التغييرات.'
-              : 'أنشئ عقد عمل: البيانات الأساسية، الإجازات السنوية، البدلات، ومواد العقد.'
+              : 'أنشئ عقد عمل — أو انسخ بيانات عقد موظف آخر ثم اربطه بالموظف الجديد.'
         }
         size="xl"
         onSave={readOnly ? closeDrawer : handleSave}
@@ -487,6 +581,47 @@ export function EmploymentContractsClient() {
           )}
         </FormField>
 
+        {!readOnly && panelMode === 'create' && (
+          <FormField label="نسخ من عقد موظف آخر" span2>
+            <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+              اختر أولاً <strong className="text-foreground">الموظف المستهدف</strong> أعلاه، ثم موظفاً لديه عقداً واختر العقد؛ يُنسخ نوع العقد والدوام والتواريخ والراتب والبدلات والمواد وغيرها، مع الإبقاء على الموظف المستهدف وتوليد{' '}
+              <strong className="text-foreground">رقم عقد جديد</strong>.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="min-w-0 flex-1 basis-[14rem]">
+                <SearchableDropdown
+                  value={copyFromEmployeeId}
+                  onChange={(id) => { setCopyFromEmployeeId(id); setCopyFromContractId(''); }}
+                  options={copySourceEmpOptions}
+                  placeholder={copySourceEmpOptions.length ? 'موظف المصدر (لديه عقد)…' : 'لا يوجد موظف لديه عقد بعد'}
+                />
+              </div>
+              <div className="min-w-0 flex-1 basis-[14rem]">
+                <MinimalDropdown
+                  value={copyFromContractId}
+                  onChange={setCopyFromContractId}
+                  options={[
+                    { value: '', label: '— اختر عقد المصدر —' },
+                    ...copySourceContractOptions,
+                  ]}
+                  placeholder="عقد المصدر"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-9 shrink-0 gap-1.5"
+                disabled={!copyFromContractId}
+                onClick={handleApplyCopyFromContract}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                تطبيق النسخ
+              </Button>
+            </div>
+          </FormField>
+        )}
+
         {/* Contract number */}
         <FormField label="رقم العقد" required>
           <Input value={form.contractNumber} onChange={e => patch({ contractNumber: e.target.value })} readOnly={readOnly} className={readOnly ? 'bg-muted/30' : ''} />
@@ -495,12 +630,24 @@ export function EmploymentContractsClient() {
         {/* Type */}
         <FormField label="نوع العقد">
           {readOnly ? (
-            <Input value={CONTRACT_KIND_LABELS[form.contractType]} readOnly className="bg-muted/30" />
+            <Input value={CONTRACT_NATURE_LABELS[form.contractType]} readOnly className="bg-muted/30" />
           ) : (
             <MinimalDropdown
               value={form.contractType}
-              onChange={v => patch({ contractType: v as HRContractKind })}
-              options={Object.entries(CONTRACT_KIND_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+              onChange={v => patch({ contractType: v as HRContractNature })}
+              options={Object.entries(CONTRACT_NATURE_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+            />
+          )}
+        </FormField>
+
+        <FormField label="نوع الدوام">
+          {readOnly ? (
+            <Input value={WORK_ARRANGEMENT_LABELS[form.workArrangement]} readOnly className="bg-muted/30" />
+          ) : (
+            <MinimalDropdown
+              value={form.workArrangement}
+              onChange={v => patch({ workArrangement: v as HRWorkArrangement })}
+              options={Object.entries(WORK_ARRANGEMENT_LABELS).map(([v, l]) => ({ value: v, label: l }))}
             />
           )}
         </FormField>

@@ -15,12 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { defaultShiftPeriod } from '@/lib/attendance/defaults';
+import { defaultShiftPeriod, normalizeShiftTemplate } from '@/lib/attendance/defaults';
 import type { ShiftPeriod, ShiftTemplate, WeekDayIndex } from '@/lib/attendance/types';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import { genId } from '@/lib/attendance/utils';
 import { cn } from '@/lib/utils';
-import { LabelWithTooltip } from '@/components/ui/tooltip';
+import { InfoTooltip, LabelWithTooltip } from '@/components/ui/tooltip';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -284,6 +284,110 @@ function ScheduleForm({ period, onChange }: { period: ShiftPeriod; onChange: (p:
         </div>
       </div>
 
+      {/* عقوبات الفترة — صف واحد، أيقونة المساعدة يساراً (في RTL) */}
+      {period.strictMode && (
+        <div className="rounded-lg border border-rose-500/20 bg-rose-500/[0.04] px-3 py-2 dark:bg-rose-950/20" dir="rtl">
+          <div className="mb-2 border-b border-border/50 pb-1.5" dir="rtl">
+            <div className="inline-flex items-center gap-1">
+              <span className="text-xs font-semibold text-foreground">عقوبة الغياب</span>
+              <InfoTooltip
+                side="top"
+                content={
+                  <>
+                    تُطبَّق هذه الخيارات عند اعتبار الموظف <strong className="text-foreground">غائباً عن هذه الفترة</strong> فقط.
+                    يمكن تفعيل أكثر من خيار معاً؛ مرّر على أيقونة المساعدة بجانب كل خيار للتفاصيل.
+                  </>
+                }
+              />
+            </div>
+          </div>
+          <div className="flex flex-nowrap items-center gap-x-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-x-3">
+            <div className="flex min-h-8 shrink-0 items-center gap-1">
+              <Switch
+                id={`sp-warn-${period.id}`}
+                className="scale-90 shrink-0"
+                checked={period.strictPenaltyWarning}
+                onCheckedChange={(v) => onChange({ ...period, strictPenaltyWarning: v })}
+              />
+              <label htmlFor={`sp-warn-${period.id}`} className="cursor-pointer text-xs font-medium whitespace-nowrap">
+                إنذار
+              </label>
+              <InfoTooltip
+                side="top"
+                content={<>يُسجَّل <strong>إنذار</strong> للموظف عند غيابه عن الفترة، وفق مسار الإنذارات في النظام.</>}
+              />
+            </div>
+
+            <span className="hidden h-5 w-px shrink-0 bg-border/70 md:block" aria-hidden />
+
+            <div className="flex min-h-8 shrink-0 items-center gap-1">
+              <Switch
+                id={`sp-bal-${period.id}`}
+                className="scale-90 shrink-0"
+                checked={period.strictPenaltyBalanceEnabled}
+                onCheckedChange={(v) => onChange({ ...period, strictPenaltyBalanceEnabled: v })}
+              />
+              <label htmlFor={`sp-bal-${period.id}`} className="cursor-pointer text-xs font-medium whitespace-nowrap">
+                خصم
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={99}
+                dir="ltr"
+                disabled={!period.strictPenaltyBalanceEnabled}
+                aria-label="عدد أيام الخصم من الرصيد"
+                className={cn(
+                  'h-7 w-11 shrink-0 px-1 text-center font-mono text-xs tabular-nums',
+                  !period.strictPenaltyBalanceEnabled && 'opacity-40',
+                )}
+                value={period.strictPenaltyBalanceDays}
+                onChange={(e) => {
+                  const n = Math.min(99, Math.max(1, Number(e.target.value) || 1));
+                  onChange({ ...period, strictPenaltyBalanceDays: n });
+                }}
+              />
+              <span className="text-xs text-muted-foreground whitespace-nowrap">يوم من الرصيد</span>
+              <InfoTooltip
+                side="top"
+                content={
+                  <>
+                    يُخصم من راتب الموظف ما يعادل <strong>يوم عمل أو أكثر</strong> حسب الرقم الذي تدخله (مثلاً 1 = راتب يوم،
+                    2 = راتب يومين) عن <strong>كل غياب</strong> في هذه الفترة.
+                  </>
+                }
+              />
+            </div>
+
+            <span className="hidden h-5 w-px shrink-0 bg-border/70 md:block" aria-hidden />
+
+            <div className="flex min-h-8 shrink-0 items-center gap-1">
+              <Switch
+                id={`sp-vac-${period.id}`}
+                className="scale-90 shrink-0"
+                checked={period.strictPenaltyVacationEnabled}
+                onCheckedChange={(v) => onChange({ ...period, strictPenaltyVacationEnabled: v })}
+              />
+              <label
+                htmlFor={`sp-vac-${period.id}`}
+                className="flex cursor-pointer items-center gap-x-1 whitespace-nowrap text-[11px] sm:text-xs"
+              >
+                <span className="font-medium text-foreground">خصم</span>
+                <span className="text-muted-foreground">يوم من رصيد الإجازة</span>
+              </label>
+              <InfoTooltip
+                side="top"
+                content={
+                  <>
+                    يُخصم <strong>يوم واحد فقط</strong> من رصيد إجازة الموظف عند غيابه عن هذه الفترة (بدون إدخال يدوي).
+                  </>
+                }
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Advanced toggle */}
       <button
         type="button"
@@ -422,32 +526,77 @@ function PeriodRow({
 
   return (
     <div className={cn('border-l-[3px] transition-colors', accentClass, periodBgClass)}>
-      {/* Period header — always visible */}
-      <button
-        type="button"
-        className="flex w-full items-center gap-2 px-4 py-2.5 text-start hover:bg-muted/20 transition-colors"
-        onClick={() => setCollapsed((c) => !c)}
-      >
-        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-200', collapsed && '-rotate-90')} />
-        <span className="text-[11px] font-semibold text-muted-foreground">
-          {total > 1 ? `الفترة ${index + 1}` : 'فترة الدوام'}
-        </span>
-        <span className="font-mono text-[11px] text-muted-foreground/70">{period.startTime} ← {period.endTime}</span>
-        {dur && (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-            {dur}
+      {/* Period header — صف: طي / معلومات / دوام صارم / حذف */}
+      <div className="flex w-full min-h-[2.75rem] items-stretch">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-2 px-4 py-2.5 text-start transition-colors hover:bg-muted/20"
+          onClick={() => setCollapsed((c) => !c)}
+        >
+          <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-200', collapsed && '-rotate-90')} />
+          <span className="text-[11px] font-semibold text-muted-foreground">
+            {total > 1 ? `الفترة ${index + 1}` : 'فترة الدوام'}
           </span>
-        )}
+          <span className="font-mono text-[11px] text-muted-foreground/70">{period.startTime} ← {period.endTime}</span>
+          {dur && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              {dur}
+            </span>
+          )}
+          {period.strictMode && period.strictPenaltyBalanceEnabled && (
+            <span className="hidden rounded-full bg-muted/80 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground sm:inline">
+              رصيد −{period.strictPenaltyBalanceDays}
+            </span>
+          )}
+          {period.strictMode && period.strictPenaltyVacationEnabled && (
+            <span className="hidden rounded-full bg-sky-500/15 px-2 py-0.5 text-[9px] font-semibold text-sky-800 dark:text-sky-300 sm:inline">
+              إجازة −1
+            </span>
+          )}
+          {period.strictMode && period.strictPenaltyWarning && (
+            <span className="hidden rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold text-amber-800 dark:text-amber-300 sm:inline">
+              إنذار
+            </span>
+          )}
+        </button>
+
+        <div
+          className="flex shrink-0 flex-col items-center justify-center gap-0.5 border-s border-border/60 bg-muted/[0.35] px-3 py-2"
+          onClick={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <span className="max-w-[4.5rem] text-center text-[9px] font-bold leading-tight text-muted-foreground">دوام صارم</span>
+          <Switch
+            checked={period.strictMode}
+            onCheckedChange={(v) =>
+              onChange({
+                ...period,
+                strictMode: v,
+                ...(!v
+                  ? {
+                      strictPenaltyWarning: false,
+                      strictPenaltyBalanceEnabled: false,
+                      strictPenaltyVacationEnabled: false,
+                    }
+                  : {}),
+              })
+            }
+            className="data-[state=checked]:bg-rose-600"
+          />
+        </div>
+
         {total > 1 && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            className="mr-auto flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-destructive/60 hover:bg-destructive/10 hover:text-destructive transition-colors"
-          >
-            <X className="h-3 w-3" /> حذف
-          </button>
+          <div className="flex items-center pe-2">
+            <button
+              type="button"
+              onClick={onRemove}
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] text-destructive/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <X className="h-3 w-3" /> حذف
+            </button>
+          </div>
         )}
-      </button>
+      </div>
 
       {/* Period body */}
       {!collapsed && (
@@ -862,7 +1011,11 @@ export function ShiftTemplatesPanel() {
   };
 
   const openCreate = () => { setDraft(buildDefault()); setError(null); setOpen(true); };
-  const openEdit = (t: ShiftTemplate) => { setDraft(cloneTemplate(t)); setError(null); setOpen(true); };
+  const openEdit = (t: ShiftTemplate) => {
+    setDraft(normalizeShiftTemplate(cloneTemplate(t)));
+    setError(null);
+    setOpen(true);
+  };
 
   const save = () => {
     if (!draft) return;

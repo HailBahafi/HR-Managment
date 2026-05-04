@@ -367,23 +367,32 @@ export function Topbar() {
         </div>
       </div>
 
-      {/* ── Row 2: page title ── */}
+      {/* ── Row 2: page title (عنوان أوضح + وصف منفصل عن شريط الفلاتر في المحتوى) ── */}
       <div
         className={cn(
-          'flex h-8 items-center gap-2.5 border-t px-4 sm:px-5',
-          'border-border/25 bg-white/45 backdrop-blur-sm dark:border-border/30 dark:bg-muted/10',
+          'flex flex-col gap-1 border-t px-4 py-2.5 sm:flex-row sm:items-baseline sm:gap-3 sm:px-5 sm:py-3',
+          'border-border/25 bg-white/55 backdrop-blur-sm dark:border-border/30 dark:bg-muted/15',
         )}
       >
-        {PageIcon && <PageIcon className="h-3.5 w-3.5 shrink-0 text-primary/80" />}
         {meta.titleAr ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="text-[12px] font-semibold text-foreground/80 leading-none">{meta.titleAr}</span>
-            {meta.descriptionAr && (
-              <span className="hidden text-[11px] text-muted-foreground/70 sm:block">· {meta.descriptionAr}</span>
-            )}
+          <div className="flex min-w-0 items-start gap-2.5">
+            {PageIcon && <PageIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <h1 className="text-base font-bold leading-tight tracking-tight text-foreground sm:text-lg">
+                {meta.titleAr}
+              </h1>
+              {meta.descriptionAr ? (
+                <p className="max-w-3xl text-xs leading-snug text-muted-foreground sm:text-[13px]">
+                  {meta.descriptionAr}
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : (
-          <div className="h-2.5 w-28 animate-pulse rounded-full bg-muted" />
+          <div className="flex items-center gap-2.5">
+            <div className="h-4 w-4 shrink-0 rounded bg-muted" />
+            <div className="h-3 w-40 animate-pulse rounded-full bg-muted" />
+          </div>
         )}
       </div>
     </header>
