@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
-  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList, CirclePlus,
+  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   Banknote, FileSignature, BookOpen, FileSpreadsheet,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -88,7 +88,10 @@ export const navConfig: NavItem[] = [
   {
     key: 'requests', label: 'الطلبات', icon: ClipboardList,
     groups: [
-      { labelAr: 'الطلبات', items: [{ label: 'إدارة الطلبات', href: '/hr/requests/general', icon: InboxIcon }] },
+      { labelAr: 'الطلبات', items: [
+        { label: 'إدارة الطلبات', href: '/hr/requests/general', icon: InboxIcon },
+        { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
+      ] },
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الطلبات', href: '/hr/requests/request-types',   icon: ListChecks },
         { label: 'قوالب النماذج', href: '/hr/requests/form-templates',  icon: FileText },
