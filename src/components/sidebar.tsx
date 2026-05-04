@@ -53,6 +53,7 @@ const mobileNav: MobileNavItem[] = [
     children: [
       { label: 'التحليلات', href: '/hr/leaves/analytics', icon: BarChart3 },
       { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList },
+      { label: 'اضافة رصيد اجازة', href: '', icon: LayoutList },
       { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types', icon: ListChecks },
       { label: 'العطل الرسمية', href: '/hr/leaves/public-holidays', icon: CalendarDays },
     ],
