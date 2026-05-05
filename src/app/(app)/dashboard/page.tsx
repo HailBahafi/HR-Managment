@@ -176,7 +176,7 @@ export default function DashboardPage() {
             sub: 'بانتظار الموافقة',
             delta: null, positive: true,
             icon: CalendarDays,
-            href: '/hr/leaves/unified-management',
+            href: '/hr/requests/unified-management',
             sparkline: [3, 5, 4, 7, 6, 8, pendingLeaves],
             accentLight: 'bg-blue-50 border-blue-200/60 dark:bg-blue-950/20 dark:border-blue-800/30',
             iconBg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',

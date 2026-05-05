@@ -54,8 +54,8 @@ const mobileNav: MobileNavItem[] = [
     key: 'leaves', label: 'الإجازات', icon: CalendarDays,
     children: [
       { label: 'التحليلات', href: '/hr/leaves/analytics', icon: BarChart3 },
-      { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList, match: 'exact' },
-      { label: 'إضافة رصيد إجازات', href: '/hr/leaves/unified-management/balance-credit', icon: CirclePlus },
+      { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
+      { label: 'إضافة رصيد إجازات', href: '/hr/requests/unified-management/balance-credit', icon: CirclePlus },
       { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types', icon: ListChecks },
       { label: 'العطل الرسمية', href: '/hr/leaves/public-holidays', icon: CalendarDays },
     ],
@@ -65,7 +65,7 @@ const mobileNav: MobileNavItem[] = [
     children: [
       { label: 'الطلبات العامة', href: '/hr/requests/general', icon: InboxIcon },
       { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
-      { label: 'إدارة طلبات الإجازات', href: '/hr/leaves/unified-management', icon: LayoutList, match: 'exact' },
+      { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
       { label: 'أنواع الطلبات', href: '/hr/requests/request-types', icon: ListChecks },
       { label: 'قوالب النماذج', href: '/hr/requests/form-templates', icon: FileText },
       { label: 'قوالب الموافقة', href: '/hr/requests/approval-assignment', icon: ShieldCheck },

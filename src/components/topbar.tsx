@@ -76,8 +76,7 @@ export const navConfig: NavItem[] = [
     groups: [
       { labelAr: 'المتابعة', items: [
         { label: 'التحليلات',     href: '/hr/leaves/analytics',         icon: BarChart3 },
-        { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList },
-        { label: 'إضافة رصيد إجازات', href: '/hr/leaves/unified-management/balance-credit', icon: CirclePlus },
+        { label: 'إضافة رصيد إجازات', href: '/hr/leaves/balance-credit', icon: CirclePlus },
       ]},
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types',     icon: ListChecks },
@@ -91,7 +90,7 @@ export const navConfig: NavItem[] = [
       { labelAr: 'الطلبات', items: [
         { label: 'إدارة الطلبات', href: '/hr/requests/general', icon: InboxIcon },
         { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
-        { label: 'إدارة طلبات الإجازات', href: '/hr/leaves/unified-management', icon: LayoutList },
+        { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList },
       ] },
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الطلبات', href: '/hr/requests/request-types',   icon: ListChecks },

@@ -8,7 +8,7 @@ import { InboxIcon, ListChecks, FileText, ShieldCheck, CalendarClock, LayoutList
 const TABS = [
   { href: '/hr/requests/general', label: 'إدارة الطلبات', icon: InboxIcon, exact: true },
   { href: '/hr/requests/attendance-corrections', label: 'تصحيح الحضور', icon: CalendarClock },
-  { href: '/hr/leaves/unified-management', label: 'إدارة طلبات الإجازات', icon: LayoutList, exact: true },
+  { href: '/hr/requests/unified-management', label: 'إدارة طلبات الإجازات', icon: LayoutList, exact: true },
   { href: '/hr/requests/request-types', label: 'أنواع الطلبات', icon: ListChecks },
   { href: '/hr/requests/form-templates', label: 'قوالب النماذج', icon: FileText },
   { href: '/hr/requests/approval-assignment', label: 'إسناد الموافقة', icon: ShieldCheck },
