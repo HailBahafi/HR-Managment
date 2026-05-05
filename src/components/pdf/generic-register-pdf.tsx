@@ -8,7 +8,9 @@ import {
   HR_PDF_FOOTER_INSET_X,
   hrPdfRegisterStyles as S,
 } from '@/lib/pdf/hr-pdf-base-styles';
+import { PdfHrBrandHeader } from '@/components/pdf/pdf-hr-brand-header';
 import { PdfPageFooter } from '@/components/pdf/pdf-page-footer';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 
 export type GenericRegisterPdfProps = {
   companyNameAr: string;
@@ -56,13 +58,15 @@ export function GenericRegisterPdf({
     <Document>
       {pages.map((pageRows, pi) => (
         <Page key={pi} size="A4" style={S.page} orientation={landscape ? 'landscape' : 'portrait'}>
-          <View style={S.brand}>
-            <Text style={S.brandAr}>{companyNameAr}</Text>
-            <Text style={S.brandEn}>{companyNameEn}</Text>
-          </View>
-          <View style={S.line} />
+          <PdfHrBrandHeader companyNameAr={companyNameAr} companyNameEn={companyNameEn} />
           <Text style={S.title}>{titleAr}</Text>
-          <Text style={S.meta}>{filterSummary}</Text>
+          <View style={{ marginBottom: 8 }}>
+            <PdfArLatInline
+              text={filterSummary}
+              arStyle={{ fontFamily: 'Ar', fontSize: 8, color: '#444', textAlign: 'right' }}
+              latStyle={{ fontSize: 8, color: '#444', textAlign: 'right' }}
+            />
+          </View>
 
           <View style={S.th}>
             {headers.map((h, i) => (
@@ -81,12 +85,17 @@ export function GenericRegisterPdf({
             pageRows.map((row, ri) => (
               <View key={`r-${pi}-${ri}`} style={S.tr} wrap={false}>
                 {headers.map((_, ci) => (
-                  <Text
+                  <View
                     key={`c-${ci}`}
-                    style={[S.ar, { width: colPct, textAlign: 'center', fontSize: 6, paddingHorizontal: 2 }]}
+                    style={{ width: colPct, paddingHorizontal: 2, alignItems: 'center', justifyContent: 'center' }}
                   >
-                    {clip(row[ci] ?? '', landscape ? 90 : 70)}
-                  </Text>
+                    <PdfArLatInline
+                      text={clip(row[ci] ?? '', landscape ? 90 : 70)}
+                      arStyle={{ fontFamily: 'Ar', fontSize: 6, textAlign: 'center' }}
+                      latStyle={{ fontSize: 6, textAlign: 'center' }}
+                      rowStyle={{ justifyContent: 'center' }}
+                    />
+                  </View>
                 ))}
               </View>
             ))

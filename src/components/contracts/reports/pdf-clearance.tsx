@@ -2,6 +2,7 @@ import React from 'react';
 import { Document, Page, View, Text } from '@react-pdf/renderer';
 import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
 import { hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 import { PdfHeader, SectionTitle, S, C, fmtDate, type CompanyInfo } from './pdf-shared';
 
 export type ClearanceProps = {
@@ -29,7 +30,11 @@ function InfoTable({ rows }: { rows: [string, string][] }) {
             <Text style={[HR.ar, { fontWeight: 700, fontSize: 7, textAlign: 'right' }]}>{label}</Text>
           </View>
           <View style={{ flex: 1, padding: '5pt 8pt' }}>
-            <Text style={[HR.ar, { fontSize: 7, textAlign: 'right' }]}>{value}</Text>
+            <PdfArLatInline
+              text={value}
+              arStyle={[HR.ar, { fontSize: 7, textAlign: 'right' }]}
+              latStyle={{ fontSize: 7, textAlign: 'right' }}
+            />
           </View>
         </View>
       ))}
@@ -49,12 +54,20 @@ export function ClearanceDoc({ company, employeeNameAr, nationalId, nationality,
           <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8, fontWeight: 700, marginBottom: 6 }]}>
             أقر أنا / ...........................................................................، الجنسية ..........................
           </Text>
-          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8, marginBottom: 4 }]}>
-            {`بموجب بطاقة أحوال رقم (${nationalId}) الموقعة أدناه، اعتباراً من`}
-          </Text>
-          <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8, marginBottom: 4 }]}>
-            {`تاريخ ${fmtDate(endDate)} الموافق ${fmtDate(endDate)}م قد وصلني جميع الأموال`}
-          </Text>
+          <View style={{ marginBottom: 4 }}>
+            <PdfArLatInline
+              text={`بموجب بطاقة أحوال رقم (${nationalId}) الموقعة أدناه، اعتباراً من`}
+              arStyle={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8 }]}
+              latStyle={{ fontSize: 9, textAlign: 'right', lineHeight: 1.8 }}
+            />
+          </View>
+          <View style={{ marginBottom: 4 }}>
+            <PdfArLatInline
+              text={`تاريخ ${fmtDate(endDate)} الموافق ${fmtDate(endDate)}م قد وصلني جميع الأموال`}
+              arStyle={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8 }]}
+              latStyle={{ fontSize: 9, textAlign: 'right', lineHeight: 1.8 }}
+            />
+          </View>
           <Text style={[HR.ar, { fontSize: 9, textAlign: 'right', lineHeight: 1.8 }]}>
             والمبالغ المستحقة لي وكافة حقوقي على مختلف أنواعها وحتى إنهاء فترة خدمتي.
           </Text>
@@ -103,9 +116,12 @@ export function ClearanceDoc({ company, employeeNameAr, nationalId, nationality,
         </View>
 
         <View style={[S.mt16, { flexDirection: 'row-reverse', justifyContent: 'center', gap: 6 }]}>
-          <Text style={[HR.ar, { fontSize: 7, color: C.muted, textAlign: 'center' }]}>
-            {`هذه الوثيقة صادرة من نظام ${company.nameAr} لإدارة الموارد البشرية — ${fmtDate(date)}`}
-          </Text>
+          <PdfArLatInline
+            text={`هذه الوثيقة صادرة من نظام ${company.nameAr} لإدارة الموارد البشرية — ${fmtDate(date)}`}
+            arStyle={[HR.ar, { fontSize: 7, color: C.muted, textAlign: 'center' }]}
+            latStyle={{ fontSize: 7, color: C.muted, textAlign: 'center' }}
+            rowStyle={{ justifyContent: 'center' }}
+          />
         </View>
       </Page>
     </Document>

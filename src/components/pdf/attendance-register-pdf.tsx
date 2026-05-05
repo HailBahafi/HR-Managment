@@ -4,7 +4,9 @@ import * as React from 'react';
 import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@react-pdf/renderer';
 import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
 import { HR_PDF_FOOTER_BOTTOM, HR_PDF_FOOTER_INSET_X, hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
+import { PdfHrBrandHeader } from '@/components/pdf/pdf-hr-brand-header';
 import { PdfPageFooter } from '@/components/pdf/pdf-page-footer';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 
 export type AttendanceRegisterPdfRow = {
   employeeName: string;
@@ -63,11 +65,7 @@ export function AttendanceRegisterPdf({
     <Document>
       {pages.map((pageRows, pi) => (
         <Page key={pi} size="A4" style={HR.page}>
-          <View style={HR.brand}>
-            <Text style={HR.brandAr}>{companyNameAr}</Text>
-            <Text style={HR.brandEn}>{companyNameEn}</Text>
-          </View>
-          <View style={HR.line} />
+          <PdfHrBrandHeader companyNameAr={companyNameAr} companyNameEn={companyNameEn} />
           <Text style={HR.title}>{titleAr}</Text>
           <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', marginBottom: 8, justifyContent: 'flex-end' }}>
             <Text style={HR.ar}>الفترة: </Text>
@@ -102,9 +100,21 @@ export function AttendanceRegisterPdf({
           ) : (
             pageRows.map((r, i) => (
               <View key={`${r.date}-${r.employeeName}-${i}`} style={HR.tr} wrap={false}>
-                <Text style={col.c1}>{r.employeeName}</Text>
+                <View style={{ width: '22%', paddingHorizontal: 4, alignItems: 'flex-end' }}>
+                  <PdfArLatInline
+                    text={r.employeeName}
+                    arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'right' }}
+                    latStyle={{ fontSize: 7, textAlign: 'right' }}
+                  />
+                </View>
                 <Text style={col.c2}>{r.date}</Text>
-                <Text style={col.c3}>{r.statusLabel}</Text>
+                <View style={{ width: '18%', paddingHorizontal: 4, alignItems: 'flex-end' }}>
+                  <PdfArLatInline
+                    text={r.statusLabel}
+                    arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'right' }}
+                    latStyle={{ fontSize: 7, textAlign: 'right' }}
+                  />
+                </View>
                 <Text style={col.c4}>{r.worked}</Text>
                 <Text style={col.c5}>{r.late}</Text>
               </View>

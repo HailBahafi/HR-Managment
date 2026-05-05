@@ -12,6 +12,7 @@ import type {
   ShiftTemplate,
 } from './types';
 import { genId } from './utils';
+import { withIds } from '@/lib/with-ids';
 
 const STORAGE_KEY = 'rose-hr-attendance-v5';
 
@@ -153,6 +154,21 @@ export const useAttendanceStore = create<AttendanceStore>()(
         checkpoints: s.checkpoints,
         checkpointLinks: s.checkpointLinks,
       }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<PersistedSlice> | undefined;
+        const c = current as AttendanceStore;
+        if (p == null || typeof p !== 'object') return c;
+        return {
+          ...c,
+          ...p,
+          shiftTemplates: withIds(p.shiftTemplates ?? c.shiftTemplates),
+          assignments: withIds(p.assignments ?? c.assignments),
+          events: withIds(p.events ?? c.events),
+          daySummaries: withIds(p.daySummaries ?? c.daySummaries),
+          checkpoints: withIds(p.checkpoints ?? c.checkpoints),
+          checkpointLinks: withIds(p.checkpointLinks ?? c.checkpointLinks),
+        };
+      },
     },
   ),
 );

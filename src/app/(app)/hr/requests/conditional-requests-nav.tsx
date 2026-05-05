@@ -8,6 +8,7 @@ const REQUESTS_NAV_HIDDEN_PREFIXES = [
   '/hr/requests/general',
   '/hr/requests/attendance-corrections',
   '/hr/requests/unified-management',
+  '/hr/requests/request-types',
 ] as const;
 
 export function ConditionalRequestsNav() {

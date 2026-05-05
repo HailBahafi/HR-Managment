@@ -50,6 +50,13 @@ export interface HRRequestTemplateEntity {
   formFields: HRRequestFieldDefinition[];
 }
 
+/** حقول نموذج الطلب العامة — لا يُربط نوع الطلب بقالب منفصل في الواجهة */
+export function getDefaultHRRequestFormTemplate(
+  templates: HRRequestTemplateEntity[],
+): HRRequestTemplateEntity | undefined {
+  return templates.find((t) => t.isUniversalDefault) ?? templates[0];
+}
+
 // ─── Approval stages ──────────────────────────────────────────────────────────
 
 export type HRApprovalStageMode = 'sequential' | 'parallel' | 'optional' | 'any_one';
@@ -97,6 +104,15 @@ export interface HRRequestSubtype {
 
 // ─── Request types ────────────────────────────────────────────────────────────
 
+export const HR_REQUEST_TYPE_CATEGORIES = ['leaves', 'attendance', 'advances'] as const;
+export type HRRequestTypeCategory = (typeof HR_REQUEST_TYPE_CATEGORIES)[number];
+
+export const HR_REQUEST_TYPE_CATEGORY_LABELS_AR: Record<HRRequestTypeCategory, string> = {
+  leaves: 'الإجازات',
+  attendance: 'الحضور',
+  advances: 'السلف',
+};
+
 export interface HRRequestTypeEntity {
   id: string;
   departmentId: string;
@@ -106,7 +122,8 @@ export interface HRRequestTypeEntity {
   sortOrder: number;
   isActive: boolean;
   subtypes: HRRequestSubtype[];
-  templateId: string | null;
+  /** تصنيف الطلب ضمن الإجازات أو الحضور أو السلف */
+  requestCategory: HRRequestTypeCategory;
   /** قالب «إسناد الموافقات» المرتبط — يُعرض في طلب جديد ويُنسخ إلى لقطة مسار الموافقة */
   approvalAssignmentTemplateId?: string | null;
   approvalStages?: HRApprovalStage[];
@@ -345,7 +362,6 @@ export function templateStagesToCore(stages: HRApprovalTemplateStage[]): HRAppro
 
 export const HR_REQUESTS_GENERAL_PATH = '/hr/requests/general';
 export const HR_REQUESTS_TYPES_PATH = '/hr/requests/request-types';
-export const HR_REQUESTS_FORM_TEMPLATES_PATH = '/hr/requests/form-templates';
 export const HR_REQUESTS_APPROVAL_ASSIGNMENT_PATH = '/hr/requests/approval-assignment';
 
 export function hrRequestPath(departmentSlug: string, requestTypeSlug: string) {

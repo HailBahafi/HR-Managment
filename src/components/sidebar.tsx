@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Shield,
   LayoutGrid, MapPin, Link2, CalendarRange,
-  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
+  InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen, FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -67,7 +67,6 @@ const mobileNav: MobileNavItem[] = [
       { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
       { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
       { label: 'أنواع الطلبات', href: '/hr/requests/request-types', icon: ListChecks },
-      { label: 'قوالب النماذج', href: '/hr/requests/form-templates', icon: FileText },
       { label: 'قوالب الموافقة', href: '/hr/requests/approval-assignment', icon: ShieldCheck },
     ],
   },

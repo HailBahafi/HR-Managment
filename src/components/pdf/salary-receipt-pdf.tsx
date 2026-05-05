@@ -2,10 +2,13 @@
 
 import * as React from 'react';
 import {
-  Document, Page, Text, View, StyleSheet, Image, pdf,
+  Document, Page, Text, View, StyleSheet, pdf,
 } from '@react-pdf/renderer';
 import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
 import { HR_PDF_PAGE_STYLE } from '@/lib/pdf/hr-pdf-base-styles';
+import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
+import { CompanyLetterheadHeader } from '@/components/pdf/company-letterhead-header';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 export interface ReceiptEmployee {
@@ -83,25 +86,9 @@ const ss = StyleSheet.create({
     backgroundColor: C.bg,
   },
 
-  /* header */
-  header: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: C.primary,
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 14,
-  },
-  headerRight: { flexDirection: 'column', alignItems: 'flex-end' },
-  headerTitle: { fontFamily: 'Ar', fontWeight: 700, fontSize: 20, color: C.gold },
-  headerSub: { fontFamily: 'Lat', fontWeight: 400, fontSize: 9, color: 'rgba(255,255,255,0.55)', marginTop: 3 },
-  headerBranch: { fontFamily: 'Ar', fontWeight: 400, fontSize: 9, color: 'rgba(255,255,255,0.55)', marginTop: 2 },
-  logo: { width: 48, height: 48, objectFit: 'contain' },
-
-  /* gold line */
-  goldLine: { height: 1.5, backgroundColor: C.gold, borderRadius: 1, marginBottom: 12, opacity: 0.6 },
+  receiptTitle: { fontFamily: 'Ar', fontWeight: 700, fontSize: 18, color: C.primary, textAlign: 'center' },
+  receiptSub: { fontFamily: 'Lat', fontWeight: 400, fontSize: 9, color: C.muted, marginTop: 4, textAlign: 'center' },
+  receiptBranch: { fontFamily: 'Ar', fontWeight: 400, fontSize: 9, color: C.muted, marginTop: 2, textAlign: 'center' },
 
   /* meta row */
   metaRow: {
@@ -251,6 +238,8 @@ function SalaryReceiptDocument({
 }) {
   ensureHrPdfFonts();
 
+  const resolvedLogo = logoUrl ?? getPdfLogoSrc();
+
   const totalDeductions =
     payslip.gosi + payslip.absenceDeduction + payslip.latenessDeduction +
     payslip.loanDeduction + payslip.otherDeductions;
@@ -280,23 +269,22 @@ function SalaryReceiptDocument({
     <Document title={`Receipt - ${employee.name} - ${payslip.month} ${payslip.year}`}>
       <Page size="A4" style={ss.page}>
 
-        {/* Header */}
-        <View style={ss.header}>
-          <View style={ss.headerRight}>
-            <Text style={ss.headerTitle}>إيصال استلام الراتب</Text>
-            <Text style={ss.headerSub}>Salary Receipt Acknowledgment</Text>
-            <Text style={ss.headerBranch}>{employee.branch}</Text>
-          </View>
-          {logoUrl && <Image src={logoUrl} style={ss.logo} />}
+        <CompanyLetterheadHeader logoSrc={resolvedLogo} />
+        <View style={{ alignItems: 'center', marginBottom: 12 }}>
+          <Text style={ss.receiptTitle}>إيصال استلام الراتب</Text>
+          <Text style={ss.receiptSub}>Salary Receipt Acknowledgment</Text>
+          <Text style={ss.receiptBranch}>{employee.branch}</Text>
         </View>
-
-        {/* Gold line */}
-        <View style={ss.goldLine} />
 
         {/* Meta */}
         <View style={ss.metaRow}>
           <View style={ss.periodPill}>
-            <Text style={ss.periodText}>راتب {payslip.month} {payslip.year}</Text>
+            <PdfArLatInline
+              text={`راتب ${payslip.month} ${payslip.year}`}
+              arStyle={ss.periodText}
+              latStyle={{ fontFamily: 'Lat', fontWeight: 700, fontSize: 11, color: C.gold }}
+              rowStyle={{ justifyContent: 'center' }}
+            />
           </View>
           <Text style={ss.receiptNum}>{rNo}</Text>
         </View>
@@ -305,19 +293,19 @@ function SalaryReceiptDocument({
         <SectionLabel>بيانات الموظف</SectionLabel>
         <View style={ss.infoGrid}>
           {[
-            { label: 'الاسم الكامل',        value: employee.name,          lat: false },
-            { label: 'Full Name',            value: employee.nameEn,        lat: true  },
-            { label: 'رقم الموظف',           value: employee.employeeCode,  lat: true  },
-            { label: 'المسمى الوظيفي',       value: employee.position,      lat: false },
-            { label: 'القسم',                value: employee.department,    lat: false },
-            { label: 'الفرع',                value: employee.branch,        lat: false },
-            { label: 'رقم الهوية / الإقامة', value: employee.nationalId,    lat: true  },
-            { label: 'رقم الآيبان',          value: employee.iban,          lat: true  },
-            { label: 'تاريخ الالتحاق',       value: employee.startDate,     lat: true  },
+            { label: 'الاسم الكامل', value: employee.name },
+            { label: 'Full Name', value: employee.nameEn },
+            { label: 'رقم الموظف', value: employee.employeeCode },
+            { label: 'المسمى الوظيفي', value: employee.position },
+            { label: 'القسم', value: employee.department },
+            { label: 'الفرع', value: employee.branch },
+            { label: 'رقم الهوية / الإقامة', value: employee.nationalId },
+            { label: 'رقم الآيبان', value: employee.iban },
+            { label: 'تاريخ الالتحاق', value: employee.startDate },
           ].map((cell, i) => (
             <View key={i} style={ss.infoCell}>
               <Text style={ss.infoCellLabel}>{cell.label}</Text>
-              <Text style={cell.lat ? ss.infoCellValueLat : ss.infoCellValue}>{cell.value}</Text>
+              <PdfArLatInline text={cell.value} arStyle={ss.infoCellValue} latStyle={ss.infoCellValueLat} />
             </View>
           ))}
         </View>
@@ -398,14 +386,21 @@ function SalaryReceiptDocument({
 
         {/* Acknowledgement */}
         <View style={ss.ackBox}>
-          <Text style={ss.ackText}>
-            <Text style={{ fontWeight: 700 }}>إقرار باستلام الراتب:  </Text>
-            أقر أنا / {employee.name}، بموجب هذا الإيصال باستلام راتب شهر {payslip.month}{' '}
-            <Text style={{ fontFamily: 'Lat' }}>{payslip.year}</Text>
-            {'  '}البالغ صافيه{' '}
-            <Text style={{ fontFamily: 'Lat' }}>{fmt(payslip.net)}</Text>
-            {'  '}وذلك عبر التحويل البنكي إلى الحساب المسجّل، وأنني لا أطالب الشركة بأي مستحقات إضافية عن هذه الفترة.
-          </Text>
+          <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <Text style={[ss.ackText, { fontWeight: 700 }]}>إقرار باستلام الراتب: </Text>
+            <PdfArLatInline
+              text={`أقر أنا / ${employee.name}، بموجب هذا الإيصال باستلام راتب شهر ${payslip.month} ${payslip.year} البالغ صافيه ${fmt(payslip.net)} وذلك عبر التحويل البنكي إلى الحساب المسجّل، وأنني لا أطالب الشركة بأي مستحقات إضافية عن هذه الفترة.`}
+              arStyle={ss.ackText}
+              latStyle={{
+                fontFamily: 'Lat',
+                fontWeight: 400,
+                fontSize: 8.5,
+                color: C.text,
+                lineHeight: 1.8,
+                textAlign: 'right',
+              }}
+            />
+          </View>
         </View>
 
         {/* Signatures */}

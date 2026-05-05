@@ -2,6 +2,7 @@ import React from 'react';
 import { Document, Page, View, Text } from '@react-pdf/renderer';
 import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
 import { hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 import { PdfHeader, SectionTitle, SignaturesRow, LabeledField, S, C, fmt, fmtDate, type CompanyInfo } from './pdf-shared';
 
 export type CashReceiptReason =
@@ -39,9 +40,13 @@ function CheckRow({ checked, label, detail }: { checked: boolean; label: string;
         width: 10, height: 10, border: `1pt solid #000`, marginLeft: 6, marginRight: 2,
         backgroundColor: checked ? C.primary : 'transparent',
       }} />
-      <Text style={[HR.ar, { fontSize: 7 }]}>
-        {label}{detail ? ` ${detail}` : ''}
-      </Text>
+      <View style={{ flex: 1 }}>
+        <PdfArLatInline
+          text={`${label}${detail ? ` ${detail}` : ''}`}
+          arStyle={[HR.ar, { fontSize: 7, textAlign: 'right' }]}
+          latStyle={{ fontSize: 7, textAlign: 'right' }}
+        />
+      </View>
     </View>
   );
 }

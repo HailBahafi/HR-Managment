@@ -42,6 +42,7 @@ import {
   Sparkles,
   Award,
   Shield,
+  Eye,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,7 @@ import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-st
 import { CASE_STATUS_LABELS, type HRViolationCaseStatus } from '@/lib/hr-discipline/types';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
 import { cn, formatCurrency, formatDate, formatNumber, getInitials } from '@/lib/utils';
+import { withIds } from '@/lib/with-ids';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,6 +71,16 @@ import { NewRequestDialog } from '@/components/requests/new-request-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { buildEmployeePayslipSeries, PAYSLIP_MONTHS_AR, PAYSLIP_YEAR_OPTIONS } from '@/lib/payroll/employee-payslip-series';
 import type { Employee } from '@/types';
+import type { DocumentProps } from '@react-pdf/renderer';
+import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { buildRoseTradingHrPdfProps } from '@/lib/pdf/build-rose-trading-hr-pdf-props';
+import {
+  RoseClearanceFormPdf,
+  RoseExperienceCertificatePdf,
+  RoseFinalSettlementFormPdf,
+  RoseResignationFormPdf,
+} from '@/components/pdf/rose-trading/rose-trading-hr-forms-pdf';
 
 const SECTIONS = [
   { id: 'personal', label: 'البيانات الشخصية', icon: User },
@@ -317,9 +329,20 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
   const department = getDepartment(employee.departmentId);
   const manager = employee.managerId ? getEmployee(employee.managerId) : null;
 
-  const { events, daySummaries, checkpointLinks, checkpoints, assignments, shiftTemplates, addCheckpointLinkBatch, removeCheckpointLink, addAssignmentBatch, removeAssignment } = useAttendanceStore();
-  const { cases: violationCases } = useHRViolationCasesStore();
-  const { contracts } = useHRContractsStore();
+  const attendance = useAttendanceStore();
+  const { cases: violationCasesRaw } = useHRViolationCasesStore();
+  const { contracts: contractsRaw } = useHRContractsStore();
+
+  const events = withIds(attendance.events);
+  const daySummaries = withIds(attendance.daySummaries);
+  const checkpointLinks = withIds(attendance.checkpointLinks);
+  const checkpoints = withIds(attendance.checkpoints);
+  const assignments = withIds(attendance.assignments);
+  const shiftTemplates = withIds(attendance.shiftTemplates);
+  const { addCheckpointLinkBatch, removeCheckpointLink, addAssignmentBatch, removeAssignment } = attendance;
+
+  const violationCases = withIds(violationCasesRaw);
+  const contracts = withIds(contractsRaw);
 
   const allEmployeeEvents     = events.filter(e => e.employeeId === employee.id);
   const allEmployeeSummaries  = daySummaries.filter(s => s.employeeId === employee.id);
@@ -327,7 +350,7 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
   const employeeAssignments   = assignments.filter(a => a.targetType === 'employee' && a.targetId === employee.id);
   const employeeViolations    = violationCases.filter(v => v.employeeId === employee.id);
   const employeeContracts     = contracts.filter(c => c.employeeId === employee.id);
-  const employeeRequests      = data.requests.filter(r => r.employeeId === employee.id);
+  const employeeRequests      = withIds(data.requests).filter(r => r.employeeId === employee.id);
   const employeePayslipSeries = React.useMemo(
     () => buildEmployeePayslipSeries(employee, data.payslips ?? []),
     [employee],
@@ -453,9 +476,64 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
     return (diff / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
   })();
 
+  const rosePdfBundle = React.useMemo(() => {
+    const b = getBranch(draft.branchId);
+    const d = getDepartment(draft.departmentId);
+    return buildRoseTradingHrPdfProps({
+      employee: draft,
+      branchNameAr: b?.name ?? '—',
+      departmentNameAr: d?.name ?? '—',
+    });
+  }, [draft]);
+
+  const [rosePdfLogo, setRosePdfLogo] = React.useState<string | undefined>(undefined);
+  React.useEffect(() => {
+    setRosePdfLogo(getPdfLogoSrc());
+  }, []);
+
+  type RosePdfPreviewKind = 'resignation' | 'clearance' | 'settlement' | 'experience';
+  const [rosePdfPreviewKind, setRosePdfPreviewKind] = React.useState<RosePdfPreviewKind | null>(null);
+
+  const rosePdfPreviewPayload = React.useMemo(() => {
+    if (!rosePdfPreviewKind) {
+      return { doc: null as React.ReactElement<DocumentProps> | null, title: '', fileName: '' };
+    }
+    const logo = rosePdfLogo;
+    const b = rosePdfBundle;
+    const code = draft.employeeCode;
+    switch (rosePdfPreviewKind) {
+      case 'resignation':
+        return {
+          doc: <RoseResignationFormPdf logoSrc={logo} {...b.resignation} />,
+          title: 'معاينة — نموذج استقالة',
+          fileName: `rose-resignation-${code}.pdf`,
+        };
+      case 'clearance':
+        return {
+          doc: <RoseClearanceFormPdf logoSrc={logo} {...b.clearance} />,
+          title: 'معاينة — نموذج إخلاء طرف',
+          fileName: `rose-clearance-${code}.pdf`,
+        };
+      case 'settlement':
+        return {
+          doc: <RoseFinalSettlementFormPdf logoSrc={logo} {...b.settlement} />,
+          title: 'معاينة — مخالصة نهائية',
+          fileName: `rose-settlement-${code}.pdf`,
+        };
+      case 'experience':
+        return {
+          doc: <RoseExperienceCertificatePdf logoSrc={logo} {...b.experience} />,
+          title: 'معاينة — شهادة خبرة',
+          fileName: `rose-experience-${code}.pdf`,
+        };
+      default:
+        return { doc: null as React.ReactElement<DocumentProps> | null, title: '', fileName: '' };
+    }
+  }, [rosePdfPreviewKind, rosePdfLogo, rosePdfBundle, draft.employeeCode]);
+
   const [activeSection, setActiveSection] = React.useState<SectionId>('personal');
 
-  const systemRoles = data.roles as SystemRoleRecord[];
+  const systemRoles = React.useMemo(() => withIds(data.roles as SystemRoleRecord[]), []);
   const [permissionRoleDraft, setPermissionRoleDraft] = React.useState<string>(() =>
     effectiveAssignedRoleId(employee),
   );
@@ -868,6 +946,51 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
                   <Prop icon={CircleDot} label="حالة العقد">
                     <StatusBadge status={draft.contractStatus} />
                   </Prop>
+                </FieldGroup>
+
+                <FieldGroup title="نماذج مؤسسة روز للتجارة" hint="معاينة ثم تحميل PDF">
+                  <div className="col-span-full grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-full justify-center gap-2 text-xs"
+                      onClick={() => setRosePdfPreviewKind('resignation')}
+                    >
+                      <Eye className="h-3.5 w-3.5 shrink-0" />
+                      نموذج استقالة
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-full justify-center gap-2 text-xs"
+                      onClick={() => setRosePdfPreviewKind('clearance')}
+                    >
+                      <Eye className="h-3.5 w-3.5 shrink-0" />
+                      نموذج إخلاء طرف
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-full justify-center gap-2 text-xs"
+                      onClick={() => setRosePdfPreviewKind('settlement')}
+                    >
+                      <Eye className="h-3.5 w-3.5 shrink-0" />
+                      مخالصة نهائية
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 w-full justify-center gap-2 text-xs"
+                      onClick={() => setRosePdfPreviewKind('experience')}
+                    >
+                      <Eye className="h-3.5 w-3.5 shrink-0" />
+                      شهادة خبرة
+                    </Button>
+                  </div>
                 </FieldGroup>
               </section>
             )}
@@ -2055,6 +2178,16 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
           </div>
         </main>
       </div>
+
+      <PdfPreviewExportDialog
+        open={rosePdfPreviewKind != null}
+        onOpenChange={(open) => {
+          if (!open) setRosePdfPreviewKind(null);
+        }}
+        title={rosePdfPreviewPayload.title}
+        fileName={rosePdfPreviewPayload.fileName}
+        document={rosePdfPreviewPayload.doc}
+      />
 
       <NewRequestDialog
         open={leaveRequestOpen}

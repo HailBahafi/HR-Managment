@@ -15,17 +15,22 @@ import {
 import { HRRequestApprovalFlowEditor } from './approval-flow-editor';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import { useHRApprovalAssignmentTemplatesStore } from '@/lib/hr-requests/approval-assignment-store';
-import type { HRRequestTypeEntity, HRApprovalStage } from '@/lib/hr-requests/types';
-import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, validateApprovalStages } from '@/lib/hr-requests/types';
+import type { HRRequestTypeEntity, HRApprovalStage, HRRequestTypeCategory } from '@/lib/hr-requests/types';
+import {
+  HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
+  HR_REQUEST_TYPE_CATEGORIES,
+  HR_REQUEST_TYPE_CATEGORY_LABELS_AR,
+  validateApprovalStages,
+} from '@/lib/hr-requests/types';
 import { cn } from '@/lib/utils';
 
 interface DraftForm {
   scope: 'specific' | 'global';
   departmentId: string;
+  requestCategory: HRRequestTypeCategory;
   nameAr: string;
   sortOrder: number;
   isActive: boolean;
-  templateId: string | null;
   approvalAssignmentTemplateId: string | null;
   approvalStages: HRApprovalStage[];
 }
@@ -33,21 +38,32 @@ interface DraftForm {
 const EMPTY: DraftForm = {
   scope: 'global',
   departmentId: '',
+  requestCategory: 'leaves',
   nameAr: '',
   sortOrder: 1,
   isActive: true,
-  templateId: null,
   approvalAssignmentTemplateId: null,
   approvalStages: [],
 };
 
+const CATEGORY_DROPDOWN_OPTIONS = HR_REQUEST_TYPE_CATEGORIES.map((c) => ({
+  value: c,
+  label: HR_REQUEST_TYPE_CATEGORY_LABELS_AR[c],
+}));
+
+const CATEGORY_FILTER_OPTIONS = [
+  { value: 'all', label: 'كل التصنيفات' },
+  ...CATEGORY_DROPDOWN_OPTIONS,
+];
+
 export function RequestTypesClient() {
-  const { departments, requestTypes, templates, addRequestType, updateRequestType, deleteRequestType } = useHRConfigurationStore();
+  const { departments, requestTypes, addRequestType, updateRequestType, deleteRequestType } = useHRConfigurationStore();
   const approvalAssignmentTemplates = useHRApprovalAssignmentTemplatesStore(s => s.templates);
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
   const filterDepts: string[] = [];
   const [typeStatusFilter, setTypeStatusFilter] = React.useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -55,7 +71,6 @@ export function RequestTypesClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
   const activeDepts = departments.filter(d => d.isActive);
-  const activeTemplates = templates.filter(t => t.isActive);
   const activeApprovalAssignmentTemplates = React.useMemo(
     () => approvalAssignmentTemplates.filter(t => t.isActive).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar')),
     [approvalAssignmentTemplates],
@@ -68,14 +83,19 @@ export function RequestTypesClient() {
     });
   }, [requestTypes, filterDepts]);
 
+  const afterCategoryFilter = React.useMemo(() => {
+    if (categoryFilter === 'all') return afterSearch;
+    return afterSearch.filter((rt) => rt.requestCategory === categoryFilter);
+  }, [afterSearch, categoryFilter]);
+
   const typeStatusCounts = React.useMemo(() => ({
-    all: afterSearch.length,
-    active: afterSearch.filter((rt) => rt.isActive).length,
-    inactive: afterSearch.filter((rt) => !rt.isActive).length,
-  }), [afterSearch]);
+    all: afterCategoryFilter.length,
+    active: afterCategoryFilter.filter((rt) => rt.isActive).length,
+    inactive: afterCategoryFilter.filter((rt) => !rt.isActive).length,
+  }), [afterCategoryFilter]);
 
   const filtered = React.useMemo(() => {
-    return afterSearch
+    return afterCategoryFilter
       .filter((rt) => {
         if (typeStatusFilter === 'all') return true;
         if (typeStatusFilter === 'active') return rt.isActive;
@@ -83,7 +103,7 @@ export function RequestTypesClient() {
         return true;
       })
       .sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [afterSearch, typeStatusFilter]);
+  }, [afterCategoryFilter, typeStatusFilter]);
 
   const openCreate = () => {
     setEditId(null);
@@ -97,8 +117,8 @@ export function RequestTypesClient() {
     setDraft({
       scope: rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID ? 'global' : 'specific',
       departmentId: rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID ? '' : rt.departmentId,
+      requestCategory: rt.requestCategory,
       nameAr: rt.nameAr, sortOrder: rt.sortOrder, isActive: rt.isActive,
-      templateId: rt.templateId,
       approvalAssignmentTemplateId: rt.approvalAssignmentTemplateId ?? null,
       approvalStages: rt.approvalStages ?? [],
     });
@@ -117,7 +137,7 @@ export function RequestTypesClient() {
       nameEn: draft.nameAr.trim(),
       sortOrder: draft.sortOrder,
       isActive: draft.isActive,
-      templateId: draft.templateId,
+      requestCategory: draft.requestCategory,
       approvalAssignmentTemplateId: draft.approvalAssignmentTemplateId,
       approvalStages: draft.approvalStages,
     };
@@ -137,11 +157,6 @@ export function RequestTypesClient() {
     return activeDepts.find(d => d.id === id)?.nameAr ?? '—';
   };
 
-  const tplOptions = [
-    { value: '__none__', label: '— بدون قالب —' },
-    ...activeTemplates.map(t => ({ value: t.id, label: `${t.nameAr}${t.isUniversalDefault ? ' ★' : ''}` })),
-  ];
-
   const aaTplOptions = [
     { value: '__none__', label: '— بدون قالب موافقات —' },
     ...activeApprovalAssignmentTemplates.map(t => ({ value: t.id, label: t.nameAr })),
@@ -152,6 +167,16 @@ export function RequestTypesClient() {
       <EntityFilterToolbar
         showDateSection={false}
         showEmployeePicker={false}
+        inlineSelects={[
+          {
+            id: 'request-category',
+            value: categoryFilter,
+            onChange: setCategoryFilter,
+            placeholder: 'التصنيف',
+            options: CATEGORY_FILTER_OPTIONS,
+            className: 'min-w-[10.5rem]',
+          },
+        ]}
         statusFilter={typeStatusFilter}
         onStatusFilterChange={setTypeStatusFilter}
         statusOrder={['active', 'inactive']}
@@ -174,6 +199,7 @@ export function RequestTypesClient() {
       />
     ),
     [
+      categoryFilter,
       typeStatusFilter,
       typeStatusCounts.all,
       typeStatusCounts.active,
@@ -194,7 +220,6 @@ export function RequestTypesClient() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map(rt => {
-              const tpl = templates.find(t => t.id === rt.templateId);
               const aaTpl = approvalAssignmentTemplates.find(t => t.id === rt.approvalAssignmentTemplateId);
               return (
                 <div
@@ -210,13 +235,16 @@ export function RequestTypesClient() {
                     <ActiveBadge active={rt.isActive} />
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {tpl ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
-                        {tpl.nameAr}{tpl.isUniversalDefault ? ' ★' : ''}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">بدون قالب</span>
-                    )}
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+                        rt.requestCategory === 'leaves' && 'bg-emerald-500/15 text-emerald-900 dark:text-emerald-200',
+                        rt.requestCategory === 'attendance' && 'bg-sky-500/15 text-sky-900 dark:text-sky-200',
+                        rt.requestCategory === 'advances' && 'bg-violet-500/15 text-violet-900 dark:text-violet-200',
+                      )}
+                    >
+                      {HR_REQUEST_TYPE_CATEGORY_LABELS_AR[rt.requestCategory]}
+                    </span>
                     <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                       {rt.approvalStages?.length ?? 0} مرحلة
                     </span>
@@ -247,14 +275,13 @@ export function RequestTypesClient() {
                 <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground">
                   <th className="px-4 py-3 text-right">القسم</th>
                   <th className="px-4 py-3 text-right">النوع</th>
-                  <th className="px-4 py-3 text-right">القالب</th>
+                  <th className="px-4 py-3 text-right">التصنيف</th>
                   <th className="px-4 py-3 text-right">الحالة</th>
                   <th className="px-4 py-3 text-left w-28">إجراءات</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((rt) => {
-                  const tpl = templates.find((t) => t.id === rt.templateId);
                   return (
                     <tr
                       key={rt.id}
@@ -263,7 +290,7 @@ export function RequestTypesClient() {
                     >
                       <td className="px-4 py-3 text-muted-foreground">{getDeptLabel(rt.departmentId)}</td>
                       <td className="px-4 py-3 font-medium">{rt.nameAr}</td>
-                      <td className="px-4 py-3">{tpl ? `${tpl.nameAr}${tpl.isUniversalDefault ? ' ★' : ''}` : '—'}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{HR_REQUEST_TYPE_CATEGORY_LABELS_AR[rt.requestCategory]}</td>
                       <td className="px-4 py-3"><ActiveBadge active={rt.isActive} /></td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
@@ -308,15 +335,16 @@ export function RequestTypesClient() {
               <MinimalDropdown value={draft.departmentId} onChange={v => patch('departmentId', v)} options={activeDepts.map(d => ({ value: d.id, label: d.nameAr }))} placeholder="اختر القسم" />
             </FormField>
           )}
+          <FormField label="يندرج تحت" required span2>
+            <MinimalDropdown
+              value={draft.requestCategory}
+              onChange={(v) => patch('requestCategory', v as HRRequestTypeCategory)}
+              options={CATEGORY_DROPDOWN_OPTIONS}
+              placeholder="اختر التصنيف"
+            />
+          </FormField>
           <FormField label="الاسم" required span2>
             <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="طلب إجازة" />
-          </FormField>
-          <FormField label="قالب النموذج">
-            <MinimalDropdown
-              value={draft.templateId ?? '__none__'}
-              onChange={v => patch('templateId', v === '__none__' ? null : v)}
-              options={tplOptions}
-            />
           </FormField>
           <FormField label="قالب إسناد الموافقات">
             <MinimalDropdown

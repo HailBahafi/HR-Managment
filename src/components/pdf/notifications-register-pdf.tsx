@@ -4,7 +4,9 @@ import * as React from 'react';
 import { Document, Page, Text, View, type DocumentProps } from '@react-pdf/renderer';
 import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
 import { HR_PDF_FOOTER_BOTTOM, HR_PDF_FOOTER_INSET_X, hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
+import { PdfHrBrandHeader } from '@/components/pdf/pdf-hr-brand-header';
 import { PdfPageFooter } from '@/components/pdf/pdf-page-footer';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 
 export type NotificationPdfRow = {
   dateYmd: string;
@@ -53,13 +55,15 @@ export function NotificationsRegisterPdf({
     <Document>
       {pages.map((pageRows, pi) => (
         <Page key={pi} size="A4" style={HR.page}>
-          <View style={HR.brand}>
-            <Text style={HR.brandAr}>{companyNameAr}</Text>
-            <Text style={HR.brandEn}>{companyNameEn}</Text>
-          </View>
-          <View style={HR.line} />
+          <PdfHrBrandHeader companyNameAr={companyNameAr} companyNameEn={companyNameEn} />
           <Text style={HR.title}>{titleAr}</Text>
-          <Text style={HR.meta}>{filterSummary}</Text>
+          <View style={{ marginBottom: 8 }}>
+            <PdfArLatInline
+              text={filterSummary}
+              arStyle={{ fontFamily: 'Ar', fontSize: 8, color: '#444', textAlign: 'right' }}
+              latStyle={{ fontSize: 8, color: '#444', textAlign: 'right' }}
+            />
+          </View>
 
           <View style={HR.th}>
             <Text style={[HR.lat, { width: colDate, fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>التاريخ</Text>
@@ -78,14 +82,38 @@ export function NotificationsRegisterPdf({
               <View key={`${r.dateYmd}-${i}`} style={HR.tr} wrap={false}>
                 <View style={{ flexDirection: 'row-reverse', width: '100%' }}>
                   <Text style={[HR.lat, { width: colDate, textAlign: 'center', fontSize: 7 }]}>{r.dateYmd}</Text>
-                  <Text style={[HR.ar, { width: colTitle, textAlign: 'right', paddingHorizontal: 4, fontSize: 7 }]}>
-                    {r.titleAr.length > 90 ? `${r.titleAr.slice(0, 90)}…` : r.titleAr}
-                  </Text>
+                  <View style={{ width: colTitle, paddingHorizontal: 4, alignItems: 'flex-end' }}>
+                    <PdfArLatInline
+                      text={r.titleAr.length > 90 ? `${r.titleAr.slice(0, 90)}…` : r.titleAr}
+                      arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'right' }}
+                      latStyle={{ fontSize: 7, textAlign: 'right' }}
+                    />
+                  </View>
                   {includeRecipientColumn ? (
-                    <Text style={[HR.ar, { width: colRecip, textAlign: 'right', fontSize: 7 }]}>{r.recipientNameAr}</Text>
+                    <View style={{ width: colRecip, alignItems: 'flex-end' }}>
+                      <PdfArLatInline
+                        text={r.recipientNameAr}
+                        arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'right' }}
+                        latStyle={{ fontSize: 7, textAlign: 'right' }}
+                      />
+                    </View>
                   ) : null}
-                  <Text style={[HR.ar, { width: colRead, textAlign: 'center', fontSize: 7 }]}>{r.readAr}</Text>
-                  <Text style={[HR.ar, { width: colInbox, textAlign: 'center', fontSize: 7 }]}>{r.inboxAr}</Text>
+                  <View style={{ width: colRead, alignItems: 'center' }}>
+                    <PdfArLatInline
+                      text={r.readAr}
+                      arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'center' }}
+                      latStyle={{ fontSize: 7, textAlign: 'center' }}
+                      rowStyle={{ justifyContent: 'center' }}
+                    />
+                  </View>
+                  <View style={{ width: colInbox, alignItems: 'center' }}>
+                    <PdfArLatInline
+                      text={r.inboxAr}
+                      arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'center' }}
+                      latStyle={{ fontSize: 7, textAlign: 'center' }}
+                      rowStyle={{ justifyContent: 'center' }}
+                    />
+                  </View>
                 </View>
               </View>
             ))
