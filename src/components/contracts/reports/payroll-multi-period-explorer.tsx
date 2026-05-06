@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import {
-  Download, FileSpreadsheet, Loader2,
+  Download, FileSpreadsheet, Loader2, UserCheck,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -157,18 +158,32 @@ export function PayrollMultiPeriodExplorer() {
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0 gap-2"
-            disabled={downloading || !selectedId}
-            onClick={handleDownloadExcel}
-          >
-            {downloading
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <Download className="h-3.5 w-3.5" />}
-            تحميل Excel
-          </Button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button variant="secondary" size="sm" className="gap-2" asChild disabled={!selectedId}>
+              <Link
+                href={
+                  selectedId
+                    ? `/hr/contracts/payroll-salary-approvals?period=${encodeURIComponent(selectedId)}`
+                    : '/hr/contracts/payroll-salary-approvals'
+                }
+              >
+                <UserCheck className="h-3.5 w-3.5" />
+                كشف موافقة الموظفين
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={downloading || !selectedId}
+              onClick={handleDownloadExcel}
+            >
+              {downloading
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Download className="h-3.5 w-3.5" />}
+              تحميل Excel
+            </Button>
+          </div>
         </div>
       </div>
 

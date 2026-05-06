@@ -178,6 +178,9 @@ export interface HRApprovalTemplateStage {
   optionalTimeoutHours?: number;
 }
 
+/** إسناد موافقات صفحة الانضباط: مخالفات أو أنواع طلبات */
+export type HRDisciplineApprovalAssignmentLinkKind = 'violation' | 'request';
+
 export interface HRApprovalAssignmentTemplate {
   id: string;
   nameAr: string;
@@ -186,6 +189,13 @@ export interface HRApprovalAssignmentTemplate {
   stages: HRApprovalTemplateStage[];
   createdAt: string;
   updatedAt: string;
+  /** @deprecated يُفضَّل assignmentLinkedIds — يُحفظ أول عنصر للمخالفات للتوافق مع بيانات قديمة */
+  violationTypeId?: string | null;
+  assignmentLinkKind?: HRDisciplineApprovalAssignmentLinkKind | null;
+  /** معرفات الأنواع بنفس ترتيب العرض (مخالفات أو طلبات حسب assignmentLinkKind) */
+  assignmentLinkedIds?: string[];
+  /** صفحة إسناد موافقات الطلبات: أنواع الطلبات المشمولة في قالب واحد */
+  hrRequestAssignmentLinkedIds?: string[];
 }
 
 export function approvalStageModeLabelAr(mode: HRApprovalStageMode): string {
@@ -193,7 +203,7 @@ export function approvalStageModeLabelAr(mode: HRApprovalStageMode): string {
     sequential: 'تتابعي',
     parallel: 'متوازي',
     optional: 'اختياري',
-    any_one: 'أي معتمد',
+    any_one: 'موافقة أحد المعتمدين',
   };
   return labels[mode];
 }

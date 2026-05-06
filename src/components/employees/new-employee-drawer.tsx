@@ -13,6 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { data } from '@/lib/data';
+import { useJobTitleTemplatesStore } from '@/lib/directory/job-title-templates-store';
 import { cn, formatNumber } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,9 +79,15 @@ interface Props {
 }
 
 export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
+  const jobTitleTemplates = useJobTitleTemplatesStore((s) => s.templates);
+  const [positionTemplateId, setPositionTemplateId] = React.useState<string>('_none');
   const [form, setForm] = React.useState<NewEmployeeForm>(EMPTY_FORM);
   const [errors, setErrors] = React.useState<Partial<Record<keyof NewEmployeeForm, string>>>({});
   const [saved, setSaved] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) setPositionTemplateId('_none');
+  }, [open]);
 
   const patch = <K extends keyof NewEmployeeForm>(k: K, v: NewEmployeeForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -107,6 +114,7 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
       setSaved(false);
       onOpenChange(false);
       setForm(EMPTY_FORM);
+      setPositionTemplateId('_none');
     }, 1200);
   };
 
@@ -114,6 +122,7 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
     onOpenChange(false);
     setForm(EMPTY_FORM);
     setErrors({});
+    setPositionTemplateId('_none');
   };
 
   const totalComp = formatNumber(
@@ -231,10 +240,42 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
           <div className="space-y-4">
             <SectionHeader icon={Briefcase} title="بيانات التوظيف" description="المسمى الوظيفي والقسم والفرع" />
             <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="قالب مسمى وظيفي (اختياري)" span2>
+                <Select
+                  value={positionTemplateId}
+                  onValueChange={(v) => {
+                    setPositionTemplateId(v);
+                    if (v === '_none') return;
+                    const t = jobTitleTemplates.find((x) => x.id === v);
+                    if (t) {
+                      patch('position', t.titleAr);
+                      if (t.defaultDepartmentId) patch('departmentId', t.defaultDepartmentId);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="اختر قالباً من المسميات الوظيفية" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— إدخال يدوي فقط —</SelectItem>
+                    {jobTitleTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.titleAr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  تُدار القوالب من صفحة «المسميات الوظيفية» تحت الهيكل الإداري.
+                </p>
+              </Field>
               <Field label="المسمى الوظيفي" required span2>
                 <Input
                   value={form.position}
-                  onChange={(e) => patch('position', e.target.value)}
+                  onChange={(e) => {
+                    patch('position', e.target.value);
+                    setPositionTemplateId('_none');
+                  }}
                   className={cn(errors.position && 'border-destructive')}
                   placeholder="مدير تطوير الأعمال"
                 />

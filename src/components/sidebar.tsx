@@ -9,6 +9,7 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen, FileSpreadsheet,
+  UserCircle, Briefcase, UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
@@ -30,9 +31,11 @@ type MobileNavItem = {
 const mobileNav: MobileNavItem[] = [
   { key: 'dashboard', label: 'الرئيسية', href: '/dashboard', icon: LayoutDashboard },
   {
-    key: 'employees', label: 'الموظفين', icon: Users,
+    key: 'employees', label: 'الهيكل الإداري', icon: Users,
     children: [
       { label: 'سجل الموظفين', href: '/employees', icon: Users },
+      { label: 'العملاء والزوار', href: '/contacts', icon: UserCircle },
+      { label: 'المسميات الوظيفية', href: '/job-titles', icon: Briefcase },
       { label: 'الفروع', href: '/branches', icon: Building2 },
       { label: 'الأقسام', href: '/departments', icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/organization', icon: Building2 },
@@ -87,6 +90,7 @@ const mobileNav: MobileNavItem[] = [
       { label: 'عقود العمل', href: '/hr/contracts/employment', icon: FileSignature },
       { label: 'مواد العقود', href: '/hr/contracts/articles', icon: BookOpen },
       { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports', icon: FileSpreadsheet },
+      { label: 'كشف موافقة الموظفين', href: '/hr/contracts/payroll-salary-approvals', icon: UserCheck },
       { label: 'إيصالات الرواتب', href: '/payroll/receipt', icon: FileSpreadsheet },
     ],
   },

@@ -9,7 +9,7 @@ import {
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
-  Banknote, FileSignature, BookOpen, FileSpreadsheet,
+  Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ export const PAGE_ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
   CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet, Bell,
+  UserCircle, Briefcase, UserCheck,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */
@@ -50,6 +51,8 @@ export const navConfig: NavItem[] = [
     key: 'employees', label: 'الهيكل الإداري', icon: Users,
     groups: [{ items: [
       { label: 'سجل الموظفين',     href: '/employees',      icon: Users },
+      { label: 'العملاء والزوار', href: '/contacts',       icon: UserCircle },
+      { label: 'المسميات الوظيفية', href: '/job-titles',   icon: Briefcase },
       { label: 'الفروع',           href: '/branches',       icon: Building2 },
       { label: 'الأقسام',          href: '/departments',    icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/organization',   icon: Building2 },
@@ -118,6 +121,7 @@ export const navConfig: NavItem[] = [
       ]},
       { labelAr: 'التقارير', items: [
         { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports', icon: FileSpreadsheet },
+        { label: 'كشف موافقة الموظفين', href: '/hr/contracts/payroll-salary-approvals', icon: UserCheck },
       ]},
     ],
   },

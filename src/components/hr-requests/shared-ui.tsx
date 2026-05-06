@@ -208,6 +208,8 @@ interface DrawerProps {
   saveLabel?: string;
   children: React.ReactNode;
   error?: string | null;
+  /** لربط قوائم منبثقة (مثل MultiSelect) داخل نفس طبقة محتوى الحوار */
+  contentRef?: React.Ref<HTMLDivElement>;
 }
 
 const DRAWER_SIZE = {
@@ -216,10 +218,10 @@ const DRAWER_SIZE = {
   xl: 'max-w-[min(48rem,calc(100vw-1.5rem))]',
 };
 
-export function HRSettingsFormDrawer({ open, onOpenChange, title, description, size = 'lg', onSave, saveLabel = 'حفظ', children, error }: DrawerProps) {
+export function HRSettingsFormDrawer({ open, onOpenChange, title, description, size = 'lg', onSave, saveLabel = 'حفظ', children, error, contentRef }: DrawerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn('flex max-h-[95vh] w-full flex-col overflow-hidden border-border p-0', DRAWER_SIZE[size])}>
+      <DialogContent ref={contentRef} className={cn('flex max-h-[95vh] w-full flex-col overflow-hidden border-border p-0', DRAWER_SIZE[size])}>
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">{title}</DialogTitle>

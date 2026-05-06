@@ -5,45 +5,34 @@ import { Plus, Pencil, Trash2, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 import {
   MinimalDropdown, ConfirmationModal, HRSettingsFormDrawer,
   FormField, ActiveBadge,
 } from './shared-ui';
-import { HRRequestApprovalFlowEditor } from './approval-flow-editor';
 import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
 import { useHRApprovalAssignmentTemplatesStore } from '@/lib/hr-requests/approval-assignment-store';
-import type { HRRequestTypeEntity, HRApprovalStage, HRRequestTypeCategory } from '@/lib/hr-requests/types';
+import type { HRRequestTypeEntity, HRRequestTypeCategory } from '@/lib/hr-requests/types';
 import {
   HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
   HR_REQUEST_TYPE_CATEGORIES,
   HR_REQUEST_TYPE_CATEGORY_LABELS_AR,
-  validateApprovalStages,
 } from '@/lib/hr-requests/types';
 import { cn } from '@/lib/utils';
 
 interface DraftForm {
-  scope: 'specific' | 'global';
-  departmentId: string;
   requestCategory: HRRequestTypeCategory;
   nameAr: string;
   sortOrder: number;
   isActive: boolean;
-  approvalAssignmentTemplateId: string | null;
-  approvalStages: HRApprovalStage[];
 }
 
 const EMPTY: DraftForm = {
-  scope: 'global',
-  departmentId: '',
   requestCategory: 'leaves',
   nameAr: '',
   sortOrder: 1,
   isActive: true,
-  approvalAssignmentTemplateId: null,
-  approvalStages: [],
 };
 
 const CATEGORY_DROPDOWN_OPTIONS = HR_REQUEST_TYPE_CATEGORIES.map((c) => ({
@@ -71,11 +60,6 @@ export function RequestTypesClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
   const activeDepts = departments.filter(d => d.isActive);
-  const activeApprovalAssignmentTemplates = React.useMemo(
-    () => approvalAssignmentTemplates.filter(t => t.isActive).sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar')),
-    [approvalAssignmentTemplates],
-  );
-
   const afterSearch = React.useMemo(() => {
     return requestTypes.filter((rt) => {
       if (filterDepts.length && !filterDepts.includes(rt.departmentId)) return false;
@@ -115,12 +99,10 @@ export function RequestTypesClient() {
   const openEdit = (rt: HRRequestTypeEntity) => {
     setEditId(rt.id);
     setDraft({
-      scope: rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID ? 'global' : 'specific',
-      departmentId: rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID ? '' : rt.departmentId,
       requestCategory: rt.requestCategory,
-      nameAr: rt.nameAr, sortOrder: rt.sortOrder, isActive: rt.isActive,
-      approvalAssignmentTemplateId: rt.approvalAssignmentTemplateId ?? null,
-      approvalStages: rt.approvalStages ?? [],
+      nameAr: rt.nameAr,
+      sortOrder: rt.sortOrder,
+      isActive: rt.isActive,
     });
     setError(null);
     setDrawerOpen(true);
@@ -128,24 +110,24 @@ export function RequestTypesClient() {
 
   const handleSave = () => {
     if (!draft.nameAr.trim()) { setError('اسم نوع الطلب مطلوب'); return; }
-    if (draft.scope === 'specific' && !draft.departmentId) { setError('يرجى اختيار القسم'); return; }
-    const stageErr = validateApprovalStages(draft.approvalStages);
-    if (stageErr) { setError(stageErr); return; }
-    const payload = {
-      departmentId: draft.scope === 'global' ? HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID : draft.departmentId,
+    const base = {
+      departmentId: HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
       nameAr: draft.nameAr.trim(),
       nameEn: draft.nameAr.trim(),
       sortOrder: draft.sortOrder,
       isActive: draft.isActive,
       requestCategory: draft.requestCategory,
-      approvalAssignmentTemplateId: draft.approvalAssignmentTemplateId,
-      approvalStages: draft.approvalStages,
     };
     if (editId) {
       const existing = requestTypes.find(r => r.id === editId);
-      updateRequestType(editId, { ...payload, subtypes: existing?.subtypes ?? [] });
+      updateRequestType(editId, { ...base, subtypes: existing?.subtypes ?? [] });
     } else {
-      addRequestType({ ...payload, subtypes: [] });
+      addRequestType({
+        ...base,
+        subtypes: [],
+        approvalAssignmentTemplateId: null,
+        approvalStages: [],
+      });
     }
     setDrawerOpen(false);
   };
@@ -156,11 +138,6 @@ export function RequestTypesClient() {
     if (id === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID) return 'جميع الأقسام';
     return activeDepts.find(d => d.id === id)?.nameAr ?? '—';
   };
-
-  const aaTplOptions = [
-    { value: '__none__', label: '— بدون قالب موافقات —' },
-    ...activeApprovalAssignmentTemplates.map(t => ({ value: t.id, label: t.nameAr })),
-  ];
 
   useEntityFilterSlot(
     () => (
@@ -315,26 +292,16 @@ export function RequestTypesClient() {
       <HRSettingsFormDrawer
         open={drawerOpen} onOpenChange={v => setDrawerOpen(v)}
         title={editId ? 'تعديل نوع الطلب' : 'إضافة نوع طلب'}
-        onSave={handleSave} error={error} size="xl"
+        onSave={handleSave} error={error} size="lg"
       >
+        <div className="flex items-center justify-end gap-2 border-b border-border pb-3 -mt-1 mb-1">
+          <span className="text-xs text-muted-foreground">نشط</span>
+          <div className="scale-90 origin-right">
+            <Switch checked={draft.isActive} onCheckedChange={(v) => patch('isActive', v)} />
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground mb-3">ينطبق نوع الطلب على جميع الأقسام.</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="نطاق التطبيق" span2>
-            <div className="flex gap-2">
-              {(['global', 'specific'] as const).map(s => (
-                <button key={s} type="button" onClick={() => patch('scope', s)}
-                  className={cn('flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all',
-                    draft.scope === s ? 'border-primary/40 bg-primary/5 text-primary' : 'border-border hover:border-border hover:bg-muted/20'
-                  )}>
-                  {s === 'global' ? 'جميع الأقسام' : 'قسم محدد'}
-                </button>
-              ))}
-            </div>
-          </FormField>
-          {draft.scope === 'specific' && (
-            <FormField label="القسم" required span2>
-              <MinimalDropdown value={draft.departmentId} onChange={v => patch('departmentId', v)} options={activeDepts.map(d => ({ value: d.id, label: d.nameAr }))} placeholder="اختر القسم" />
-            </FormField>
-          )}
           <FormField label="يندرج تحت" required span2>
             <MinimalDropdown
               value={draft.requestCategory}
@@ -346,22 +313,7 @@ export function RequestTypesClient() {
           <FormField label="الاسم" required span2>
             <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="طلب إجازة" />
           </FormField>
-          <FormField label="قالب إسناد الموافقات">
-            <MinimalDropdown
-              value={draft.approvalAssignmentTemplateId ?? '__none__'}
-              onChange={v => patch('approvalAssignmentTemplateId', v === '__none__' ? null : v)}
-              options={aaTplOptions}
-            />
-          </FormField>
-          <FormField label="نشط" span2>
-            <label className={cn('flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all', draft.isActive ? 'border-primary/30 bg-primary/5' : 'border-border')}>
-              <span className="text-sm font-medium">نشط</span>
-              <Switch checked={draft.isActive} onCheckedChange={v => patch('isActive', v)} />
-            </label>
-          </FormField>
         </div>
-        <Separator />
-        <HRRequestApprovalFlowEditor stages={draft.approvalStages} onChange={v => patch('approvalStages', v)} />
       </HRSettingsFormDrawer>
 
       <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} title="حذف نوع الطلب" onConfirm={() => { if (deleteId) deleteRequestType(deleteId); setDeleteId(null); }} />

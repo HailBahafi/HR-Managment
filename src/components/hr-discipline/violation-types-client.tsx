@@ -11,7 +11,6 @@ import {
   EmptyState, ActiveBadge, MinimalDropdown,
 } from '@/components/hr-requests/shared-ui';
 import { useHRViolationTypesStore } from '@/lib/hr-discipline/violation-types-store';
-import { useHRDisciplineApprovalAssignmentTemplatesStore } from '@/lib/hr-discipline/discipline-approval-store';
 import type { HRViolationTypeRecord, HRViolationDeductionKind } from '@/lib/hr-discipline/types';
 import { DEDUCTION_KIND_LABELS } from '@/lib/hr-discipline/types';
 import { cn } from '@/lib/utils';
@@ -25,20 +24,17 @@ function makeViolationTypeCode() {
 interface DraftForm {
   code: string; nameAr: string; sortOrder: number; isActive: boolean;
   hasDeduction: boolean; deductionKind: HRViolationDeductionKind; deductionValue: number;
-  needsWarning: boolean; needsInvestigation: boolean; needsApproval: boolean;
-  approvalTemplateId: string | null;
+  needsWarning: boolean; needsInvestigation: boolean;
 }
 
 const EMPTY: DraftForm = {
   code: '', nameAr: '', sortOrder: 1, isActive: true,
   hasDeduction: false, deductionKind: 'none', deductionValue: 0,
-  needsWarning: false, needsInvestigation: false, needsApproval: false,
-  approvalTemplateId: null,
+  needsWarning: false, needsInvestigation: false,
 };
 
 export function ViolationTypesClient() {
   const { types, add, update, remove } = useHRViolationTypesStore();
-  const { templates } = useHRDisciplineApprovalAssignmentTemplatesStore();
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -51,7 +47,17 @@ export function ViolationTypesClient() {
 
   const openCreate = () => { setDraft(EMPTY); setEditId(null); setFormError(null); setDrawerOpen(true); };
   const openEdit = (t: HRViolationTypeRecord) => {
-    setDraft({ code:t.code, nameAr:t.nameAr, sortOrder:t.sortOrder, isActive:t.isActive, hasDeduction:t.hasDeduction, deductionKind:t.deductionKind, deductionValue:t.deductionValue, needsWarning:t.needsWarning, needsInvestigation:t.needsInvestigation, needsApproval:t.needsApproval, approvalTemplateId:t.approvalTemplateId });
+    setDraft({
+      code: t.code,
+      nameAr: t.nameAr,
+      sortOrder: t.sortOrder,
+      isActive: t.isActive,
+      hasDeduction: t.hasDeduction,
+      deductionKind: t.deductionKind,
+      deductionValue: t.deductionValue,
+      needsWarning: t.needsWarning,
+      needsInvestigation: t.needsInvestigation,
+    });
     setEditId(t.id); setFormError(null); setDrawerOpen(true);
   };
 
@@ -66,7 +72,8 @@ export function ViolationTypesClient() {
       nameEn: draft.nameAr.trim(),
       deductionKind: draft.hasDeduction ? draft.deductionKind : 'none' as HRViolationDeductionKind,
       deductionValue: draft.hasDeduction ? draft.deductionValue : 0,
-      approvalTemplateId: draft.needsApproval ? draft.approvalTemplateId : null,
+      needsApproval: false,
+      approvalTemplateId: null,
     };
     const result = editId ? update(editId, payload) : add(payload);
     if (!result.ok) { setFormError(result.error ?? 'خطأ'); return; }
@@ -80,8 +87,6 @@ export function ViolationTypesClient() {
     toast.success('تم الحذف');
     setDeleteId(null);
   };
-
-  const templateOptions = templates.filter(t => t.isActive).map(t => ({ value: t.id, label: t.nameAr }));
 
   return (
     <div className="space-y-4">
@@ -104,7 +109,7 @@ export function ViolationTypesClient() {
                 <ActiveBadge active={t.isActive} />
               </div>
               {t.hasDeduction && (
-                <p className="text-xs text-muted-foreground">الاستقطاع: {DEDUCTION_KIND_LABELS[t.deductionKind]} ({t.deductionValue})</p>
+                <p className="text-xs text-muted-foreground">يحتاج مخالفة: {DEDUCTION_KIND_LABELS[t.deductionKind]} ({t.deductionValue})</p>
               )}
               <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                 <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5', t.needsWarning ? 'border-amber-300/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' : 'border-border bg-muted/30 text-muted-foreground/60')}>
@@ -112,9 +117,6 @@ export function ViolationTypesClient() {
                 </span>
                 <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5', t.needsInvestigation ? 'border-blue-300/50 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' : 'border-border bg-muted/30 text-muted-foreground/60')}>
                   {t.needsInvestigation ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} تحقيق
-                </span>
-                <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5', t.needsApproval ? 'border-emerald-300/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' : 'border-border bg-muted/30 text-muted-foreground/60')}>
-                  {t.needsApproval ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />} اعتماد
                 </span>
               </div>
               <div className="mt-auto flex gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
@@ -155,40 +157,26 @@ export function ViolationTypesClient() {
             <span className="text-sm">يحتاج تحقيق</span>
             <Switch checked={draft.needsInvestigation} onCheckedChange={v => set({ needsInvestigation: v })} />
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">يحتاج اعتماد</span>
-            <Switch checked={draft.needsApproval} onCheckedChange={v => set({ needsApproval: v })} />
-          </div>
-          {draft.needsApproval && (
-            <FormField label="قالب الاعتماد">
-              <MinimalDropdown
-                value={draft.approvalTemplateId ?? ''}
-                onChange={v => set({ approvalTemplateId: v || null })}
-                options={[{ value: '', label: 'بدون قالب محدد' }, ...templateOptions]}
-              />
-            </FormField>
-          )}
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-border p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">الاستقطاع</p>
-            <Switch checked={draft.hasDeduction} onCheckedChange={v => set({ hasDeduction: v })} />
-          </div>
-          {draft.hasDeduction && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <FormField label="نوع الاستقطاع">
-                <MinimalDropdown
-                  value={draft.deductionKind}
-                  onChange={v => set({ deductionKind: v as HRViolationDeductionKind })}
-                  options={DEDUCTION_KIND_OPTIONS.filter(o => o.value !== 'none')}
-                />
-              </FormField>
-              <FormField label="القيمة">
-                <Input type="number" min={0} value={draft.deductionValue} onChange={e => set({ deductionValue: Number(e.target.value) })} />
-              </FormField>
+          <div className="border-t border-border pt-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">يحتاج مخالفة</p>
+              <Switch checked={draft.hasDeduction} onCheckedChange={v => set({ hasDeduction: v })} />
             </div>
-          )}
+            {draft.hasDeduction && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <FormField label="نوع الاستقطاع">
+                  <MinimalDropdown
+                    value={draft.deductionKind}
+                    onChange={v => set({ deductionKind: v as HRViolationDeductionKind })}
+                    options={DEDUCTION_KIND_OPTIONS.filter(o => o.value !== 'none')}
+                  />
+                </FormField>
+                <FormField label="القيمة">
+                  <Input type="number" min={0} value={draft.deductionValue} onChange={e => set({ deductionValue: Number(e.target.value) })} />
+                </FormField>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between rounded-xl border border-border p-4">
