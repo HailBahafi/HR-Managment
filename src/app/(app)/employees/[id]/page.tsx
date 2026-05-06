@@ -42,6 +42,7 @@ import {
   Sparkles,
   Award,
   Shield,
+  FileStack,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,8 @@ import { useAttendanceStore } from '@/lib/attendance/store';
 import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
 import { CASE_STATUS_LABELS, type HRViolationCaseStatus } from '@/lib/hr-discipline/types';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
+import { useEmployeeRoseFormsStore } from '@/lib/employee-rose-forms/store';
+import { EmployeeRoseFormsPanel } from '@/components/employees/employee-rose-forms-panel';
 import { cn, formatCurrency, formatDate, formatNumber, getInitials } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -79,6 +82,7 @@ const SECTIONS = [
   { id: 'requests', label: 'الطلبات', icon: FileText },
   { id: 'violations', label: 'المخالفات', icon: AlertTriangle },
   { id: 'contracts', label: 'العقود', icon: FileSignature },
+  { id: 'rose-forms', label: 'نماذج روز للتجارة', icon: FileStack },
   { id: 'permissions', label: 'صلاحيات الموظف', icon: Shield },
   { id: 'salary', label: 'كشوف الرواتب', icon: Receipt },
 ] as const;
@@ -320,6 +324,7 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
   const { events, daySummaries, checkpointLinks, checkpoints, assignments, shiftTemplates, addCheckpointLinkBatch, removeCheckpointLink, addAssignmentBatch, removeAssignment } = useAttendanceStore();
   const { cases: violationCases } = useHRViolationCasesStore();
   const { contracts } = useHRContractsStore();
+  const roseFormsCount = useEmployeeRoseFormsStore((s) => s.totalCountFor(employee.id));
 
   const allEmployeeEvents     = events.filter(e => e.employeeId === employee.id);
   const allEmployeeSummaries  = daySummaries.filter(s => s.employeeId === employee.id);
@@ -591,6 +596,7 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
     requests: employeeRequests.length,
     violations: employeeViolations.length,
     contracts: employeeContracts.length,
+    'rose-forms': roseFormsCount,
     salary: employeePayslipSeries.length,
   };
 
@@ -1793,6 +1799,16 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
                 }
               />
             )}
+              </section>
+            )}
+
+            {activeSection === 'rose-forms' && (
+              <section className="space-y-5">
+                <EmployeeRoseFormsPanel
+                  employee={employee}
+                  departmentName={department?.name ?? '—'}
+                  branchName={branch?.name ?? '—'}
+                />
               </section>
             )}
 
