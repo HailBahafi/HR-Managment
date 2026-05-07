@@ -33,6 +33,8 @@ import {
   RoseSettlementPdfDoc,
 } from '@/components/pdf/rose-trading-forms-pdf';
 import { ConfirmationModal } from '@/components/hr-requests/shared-ui';
+import { appendEmployeeAudit } from '@/lib/employee-audit-log/append';
+import { diffRoseRecordAudit, roseTabToScope } from '@/lib/employee-audit-log/rose-audit';
 import type { Employee } from '@/types';
 
 type Props = {
@@ -219,6 +221,7 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
   const saveEditor = () => {
     if (!editor.open) return;
     const k = editor.kind;
+    const scope = roseTabToScope(k);
     if (editor.mode === 'create') {
       if (k === 'resignation') {
         addResignation(employee.id, {
@@ -229,6 +232,8 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
           approvedByAr: rApproved,
           referenceNo: rRef,
         });
+        const row = useEmployeeRoseFormsStore.getState().getBucket(employee.id).resignations[0];
+        if (row) appendEmployeeAudit(employee.id, diffRoseRecordAudit(null, { ...row } as Record<string, unknown>, scope));
         toast.success('تمت إضافة نموذج الاستقالة');
       } else if (k === 'clearance') {
         addClearance(employee.id, {
@@ -240,6 +245,8 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
           adminClearAr: cAdm,
           notesAr: cNotes,
         });
+        const row = useEmployeeRoseFormsStore.getState().getBucket(employee.id).clearances[0];
+        if (row) appendEmployeeAudit(employee.id, diffRoseRecordAudit(null, { ...row } as Record<string, unknown>, scope));
         toast.success('تمت إضافة إخلاء الطرف');
       } else if (k === 'settlement') {
         addSettlement(employee.id, {
@@ -250,6 +257,8 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
           netAmountAr: sNet,
           declarationAr: sDecl,
         });
+        const row = useEmployeeRoseFormsStore.getState().getBucket(employee.id).settlements[0];
+        if (row) appendEmployeeAudit(employee.id, diffRoseRecordAudit(null, { ...row } as Record<string, unknown>, scope));
         toast.success('تمت إضافة المخالصة');
       } else {
         addExperience(employee.id, {
@@ -261,11 +270,16 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
           certificatePurposeAr: ePurpose,
           issuedToAr: eIssued,
         });
+        const row = useEmployeeRoseFormsStore.getState().getBucket(employee.id).experiences[0];
+        if (row) appendEmployeeAudit(employee.id, diffRoseRecordAudit(null, { ...row } as Record<string, unknown>, scope));
         toast.success('تمت إضافة شهادة الخبرة');
       }
     } else if (editor.id) {
       const id = editor.id;
+      let prevRow: Record<string, unknown> | null = null;
       if (k === 'resignation') {
+        const r = bucket.resignations.find((x) => x.id === id);
+        if (r) prevRow = { ...r };
         updateResignation(employee.id, id, {
           documentDate: rDoc,
           effectiveResignationDate: rEff,
@@ -275,6 +289,8 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
           referenceNo: rRef,
         });
       } else if (k === 'clearance') {
+        const r = bucket.clearances.find((x) => x.id === id);
+        if (r) prevRow = { ...r };
         updateClearance(employee.id, id, {
           documentDate: cDoc,
           lastWorkingDay: cLast,
@@ -285,6 +301,8 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
           notesAr: cNotes,
         });
       } else if (k === 'settlement') {
+        const r = bucket.settlements.find((x) => x.id === id);
+        if (r) prevRow = { ...r };
         updateSettlement(employee.id, id, {
           documentDate: sDoc,
           settlementPeriodAr: sPeriod,
@@ -294,6 +312,8 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
           declarationAr: sDecl,
         });
       } else {
+        const r = bucket.experiences.find((x) => x.id === id);
+        if (r) prevRow = { ...r };
         updateExperience(employee.id, id, {
           documentDate: eDoc,
           serviceFrom: eFrom,
@@ -304,6 +324,22 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
           issuedToAr: eIssued,
         });
       }
+      const b = useEmployeeRoseFormsStore.getState().getBucket(employee.id);
+      let nextRow: Record<string, unknown> | null = null;
+      if (k === 'resignation') {
+        const r = b.resignations.find((x) => x.id === id);
+        if (r) nextRow = { ...r };
+      } else if (k === 'clearance') {
+        const r = b.clearances.find((x) => x.id === id);
+        if (r) nextRow = { ...r };
+      } else if (k === 'settlement') {
+        const r = b.settlements.find((x) => x.id === id);
+        if (r) nextRow = { ...r };
+      } else {
+        const r = b.experiences.find((x) => x.id === id);
+        if (r) nextRow = { ...r };
+      }
+      if (prevRow && nextRow) appendEmployeeAudit(employee.id, diffRoseRecordAudit(prevRow, nextRow, scope));
       toast.success('تم حفظ التعديلات');
     }
     closeEditor();
@@ -338,10 +374,26 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
   const confirmDelete = () => {
     if (!deleteTarget) return;
     const { kind, id } = deleteTarget;
+    const scope = roseTabToScope(kind);
+    let snap: Record<string, unknown> | null = null;
+    if (kind === 'resignation') {
+      const r = bucket.resignations.find((x) => x.id === id);
+      if (r) snap = { ...r };
+    } else if (kind === 'clearance') {
+      const r = bucket.clearances.find((x) => x.id === id);
+      if (r) snap = { ...r };
+    } else if (kind === 'settlement') {
+      const r = bucket.settlements.find((x) => x.id === id);
+      if (r) snap = { ...r };
+    } else {
+      const r = bucket.experiences.find((x) => x.id === id);
+      if (r) snap = { ...r };
+    }
     if (kind === 'resignation') removeResignation(employee.id, id);
     if (kind === 'clearance') removeClearance(employee.id, id);
     if (kind === 'settlement') removeSettlement(employee.id, id);
     if (kind === 'experience') removeExperience(employee.id, id);
+    if (snap) appendEmployeeAudit(employee.id, diffRoseRecordAudit(snap, null, scope));
     toast.success('تم الحذف');
     setDeleteTarget(null);
   };

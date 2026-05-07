@@ -43,6 +43,7 @@ import {
   Award,
   Shield,
   FileStack,
+  History,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -62,7 +63,11 @@ import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-st
 import { CASE_STATUS_LABELS, type HRViolationCaseStatus } from '@/lib/hr-discipline/types';
 import { useHRContractsStore } from '@/lib/contracts/contracts-store';
 import { useEmployeeRoseFormsStore } from '@/lib/employee-rose-forms/store';
+import { useEmployeeAuditLogStore, EMPTY_EMPLOYEE_AUDIT_LOG } from '@/lib/employee-audit-log/store';
+import { appendEmployeeAudit } from '@/lib/employee-audit-log/append';
+import { diffEmployeeShallowAudit } from '@/lib/employee-audit-log/diff-employee';
 import { EmployeeRoseFormsPanel } from '@/components/employees/employee-rose-forms-panel';
+import { EmployeeAuditLogPanel } from '@/components/employees/employee-audit-log-panel';
 import { cn, formatCurrency, formatDate, formatNumber, getInitials } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -83,6 +88,7 @@ const SECTIONS = [
   { id: 'violations', label: 'المخالفات', icon: AlertTriangle },
   { id: 'contracts', label: 'العقود', icon: FileSignature },
   { id: 'rose-forms', label: 'نماذج روز للتجارة', icon: FileStack },
+  { id: 'activity-log', label: 'سجل التغييرات', icon: History },
   { id: 'permissions', label: 'صلاحيات الموظف', icon: Shield },
   { id: 'salary', label: 'كشوف الرواتب', icon: Receipt },
 ] as const;
@@ -325,6 +331,9 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
   const { cases: violationCases } = useHRViolationCasesStore();
   const { contracts } = useHRContractsStore();
   const roseFormsCount = useEmployeeRoseFormsStore((s) => s.totalCountFor(employee.id));
+  const activityLogCount = useEmployeeAuditLogStore(
+    (s) => (s.byEmployee[employee.id] ?? EMPTY_EMPLOYEE_AUDIT_LOG).length,
+  );
 
   const allEmployeeEvents     = events.filter(e => e.employeeId === employee.id);
   const allEmployeeSummaries  = daySummaries.filter(s => s.employeeId === employee.id);
@@ -438,7 +447,10 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
   };
 
   const handleSavePersonal = () => {
+    const before = { ...employee };
+    const rows = diffEmployeeShallowAudit(before, draft, 'personal');
     Object.assign(employee, draft);
+    if (rows.length) appendEmployeeAudit(employee.id, rows);
     setEditingPersonal(false);
   };
   const handleCancelPersonal = () => {
@@ -481,7 +493,23 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
   const permissionDirty = permissionRoleDraft !== savedRoleId;
 
   const handleSaveEmployeeRole = () => {
+    const oldId = savedRoleId;
+    const newId = permissionRoleDraft;
     employee.assignedRoleId = permissionRoleDraft;
+    const oldName = systemRoles.find((r) => r.id === oldId)?.name ?? oldId;
+    const newName = systemRoles.find((r) => r.id === newId)?.name ?? newId;
+    if (oldId !== newId) {
+      appendEmployeeAudit(employee.id, [
+        {
+          action: 'update',
+          scope: 'permissions',
+          fieldKey: 'assignedRoleId',
+          labelAr: 'الدور المعيّن في النظام',
+          oldValue: oldName,
+          newValue: newName,
+        },
+      ]);
+    }
     toast.success('تم حفظ دور الموظف والصلاحيات المرتبطة به');
   };
 
@@ -597,6 +625,7 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
     violations: employeeViolations.length,
     contracts: employeeContracts.length,
     'rose-forms': roseFormsCount,
+    'activity-log': activityLogCount,
     salary: employeePayslipSeries.length,
   };
 
@@ -1809,6 +1838,12 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
                   departmentName={department?.name ?? '—'}
                   branchName={branch?.name ?? '—'}
                 />
+              </section>
+            )}
+
+            {activeSection === 'activity-log' && (
+              <section className="space-y-5">
+                <EmployeeAuditLogPanel targetEmployeeId={employee.id} />
               </section>
             )}
 
