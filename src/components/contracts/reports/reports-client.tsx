@@ -171,7 +171,7 @@ export function ReportsClient() {
       {tab === 'payroll' && <PayrollMultiPeriodExplorer />}
 
       {tab !== 'payroll' && (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3"> 
         {/* ── LEFT: Form ── */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-soft space-y-4">
           <div className="flex items-center gap-2 border-b border-border pb-3">
