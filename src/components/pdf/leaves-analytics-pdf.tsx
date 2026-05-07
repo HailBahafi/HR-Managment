@@ -1,10 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@react-pdf/renderer';
+import { Document, Page, Text, View, type DocumentProps } from '@react-pdf/renderer';
+import { ensureLeavesReportPdfFonts, leavesReportPdfStyles as S } from '@/lib/pdf/leave-report-pdf-styles';
 import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
-import { HR_PDF_FOOTER_BOTTOM, HR_PDF_FOOTER_INSET_X, hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
-import { PdfPageFooter } from '@/components/pdf/pdf-page-footer';
+import { CompanyLetterheadHeader } from '@/components/pdf/company-letterhead-header';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
+import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
 
 export type LeavesAnalyticsLeaveRowPdf = {
   employeeNameAr: string;
@@ -22,25 +24,13 @@ export type LeavesAnalyticsPdfProps = {
   kpi: { total: number; approved: number; pending: number; workDays: number };
   leaveRows: LeavesAnalyticsLeaveRowPdf[];
   employeeRows: { nameAr: string; annual: string; sick: string; branch: string }[];
+  /** Full URL to `logo.png` in the browser (e.g. `origin + '/logo.png'`). */
+  logoSrc?: string;
+  generatedAt?: string;
 };
 
-const PER_PAGE = 22;
-
-const S = StyleSheet.create({
-  kpiRow: { flexDirection: 'row-reverse', gap: 6, marginBottom: 10 },
-  kpi: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 4,
-    padding: 6,
-    alignItems: 'center',
-  },
-  kpiV: { fontSize: 11, fontFamily: 'Lat', fontWeight: 700 },
-  kpiL: { fontFamily: 'Ar', fontSize: 7, color: '#64748b', marginTop: 2 },
-  sec: { fontFamily: 'Ar', fontSize: 9, fontWeight: 700, marginTop: 6, marginBottom: 4 },
-  tdAr: { fontFamily: 'Ar', fontSize: 7 },
-});
+const PER_PAGE_LEAVES = 16;
+const PER_PAGE_EMP = 18;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   if (arr.length === 0) return [[]];
@@ -49,111 +39,186 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+function PageFooter({
+  pageNum,
+  totalPages,
+  generatedDateLabel,
+}: {
+  pageNum: number;
+  totalPages: number;
+  /** Date portion only (e.g. Gregorian); Arabic prefix added here with Cairo. */
+  generatedDateLabel: string;
+}) {
+  return (
+    <View style={S.footer}>
+      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'baseline' }}>
+        <Text style={[S.footerText, { fontFamily: 'Lat', direction: 'ltr' }]}>{generatedDateLabel}</Text>
+        <Text style={S.footerText}>تم الإنشاء: </Text>
+      </View>
+      <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'baseline', marginTop: 2 }}>
+        <Text style={[S.footerText, { fontFamily: 'Lat', direction: 'ltr' }]}>{totalPages}</Text>
+        <Text style={S.footerText}> / </Text>
+        <Text style={[S.footerText, { fontFamily: 'Lat', direction: 'ltr' }]}>{pageNum}</Text>
+        <Text style={S.footerText}>صفحة </Text>
+      </View>
+    </View>
+  );
+}
+
+function LeaveTableHeader() {
+  return (
+    <View style={S.tableHeader}>
+      <Text style={[S.tableHeaderCell, S.colEmployee]}>الموظف</Text>
+      <Text style={[S.tableHeaderCell, S.colDate]}>من</Text>
+      <Text style={[S.tableHeaderCell, S.colDate]}>إلى</Text>
+      <Text style={[S.tableHeaderCell, S.colType]}>النوع</Text>
+      <Text style={[S.tableHeaderCell, S.colStatus]}>الحالة</Text>
+      <Text style={[S.tableHeaderCell, S.colDays, { textAlign: 'center' }]}>أيام</Text>
+    </View>
+  );
+}
+
+function EmployeeTableHeader() {
+  return (
+    <View style={S.tableHeader}>
+      <Text style={[S.tableHeaderCell, S.colEmpWide]}>الموظف</Text>
+      <Text style={[S.tableHeaderCell, S.colBranch]}>الفرع</Text>
+      <Text style={[S.tableHeaderCell, S.colBal, { textAlign: 'center' }]}>سنوية</Text>
+      <Text style={[S.tableHeaderCell, S.colBal, { textAlign: 'center' }]}>مرضية</Text>
+    </View>
+  );
+}
+
 export function LeavesAnalyticsPdf({
-  companyNameAr,
-  companyNameEn,
+  companyNameAr: _companyNameAr,
+  companyNameEn: _companyNameEn,
   filterSummary,
   kpi,
   leaveRows,
   employeeRows,
+  logoSrc,
+  generatedAt,
 }: LeavesAnalyticsPdfProps): React.ReactElement<DocumentProps> {
+  ensureLeavesReportPdfFonts();
   ensureHrPdfFonts();
-  const leavePages = chunk(leaveRows, PER_PAGE);
-  const empPages = chunk(employeeRows, PER_PAGE).filter((p) => p.length > 0);
+
+  const resolvedLogo = logoSrc ?? getPdfLogoSrc();
+
+  const dateStr =
+    generatedAt ??
+    (typeof Intl !== 'undefined'
+      ? new Date().toLocaleDateString('ar-SA', { dateStyle: 'medium' })
+      : '');
+
+  const generatedDateLabel = dateStr;
+
+  const leavePages = chunk(leaveRows, PER_PAGE_LEAVES);
+  const empPages = chunk(employeeRows, PER_PAGE_EMP).filter((p) => p.length > 0);
   const leaveExtraPages = Math.max(0, leavePages.length - 1);
   const totalPages = 1 + leaveExtraPages + empPages.length;
 
+  const kpiItems = [
+    { value: kpi.total, label: 'إجمالي الطلبات' },
+    { value: kpi.approved, label: 'موافق عليها' },
+    { value: kpi.pending, label: 'قيد الانتظار' },
+    { value: kpi.workDays, label: 'أيام عمل' },
+  ];
+
   return (
     <Document>
-      <Page size="A4" style={HR.page}>
-        <View style={HR.brand}>
-          <Text style={HR.brandAr}>{companyNameAr}</Text>
-          <Text style={HR.brandEn}>{companyNameEn}</Text>
+      <Page size="A4" style={S.page}>
+        <CompanyLetterheadHeader logoSrc={resolvedLogo} />
+
+        <Text style={S.reportTitle}>تحليلات الإجازات — تقرير PDF</Text>
+        <View style={{ marginBottom: 16 }}>
+          <PdfArLatInline
+            text={filterSummary}
+            arFontFamily="Cairo"
+            arStyle={{ fontSize: 8, textAlign: 'right', color: '#666', lineHeight: 1.35 }}
+            latStyle={{ fontSize: 8, textAlign: 'right', color: '#666', lineHeight: 1.35 }}
+          />
         </View>
-        <View style={HR.line} />
-        <Text style={HR.title}>تحليلات الإجازات — تقرير PDF</Text>
-        <Text style={HR.meta}>{filterSummary}</Text>
-        <View style={S.kpiRow}>
-          <View style={S.kpi}><Text style={S.kpiV}>{kpi.total}</Text><Text style={S.kpiL}>إجمالي الطلبات</Text></View>
-          <View style={S.kpi}><Text style={S.kpiV}>{kpi.approved}</Text><Text style={S.kpiL}>موافق عليها</Text></View>
-          <View style={S.kpi}><Text style={S.kpiV}>{kpi.pending}</Text><Text style={S.kpiL}>قيد الانتظار</Text></View>
-          <View style={S.kpi}><Text style={S.kpiV}>{kpi.workDays}</Text><Text style={S.kpiL}>أيام عمل</Text></View>
+
+        <View style={S.statsRow}>
+          {kpiItems.map((item) => (
+            <View key={item.label} style={S.statCard}>
+              <Text style={[S.statValue, { fontFamily: 'Lat', direction: 'ltr' }]}>{item.value}</Text>
+              <Text style={S.statLabel}>{item.label}</Text>
+            </View>
+          ))}
         </View>
-        <Text style={S.sec}>طلبات الإجازات المصفّاة</Text>
-        <View style={HR.th}>
-          <Text style={[HR.ar, { width: '26%', fontWeight: 700, textAlign: 'right', paddingHorizontal: 4 }]}>الموظف</Text>
-          <Text style={[HR.lat, { width: '12%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>من</Text>
-          <Text style={[HR.lat, { width: '12%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>إلى</Text>
-          <Text style={[HR.ar, { width: '16%', fontWeight: 700, textAlign: 'right' }]}>النوع</Text>
-          <Text style={[HR.ar, { width: '14%', fontWeight: 700, textAlign: 'center' }]}>الحالة</Text>
-          <Text style={[HR.lat, { width: '10%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>أيام</Text>
+
+        <Text style={S.sectionTitle}>طلبات الإجازات المصفّاة</Text>
+        <View style={S.table}>
+          <LeaveTableHeader />
+          {(leavePages[0] ?? []).map((l, i) => (
+            <View
+              key={`${l.employeeNameAr}-${l.start}-${i}`}
+              style={[S.tableRow, i % 2 === 1 ? S.tableRowAlt : {}]}
+              wrap={false}
+            >
+              <Text style={[S.tableCell, S.colEmployee]}>{l.employeeNameAr}</Text>
+              <Text style={[S.tableCell, S.colDate, { fontFamily: 'Lat', direction: 'ltr' }]}>{l.start}</Text>
+              <Text style={[S.tableCell, S.colDate, { fontFamily: 'Lat', direction: 'ltr' }]}>{l.end}</Text>
+              <Text style={[S.tableCell, S.colType]}>{l.typeAr}</Text>
+              <Text style={[S.tableCell, S.colStatus]}>{l.statusAr}</Text>
+              <Text style={[S.tableCell, S.colDays, { textAlign: 'center', fontFamily: 'Lat', direction: 'ltr' }]}>{l.workingDays}</Text>
+            </View>
+          ))}
         </View>
-        {(leavePages[0] ?? []).map((l, i) => (
-          <View key={`${l.employeeNameAr}-${l.start}-${i}`} style={HR.tr} wrap={false}>
-            <Text style={[S.tdAr, { width: '26%', textAlign: 'right', paddingHorizontal: 4 }]}>{l.employeeNameAr}</Text>
-            <Text style={[HR.lat, { width: '12%', fontSize: 7, textAlign: 'center' }]}>{l.start}</Text>
-            <Text style={[HR.lat, { width: '12%', fontSize: 7, textAlign: 'center' }]}>{l.end}</Text>
-            <Text style={[S.tdAr, { width: '16%', textAlign: 'right' }]}>{l.typeAr}</Text>
-            <Text style={[S.tdAr, { width: '14%', textAlign: 'center' }]}>{l.statusAr}</Text>
-            <Text style={[HR.lat, { width: '10%', fontSize: 7, textAlign: 'center' }]}>{l.workingDays}</Text>
-          </View>
-        ))}
-        {leaveRows.length === 0 ? (
-          <Text style={[HR.ar, { marginTop: 8, textAlign: 'center', color: '#64748b' }]}>لا توجد طلبات إجازة ضمن الفلترة.</Text>
-        ) : null}
-        <PdfPageFooter pageNum={1} totalPages={totalPages} insetX={HR_PDF_FOOTER_INSET_X} bottom={HR_PDF_FOOTER_BOTTOM} />
+        {leaveRows.length === 0 ? <Text style={S.emptyHint}>لا توجد طلبات إجازة ضمن الفلترة.</Text> : null}
+
+        <PageFooter pageNum={1} totalPages={totalPages} generatedDateLabel={generatedDateLabel} />
       </Page>
 
       {leavePages.slice(1).map((pageLeaves, pi) => (
-        <Page key={`lp-${pi}`} size="A4" style={HR.page}>
-          <Text style={[HR.ar, { fontSize: 10, fontWeight: 700, marginBottom: 8 }]}>طلبات الإجازات (تابع)</Text>
-          <View style={HR.th}>
-            <Text style={[HR.ar, { width: '26%', fontWeight: 700, textAlign: 'right', paddingHorizontal: 4 }]}>الموظف</Text>
-            <Text style={[HR.lat, { width: '12%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>من</Text>
-            <Text style={[HR.lat, { width: '12%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>إلى</Text>
-            <Text style={[HR.ar, { width: '16%', fontWeight: 700, textAlign: 'right' }]}>النوع</Text>
-            <Text style={[HR.ar, { width: '14%', fontWeight: 700, textAlign: 'center' }]}>الحالة</Text>
-            <Text style={[HR.lat, { width: '10%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>أيام</Text>
+        <Page key={`lp-${pi}`} size="A4" style={S.page}>
+          <CompanyLetterheadHeader logoSrc={resolvedLogo} />
+          <Text style={[S.sectionTitle, { marginTop: 0 }]}>طلبات الإجازات (تابع)</Text>
+          <View style={S.table}>
+            <LeaveTableHeader />
+            {pageLeaves.map((l, i) => (
+              <View
+                key={`${l.employeeNameAr}-${l.start}-${i}`}
+                style={[S.tableRow, i % 2 === 1 ? S.tableRowAlt : {}]}
+                wrap={false}
+              >
+                <Text style={[S.tableCell, S.colEmployee]}>{l.employeeNameAr}</Text>
+              <Text style={[S.tableCell, S.colDate, { fontFamily: 'Lat', direction: 'ltr' }]}>{l.start}</Text>
+              <Text style={[S.tableCell, S.colDate, { fontFamily: 'Lat', direction: 'ltr' }]}>{l.end}</Text>
+              <Text style={[S.tableCell, S.colType]}>{l.typeAr}</Text>
+              <Text style={[S.tableCell, S.colStatus]}>{l.statusAr}</Text>
+              <Text style={[S.tableCell, S.colDays, { textAlign: 'center', fontFamily: 'Lat', direction: 'ltr' }]}>{l.workingDays}</Text>
+              </View>
+            ))}
           </View>
-          {pageLeaves.map((l, i) => (
-            <View key={`${l.employeeNameAr}-${l.start}-${i}`} style={HR.tr} wrap={false}>
-              <Text style={[S.tdAr, { width: '26%', textAlign: 'right', paddingHorizontal: 4 }]}>{l.employeeNameAr}</Text>
-              <Text style={[HR.lat, { width: '12%', fontSize: 7, textAlign: 'center' }]}>{l.start}</Text>
-              <Text style={[HR.lat, { width: '12%', fontSize: 7, textAlign: 'center' }]}>{l.end}</Text>
-              <Text style={[S.tdAr, { width: '16%', textAlign: 'right' }]}>{l.typeAr}</Text>
-              <Text style={[S.tdAr, { width: '14%', textAlign: 'center' }]}>{l.statusAr}</Text>
-              <Text style={[HR.lat, { width: '10%', fontSize: 7, textAlign: 'center' }]}>{l.workingDays}</Text>
-            </View>
-          ))}
-          <PdfPageFooter pageNum={2 + pi} totalPages={totalPages} insetX={HR_PDF_FOOTER_INSET_X} bottom={HR_PDF_FOOTER_BOTTOM} />
+          <PageFooter pageNum={2 + pi} totalPages={totalPages} generatedDateLabel={generatedDateLabel} />
         </Page>
       ))}
 
       {empPages.map((emps, ei) => (
-        <Page key={`ep-${ei}`} size="A4" style={HR.page}>
-          <Text style={[HR.ar, { fontSize: 10, fontWeight: 700, marginBottom: 8 }]}>أرصدة الموظفين</Text>
-          <View style={HR.th}>
-            <Text style={[HR.ar, { width: '34%', fontWeight: 700, textAlign: 'right', paddingHorizontal: 4 }]}>الموظف</Text>
-            <Text style={[HR.ar, { width: '24%', fontWeight: 700, textAlign: 'right' }]}>الفرع</Text>
-            <Text style={[HR.lat, { width: '19%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>سنوية</Text>
-            <Text style={[HR.lat, { width: '19%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>مرضية</Text>
+        <Page key={`ep-${ei}`} size="A4" style={S.page}>
+          <CompanyLetterheadHeader logoSrc={resolvedLogo} />
+          <Text style={[S.sectionTitle, { marginTop: 0 }]}>أرصدة الموظفين</Text>
+          <View style={S.table}>
+            <EmployeeTableHeader />
+            {emps.map((e, i) => (
+              <View
+                key={`${e.nameAr}-${i}`}
+                style={[S.tableRow, i % 2 === 1 ? S.tableRowAlt : {}]}
+                wrap={false}
+              >
+                <Text style={[S.tableCell, S.colEmpWide]}>{e.nameAr}</Text>
+                <Text style={[S.tableCell, S.colBranch]}>{e.branch}</Text>
+                <Text style={[S.tableCell, S.colBal, { textAlign: 'center', fontFamily: 'Lat', direction: 'ltr' }]}>{e.annual}</Text>
+                <Text style={[S.tableCell, S.colBal, { textAlign: 'center', fontFamily: 'Lat', direction: 'ltr' }]}>{e.sick}</Text>
+              </View>
+            ))}
           </View>
-          {emps.map((e, i) => (
-            <View key={`${e.nameAr}-${i}`} style={HR.tr} wrap={false}>
-              <Text style={[S.tdAr, { width: '34%', textAlign: 'right', paddingHorizontal: 4 }]}>{e.nameAr}</Text>
-              <Text style={[S.tdAr, { width: '24%', textAlign: 'right', fontSize: 7 }]}>{e.branch}</Text>
-              <Text style={[HR.lat, { width: '19%', fontSize: 7, textAlign: 'center' }]}>{e.annual}</Text>
-              <Text style={[HR.lat, { width: '19%', fontSize: 7, textAlign: 'center' }]}>{e.sick}</Text>
-            </View>
-          ))}
-          {emps.length === 0 && ei === 0 ? (
-            <Text style={[HR.ar, { marginTop: 8, textAlign: 'center', color: '#64748b' }]}>لا يوجد موظفون ضمن الفلترة.</Text>
-          ) : null}
-          <PdfPageFooter
+          <PageFooter
             pageNum={1 + leaveExtraPages + ei + 1}
             totalPages={totalPages}
-            insetX={HR_PDF_FOOTER_INSET_X}
-            bottom={HR_PDF_FOOTER_BOTTOM}
+            generatedDateLabel={generatedDateLabel}
           />
         </Page>
       ))}

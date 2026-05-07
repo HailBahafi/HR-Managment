@@ -26,6 +26,7 @@ import {
   approvalStageModeLabelAr,
   approvalStageStateLabelAr,
   getPerStageApprovalUi,
+  getDefaultHRRequestFormTemplate,
 } from '@/lib/hr-requests/types';
 import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
 import { cn, formatDateShort } from '@/lib/utils';
@@ -148,12 +149,10 @@ export function GeneralRequestsClient() {
   ).sort((a, b) => a.sortOrder - b.sortOrder);
 
   const selectedRt = requestTypes.find(rt => rt.id === formTypeId);
-  const resolvedTemplate = React.useMemo((): HRRequestTemplateEntity | undefined => {
-    if (!selectedRt) return undefined;
-    return getTemplateById(selectedRt.templateId)
-      ?? templates.find(t => t.isUniversalDefault)
-      ?? templates[0];
-  }, [selectedRt, templates, getTemplateById]);
+  const resolvedTemplate = React.useMemo(
+    (): HRRequestTemplateEntity | undefined => getDefaultHRRequestFormTemplate(templates),
+    [templates],
+  );
 
   const narrowedForStatusCounts = React.useMemo(() => {
     return submissions.filter((s) => {
@@ -620,11 +619,11 @@ export function GeneralRequestsClient() {
             <SearchableDropdown value={formEmpId} onChange={setFormEmpId} options={empOptions} placeholder="ابحث عن موظف…" />
           </FormField>
         </div>
-        {resolvedTemplate && (
+        {formTypeId && resolvedTemplate && (
           <>
             <Separator />
             <div className="flex items-center gap-2">
-              <p className="text-xs text-muted-foreground">القالب المستخدم:</p>
+              <p className="text-xs text-muted-foreground">حقول الطلب:</p>
               <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{resolvedTemplate.nameAr}</span>
             </div>
             <HRRequestTemplateFieldsForm template={resolvedTemplate} values={formValues} onChange={setFormValues} />

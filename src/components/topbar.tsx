@@ -8,8 +8,8 @@ import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
-  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
-  Banknote, FileSignature, BookOpen, FileSpreadsheet,
+  InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
+  Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ export const PAGE_ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
   CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet, Bell,
+  UserCircle, Briefcase, UserCheck,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */
@@ -50,6 +51,8 @@ export const navConfig: NavItem[] = [
     key: 'employees', label: 'الهيكل الإداري', icon: Users,
     groups: [{ items: [
       { label: 'سجل الموظفين',     href: '/employees',      icon: Users },
+      { label: 'العملاء والزوار', href: '/contacts',       icon: UserCircle },
+      { label: 'المسميات الوظيفية', href: '/job-titles',   icon: Briefcase },
       { label: 'الفروع',           href: '/branches',       icon: Building2 },
       { label: 'الأقسام',          href: '/departments',    icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/organization',   icon: Building2 },
@@ -76,8 +79,7 @@ export const navConfig: NavItem[] = [
     groups: [
       { labelAr: 'المتابعة', items: [
         { label: 'التحليلات',     href: '/hr/leaves/analytics',         icon: BarChart3 },
-        { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList },
-        { label: 'إضافة رصيد إجازات', href: '/hr/leaves/unified-management/balance-credit', icon: CirclePlus },
+        { label: 'إضافة رصيد إجازات', href: '/hr/leaves/balance-credit', icon: CirclePlus },
       ]},
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types',     icon: ListChecks },
@@ -91,11 +93,10 @@ export const navConfig: NavItem[] = [
       { labelAr: 'الطلبات', items: [
         { label: 'إدارة الطلبات', href: '/hr/requests/general', icon: InboxIcon },
         { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
-        { label: 'إدارة طلبات الإجازات', href: '/hr/leaves/unified-management', icon: LayoutList },
+        { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList },
       ] },
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الطلبات', href: '/hr/requests/request-types',   icon: ListChecks },
-        { label: 'قوالب النماذج', href: '/hr/requests/form-templates',  icon: FileText },
       ]},
       { labelAr: 'الموافقات', items: [{ label: 'إسناد الموافقة', href: '/hr/requests/approval-assignment', icon: ShieldCheck }] },
     ],
@@ -120,6 +121,7 @@ export const navConfig: NavItem[] = [
       ]},
       { labelAr: 'التقارير', items: [
         { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports', icon: FileSpreadsheet },
+        { label: 'كشف موافقة الموظفين', href: '/hr/contracts/payroll-salary-approvals', icon: UserCheck },
       ]},
     ],
   },

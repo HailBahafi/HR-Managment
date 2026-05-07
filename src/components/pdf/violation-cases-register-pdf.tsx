@@ -4,7 +4,9 @@ import * as React from 'react';
 import { Document, Page, Text, View, StyleSheet, type DocumentProps } from '@react-pdf/renderer';
 import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
 import { HR_PDF_FOOTER_BOTTOM, HR_PDF_FOOTER_INSET_X, hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
+import { PdfHrBrandHeader } from '@/components/pdf/pdf-hr-brand-header';
 import { PdfPageFooter } from '@/components/pdf/pdf-page-footer';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 
 export type ViolationCasePdfRow = {
   caseNumber: string;
@@ -64,13 +66,15 @@ export function ViolationCasesRegisterPdf({
     <Document>
       {pages.map((pageRows, pi) => (
         <Page key={pi} size="A4" style={HR.page}>
-          <View style={HR.brand}>
-            <Text style={HR.brandAr}>{companyNameAr}</Text>
-            <Text style={HR.brandEn}>{companyNameEn}</Text>
-          </View>
-          <View style={HR.line} />
+          <PdfHrBrandHeader companyNameAr={companyNameAr} companyNameEn={companyNameEn} />
           <Text style={HR.title}>{titleAr}</Text>
-          <Text style={HR.meta}>{filterSummary}</Text>
+          <View style={{ marginBottom: 8 }}>
+            <PdfArLatInline
+              text={filterSummary}
+              arStyle={{ fontFamily: 'Ar', fontSize: 8, color: '#444', textAlign: 'right' }}
+              latStyle={{ fontSize: 8, color: '#444', textAlign: 'right' }}
+            />
+          </View>
 
           <View style={HR.th}>
             <Text style={[HR.lat, { width: '14%', fontWeight: 700, textAlign: 'center', fontSize: 8 }]}>الرقم</Text>
@@ -88,15 +92,38 @@ export function ViolationCasesRegisterPdf({
                 <View style={{ width: '100%', flexDirection: 'column' }}>
                   <View style={{ flexDirection: 'row-reverse' }}>
                     <Text style={[HR.lat, { width: '14%', textAlign: 'center', fontSize: 7 }]}>{r.caseNumber}</Text>
-                    <Text style={[HR.ar, { width: '22%', textAlign: 'right', paddingHorizontal: 4, fontSize: 7 }]}>{r.employeeNameAr}</Text>
-                    <Text style={[HR.ar, { width: '20%', textAlign: 'right', fontSize: 7 }]}>{r.typeNameAr}</Text>
+                    <View style={{ width: '22%', paddingHorizontal: 4, alignItems: 'flex-end' }}>
+                      <PdfArLatInline
+                        text={r.employeeNameAr}
+                        arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'right' }}
+                        latStyle={{ fontSize: 7, textAlign: 'right' }}
+                      />
+                    </View>
+                    <View style={{ width: '20%', alignItems: 'flex-end' }}>
+                      <PdfArLatInline
+                        text={r.typeNameAr}
+                        arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'right' }}
+                        latStyle={{ fontSize: 7, textAlign: 'right' }}
+                      />
+                    </View>
                     <Text style={[HR.lat, { width: '12%', textAlign: 'center', fontSize: 7 }]}>{r.date}</Text>
-                    <Text style={[HR.ar, { width: '18%', textAlign: 'center', fontSize: 7 }]}>{r.statusAr}</Text>
+                    <View style={{ width: '18%', alignItems: 'center' }}>
+                      <PdfArLatInline
+                        text={r.statusAr}
+                        arStyle={{ fontFamily: 'Ar', fontSize: 7, textAlign: 'center' }}
+                        latStyle={{ fontSize: 7, textAlign: 'center' }}
+                        rowStyle={{ justifyContent: 'center' }}
+                      />
+                    </View>
                   </View>
                   {r.description ? (
-                    <Text style={extra.desc}>
-                      {r.description.length > 160 ? `${r.description.slice(0, 160)}…` : r.description}
-                    </Text>
+                    <View style={{ width: '100%', marginTop: 2 }}>
+                      <PdfArLatInline
+                        text={r.description.length > 160 ? `${r.description.slice(0, 160)}…` : r.description}
+                        arStyle={extra.desc}
+                        latStyle={{ fontSize: 7, color: '#475569', textAlign: 'right', lineHeight: 1.35 }}
+                      />
+                    </View>
                   ) : null}
                 </View>
               </View>

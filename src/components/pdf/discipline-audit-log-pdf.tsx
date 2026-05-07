@@ -4,7 +4,9 @@ import * as React from 'react';
 import { Document, Page, Text, View, type DocumentProps } from '@react-pdf/renderer';
 import { ensureHrPdfFonts } from '@/lib/pdf/ensure-hr-pdf-fonts';
 import { HR_PDF_FOOTER_BOTTOM, HR_PDF_FOOTER_INSET_X, hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
+import { PdfHrBrandHeader } from '@/components/pdf/pdf-hr-brand-header';
 import { PdfPageFooter } from '@/components/pdf/pdf-page-footer';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 
 export type DisciplineAuditLogPdfRow = {
   occurredAtDisplay: string;
@@ -46,13 +48,15 @@ export function DisciplineAuditLogPdf({
     <Document>
       {pages.map((pageRows, pi) => (
         <Page key={pi} size="A4" style={HR.page}>
-          <View style={HR.brand}>
-            <Text style={HR.brandAr}>{companyNameAr}</Text>
-            <Text style={HR.brandEn}>{companyNameEn}</Text>
-          </View>
-          <View style={HR.line} />
+          <PdfHrBrandHeader companyNameAr={companyNameAr} companyNameEn={companyNameEn} />
           <Text style={HR.title}>{titleAr}</Text>
-          <Text style={HR.meta}>{filterSummary}</Text>
+          <View style={{ marginBottom: 8 }}>
+            <PdfArLatInline
+              text={filterSummary}
+              arStyle={{ fontFamily: 'Ar', fontSize: 8, color: '#444', textAlign: 'right' }}
+              latStyle={{ fontSize: 8, color: '#444', textAlign: 'right' }}
+            />
+          </View>
 
           <View style={HR.th}>
             <Text style={[HR.lat, { width: '16%', fontWeight: 700, textAlign: 'center', fontSize: 7 }]}>الوقت</Text>
@@ -69,13 +73,44 @@ export function DisciplineAuditLogPdf({
             pageRows.map((r, i) => (
               <View key={`${r.recordRefAr}-${i}`} style={HR.tr} wrap={false}>
                 <Text style={[HR.lat, { width: '16%', textAlign: 'center', fontSize: 6 }]}>{r.occurredAtDisplay}</Text>
-                <Text style={[HR.ar, { width: '18%', textAlign: 'right', paddingHorizontal: 3, fontSize: 6 }]}>{r.actorNameAr}</Text>
-                <Text style={[HR.ar, { width: '14%', textAlign: 'center', fontSize: 6 }]}>{r.categoryAr}</Text>
-                <Text style={[HR.ar, { width: '12%', textAlign: 'center', fontSize: 6 }]}>{r.actionAr}</Text>
-                <Text style={[HR.lat, { width: '14%', textAlign: 'center', fontSize: 6 }]}>{r.recordRefAr}</Text>
-                <Text style={[HR.ar, { width: '26%', textAlign: 'right', paddingHorizontal: 3, fontSize: 6 }]}>
-                  {r.statusAfterAr.length > 90 ? `${r.statusAfterAr.slice(0, 90)}…` : r.statusAfterAr}
-                </Text>
+                <View style={{ width: '18%', paddingHorizontal: 3, alignItems: 'flex-end' }}>
+                  <PdfArLatInline
+                    text={r.actorNameAr}
+                    arStyle={{ fontFamily: 'Ar', fontSize: 6, textAlign: 'right' }}
+                    latStyle={{ fontSize: 6, textAlign: 'right' }}
+                  />
+                </View>
+                <View style={{ width: '14%', alignItems: 'center' }}>
+                  <PdfArLatInline
+                    text={r.categoryAr}
+                    arStyle={{ fontFamily: 'Ar', fontSize: 6, textAlign: 'center' }}
+                    latStyle={{ fontSize: 6, textAlign: 'center' }}
+                    rowStyle={{ justifyContent: 'center' }}
+                  />
+                </View>
+                <View style={{ width: '12%', alignItems: 'center' }}>
+                  <PdfArLatInline
+                    text={r.actionAr}
+                    arStyle={{ fontFamily: 'Ar', fontSize: 6, textAlign: 'center' }}
+                    latStyle={{ fontSize: 6, textAlign: 'center' }}
+                    rowStyle={{ justifyContent: 'center' }}
+                  />
+                </View>
+                <View style={{ width: '14%', alignItems: 'center' }}>
+                  <PdfArLatInline
+                    text={r.recordRefAr}
+                    arStyle={{ fontFamily: 'Ar', fontSize: 6, textAlign: 'center' }}
+                    latStyle={{ fontSize: 6, textAlign: 'center' }}
+                    rowStyle={{ justifyContent: 'center' }}
+                  />
+                </View>
+                <View style={{ width: '26%', paddingHorizontal: 3, alignItems: 'flex-end' }}>
+                  <PdfArLatInline
+                    text={r.statusAfterAr.length > 90 ? `${r.statusAfterAr.slice(0, 90)}…` : r.statusAfterAr}
+                    arStyle={{ fontFamily: 'Ar', fontSize: 6, textAlign: 'right' }}
+                    latStyle={{ fontSize: 6, textAlign: 'right' }}
+                  />
+                </View>
               </View>
             ))
           )}

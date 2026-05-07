@@ -15,7 +15,7 @@ function uid() { return `stage-${Date.now().toString(36)}-${Math.random().toStri
 const MODE_OPTIONS: { value: HRApprovalStageMode; label: string; sub: string }[] = [
   { value: 'sequential', label: 'تسلسلي', sub: 'واحد بعد الآخر' },
   { value: 'parallel', label: 'متوازٍ', sub: 'جميعهم في آنٍ واحد' },
-  { value: 'any_one', label: 'معتمد', sub: 'أول من يوافق' },
+  { value: 'any_one', label: 'موافقة أحد المعتمدين', sub: 'يكفي أن يوافق واحد من القائمة' },
   { value: 'optional', label: 'اختياري', sub: 'لا يوقف السلسلة' },
 ];
 

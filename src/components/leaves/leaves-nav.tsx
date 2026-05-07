@@ -16,8 +16,7 @@ type LeavesTab = {
 
 const TABS: LeavesTab[] = [
   { href: '/hr/leaves/analytics', label: 'التحليلات', icon: BarChart3 },
-  { href: '/hr/leaves/unified-management', label: 'إدارة الطلبات', icon: LayoutList, activeExact: true },
-  { href: '/hr/leaves/unified-management/balance-credit', label: 'إضافة رصيد إجازات', icon: CirclePlus },
+  { href: '/hr/leaves/balance-credit', label: 'إضافة رصيد إجازات', icon: CirclePlus },
   { href: '/hr/leaves/leave-types', label: 'أنواع الإجازات', icon: ListChecks },
   { href: '/hr/leaves/public-holidays', label: 'العطل الرسمية', icon: CalendarDays },
 ];

@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, Text } from '@react-pdf/renderer';
 import { HR_PDF_PAGE_STYLE, hrPdfRegisterStyles as HR } from '@/lib/pdf/hr-pdf-base-styles';
+import { CompanyLetterheadHeader } from '@/components/pdf/company-letterhead-header';
+import { PdfArLatInline } from '@/components/pdf/pdf-bidi-helpers';
 import { toWesternDigits } from '@/lib/utils';
 
 export const C = {
@@ -34,31 +36,9 @@ export const S = StyleSheet.create({
 
 export type CompanyInfo = { nameAr: string; nameEn: string; crNumber?: string };
 
-export function PdfHeader({ company }: { company: CompanyInfo }) {
-  return (
-    <View style={{ marginBottom: 18 }}>
-      <View style={[S.rowReverse, { justifyContent: 'space-between', alignItems: 'center' }]}>
-        <Text style={[HR.ar, { fontSize: 15, fontWeight: 700, color: C.primary }]}>{company.nameAr}</Text>
-        <Text style={[HR.lat, { fontSize: 11, fontWeight: 700, color: C.primary, letterSpacing: 1 }]}>
-          {company.nameEn.toUpperCase()}
-        </Text>
-      </View>
-      {company.crNumber ? (
-        <View style={[S.rowReverse, { justifyContent: 'space-between', marginTop: 2 }]}>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
-            <Text style={[HR.lat, { fontSize: 8, color: C.muted }]}>{company.crNumber}</Text>
-            <Text style={[HR.ar, { fontSize: 8, color: C.muted }]}>س.ت: </Text>
-          </View>
-          <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
-            <Text style={[HR.lat, { fontSize: 8, color: C.muted }]}>{company.crNumber}</Text>
-            <Text style={[HR.lat, { fontSize: 8, color: C.muted }]}>C.R: </Text>
-          </View>
-        </View>
-      ) : null}
-      <View style={{ height: 2.5, backgroundColor: C.gold, marginTop: 6 }} />
-      <View style={{ height: 1, backgroundColor: C.gold, marginTop: 2 }} />
-    </View>
-  );
+/** `company` kept for API compatibility; topper is fixed Rose Trading Est letterhead. */
+export function PdfHeader({ company: _company, logoSrc }: { company: CompanyInfo; logoSrc?: string }) {
+  return <CompanyLetterheadHeader logoSrc={logoSrc} />;
 }
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -76,7 +56,11 @@ export function LabeledField({ label, value, width }: { label: string; value: st
     <View style={{ flexDirection: 'row-reverse', alignItems: 'flex-end', width: width ?? 'auto', marginBottom: 10 }}>
       <Text style={[HR.ar, { fontWeight: 700, marginLeft: 4 }]}>{label}</Text>
       <View style={{ flex: 1, borderBottom: '1pt solid #000', marginLeft: 6, paddingBottom: 1 }}>
-        <Text style={[HR.ar, { textAlign: 'right' }]}>{value}</Text>
+        <PdfArLatInline
+          text={value}
+          arStyle={{ fontSize: 7, textAlign: 'right', lineHeight: 1.35 }}
+          latStyle={{ fontSize: 7, textAlign: 'right', lineHeight: 1.35 }}
+        />
       </View>
     </View>
   );

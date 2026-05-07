@@ -7,8 +7,9 @@ import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Shield,
   LayoutGrid, MapPin, Link2, CalendarRange,
-  InboxIcon, ListChecks, FileText, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
+  InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen, FileSpreadsheet,
+  UserCircle, Briefcase, UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
@@ -30,9 +31,11 @@ type MobileNavItem = {
 const mobileNav: MobileNavItem[] = [
   { key: 'dashboard', label: 'الرئيسية', href: '/dashboard', icon: LayoutDashboard },
   {
-    key: 'employees', label: 'الموظفين', icon: Users,
+    key: 'employees', label: 'الهيكل الإداري', icon: Users,
     children: [
       { label: 'سجل الموظفين', href: '/employees', icon: Users },
+      { label: 'العملاء والزوار', href: '/contacts', icon: UserCircle },
+      { label: 'المسميات الوظيفية', href: '/job-titles', icon: Briefcase },
       { label: 'الفروع', href: '/branches', icon: Building2 },
       { label: 'الأقسام', href: '/departments', icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/organization', icon: Building2 },
@@ -54,8 +57,8 @@ const mobileNav: MobileNavItem[] = [
     key: 'leaves', label: 'الإجازات', icon: CalendarDays,
     children: [
       { label: 'التحليلات', href: '/hr/leaves/analytics', icon: BarChart3 },
-      { label: 'إدارة الطلبات', href: '/hr/leaves/unified-management', icon: LayoutList, match: 'exact' },
-      { label: 'إضافة رصيد إجازات', href: '/hr/leaves/unified-management/balance-credit', icon: CirclePlus },
+      { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
+      { label: 'إضافة رصيد إجازات', href: '/hr/requests/unified-management/balance-credit', icon: CirclePlus },
       { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types', icon: ListChecks },
       { label: 'العطل الرسمية', href: '/hr/leaves/public-holidays', icon: CalendarDays },
     ],
@@ -65,9 +68,8 @@ const mobileNav: MobileNavItem[] = [
     children: [
       { label: 'الطلبات العامة', href: '/hr/requests/general', icon: InboxIcon },
       { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
-      { label: 'إدارة طلبات الإجازات', href: '/hr/leaves/unified-management', icon: LayoutList, match: 'exact' },
+      { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
       { label: 'أنواع الطلبات', href: '/hr/requests/request-types', icon: ListChecks },
-      { label: 'قوالب النماذج', href: '/hr/requests/form-templates', icon: FileText },
       { label: 'قوالب الموافقة', href: '/hr/requests/approval-assignment', icon: ShieldCheck },
     ],
   },
@@ -88,6 +90,7 @@ const mobileNav: MobileNavItem[] = [
       { label: 'عقود العمل', href: '/hr/contracts/employment', icon: FileSignature },
       { label: 'مواد العقود', href: '/hr/contracts/articles', icon: BookOpen },
       { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports', icon: FileSpreadsheet },
+      { label: 'كشف موافقة الموظفين', href: '/hr/contracts/payroll-salary-approvals', icon: UserCheck },
       { label: 'إيصالات الرواتب', href: '/payroll/receipt', icon: FileSpreadsheet },
     ],
   },

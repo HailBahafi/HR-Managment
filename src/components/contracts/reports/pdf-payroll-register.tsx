@@ -61,7 +61,7 @@ function TableRow({ row }: { row: PayrollRow }) {
       {cell(COL.name,  row.nameAr, 'right', 'Ar')}
       {cell(COL.dept,  row.department, 'right', 'Ar')}
       {cell(COL.base,  fmt(row.baseSalary), 'center', 'Lat')}
-      {cell(COL.bonus, row.bonus > 0 ? fmt(row.bonus) : '—', 'center', 'Ar')}
+      {cell(COL.bonus, row.bonus > 0 ? fmt(row.bonus) : '—', 'center', 'Lat')}
       {cell(COL.total, fmt(row.totalSalary), 'center', 'Lat')}
       {cell(COL.sign,  '', 'center', 'Ar')}
     </View>
