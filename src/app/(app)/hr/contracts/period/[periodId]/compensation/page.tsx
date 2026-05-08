@@ -1,9 +1,5 @@
-'use client';
-
-import { useParams } from 'next/navigation';
-import { CompensationReportPanel } from '@/components/contracts/compensation-report-panel';
+import { CompensationReportRouteClient } from '@/features/hr/contracts/compensation/components/compensation-report-route-client';
 
 export default function CompensationPage() {
-  const { periodId } = useParams<{ periodId: string }>();
-  return <CompensationReportPanel periodId={periodId} />;
+  return <CompensationReportRouteClient />;
 }

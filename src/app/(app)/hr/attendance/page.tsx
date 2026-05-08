@@ -1,18 +1,17 @@
-import { Suspense } from 'react';
-import { AttendanceClient } from './attendance-client';
+import { redirect } from 'next/navigation';
+import { isAttendanceSection } from '@/lib/attendance/types';
 
-export default function AttendancePage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="space-y-6 animate-pulse">
-          <div className="h-24 rounded-lg bg-muted/40" />
-          <div className="h-12 rounded-full bg-muted/30" />
-          <div className="h-96 rounded-lg bg-muted/30" />
-        </div>
-      }
-    >
-      <AttendanceClient />
-    </Suspense>
-  );
+/** يحوّل الروابط القديمة `?section=` إلى المسار الجديد، ثم الافتراضي «daily». */
+export default async function HRAttendanceIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ section?: string | string[] }>;
+}) {
+  const sp = await searchParams;
+  const raw = sp.section;
+  const q = Array.isArray(raw) ? raw[0] : raw;
+  if (q && isAttendanceSection(q)) {
+    redirect(`/hr/attendance/${q}`);
+  }
+  redirect('/hr/attendance/daily');
 }

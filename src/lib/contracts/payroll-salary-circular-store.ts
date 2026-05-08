@@ -23,7 +23,7 @@ export interface PayrollSalaryCircularEntry {
   respondedAt: string | null;
 }
 
-const DEFAULT_ENTRY: PayrollSalaryCircularEntry = {
+export const DEFAULT_PAYROLL_SALARY_CIRCULAR_ENTRY: PayrollSalaryCircularEntry = {
   sendStatus: 'not_sent',
   sentAt: null,
   readStatus: 'not_read',
@@ -32,7 +32,7 @@ const DEFAULT_ENTRY: PayrollSalaryCircularEntry = {
   respondedAt: null,
 };
 
-function key(periodId: string, employmentLineId: string) {
+export function getPayrollSalaryCircularEntryKey(periodId: string, employmentLineId: string) {
   return `${periodId}::${employmentLineId}`;
 }
 
@@ -61,14 +61,14 @@ export const usePayrollSalaryCircularStore = create<State>()(
       entries: {},
 
       getEntry: (periodId, employmentLineId) => ({
-        ...DEFAULT_ENTRY,
-        ...get().entries[key(periodId, employmentLineId)],
+        ...DEFAULT_PAYROLL_SALARY_CIRCULAR_ENTRY,
+        ...get().entries[getPayrollSalaryCircularEntryKey(periodId, employmentLineId)],
       }),
 
       setSendStatus: (periodId, employmentLineId, status) => {
-        const k = key(periodId, employmentLineId);
+        const k = getPayrollSalaryCircularEntryKey(periodId, employmentLineId);
         set((s) => {
-          const prev = { ...DEFAULT_ENTRY, ...s.entries[k] };
+          const prev = { ...DEFAULT_PAYROLL_SALARY_CIRCULAR_ENTRY, ...s.entries[k] };
           return {
             entries: {
               ...s.entries,
@@ -76,6 +76,10 @@ export const usePayrollSalaryCircularStore = create<State>()(
                 ...prev,
                 sendStatus: status,
                 sentAt: status === 'sent' ? (prev.sentAt ?? nowIso()) : null,
+                readStatus: status === 'sent' ? prev.readStatus : 'not_read',
+                readAt: status === 'sent' ? prev.readAt : null,
+                approvalStatus: status === 'sent' ? prev.approvalStatus : 'pending',
+                respondedAt: status === 'sent' ? prev.respondedAt : null,
               },
             },
           };
@@ -87,8 +91,8 @@ export const usePayrollSalaryCircularStore = create<State>()(
         set((s) => {
           const next = { ...s.entries };
           for (const lineId of employmentLineIds) {
-            const k = key(periodId, lineId);
-            const prev = { ...DEFAULT_ENTRY, ...next[k] };
+            const k = getPayrollSalaryCircularEntryKey(periodId, lineId);
+            const prev = { ...DEFAULT_PAYROLL_SALARY_CIRCULAR_ENTRY, ...next[k] };
             next[k] = { ...prev, sendStatus: 'sent' as const, sentAt: prev.sentAt ?? t };
           }
           return { entries: next };
@@ -96,16 +100,21 @@ export const usePayrollSalaryCircularStore = create<State>()(
       },
 
       setReadStatus: (periodId, employmentLineId, status) => {
-        const k = key(periodId, employmentLineId);
+        const k = getPayrollSalaryCircularEntryKey(periodId, employmentLineId);
         set((s) => {
-          const prev = { ...DEFAULT_ENTRY, ...s.entries[k] };
+          const prev = { ...DEFAULT_PAYROLL_SALARY_CIRCULAR_ENTRY, ...s.entries[k] };
+          const readAt = status === 'read' ? (prev.readAt ?? nowIso()) : null;
           return {
             entries: {
               ...s.entries,
               [k]: {
                 ...prev,
+                sendStatus: status === 'read' ? 'sent' : prev.sendStatus,
+                sentAt: status === 'read' ? (prev.sentAt ?? readAt) : prev.sentAt,
                 readStatus: status,
-                readAt: status === 'read' ? (prev.readAt ?? nowIso()) : null,
+                readAt,
+                approvalStatus: status === 'read' ? prev.approvalStatus : 'pending',
+                respondedAt: status === 'read' ? prev.respondedAt : null,
               },
             },
           };
@@ -113,16 +122,22 @@ export const usePayrollSalaryCircularStore = create<State>()(
       },
 
       setApprovalStatus: (periodId, employmentLineId, status) => {
-        const k = key(periodId, employmentLineId);
+        const k = getPayrollSalaryCircularEntryKey(periodId, employmentLineId);
         set((s) => {
-          const prev = { ...DEFAULT_ENTRY, ...s.entries[k] };
+          const prev = { ...DEFAULT_PAYROLL_SALARY_CIRCULAR_ENTRY, ...s.entries[k] };
+          const t = nowIso();
+          const hasResponse = status !== 'pending';
           return {
             entries: {
               ...s.entries,
               [k]: {
                 ...prev,
+                sendStatus: hasResponse ? 'sent' : prev.sendStatus,
+                sentAt: hasResponse ? (prev.sentAt ?? t) : prev.sentAt,
+                readStatus: hasResponse ? 'read' : prev.readStatus,
+                readAt: hasResponse ? (prev.readAt ?? t) : prev.readAt,
                 approvalStatus: status,
-                respondedAt: status === 'pending' ? null : (prev.respondedAt ?? nowIso()),
+                respondedAt: hasResponse ? (prev.respondedAt ?? t) : null,
               },
             },
           };
@@ -130,7 +145,7 @@ export const usePayrollSalaryCircularStore = create<State>()(
       },
 
       resetLine: (periodId, employmentLineId) => {
-        const k = key(periodId, employmentLineId);
+        const k = getPayrollSalaryCircularEntryKey(periodId, employmentLineId);
         set((s) => {
           const next = { ...s.entries };
           delete next[k];

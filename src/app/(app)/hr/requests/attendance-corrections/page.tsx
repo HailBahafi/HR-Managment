@@ -1,6 +1,4 @@
-'use client';
-
-import { AttendanceCorrectionRequestsClient } from '@/components/hr-requests/attendance-correction-requests-client';
+import { AttendanceCorrectionRequestsClient } from '@/features/hr/requests/attendance-corrections/components/attendance-correction-requests-client';
 
 export default function AttendanceCorrectionRequestsPage() {
   return <AttendanceCorrectionRequestsClient />;

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { ReportsClient } from '@/components/contracts/reports/reports-client';
+import { ReportsClient } from '@/features/hr/contracts/reports/components/reports-client';
 
 export default function ContractReportsPage() {
   return (

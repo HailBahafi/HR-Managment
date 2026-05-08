@@ -9,6 +9,19 @@ export type AttendanceSection =
   | 'checkpoints'
   | 'checkpoint-links';
 
+/** Slugs for `/hr/attendance/[section]` (order matches product nav). */
+export const ATTENDANCE_SECTION_SLUGS: AttendanceSection[] = [
+  'daily',
+  'templates',
+  'assignment',
+  'checkpoints',
+  'checkpoint-links',
+];
+
+export function isAttendanceSection(value: string): value is AttendanceSection {
+  return (ATTENDANCE_SECTION_SLUGS as readonly string[]).includes(value);
+}
+
 export interface CheckInWindowConfig {
   beforeStartMinutes: number;
   graceMinutes: number;

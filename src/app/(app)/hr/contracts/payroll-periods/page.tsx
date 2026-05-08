@@ -1,4 +1,4 @@
-import { PayrollPeriodsClient } from '@/components/contracts/payroll-periods-client';
+import { PayrollPeriodsClient } from '@/features/hr/contracts/payroll-periods/components/payroll-periods-client';
 
 export default function PayrollPeriodsPage() {
   return <PayrollPeriodsClient />;

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { publicConfig } from '@/lib/config';
 import { loadHereMapsSdk } from '@/components/here-map/components/here-loader';
 import { Minus, Plus, LocateFixed, Loader2 } from 'lucide-react';
 import { Button } from './button';
@@ -49,7 +50,7 @@ export default function MapPickerInner({ value, onChange, minRadius, maxRadius, 
     if (!win.H?.service?.Platform) return;
 
     const H       = win.H;
-    const apiKey  = (process.env.NEXT_PUBLIC_HERE_API_KEY ?? '').trim();
+    const apiKey = publicConfig.hereApiKey;
     if (!apiKey) {
       setError('مفتاح HERE API غير مُعرّف. أضف NEXT_PUBLIC_HERE_API_KEY في .env.local ثم أعد تشغيل الخادم.');
       return;

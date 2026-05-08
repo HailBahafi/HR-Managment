@@ -178,11 +178,11 @@ export const CASE_STATUS_LABELS: Record<HRViolationCaseStatus, string> = {
 };
 export const CASE_STATUS_COLORS: Record<HRViolationCaseStatus, string> = {
   draft: 'text-muted-foreground border-border bg-muted/30',
-  submitted: 'text-blue-700 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/30',
-  under_review: 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/30',
-  approved: 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30',
-  rejected: 'text-red-700 border-red-200 bg-red-50 dark:text-red-400 dark:border-red-800 dark:bg-red-950/30',
-  executed: 'text-purple-700 border-purple-200 bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:bg-purple-950/30',
+  submitted: 'text-primary border-primary/25 bg-primary/5 dark:border-primary/40 dark:bg-primary/15',
+  under_review: 'text-warning border-warning/30 bg-warning/10 dark:border-warning/40 dark:bg-warning/10',
+  approved: 'text-success border-success/30 bg-success/10 dark:border-success/40 dark:bg-success/10',
+  rejected: 'text-destructive border-destructive/30 bg-destructive/10 dark:border-destructive/40 dark:bg-destructive/10',
+  executed: 'text-gold border-gold/30 bg-gold/10 dark:border-gold/40 dark:bg-gold/10',
   closed: 'text-muted-foreground border-border bg-muted/30',
 };
 

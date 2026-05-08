@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, type RefObject } from "react";
 import { geocodeQuery } from "./geocoding";
+import { publicConfig } from '@/lib/config';
 import { SEARCH_DEBOUNCE_MS, FLY_ZOOM_OUT_LEVEL, FLY_DESTINATION_ZOOM } from "../constants/constants";
 import type { CitySearchState, GeocodingResult } from "../types/types";
 
@@ -29,7 +30,7 @@ export function useCitySearch(mapRef: RefObject<H.Map | null>): CitySearchState 
     debounceTimerRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const apiKey  = process.env.NEXT_PUBLIC_HERE_API_KEY ?? "";
+        const apiKey = publicConfig.hereApiKey;
         const results = await geocodeQuery(query, apiKey);
         setSearchResults(results);
         if (results.length === 0) setSearchErrorMessage("لا توجد نتائج.");

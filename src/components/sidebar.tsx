@@ -8,13 +8,16 @@ import {
   ShieldAlert, Wallet, BarChart3, Building2, Shield,
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
-  ChevronDown, X, LifeBuoy, Banknote, FileSignature, BookOpen, FileSpreadsheet,
-  UserCircle, Briefcase, UserCheck,
+  ChevronDown, X, LifeBuoy, FileSpreadsheet,
+  UserCircle, Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
 import { useSidebar } from '@/components/sidebar-context';
 import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
+import { hrContractsNavGroups } from '@/features/hr/contracts/constants/nav';
+import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
+import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
 
 type MobileNavChild =
   | { label: string; href: string; icon?: React.ElementType; match?: 'exact' | 'prefix' }
@@ -31,26 +34,26 @@ type MobileNavItem = {
 const mobileNav: MobileNavItem[] = [
   { key: 'dashboard', label: 'الرئيسية', href: '/hr/dashboard', icon: LayoutDashboard },
   {
-    key: 'employees', label: 'الهيكل الإداري', icon: Users,
+    key: 'employees', label: 'الهيكل الإداري', href: '/hr/organization/employees', icon: Users,
     children: [
-      { label: 'سجل الموظفين', href: '/hr/employees', icon: Users },
-      { label: 'العملاء والزوار', href: '/hr/contacts', icon: UserCircle },
-      { label: 'المسميات الوظيفية', href: '/hr/job-titles', icon: Briefcase },
-      { label: 'الفروع', href: '/hr/branches', icon: Building2 },
-      { label: 'الأقسام', href: '/hr/departments', icon: Building2 },
-      { label: 'الهيكل التنظيمي', href: '/hr/organization', icon: Building2 },
+      { label: 'سجل الموظفين', href: '/hr/organization/employees', icon: Users },
+      { label: 'العملاء والزوار', href: '/hr/organization/contacts', icon: UserCircle },
+      { label: 'المسميات الوظيفية', href: '/hr/organization/job-titles', icon: Briefcase },
+      { label: 'الفروع', href: '/hr/organization/branches', icon: Building2 },
+      { label: 'الأقسام', href: '/hr/organization/departments', icon: Building2 },
+      { label: 'الهيكل التنظيمي', href: '/hr/organization/chart', icon: Building2 },
     ],
   },
   {
     key: 'attendance', label: 'الحضور', icon: Clock,
     children: [
-      { label: 'إدارة الحضور', href: '/hr/attendance?section=daily', icon: CalendarRange },
+      { label: 'إدارة الحضور', href: '/hr/attendance/daily', icon: CalendarRange },
       { separator: true },
-      { label: 'ربط الشيفتات بالموظفين', href: '/hr/attendance?section=assignment', icon: ClipboardList },
-      { label: 'ربط النقاط بالموظفين  ', href: '/hr/attendance?section=checkpoint-links', icon: Link2 },
+      { label: 'ربط الشيفتات بالموظفين', href: '/hr/attendance/assignment', icon: ClipboardList },
+      { label: 'ربط النقاط بالموظفين  ', href: '/hr/attendance/checkpoint-links', icon: Link2 },
       { separator: true },
-      { label: 'قوالب الشفت', href: '/hr/attendance?section=templates', icon: LayoutGrid },
-      { label: 'نقاط التسجيل', href: '/hr/attendance?section=checkpoints', icon: MapPin },
+      { label: 'قوالب الشفت', href: '/hr/attendance/templates', icon: LayoutGrid },
+      { label: 'نقاط التسجيل', href: '/hr/attendance/checkpoints', icon: MapPin },
     ],
   },
   {
@@ -85,16 +88,17 @@ const mobileNav: MobileNavItem[] = [
   {
     key: 'contracts', label: 'الراتب والعقود', icon: Wallet,
     children: [
-      { label: 'فترات الراتب', href: '/hr/contracts/payroll-periods', icon: CalendarRange },
-      { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
-      { label: 'عقود العمل', href: '/hr/contracts/employment', icon: FileSignature },
-      { label: 'مواد العقود', href: '/hr/contracts/articles', icon: BookOpen },
-      { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports', icon: FileSpreadsheet },
-      { label: 'كشف موافقة الموظفين', href: '/hr/contracts/payroll-salary-approvals', icon: UserCheck },
+      ...hrContractsNavGroups.flatMap((g) =>
+        g.items.map((item) => ({
+          label: item.labelAr,
+          href: hrContractsSectionHref(item.slug),
+          icon: item.icon,
+        })),
+      ),
       { label: 'إيصالات الرواتب', href: '/payroll/receipt', icon: FileSpreadsheet },
     ],
   },
-  { key: 'permissions', label: 'الصلاحيات', href: '/hr/permissions', icon: Shield },
+  { key: 'permissions', label: 'الصلاحيات', href: hrPermissionsHref(), icon: Shield },
 ];
 
 function MobileDrawer({ onClose }: { onClose: () => void }) {

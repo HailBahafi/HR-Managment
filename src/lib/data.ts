@@ -1,4 +1,5 @@
 import mockData from '../../data/mock-data.json';
+import employeesData from '../../data/employees.json';
 import attendanceData from '../../data/attendance.json';
 import requestsData from '../../data/requests.json';
 import payrollData from '../../data/payroll.json';
@@ -7,7 +8,7 @@ export const data = {
   company: mockData.company,
   branches: mockData.branches,
   departments: mockData.departments,
-  employees: mockData.employees,
+  employees: employeesData.employees,
   shifts: mockData.shifts,
   geoPoints: mockData.geoPoints,
   activities: mockData.activities,

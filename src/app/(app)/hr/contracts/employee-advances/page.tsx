@@ -1,4 +1,4 @@
-import { EmployeeAdvancesClient } from '@/components/contracts/employee-advances-client';
+import { EmployeeAdvancesClient } from '@/features/hr/contracts/employee-advances/components/employee-advances-client';
 
 export default function EmployeeAdvancesPage() {
   return <EmployeeAdvancesClient />;

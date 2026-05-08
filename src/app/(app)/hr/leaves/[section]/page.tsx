@@ -1,8 +1,13 @@
 import { notFound } from 'next/navigation';
-import { LeaveTypesPanel } from '@/components/leaves/leave-types-panel';
-import { PublicHolidaysPanel } from '@/components/leaves/public-holidays-panel';
+import * as React from 'react';
+import { LeaveTypesPanel } from '@/features/hr/leaves/leave-types/components/leave-types-panel';
+import { PublicHolidaysPanel } from '@/features/hr/leaves/public-holidays/components/public-holidays-panel';
+import { LEAVE_APP_SECTION_SLUGS } from '@/features/hr/leaves/constants/leave-app-sections';
 
-const SECTIONS: Record<string, { title: string; description: string; Component: React.ComponentType }> = {
+const SECTIONS: Record<
+  string,
+  { title: string; description: string; Component: React.ComponentType }
+> = {
   'leave-types': {
     title: 'أنواع الإجازات',
     description: 'تعريف وإدارة أنواع الإجازات المتاحة في المنظمة.',
@@ -14,8 +19,6 @@ const SECTIONS: Record<string, { title: string; description: string; Component: 
     Component: PublicHolidaysPanel,
   },
 };
-
-import * as React from 'react';
 
 interface Props {
   params: Promise<{ section: string }>;
@@ -30,5 +33,5 @@ export default async function LeaveSectionPage({ params }: Props) {
 }
 
 export function generateStaticParams() {
-  return Object.keys(SECTIONS).map((section) => ({ section }));
+  return LEAVE_APP_SECTION_SLUGS.map((section) => ({ section }));
 }

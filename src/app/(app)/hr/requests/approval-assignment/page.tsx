@@ -1,3 +1,5 @@
-'use client';
-import { ApprovalAssignmentClient } from '@/components/hr-requests/approval-assignment-client';
-export default function ApprovalAssignmentPage() { return <ApprovalAssignmentClient />; }
+import { ApprovalAssignmentClient } from '@/features/hr/requests/approval-assignment/components/approval-assignment-client';
+
+export default function ApprovalAssignmentPage() {
+  return <ApprovalAssignmentClient />;
+}

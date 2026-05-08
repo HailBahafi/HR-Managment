@@ -4,8 +4,9 @@ import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import { useEntityFilterSlotRegion } from '@/components/entity-filter-slot-context';
 import { cn } from '@/lib/utils';
+import { HR_PERMISSIONS_BASE } from '@/features/hr/permissions/constants/routes';
 
-const EXCLUDED_FILTER_PATHS = new Set(['/hr/dashboard', '/hr/permissions']);
+const EXCLUDED_FILTER_PATHS = new Set(['/hr/dashboard', HR_PERMISSIONS_BASE]);
 
 /**
  * Host region for `useEntityFilterSlot`: toolbar is teleported here from page clients.

@@ -28,6 +28,9 @@ import { Logo } from '@/components/logo';
 import { NotificationBellPopover } from '@/components/notifications/notification-bell-popover';
 import { cn } from '@/lib/utils';
 import { hrDisciplineNavGroups } from '@/lib/hr-discipline/types';
+import { hrContractsNavGroups } from '@/features/hr/contracts/constants/nav';
+import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
+import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
 
 /* ── Icon registry ────────────────────────────────────────────────────── */
 export const PAGE_ICONS: Record<string, React.ElementType> = {
@@ -50,27 +53,27 @@ export const navConfig: NavItem[] = [
   {
     key: 'employees', label: 'الهيكل الإداري', icon: Users,
     groups: [{ items: [
-      { label: 'سجل الموظفين',     href: '/hr/employees',      icon: Users },
-      { label: 'العملاء والزوار', href: '/hr/contacts',       icon: UserCircle },
-      { label: 'المسميات الوظيفية', href: '/hr/job-titles',   icon: Briefcase },
-      { label: 'الفروع',           href: '/hr/branches',       icon: Building2 },
-      { label: 'الأقسام',          href: '/hr/departments',    icon: Building2 },
-      { label: 'الهيكل التنظيمي', href: '/hr/organization',   icon: Building2 },
+      { label: 'سجل الموظفين',     href: '/hr/organization/employees',  icon: Users },
+      { label: 'العملاء والزوار', href: '/hr/organization/contacts',    icon: UserCircle },
+      { label: 'المسميات الوظيفية', href: '/hr/organization/job-titles', icon: Briefcase },
+      { label: 'الفروع',           href: '/hr/organization/branches',   icon: Building2 },
+      { label: 'الأقسام',          href: '/hr/organization/departments', icon: Building2 },
+      { label: 'الهيكل التنظيمي', href: '/hr/organization/chart',       icon: Building2 },
     ]}],
   },
   {
     key: 'attendance', label: 'الحضور', icon: Clock,
     groups: [
       { labelAr: 'المتابعة', items: [
-        { label: 'إدارة الحضور', href: '/hr/attendance?section=daily', icon: CalendarRange },
+        { label: 'إدارة الحضور', href: '/hr/attendance/daily', icon: CalendarRange },
       ]},
       { labelAr: 'الإسناد', items: [
-        { label: 'ربط الشيفتات بالموظفين',        href: '/hr/attendance?section=assignment',       icon: ClipboardList },
-        { label: 'ربط النقاط بالموظفين  ', href: '/hr/attendance?section=checkpoint-links', icon: Link2 },
+        { label: 'ربط الشيفتات بالموظفين',        href: '/hr/attendance/assignment',       icon: ClipboardList },
+        { label: 'ربط النقاط بالموظفين  ', href: '/hr/attendance/checkpoint-links', icon: Link2 },
       ]},
       { labelAr: 'الإعداد', items: [
-        { label: 'قوالب الشفت',  href: '/hr/attendance?section=templates',   icon: LayoutGrid },
-        { label: 'نقاط التسجيل', href: '/hr/attendance?section=checkpoints', icon: MapPin },
+        { label: 'قوالب الشفت',  href: '/hr/attendance/templates',   icon: LayoutGrid },
+        { label: 'نقاط التسجيل', href: '/hr/attendance/checkpoints', icon: MapPin },
       ]},
     ],
   },
@@ -110,22 +113,16 @@ export const navConfig: NavItem[] = [
   },
   {
     key: 'contracts', label: 'الرواتب والعقود', icon: Wallet,
-    groups: [
-      { labelAr: 'الراتب', items: [
-        { label: 'فترات الراتب',  href: '/hr/contracts/payroll-periods',  icon: CalendarRange },
-        { label: 'سلف الموظفين', href: '/hr/contracts/employee-advances', icon: Banknote },
-      ]},
-      { labelAr: 'العقود', items: [
-        { label: 'عقود العمل',  href: '/hr/contracts/employment', icon: FileSignature },
-        { label: 'مواد العقود', href: '/hr/contracts/articles',   icon: BookOpen },
-      ]},
-      { labelAr: 'التقارير', items: [
-        { label: 'كشف مسيرات الرواتب', href: '/hr/contracts/reports', icon: FileSpreadsheet },
-        { label: 'كشف موافقة الموظفين', href: '/hr/contracts/payroll-salary-approvals', icon: UserCheck },
-      ]},
-    ],
+    groups: hrContractsNavGroups.map((g) => ({
+      labelAr: g.labelAr,
+      items: g.items.map((item) => ({
+        label: item.labelAr,
+        href: hrContractsSectionHref(item.slug),
+        icon: item.icon,
+      })),
+    })),
   },
-  { key: 'permissions', label: 'الصلاحيات', href: '/hr/permissions', icon: Shield },
+  { key: 'permissions', label: 'الصلاحيات', href: hrPermissionsHref(), icon: Shield },
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */

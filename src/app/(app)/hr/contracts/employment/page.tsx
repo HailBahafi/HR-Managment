@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { EmploymentContractsClient } from '@/components/contracts/employment-client';
+import { EmploymentContractsClient } from '@/features/hr/contracts/employment/components/employment-client';
 
 export default function EmploymentContractsPage() {
   return (

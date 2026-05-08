@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { LayoutGrid, Link2, MapPin, CalendarRange, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { AttendanceSection } from '@/lib/attendance/types';
+import { isAttendanceSection, type AttendanceSection } from '@/lib/attendance/types';
 
 const SECTIONS: { id: AttendanceSection; label: string; icon: React.ElementType }[] = [
   { id: 'daily', label: 'الحضور اليومي', icon: CalendarRange },
@@ -16,10 +16,9 @@ const SECTIONS: { id: AttendanceSection; label: string; icon: React.ElementType 
 ];
 
 export function AttendanceSectionNav() {
-  const searchParams = useSearchParams();
-  const raw = searchParams.get('section') as AttendanceSection | null;
-  const current: AttendanceSection =
-    raw && SECTIONS.some((s) => s.id === raw) ? raw : 'templates';
+  const pathname = usePathname();
+  const segment = pathname.split('/').filter(Boolean).pop() ?? '';
+  const current: AttendanceSection = isAttendanceSection(segment) ? segment : 'daily';
 
   return (
     <nav className="flex flex-wrap gap-2" aria-label="أقسام الحضور">
@@ -28,7 +27,7 @@ export function AttendanceSectionNav() {
         return (
           <Link
             key={id}
-            href={`/hr/attendance?section=${id}`}
+            href={`/hr/attendance/${id}`}
             scroll={false}
             className={cn(
               'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all',
@@ -44,10 +43,4 @@ export function AttendanceSectionNav() {
       })}
     </nav>
   );
-}
-
-export function getAttendanceSectionFromParams(section: string | null): AttendanceSection {
-  const ids: AttendanceSection[] = ['templates', 'assignment', 'daily', 'checkpoints', 'checkpoint-links'];
-  if (section && ids.includes(section as AttendanceSection)) return section as AttendanceSection;
-  return 'templates';
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { publicConfig } from '@/lib/config';
 import { loadHereMapsSdk } from "./here-loader";
 import { RIYADH_CENTER, INITIAL_ZOOM } from "../constants/constants";
 import type { HereMapRefs, HereMapState } from "../types/types";
@@ -36,7 +37,7 @@ export function useHereMap(
     }
 
     const H = window.H;
-    const apiKey = (process.env.NEXT_PUBLIC_HERE_API_KEY ?? "").trim();
+    const apiKey = publicConfig.hereApiKey;
     if (!apiKey) {
       setMapLoadError(
         "مفتاح HERE API غير مُعرّف. أضف NEXT_PUBLIC_HERE_API_KEY في .env.local ثم أعد تشغيل خادم التطوير.",

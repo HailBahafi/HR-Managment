@@ -1,6 +1,6 @@
 import type { Employee } from '@/types';
 
-/** دور النظام كما في mock-data (صفحة الصلاحيات) */
+/** دور النظام كما في mock-data؛ `color` مفتاح لون من توكنات التصميم (مثل primary، destructive). */
 export interface SystemRoleRecord {
   id: string;
   name: string;

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { PayrollSalaryApprovalClient } from '@/components/contracts/payroll-salary-approval-client';
+import { PayrollSalaryApprovalClient } from '@/features/hr/contracts/payroll-salary-approvals/components/payroll-salary-approval-client';
 
 export default function PayrollSalaryApprovalsPage() {
   return (

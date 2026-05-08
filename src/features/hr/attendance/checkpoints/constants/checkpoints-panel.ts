@@ -1,0 +1,2 @@
+export const CHECKPOINT_GEO_DEBOUNCE_MS = 450;
+export const CHECKPOINT_GEO_MIN_QUERY_LEN = 2;

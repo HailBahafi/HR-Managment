@@ -20,6 +20,7 @@ const LABELS: Partial<Record<keyof Employee, string>> = {
   contractType: 'نوع العقد',
   contractStatus: 'حالة العقد',
   startDate: 'تاريخ الالتحاق',
+  endDate: 'نهاية العقد (السجل الرئيسي)',
   baseSalary: 'الراتب الأساسي',
   housingAllowance: 'بدل سكن',
   transportAllowance: 'بدل انتقال',
