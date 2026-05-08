@@ -46,31 +46,31 @@ type NavItem  = {
 };
 
 export const navConfig: NavItem[] = [
-  { key: 'dashboard', label: 'الرئيسية', href: '/dashboard', icon: LayoutDashboard },
+  { key: 'dashboard', label: 'الرئيسية', href: '/hr/dashboard', icon: LayoutDashboard },
   {
     key: 'employees', label: 'الهيكل الإداري', icon: Users,
     groups: [{ items: [
-      { label: 'سجل الموظفين',     href: '/employees',      icon: Users },
-      { label: 'العملاء والزوار', href: '/contacts',       icon: UserCircle },
-      { label: 'المسميات الوظيفية', href: '/job-titles',   icon: Briefcase },
-      { label: 'الفروع',           href: '/branches',       icon: Building2 },
-      { label: 'الأقسام',          href: '/departments',    icon: Building2 },
-      { label: 'الهيكل التنظيمي', href: '/organization',   icon: Building2 },
+      { label: 'سجل الموظفين',     href: '/hr/employees',      icon: Users },
+      { label: 'العملاء والزوار', href: '/hr/contacts',       icon: UserCircle },
+      { label: 'المسميات الوظيفية', href: '/hr/job-titles',   icon: Briefcase },
+      { label: 'الفروع',           href: '/hr/branches',       icon: Building2 },
+      { label: 'الأقسام',          href: '/hr/departments',    icon: Building2 },
+      { label: 'الهيكل التنظيمي', href: '/hr/organization',   icon: Building2 },
     ]}],
   },
   {
     key: 'attendance', label: 'الحضور', icon: Clock,
     groups: [
       { labelAr: 'المتابعة', items: [
-        { label: 'إدارة الحضور', href: '/attendance?section=daily', icon: CalendarRange },
+        { label: 'إدارة الحضور', href: '/hr/attendance?section=daily', icon: CalendarRange },
       ]},
       { labelAr: 'الإسناد', items: [
-        { label: 'ربط الشيفتات بالموظفين',        href: '/attendance?section=assignment',       icon: ClipboardList },
-        { label: 'ربط النقاط بالموظفين  ', href: '/attendance?section=checkpoint-links', icon: Link2 },
+        { label: 'ربط الشيفتات بالموظفين',        href: '/hr/attendance?section=assignment',       icon: ClipboardList },
+        { label: 'ربط النقاط بالموظفين  ', href: '/hr/attendance?section=checkpoint-links', icon: Link2 },
       ]},
       { labelAr: 'الإعداد', items: [
-        { label: 'قوالب الشفت',  href: '/attendance?section=templates',   icon: LayoutGrid },
-        { label: 'نقاط التسجيل', href: '/attendance?section=checkpoints', icon: MapPin },
+        { label: 'قوالب الشفت',  href: '/hr/attendance?section=templates',   icon: LayoutGrid },
+        { label: 'نقاط التسجيل', href: '/hr/attendance?section=checkpoints', icon: MapPin },
       ]},
     ],
   },
@@ -125,7 +125,7 @@ export const navConfig: NavItem[] = [
       ]},
     ],
   },
-  { key: 'permissions', label: 'الصلاحيات', href: '/permissions', icon: Shield },
+  { key: 'permissions', label: 'الصلاحيات', href: '/hr/permissions', icon: Shield },
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
@@ -251,7 +251,7 @@ export function Topbar() {
       <div className="flex h-[54px] items-center gap-2 px-4 sm:px-5">
 
         {/* Logo */}
-        <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50">
+        <Link href="/hr/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50">
           <Logo size={28} />
           <div className="hidden flex-col leading-none sm:flex">
             <span className="font-display text-[15px] font-bold tracking-tight">روز</span>

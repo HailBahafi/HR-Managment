@@ -150,7 +150,7 @@ export default function DashboardPage() {
             sub: `${data.branches.length} فروع`,
             delta: '+4.2%', positive: true,
             icon: Users,
-            href: '/employees',
+            href: '/hr/employees',
             sparkline: [620, 680, 720, 740, 780, 810, 842],
             accentLight: 'bg-primary/8 border-primary/20',
             iconBg: 'bg-primary/10 text-primary',
@@ -163,7 +163,7 @@ export default function DashboardPage() {
             sub: `${presentCount + lateCount} حاضر اليوم`,
             delta: '+1.8%', positive: true,
             icon: UserCheck,
-            href: '/attendance?section=daily',
+            href: '/hr/attendance?section=daily',
             sparkline: [88, 91, 93, 90, 94, 95, attendanceRate],
             accentLight: 'bg-emerald-50 border-emerald-200/60 dark:bg-emerald-950/20 dark:border-emerald-800/30',
             iconBg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
@@ -394,11 +394,11 @@ export default function DashboardPage() {
         <p className="text-[11px] text-muted-foreground mb-4">الأدوات الأكثر استخداماً</p>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            { label: 'موظف جديد',       icon: UserPlus,     href: '/employees',                color: 'text-primary',                              bg: 'bg-primary/10',                              hoverBg: 'hover:bg-primary/15' },
+            { label: 'موظف جديد',       icon: UserPlus,     href: '/hr/employees',                color: 'text-primary',                              bg: 'bg-primary/10',                              hoverBg: 'hover:bg-primary/15' },
             { label: 'طلب إجازة',        icon: CalendarDays, href: '/hr/leaves',                color: 'text-blue-700 dark:text-blue-400',          bg: 'bg-blue-100 dark:bg-blue-900/30',            hoverBg: 'hover:bg-blue-200/70 dark:hover:bg-blue-900/50' },
             { label: 'الرواتب',          icon: Wallet,       href: '/hr/contracts',             color: 'text-emerald-700 dark:text-emerald-400',    bg: 'bg-emerald-100 dark:bg-emerald-900/30',      hoverBg: 'hover:bg-emerald-200/70 dark:hover:bg-emerald-900/50' },
-            { label: 'تقرير حضور',       icon: Clock,        href: '/attendance?section=daily', color: 'text-amber-700 dark:text-amber-400',        bg: 'bg-amber-100 dark:bg-amber-900/30',          hoverBg: 'hover:bg-amber-200/70 dark:hover:bg-amber-900/50' },
-            { label: 'هيكل تنظيمي',      icon: Building2,    href: '/organization',             color: 'text-violet-700 dark:text-violet-400',      bg: 'bg-violet-100 dark:bg-violet-900/30',        hoverBg: 'hover:bg-violet-200/70 dark:hover:bg-violet-900/50' },
+            { label: 'تقرير حضور',       icon: Clock,        href: '/hr/attendance?section=daily', color: 'text-amber-700 dark:text-amber-400',        bg: 'bg-amber-100 dark:bg-amber-900/30',          hoverBg: 'hover:bg-amber-200/70 dark:hover:bg-amber-900/50' },
+            { label: 'هيكل تنظيمي',      icon: Building2,    href: '/hr/organization',             color: 'text-violet-700 dark:text-violet-400',      bg: 'bg-violet-100 dark:bg-violet-900/30',        hoverBg: 'hover:bg-violet-200/70 dark:hover:bg-violet-900/50' },
             { label: 'تحليل الإجازات',   icon: TrendingUp,   href: '/hr/leaves/analytics',      color: 'text-rose-700 dark:text-rose-400',          bg: 'bg-rose-100 dark:bg-rose-900/30',            hoverBg: 'hover:bg-rose-200/70 dark:hover:bg-rose-900/50' },
           ].map(a => (
             <Link

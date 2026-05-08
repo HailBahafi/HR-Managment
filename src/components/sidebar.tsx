@@ -29,28 +29,28 @@ type MobileNavItem = {
 };
 
 const mobileNav: MobileNavItem[] = [
-  { key: 'dashboard', label: 'الرئيسية', href: '/dashboard', icon: LayoutDashboard },
+  { key: 'dashboard', label: 'الرئيسية', href: '/hr/dashboard', icon: LayoutDashboard },
   {
     key: 'employees', label: 'الهيكل الإداري', icon: Users,
     children: [
-      { label: 'سجل الموظفين', href: '/employees', icon: Users },
-      { label: 'العملاء والزوار', href: '/contacts', icon: UserCircle },
-      { label: 'المسميات الوظيفية', href: '/job-titles', icon: Briefcase },
-      { label: 'الفروع', href: '/branches', icon: Building2 },
-      { label: 'الأقسام', href: '/departments', icon: Building2 },
-      { label: 'الهيكل التنظيمي', href: '/organization', icon: Building2 },
+      { label: 'سجل الموظفين', href: '/hr/employees', icon: Users },
+      { label: 'العملاء والزوار', href: '/hr/contacts', icon: UserCircle },
+      { label: 'المسميات الوظيفية', href: '/hr/job-titles', icon: Briefcase },
+      { label: 'الفروع', href: '/hr/branches', icon: Building2 },
+      { label: 'الأقسام', href: '/hr/departments', icon: Building2 },
+      { label: 'الهيكل التنظيمي', href: '/hr/organization', icon: Building2 },
     ],
   },
   {
     key: 'attendance', label: 'الحضور', icon: Clock,
     children: [
-      { label: 'إدارة الحضور', href: '/attendance?section=daily', icon: CalendarRange },
+      { label: 'إدارة الحضور', href: '/hr/attendance?section=daily', icon: CalendarRange },
       { separator: true },
-      { label: 'ربط الشيفتات بالموظفين', href: '/attendance?section=assignment', icon: ClipboardList },
-      { label: 'ربط النقاط بالموظفين  ', href: '/attendance?section=checkpoint-links', icon: Link2 },
+      { label: 'ربط الشيفتات بالموظفين', href: '/hr/attendance?section=assignment', icon: ClipboardList },
+      { label: 'ربط النقاط بالموظفين  ', href: '/hr/attendance?section=checkpoint-links', icon: Link2 },
       { separator: true },
-      { label: 'قوالب الشفت', href: '/attendance?section=templates', icon: LayoutGrid },
-      { label: 'نقاط التسجيل', href: '/attendance?section=checkpoints', icon: MapPin },
+      { label: 'قوالب الشفت', href: '/hr/attendance?section=templates', icon: LayoutGrid },
+      { label: 'نقاط التسجيل', href: '/hr/attendance?section=checkpoints', icon: MapPin },
     ],
   },
   {
@@ -94,7 +94,7 @@ const mobileNav: MobileNavItem[] = [
       { label: 'إيصالات الرواتب', href: '/payroll/receipt', icon: FileSpreadsheet },
     ],
   },
-  { key: 'permissions', label: 'الصلاحيات', href: '/permissions', icon: Shield },
+  { key: 'permissions', label: 'الصلاحيات', href: '/hr/permissions', icon: Shield },
 ];
 
 function MobileDrawer({ onClose }: { onClose: () => void }) {

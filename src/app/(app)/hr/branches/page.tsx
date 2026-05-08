@@ -34,7 +34,7 @@ function uid() {
   return `br-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-export default function BranchesPage() {
+export default function HRBranchesPage() {
   useSetPageTitle({ titleAr: 'الفروع', descriptionAr: 'إدارة فروع الشركة وتوزيع الموظفين.', iconName: 'Building2' });
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');

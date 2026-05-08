@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEntityFilterSlotRegion } from '@/components/entity-filter-slot-context';
 import { cn } from '@/lib/utils';
 
-const EXCLUDED_FILTER_PATHS = new Set(['/dashboard', '/permissions']);
+const EXCLUDED_FILTER_PATHS = new Set(['/hr/dashboard', '/hr/permissions']);
 
 /**
  * Host region for `useEntityFilterSlot`: toolbar is teleported here from page clients.

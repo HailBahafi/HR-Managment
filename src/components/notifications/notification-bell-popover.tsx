@@ -118,7 +118,7 @@ export function NotificationBellPopover() {
 
         <div className="border-t border-border p-2">
           <Button variant="secondary" size="sm" className="h-9 w-full rounded-lg text-xs" asChild onClick={() => setOpen(false)}>
-            <Link href="/notifications" className="inline-flex items-center justify-center gap-2">
+            <Link href="/hr/notifications" className="inline-flex items-center justify-center gap-2">
               <CheckCircle2 className="h-3.5 w-3.5" />
               عرض جميع التنبيهات
             </Link>

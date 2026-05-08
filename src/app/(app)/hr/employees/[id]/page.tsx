@@ -702,7 +702,7 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
       <div className="shrink-0 border-b border-border/60 bg-card/50 backdrop-blur-md">
         <div className="px-3 sm:px-6 h-12 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href="/employees" className="hover:text-foreground transition-colors flex items-center gap-1">
+            <Link href="/hr/employees" className="hover:text-foreground transition-colors flex items-center gap-1">
               <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
               <span className="hidden sm:inline">الموظفون</span>
             </Link>
@@ -952,7 +952,7 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
                   <Field icon={Briefcase} field="position" label="المسمى الوظيفي" />
                   <Prop icon={UserRound} label="المدير المباشر">
                     {manager ? (
-                      <Link href={`/employees/${manager.id}`} className="hover:text-primary inline-flex items-center gap-1">
+                      <Link href={`/hr/employees/${manager.id}`} className="hover:text-primary inline-flex items-center gap-1">
                         {manager.name}<ArrowUpRight className="h-3 w-3" />
                       </Link>
                     ) : null}
@@ -1290,7 +1290,7 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-xs uppercase tracking-widest text-muted-foreground/70">آخر حركات الحضور</h3>
                         <Button variant="ghost" size="sm" className="h-6 gap-1 text-[11px] px-2" asChild>
-                          <Link href="/hr/attendance/daily"><ExternalLink className="h-3 w-3" /> الكل</Link>
+                          <Link href="/hr/attendance?section=daily"><ExternalLink className="h-3 w-3" /> الكل</Link>
                         </Button>
                       </div>
 
@@ -1984,7 +1984,7 @@ function EmployeeProfileBody({ employee }: { employee: Employee }) {
                           <h2 className="text-xl font-semibold tracking-tight text-foreground">صلاحيات الموظف</h2>
                           <p className="text-sm text-muted-foreground mt-1 leading-relaxed max-w-xl">
                             اربط الموظف بدور من أدوار النظام؛ تُعرض هنا الصلاحيات المعرّفة لهذا الدور كما في{' '}
-                            <Link href="/permissions" className="font-medium text-primary underline-offset-4 hover:underline">
+                            <Link href="/hr/permissions" className="font-medium text-primary underline-offset-4 hover:underline">
                               إدارة الصلاحيات
                             </Link>
                             .

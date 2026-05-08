@@ -38,7 +38,7 @@ export default function LoginPage() {
   const onSubmit = async (_values: FormValues) => {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 800));
-    router.push('/dashboard');
+    router.push('/hr/dashboard');
   };
 
   return (

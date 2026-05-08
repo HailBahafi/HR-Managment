@@ -1,10 +1,18 @@
-import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
+import { AttendanceClient } from './attendance-client';
 
-type Search = { [key: string]: string | string[] | undefined };
-
-export default async function HrAttendanceAliasPage({ searchParams }: { searchParams: Promise<Search> }) {
-  const sp = await searchParams;
-  const section = typeof sp.section === 'string' ? sp.section : 'templates';
-  const safe = ['templates', 'assignment', 'daily', 'checkpoints', 'checkpoint-links'].includes(section) ? section : 'templates';
-  redirect(`/attendance?section=${encodeURIComponent(safe)}`);
+export default function AttendancePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6 animate-pulse">
+          <div className="h-24 rounded-lg bg-muted/40" />
+          <div className="h-12 rounded-full bg-muted/30" />
+          <div className="h-96 rounded-lg bg-muted/30" />
+        </div>
+      }
+    >
+      <AttendanceClient />
+    </Suspense>
+  );
 }
