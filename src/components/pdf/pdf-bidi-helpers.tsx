@@ -26,7 +26,8 @@ export function sanitizePdfText(input: string): string {
  * Inline `Text` runs must not inherit `flex: 1` from field styles — multiple flex
  * children in one row can overlap glyphs in @react-pdf/yoga.
  */
-const INLINE_RUN_LAYOUT: Style = { flexGrow: 0, flexShrink: 0 };
+/** Must override inherited `flex: 1` from field labels — sibling flex runs corrupt yoga + text reorder (react-pdf). */
+const INLINE_RUN_LAYOUT: Style = { flex: 0, flexGrow: 0, flexShrink: 0, flexBasis: 'auto' };
 
 function combineArTextStyle(fontFamily: string, arStyle: Style | Style[]): Style | Style[] {
   const base: Style = { fontFamily };
@@ -111,7 +112,7 @@ export function PdfArLatInline({
   rowStyle,
   arFontFamily = PDF_FONT_AR,
 }: PdfArLatInlineProps) {
-  const runs = splitArLatRuns(text);
+  const runs = splitArLatRuns(text).filter((r) => r.text.length > 0);
   if (runs.length === 0) return null;
   return (
     <View style={{ ...defaultRow, ...rowStyle }}>

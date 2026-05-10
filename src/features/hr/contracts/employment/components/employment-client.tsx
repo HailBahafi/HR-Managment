@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, Copy } from 'lucide-react';
+import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, Copy, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +54,11 @@ import {
   EMPLOYMENT_KIND_FILTER_OPTIONS,
 } from '@/features/hr/contracts/employment/utils/employment-contract-form';
 import { EmploymentContractTerminateModal as TerminateModal } from '@/features/hr/contracts/employment/components/employment-contract-terminate-modal';
+import type { DocumentProps } from '@react-pdf/renderer';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { EmploymentContractPdfDoc } from '@/components/pdf/employment-contract-pdf';
+import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
+import { data } from '@/lib/data';
 
 type FormValues = EmploymentContractFormValues;
 const emptyForm = emptyEmploymentContractForm;
@@ -140,7 +145,79 @@ export function EmploymentContractsClient() {
   const [copyFromEmployeeId, setCopyFromEmployeeId] = React.useState('');
   const [copyFromContractId, setCopyFromContractId] = React.useState('');
 
+  const [contractPdfOpen, setContractPdfOpen] = React.useState(false);
+  const [contractPdfDoc, setContractPdfDoc] = React.useState<React.ReactElement<DocumentProps> | null>(null);
+
   const getEmpName = (id: string) => allEmployees.find(e => e.id === id)?.nameAr ?? id;
+
+  React.useEffect(() => {
+    if (!contractPdfOpen) setContractPdfDoc(null);
+  }, [contractPdfOpen]);
+
+  const openEmploymentContractPdf = React.useCallback(() => {
+    if (!form.employeeId.trim()) {
+      toast.error('اختر الموظف أولاً');
+      return;
+    }
+    if (!form.startDate.trim() || !form.endDate.trim()) {
+      toast.error('حدّد تواريخ البداية والانتهاء لاستكمال نص العرض');
+      return;
+    }
+    const empAr = getEmpName(form.employeeId);
+    const allowanceRows = form.allowanceLines
+      .filter((l) => l.allowanceTypeId.trim())
+      .map((l) => ({
+        labelAr: allowanceTypes.find((a) => a.id === l.allowanceTypeId)?.nameAr ?? l.allowanceTypeId,
+        amount: String(l.amount || '0'),
+      }));
+    const selectedArticles = form.articleIds
+      .map((id) => articles.find((a) => a.id === id))
+      .filter(Boolean) as typeof articles;
+
+    selectedArticles.sort((a, b) => {
+      if (a!.isBasic !== b!.isBasic) return a!.isBasic ? -1 : 1;
+      return a!.code.localeCompare(b!.code);
+    });
+
+    const artLines = selectedArticles.map((a) => ({
+      code: a.code,
+      titleAr: a.title,
+      bodySnippet:
+        `${(a.body || '').replace(/\s+/g, ' ').trim().slice(0, 480)}${(a.body?.length ?? 0) > 480 ? '…' : ''}`,
+    }));
+
+    const company = {
+      nameAr: data.company.name as string,
+      nameEn: ((data.company as { nameEn?: string }).nameEn ?? 'rose'),
+    };
+
+    const doc = (
+      <EmploymentContractPdfDoc
+        logoSrc={getPdfLogoSrc()}
+        company={company}
+        employeeNameAr={empAr}
+        contractNumber={form.contractNumber.trim() || '—'}
+        natureLabelAr={CONTRACT_NATURE_LABELS[form.contractType]}
+        arrangementLabelAr={WORK_ARRANGEMENT_LABELS[form.workArrangement]}
+        startDate={form.startDate}
+        endDate={form.endDate}
+        probationDaysLabel={form.probationDays.trim() ? `${form.probationDays} يوم` : 'بدون'}
+        annualLeaveDaysLabel={`${form.annualLeaveDays || '—'} يوم`}
+        baseSalary={formatNumber(Number(form.baseSalary) || 0)}
+        currency={form.currency}
+        allowancesNote={form.allowancesNote}
+        deductionsNote={form.deductionsNote}
+        allowanceRows={allowanceRows}
+        articles={artLines}
+      />
+    );
+    setContractPdfDoc(doc);
+    setContractPdfOpen(true);
+  }, [
+    form,
+    allowanceTypes,
+    articles,
+  ]);
 
   const copySourceEmpOptions = React.useMemo(() => {
     const ids = new Set(contracts.map(c => c.employeeId));
@@ -458,6 +535,12 @@ export function EmploymentContractsClient() {
         onSave={readOnly ? closeDrawer : handleSave}
         saveLabel={readOnly ? 'إغلاق' : 'حفظ'}
         error={error}
+        footerExtra={(
+          <Button type="button" variant="secondary" size="sm" className="h-9 gap-1.5 text-xs" onClick={openEmploymentContractPdf} disabled={!form.employeeId}>
+            <FileDown className="h-3.5 w-3.5 shrink-0" />
+            معاينة / تنزيل PDF
+          </Button>
+        )}
       >
         {!readOnly && panelMode !== 'create' && (
           <FormField label="القالب">
@@ -686,6 +769,15 @@ export function EmploymentContractsClient() {
           )}
         </FormField>
       </HRSettingsFormDrawer>
+
+      <PdfPreviewExportDialog
+        open={contractPdfOpen}
+        onOpenChange={setContractPdfOpen}
+        title="معاينة — عقد العمل الحالي في النموذج"
+        fileName={`employment-contract-${(form.contractNumber || 'draft').replace(/[^\w\-]+/g, '_')}.pdf`}
+        document={contractPdfDoc}
+        emptyMessage="تعذر إعداد المعاينة — تحقق من بيانات النموذج."
+      />
 
       {/* Delete */}
       <ConfirmationModal

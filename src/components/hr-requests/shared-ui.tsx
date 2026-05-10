@@ -210,6 +210,8 @@ interface DrawerProps {
   error?: string | null;
   /** لربط قوائم منبثقة (مثل MultiSelect) داخل نفس طبقة محتوى الحوار */
   contentRef?: React.Ref<HTMLDivElement>;
+  /** أزرار إضافية بجانب «إلغاء / حفظ» (معاينة PDF، تصدير، …) */
+  footerExtra?: React.ReactNode;
 }
 
 const DRAWER_SIZE = {
@@ -218,7 +220,7 @@ const DRAWER_SIZE = {
   xl: 'max-w-[min(48rem,calc(100vw-1.5rem))]',
 };
 
-export function HRSettingsFormDrawer({ open, onOpenChange, title, description, size = 'lg', onSave, saveLabel = 'حفظ', children, error, contentRef }: DrawerProps) {
+export function HRSettingsFormDrawer({ open, onOpenChange, title, description, size = 'lg', onSave, saveLabel = 'حفظ', children, error, contentRef, footerExtra }: DrawerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent ref={contentRef} className={cn('flex max-h-[95vh] w-full flex-col overflow-hidden border-border p-0', DRAWER_SIZE[size])}>
@@ -238,7 +240,8 @@ export function HRSettingsFormDrawer({ open, onOpenChange, title, description, s
             </div>
           )}
         </div>
-        <div className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 flex flex-row-reverse justify-end sm:justify-start sm:flex-row gap-2">
+        <div className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 flex flex-row-reverse flex-wrap justify-end sm:justify-start sm:flex-row items-center gap-2">
+          {footerExtra ? <div className="me-auto flex flex-wrap gap-2 sm:me-0 sm:order-first">{footerExtra}</div> : null}
           <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>إلغاء</Button>
           <Button variant="luxe" type="button" onClick={onSave}>{saveLabel}</Button>
         </div>

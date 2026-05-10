@@ -38,7 +38,8 @@ export function useEmployeeProfilePermissions(employee: Employee) {
     const prevSaved = employee.assignedRoleId ?? inferAssignedRoleId(employee.role);
     const oldId = prevSaved;
     const newId = permissionRoleDraft;
-    employee.assignedRoleId = permissionRoleDraft;
+    const persisted = data.employees.find((e) => e.id === employee.id) as Employee | undefined;
+    if (persisted) persisted.assignedRoleId = permissionRoleDraft;
     const oldName = systemRoles.find((r) => r.id === oldId)?.name ?? oldId;
     const newName = systemRoles.find((r) => r.id === newId)?.name ?? newId;
     if (oldId !== newId) {

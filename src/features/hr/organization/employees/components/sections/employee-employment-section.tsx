@@ -12,6 +12,7 @@ import {
   FileSignature,
   CircleDot,
   Eye,
+  Banknote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, ContractTypeLabel } from '@/components/status-badge';
@@ -29,7 +30,8 @@ export function EmployeeEmploymentSection({ model }: { model: EmployeeProfileMod
     department,
     manager,
     yearsOfService,
-    setRosePdfPreviewKind,
+    openHrPdfPrep,
+    openSettlementPdfQuick,
   } = model;
 
   return (
@@ -67,21 +69,25 @@ export function EmployeeEmploymentSection({ model }: { model: EmployeeProfileMod
 
       <FieldGroup title="نماذج مؤسسة روز للتجارة" hint="معاينة ثم تحميل PDF">
         <div className="col-span-full grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs" onClick={() => setRosePdfPreviewKind('resignation')}>
+          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs" onClick={() => openHrPdfPrep('resignation')}>
             <Eye className="h-3.5 w-3.5 shrink-0" />
             نموذج استقالة
           </Button>
-          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs" onClick={() => setRosePdfPreviewKind('clearance')}>
+          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs" onClick={() => openHrPdfPrep('clearance')}>
             <Eye className="h-3.5 w-3.5 shrink-0" />
             نموذج إخلاء طرف
           </Button>
-          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs" onClick={() => setRosePdfPreviewKind('settlement')}>
+          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs" onClick={() => openSettlementPdfQuick()}>
             <Eye className="h-3.5 w-3.5 shrink-0" />
             مخالصة نهائية
           </Button>
-          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs" onClick={() => setRosePdfPreviewKind('experience')}>
+          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs" onClick={() => openHrPdfPrep('experience')}>
             <Eye className="h-3.5 w-3.5 shrink-0" />
             شهادة خبرة
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center gap-2 text-xs sm:col-span-2" onClick={() => openHrPdfPrep('cash-receipt')}>
+            <Banknote className="h-3.5 w-3.5 shrink-0" />
+            سند استلام نقدي للراتب
           </Button>
         </div>
       </FieldGroup>

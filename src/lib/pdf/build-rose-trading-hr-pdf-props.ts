@@ -40,13 +40,19 @@ export type RoseTradingHrPdfContext = {
  * Builds dynamic props for the four Rose Trading HR PDFs from the employee profile.
  * Optional overrides let HR adjust dates or legal placeholders before export (UI can extend later).
  */
-export function buildRoseTradingHrPdfProps(ctx: RoseTradingHrPdfContext, overrides?: {
+export type RoseTradingHrPdfOverrides = {
   absenceStartIso?: string;
   clearanceReasonAr?: string;
   settlementServiceStartIso?: string;
   certificateEndIso?: string;
   certificateIssueIso?: string;
-}) {
+  resignationAddressedToAr?: string;
+  resignationReasonLines?: string[];
+};
+export function buildRoseTradingHrPdfProps(
+  ctx: RoseTradingHrPdfContext,
+  overrides?: RoseTradingHrPdfOverrides,
+) {
   const { employee, branchNameAr, departmentNameAr } = ctx;
   const absenceIso = overrides?.absenceStartIso ?? new Date().toISOString().slice(0, 10);
   const serviceStart = overrides?.settlementServiceStartIso ?? employee.startDate;
@@ -64,6 +70,8 @@ export function buildRoseTradingHrPdfProps(ctx: RoseTradingHrPdfContext, overrid
       absenceStartGregorian: toGregorianAr(absenceIso),
       footerApplicantName: employee.name,
       footerDateGregorian: toGregorianAr(new Date().toISOString().slice(0, 10)),
+      addressedToAr: overrides?.resignationAddressedToAr ?? '',
+      reasonLinesAr: overrides?.resignationReasonLines,
     },
     clearance: {
       employeeNameAr: employee.name,

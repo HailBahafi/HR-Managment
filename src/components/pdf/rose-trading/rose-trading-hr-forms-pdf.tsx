@@ -31,6 +31,10 @@ export type RoseResignationFormPdfProps = {
   absenceStartGregorian: string;
   footerApplicantName: string;
   footerDateGregorian: string;
+  /** عنوان / «إلى سعادة …» */
+  addressedToAr?: string;
+  /** نقاط أسباع الاستقالة؛ إذا فاضية يُستخدم النص المعياري */
+  reasonLinesAr?: string[];
 };
 
 export function RoseResignationFormPdf({
@@ -43,13 +47,27 @@ export function RoseResignationFormPdf({
   absenceStartGregorian,
   footerApplicantName,
   footerDateGregorian,
+  addressedToAr = '',
+  reasonLinesAr,
 }: RoseResignationFormPdfProps): React.ReactElement<DocumentProps> {
   ensureHrPdfFonts();
+  const reasonLines =
+    Array.isArray(reasonLinesAr) && reasonLinesAr.some((x) => x.trim())
+      ? reasonLinesAr.map((x) => x.trim()).filter(Boolean)
+      : RESIGNATION_REASONS;
+
   return (
     <Document title="نموذج استقالة — روز للتجارة">
       <Page size="A4" style={RT.page}>
         <CompanyLetterheadHeader logoSrc={logoSrc} />
         <Text style={RT.docTitle}>نموذج استقالة</Text>
+
+        {addressedToAr.trim() ? (
+          <View style={RT.labelRow}>
+            <Text style={RT.label}>إلى / إخوانك الموقّرين:</Text>
+            <Text style={RT.value}>{sanitizePdfText(addressedToAr)}</Text>
+          </View>
+        ) : null}
 
         <View style={RT.labelRow}>
           <Text style={RT.label}>الاسم:</Text>
@@ -69,9 +87,9 @@ export function RoseResignationFormPdf({
         </View>
 
         <Text style={RT.sectionH}>أسباب تقديم الاستقالة (يُحدد ما ينطبق):</Text>
-        {RESIGNATION_REASONS.map((line) => (
-          <Text key={line} style={RT.bullet}>
-            {'\u2022 '} {line}
+        {reasonLines.map((line, i) => (
+          <Text key={`reason-${i}`} style={RT.bullet}>
+            {`${'\u2022'} ${sanitizePdfText(line)}`}
           </Text>
         ))}
 
@@ -79,7 +97,7 @@ export function RoseResignationFormPdf({
         <View style={RT.labelRow}>
           <Text style={RT.label}>التاريخ الهجري:</Text>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <PdfArLatInline text={absenceStartHijri} arStyle={RT.value} latStyle={RT.valueLat} />
+            <PdfArLatInline text={absenceStartHijri} arStyle={RT.inlineValueAr} latStyle={RT.inlineValueLat} />
           </View>
         </View>
         <View style={RT.labelRow}>

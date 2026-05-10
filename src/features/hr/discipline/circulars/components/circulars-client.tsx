@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, Megaphone, Send } from 'lucide-react';
+import { Trash2, CalendarDays, Megaphone, Send, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,11 @@ import {
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { data, getEmployee } from '@/lib/data';
+import type { DocumentProps } from '@react-pdf/renderer';
+import { DisciplineCircularPdfDoc } from '@/components/pdf/discipline-circular-pdf';
+import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
+import { tryBuildCircularAudienceSnapshot } from '@/features/hr/discipline/circulars/utils/build-circular-audience-summary';
 
 const AUDIENCE_OPTIONS = (Object.entries(CIRCULAR_AUDIENCE_LABELS) as [HRDisciplineCircularAudience, string][]).map(
   ([v, l]) => ({ value: v, label: l }),
@@ -155,6 +160,39 @@ export function CircularsClient() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
+  const [circularPdfOpen, setCircularPdfOpen] = React.useState(false);
+  const [circularPdfNode, setCircularPdfNode] = React.useState<React.ReactElement<DocumentProps> | null>(null);
+
+  const openCircularPdfPreview = React.useCallback(() => {
+    if (!draft.bodyAr.trim()) {
+      toast.error('أدخل نص التعميم قبل التصدير');
+      return;
+    }
+    const built = tryBuildCircularAudienceSnapshot(draft);
+    if (!built.ok) {
+      toast.error(built.error);
+      return;
+    }
+    const logo = getPdfLogoSrc();
+    const company = { nameAr: data.company.name as string, nameEn: ((data.company as { nameEn?: string }).nameEn ?? 'rose') };
+    setCircularPdfNode(
+      <DisciplineCircularPdfDoc
+        logoSrc={logo}
+        company={company}
+        titleAr={draft.titleAr.trim() || 'تعميم'}
+        issuedDate={draft.date}
+        audienceSummaryAr={built.data.audienceSummaryAr}
+        bodyAr={draft.bodyAr.trim()}
+        sendFooterAr={draft.executeSend ? `حالة الطباعة: مخطط للإرسال فور الحفظ — ${new Date().toISOString().slice(0, 10)}` : 'مسودة — لم يُرسل بعد'}
+      />,
+    );
+    setCircularPdfOpen(true);
+  }, [draft]);
+
+  React.useEffect(() => {
+    if (!circularPdfOpen) setCircularPdfNode(null);
+  }, [circularPdfOpen]);
+
   const searchFiltered = React.useMemo(
     () =>
       circulars.filter((c) => {
@@ -191,60 +229,17 @@ export function CircularsClient() {
     if (!draft.bodyAr.trim()) { setFormError('نص التعميم مطلوب'); return; }
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
 
-    let branchIds: string[] = [];
-    let branchNamesArSnapshot = '';
-    let departmentIds: string[] = [];
-    let departmentNamesArSnapshot = '';
-    let targetEmployeeIds: string[] = [];
-    let audienceSummaryAr = '';
+    const built = tryBuildCircularAudienceSnapshot(draft);
+    if (!built.ok) { setFormError(built.error); return; }
 
-    switch (draft.audience) {
-      case 'all':
-        audienceSummaryAr = CIRCULAR_AUDIENCE_LABELS.all;
-        break;
-      case 'employees': {
-        targetEmployeeIds = [...draft.targetEmployeeIds];
-        if (targetEmployeeIds.length === 0) {
-          setFormError('اختر موظفاً واحداً على الأقل');
-          return;
-        }
-        audienceSummaryAr =
-          targetEmployeeIds.length === 1
-            ? 'موظف واحد محدد'
-            : `${targetEmployeeIds.length} موظفين محددين`;
-        break;
-      }
-      case 'branch': {
-        branchIds = [...draft.branchIds];
-        if (branchIds.length === 0) {
-          setFormError('اختر فرعاً واحداً على الأقل');
-          return;
-        }
-        const bNames = branchIds.map((id) => data.branches.find((b) => b.id === id)?.name ?? id);
-        branchNamesArSnapshot = bNames.join('، ');
-        audienceSummaryAr =
-          branchIds.length === 1
-            ? `فرع: ${bNames[0]}`
-            : `فروع (${branchIds.length}): ${branchNamesArSnapshot}`;
-        break;
-      }
-      case 'department': {
-        departmentIds = [...draft.departmentIds];
-        if (departmentIds.length === 0) {
-          setFormError('اختر قسماً واحداً على الأقل');
-          return;
-        }
-        const dNames = departmentIds.map((id) => data.departments.find((d) => d.id === id)?.name ?? id);
-        departmentNamesArSnapshot = dNames.join('، ');
-        audienceSummaryAr =
-          departmentIds.length === 1
-            ? `قسم: ${dNames[0]}`
-            : `أقسام (${departmentIds.length}): ${departmentNamesArSnapshot}`;
-        break;
-      }
-      default:
-        break;
-    }
+    const {
+      audienceSummaryAr,
+      branchIds,
+      branchNamesArSnapshot,
+      departmentIds,
+      departmentNamesArSnapshot,
+      targetEmployeeIds,
+    } = built.data;
 
     const sentAt = draft.executeSend ? new Date().toISOString() : null;
     add({
@@ -427,7 +422,20 @@ export function CircularsClient() {
         </div>
       )}
 
-      <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="تعميم جديد" size="lg" onSave={handleSave} error={formError}>
+      <HRSettingsFormDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        title="تعميم جديد"
+        size="lg"
+        onSave={handleSave}
+        error={formError}
+        footerExtra={(
+          <Button type="button" variant="secondary" size="sm" className="gap-1.5 text-xs h-9" onClick={openCircularPdfPreview}>
+            <FileDown className="h-3.5 w-3.5 shrink-0" />
+            معاينة / تنزيل PDF
+          </Button>
+        )}
+      >
         <FormField label="عنوان التعميم (اختياري)">
           <Input value={draft.titleAr} onChange={(e) => set({ titleAr: e.target.value })} placeholder="مثال: تعميم بخصوص سياسة الحضور…" />
         </FormField>
@@ -500,6 +508,15 @@ export function CircularsClient() {
           </label>
         </FormField>
       </HRSettingsFormDrawer>
+
+      <PdfPreviewExportDialog
+        open={circularPdfOpen}
+        onOpenChange={setCircularPdfOpen}
+        title="معاينة — تعميم إداري"
+        fileName={`discipline-circular-${draft.date || 'draft'}.pdf`}
+        document={circularPdfNode}
+        emptyMessage="تعذر إنشاء المعاينة — تحقق من الحقول."
+      />
 
       <ConfirmationModal
         open={!!deleteId}

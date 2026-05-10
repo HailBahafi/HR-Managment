@@ -35,6 +35,9 @@ export const RT = StyleSheet.create({
   label: { fontFamily: 'Ar', fontWeight: 700, fontSize: 9, marginLeft: 6, minWidth: 90, textAlign: 'right' },
   value: { fontFamily: 'Ar', flex: 1, fontSize: 9, textAlign: 'right' },
   valueLat: { fontFamily: 'Lat', flex: 1, fontSize: 9, textAlign: 'right' },
+  /** داخل PdfArLatInline — لا تُطبَّق عليها `flex` (تُفسد yoga + reorderLine مع النص المركب). */
+  inlineValueAr: { fontFamily: 'Ar', fontSize: 9, textAlign: 'right', color: '#222' },
+  inlineValueLat: { fontFamily: 'Lat', fontSize: 9, textAlign: 'right', color: '#222' },
   sectionH: { fontFamily: 'Ar', fontWeight: 700, fontSize: 10, marginTop: 10, marginBottom: 6, textAlign: 'right' },
   bullet: { fontFamily: 'Ar', fontSize: 8.5, marginBottom: 4, textAlign: 'right', paddingRight: 4 },
   footerRow: {

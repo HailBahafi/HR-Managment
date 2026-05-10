@@ -17,6 +17,7 @@ import { EmployeeActivityLogSection } from '@/features/hr/organization/employees
 import { EmployeePermissionsSection } from '@/features/hr/organization/employees/components/sections/employee-permissions-section';
 import { EmployeeSalarySection } from '@/features/hr/organization/employees/components/sections/employee-salary-section';
 import type { Employee } from '@/types';
+import { EmployeeHrPdfPrepDialog } from '@/features/hr/organization/employees/components/dialogs/employee-hr-pdf-prep-dialog';
 
 export function EmployeeProfileBody({ employee }: { employee: Employee }) {
   const model = useEmployeeProfileModel(employee);
@@ -38,10 +39,23 @@ export function EmployeeProfileBody({ employee }: { employee: Employee }) {
         {model.activeSection === 'salary' && <EmployeeSalarySection model={model} />}
       </EmployeeProfileShell>
 
+      <EmployeeHrPdfPrepDialog
+        open={model.hrPdfPrepKind != null}
+        prepKind={model.hrPdfPrepKind}
+        employee={model.employee}
+        onCancel={model.cancelHrPdfPrep}
+        onApplyResignation={(patch) => model.applyHrPdfPrepResult('resignation', patch)}
+        onApplyClearance={(patch) => model.applyHrPdfPrepResult('clearance', patch)}
+        onApplyCashReceipt={({ receipt }) =>
+          model.applyHrPdfPrepResult('cash-receipt', {}, receipt)
+        }
+        onApplyExperience={(patch) => model.applyHrPdfPrepResult('experience', patch)}
+      />
+
       <PdfPreviewExportDialog
-        open={model.rosePdfPreviewKind != null}
-        onOpenChange={(open) => {
-          if (!open) model.setRosePdfPreviewKind(null);
+        open={model.hrPdfPreviewOpen}
+        onOpenChange={(openNext) => {
+          if (!openNext) model.closeHrPdfPreview();
         }}
         title={model.rosePdfPreviewPayload.title}
         fileName={model.rosePdfPreviewPayload.fileName}
