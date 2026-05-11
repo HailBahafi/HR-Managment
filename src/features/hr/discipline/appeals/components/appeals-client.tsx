@@ -23,7 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { data } from '@/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { GenericRegisterPdf } from '@/components/pdf/generic-register-pdf';
+import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 
@@ -125,10 +125,10 @@ export function AppealsClient() {
     [listFiltered],
   );
 
-  const appealsPdfDoc = React.useMemo(
+  const printable = React.useMemo(
     () =>
       appealsPdfRows.length === 0 ? null : (
-        <GenericRegisterPdf
+        <GenericRegisterPrintHtml
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="سجل التظلمات"
@@ -244,7 +244,7 @@ export function AppealsClient() {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير التظلمات"
         fileName="discipline-appeals.pdf"
-        document={appealsPdfDoc}
+        printable={printable}
       />
 
       {searchFiltered.length === 0 ? (

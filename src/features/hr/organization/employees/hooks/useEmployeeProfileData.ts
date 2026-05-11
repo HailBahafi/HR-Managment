@@ -19,7 +19,10 @@ export function useEmployeeProfileData(employee: Employee) {
   const { events, daySummaries, checkpointLinks, checkpoints, assignments, shiftTemplates } = useAttendanceStore();
   const { cases: violationCases } = useHRViolationCasesStore();
   const { contracts } = useHRContractsStore();
-  const roseFormsCount = useEmployeeRoseFormsStore((s) => s.totalCountFor(employee.id));
+  const hasHydrated = useEmployeeRoseFormsStore((s) => s.hasHydrated());
+  const rawRoseFormsCount = useEmployeeRoseFormsStore((s) => s.totalCountFor(employee.id));
+  // Avoid hydration mismatch by returning 0 until store is hydrated
+  const roseFormsCount = hasHydrated ? rawRoseFormsCount : 0;
   const activityLogCount = useEmployeeAuditLogStore(
     (s) => (s.byEmployee[employee.id] ?? EMPTY_EMPLOYEE_AUDIT_LOG).length,
   );

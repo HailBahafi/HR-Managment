@@ -22,7 +22,7 @@ import {
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { data } from '@/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { GenericRegisterPdf } from '@/components/pdf/generic-register-pdf';
+import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 
@@ -116,10 +116,10 @@ export function InvestigationsClient() {
     [listFiltered],
   );
 
-  const investigationsPdfDoc = React.useMemo(
+  const printable = React.useMemo(
     () =>
       investigationsPdfRows.length === 0 ? null : (
-        <GenericRegisterPdf
+        <GenericRegisterPrintHtml
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="سجل التحقيقات"
@@ -235,7 +235,7 @@ export function InvestigationsClient() {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير التحقيقات"
         fileName="discipline-investigations.pdf"
-        document={investigationsPdfDoc}
+        printable={printable}
       />
 
       {searchFiltered.length === 0 ? (

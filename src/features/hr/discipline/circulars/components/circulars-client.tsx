@@ -28,8 +28,7 @@ import {
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { data, getEmployee } from '@/lib/data';
-import type { DocumentProps } from '@react-pdf/renderer';
-import { DisciplineCircularPdfDoc } from '@/components/pdf/discipline-circular-pdf';
+import { DisciplineCircularPrintHtml } from '@/components/pdf/print/discipline-circular-print-html';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
 import { tryBuildCircularAudienceSnapshot } from '@/features/hr/discipline/circulars/utils/build-circular-audience-summary';
@@ -161,7 +160,7 @@ export function CircularsClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
   const [circularPdfOpen, setCircularPdfOpen] = React.useState(false);
-  const [circularPdfNode, setCircularPdfNode] = React.useState<React.ReactElement<DocumentProps> | null>(null);
+  const [circularPrintable, setCircularPrintable] = React.useState<React.ReactElement | null>(null);
 
   const openCircularPdfPreview = React.useCallback(() => {
     if (!draft.bodyAr.trim()) {
@@ -175,8 +174,8 @@ export function CircularsClient() {
     }
     const logo = getPdfLogoSrc();
     const company = { nameAr: data.company.name as string, nameEn: ((data.company as { nameEn?: string }).nameEn ?? 'rose') };
-    setCircularPdfNode(
-      <DisciplineCircularPdfDoc
+    setCircularPrintable(
+      <DisciplineCircularPrintHtml
         logoSrc={logo}
         company={company}
         titleAr={draft.titleAr.trim() || 'تعميم'}
@@ -190,7 +189,7 @@ export function CircularsClient() {
   }, [draft]);
 
   React.useEffect(() => {
-    if (!circularPdfOpen) setCircularPdfNode(null);
+    if (!circularPdfOpen) setCircularPrintable(null);
   }, [circularPdfOpen]);
 
   const searchFiltered = React.useMemo(
@@ -514,7 +513,7 @@ export function CircularsClient() {
         onOpenChange={setCircularPdfOpen}
         title="معاينة — تعميم إداري"
         fileName={`discipline-circular-${draft.date || 'draft'}.pdf`}
-        document={circularPdfNode}
+        printable={circularPrintable}
         emptyMessage="تعذر إنشاء المعاينة — تحقق من الحقول."
       />
 

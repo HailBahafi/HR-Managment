@@ -16,7 +16,7 @@ export function DailyAttendancePanel() {
         onOpenChange={model.setPdfOpen}
         title="معاينة تصدير الحضور"
         fileName={model.attendancePdfFileName}
-        document={model.attendancePdfDoc}
+        printable={model.attendancePrintable}
       />
       <p className="text-xs text-muted-foreground">
         {fmtFull(model.from)}

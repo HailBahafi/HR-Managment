@@ -31,7 +31,7 @@ import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
 import { cn, formatDateShort } from '@/lib/utils';
 import { data } from '@/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { GenericRegisterPdf } from '@/components/pdf/generic-register-pdf';
+import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 import {
   REQUEST_APPROVAL_TAB_ORDER,
@@ -192,10 +192,10 @@ export function GeneralRequestsClient() {
     [filtered, getTemplateById],
   );
 
-  const generalPdfDoc = React.useMemo(
+  const printable = React.useMemo(
     () =>
       generalPdfRows.length === 0 ? null : (
-        <GenericRegisterPdf
+        <GenericRegisterPrintHtml
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="طلبات الموارد البشرية العامة"
@@ -333,7 +333,7 @@ export function GeneralRequestsClient() {
               size="sm"
               className="h-8 gap-1.5"
               onClick={() => {
-                if (!generalPdfDoc) {
+                if (!printable) {
                   toast.error('لا توجد طلبات للتصدير ضمن الفلاتر الحالية.');
                   return;
                 }
@@ -386,7 +386,7 @@ export function GeneralRequestsClient() {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير الطلبات العامة"
         fileName="hr-general-requests.pdf"
-        document={generalPdfDoc}
+        printable={printable}
       />
 
       {filtered.length === 0 ? (

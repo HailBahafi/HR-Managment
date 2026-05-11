@@ -11,7 +11,7 @@ import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { data, getBranch, getDepartment } from '@/lib/data';
 import { formatCurrency } from '@/lib/utils';
 import { matchesDateRange, hasDateRangeFilter } from '@/lib/hr-discipline/discipline-date-filter';
-import { EmployeesRegisterPdf } from '@/components/pdf/employees-register-pdf';
+import { EmployeesRegisterPrintHtml } from '@/components/pdf/print/employees-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 import {
   CONTRACT_TYPE_AR,
@@ -132,10 +132,10 @@ export function useEmployeesListModel() {
     toast.success('تم تنزيل ملف Excel.');
   }, [filtered]);
 
-  const employeesPdfDoc = React.useMemo(
+  const employeesPrintable = React.useMemo(
     () =>
       employeesPdfRows.length === 0 ? null : (
-        <EmployeesRegisterPdf
+        <EmployeesRegisterPrintHtml
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="سجل الموظفين"
@@ -249,7 +249,7 @@ export function useEmployeesListModel() {
     setNewEmpOpen,
     pdfOpen,
     setPdfOpen,
-    employeesPdfDoc,
+    employeesPrintable,
   };
 }
 

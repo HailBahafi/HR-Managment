@@ -14,7 +14,7 @@ import {
 import type { EmployeeLeaveAnalyticsRow } from '@/lib/leaves/types';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { LeavesAnalyticsPdf } from '@/components/pdf/leaves-analytics-pdf';
+import { LeavesAnalyticsPrintHtml } from '@/components/pdf/print/leaves-analytics-print-html';
 import { data } from '@/lib/data';
 import { hasDateRangeFilter, intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
 import { downloadXlsxMultiSheet, type XlsxCell } from '@/lib/export/download-xlsx';
@@ -167,12 +167,12 @@ export function AnalyticsClient() {
     [filteredEmployees],
   );
 
-  const analyticsPdfDoc = React.useMemo(() => {
+  const printable = React.useMemo(() => {
     const hasLeaves = leavePdfRows.length > 0;
     const hasEmps = employeePdfRows.length > 0;
     if (!hasLeaves && !hasEmps) return null;
     return (
-      <LeavesAnalyticsPdf
+      <LeavesAnalyticsPrintHtml
         companyNameAr={data.company.name}
         companyNameEn={data.company.nameEn}
         filterSummary={`الفرع: ${branchFilter === 'all' ? 'الكل' : (MOCK_BRANCHES.find((b) => b.id === branchFilter)?.nameAr ?? branchFilter)} · الموظفون: ${selectedEmpIds.size === 0 ? 'الكل' : `${selectedEmpIds.size} محدد`} · حالة الإجازة: ${leaveStatusFilter === 'all' ? 'الكل' : (statusLabelsForToolbar[leaveStatusFilter] ?? leaveStatusFilter)} · التاريخ: ${hasDateRangeFilter(dateBounds.from, dateBounds.to) ? `${dateBounds.from} — ${dateBounds.to}` : 'غير محدد (كل الفترات في العينة)'}`}
@@ -270,7 +270,7 @@ export function AnalyticsClient() {
               size="sm"
               className="h-8 gap-1.5 text-xs"
               onClick={() => {
-                if (!analyticsPdfDoc) {
+                if (!printable) {
                   toast.error('لا توجد بيانات للتصدير ضمن الفلاتر الحالية.');
                   return;
                 }
@@ -314,7 +314,7 @@ export function AnalyticsClient() {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير تحليلات الإجازات"
         fileName={analyticsPdfFileName}
-        document={analyticsPdfDoc}
+        printable={printable}
       />
 
       <div>

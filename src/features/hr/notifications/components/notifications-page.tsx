@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/hr-requests/shared-ui';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { NotificationsRegisterPdf } from '@/components/pdf/notifications-register-pdf';
+import { NotificationsRegisterPrintHtml } from '@/components/pdf/print/notifications-register-print-html';
 import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
 import { MOCK_APP_SESSION } from '@/lib/app-session';
 import {
@@ -135,7 +135,7 @@ export function NotificationsPage() {
     return parts.join(' · ');
   }, [dateMeta.tab, statusFilter, session.isSystemOwner, selectedEmpIds, activeEmployees]);
 
-  const pdfDoc = React.useMemo(() => {
+  const printable = React.useMemo(() => {
     if (filtered.length === 0) return null;
     const pdfRows = filtered.map((n) => ({
       dateYmd: n.createdAt.slice(0, 10),
@@ -145,7 +145,7 @@ export function NotificationsPage() {
       inboxAr: n.dismissedAt ? 'مخفية' : 'ظاهرة',
     }));
     return (
-      <NotificationsRegisterPdf
+      <NotificationsRegisterPrintHtml
         companyNameAr={data.company.name}
         companyNameEn={data.company.nameEn ?? 'Rose HR'}
         titleAr="تقرير التنبيهات"
@@ -179,7 +179,7 @@ export function NotificationsPage() {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير التنبيهات"
         fileName={`notifications-${new Date().toISOString().slice(0, 10)}.pdf`}
-        document={pdfDoc}
+        printable={printable}
       />
 
       <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card/80 px-4 py-3 shadow-soft sm:flex-row sm:items-center sm:justify-between">

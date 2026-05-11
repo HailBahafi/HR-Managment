@@ -23,15 +23,14 @@ import {
   type RoseSettlementRecord,
   type RoseTradingFormTab,
 } from '@/lib/employee-rose-forms/types';
-import type { DocumentProps } from '@react-pdf/renderer';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import type { RoseFormPdfEmployee } from '@/components/pdf/rose-trading-forms-pdf';
+import { RoseClearanceRecordPrintHtml } from '@/components/pdf/rose-trading/rose-clearance-record-print-html';
 import {
-  RoseClearancePdfDoc,
-  RoseExperiencePdfDoc,
-  RoseResignationPdfDoc,
-  RoseSettlementPdfDoc,
-} from '@/components/pdf/rose-trading-forms-pdf';
+  RoseExperienceRecordPrintHtml,
+  RoseResignationRecordPrintHtml,
+  RoseSettlementRecordPrintHtml,
+  type RoseFormPdfEmployee,
+} from '@/components/pdf/rose-trading/rose-forms-records-print-html';
 import { ConfirmationModal } from '@/components/hr-requests/shared-ui';
 import { appendEmployeeAudit } from '@/lib/employee-audit-log/append';
 import { diffRoseRecordAudit, roseTabToScope } from '@/lib/employee-audit-log/rose-audit';
@@ -85,7 +84,7 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
   const [tab, setTab] = React.useState<RoseTradingFormTab>('resignation');
 
   const [pdfOpen, setPdfOpen] = React.useState(false);
-  const [pdfNode, setPdfNode] = React.useState<React.ReactElement<DocumentProps> | null>(null);
+  const [printable, setPrintable] = React.useState<React.ReactElement | null>(null);
   const [pdfName, setPdfName] = React.useState('document.pdf');
   const [pdfTitle, setPdfTitle] = React.useState('معاينة');
 
@@ -345,27 +344,31 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
     closeEditor();
   };
 
-  const preview = (k: RoseTradingFormTab, row: RoseResignationRecord | RoseClearanceRecord | RoseSettlementRecord | RoseExperienceRecord) => {
+  const preview = (
+    k: RoseTradingFormTab,
+    row: RoseResignationRecord | RoseClearanceRecord | RoseSettlementRecord | RoseExperienceRecord,
+  ) => {
     setPdfTitle(`معاينة — ${ROSE_FORM_TAB_LABELS[k]}`);
+    setPrintable(null);
     if (k === 'resignation') {
       setPdfName(`استقالة-${employee.employeeCode}-${(row as RoseResignationRecord).id.slice(-6)}.pdf`);
-      setPdfNode(
-        <RoseResignationPdfDoc companyNameAr={companyAr} companyNameEn={companyEn} emp={pdfEmp} row={row as RoseResignationRecord} />,
+      setPrintable(
+        <RoseResignationRecordPrintHtml companyNameAr={companyAr} companyNameEn={companyEn} emp={pdfEmp} row={row as RoseResignationRecord} />,
       );
     } else if (k === 'clearance') {
       setPdfName(`اخلاء-طرف-${employee.employeeCode}-${(row as RoseClearanceRecord).id.slice(-6)}.pdf`);
-      setPdfNode(
-        <RoseClearancePdfDoc companyNameAr={companyAr} companyNameEn={companyEn} emp={pdfEmp} row={row as RoseClearanceRecord} />,
+      setPrintable(
+        <RoseClearanceRecordPrintHtml companyNameAr={companyAr} companyNameEn={companyEn} emp={pdfEmp} row={row as RoseClearanceRecord} />,
       );
     } else if (k === 'settlement') {
       setPdfName(`مخالصة-${employee.employeeCode}-${(row as RoseSettlementRecord).id.slice(-6)}.pdf`);
-      setPdfNode(
-        <RoseSettlementPdfDoc companyNameAr={companyAr} companyNameEn={companyEn} emp={pdfEmp} row={row as RoseSettlementRecord} />,
+      setPrintable(
+        <RoseSettlementRecordPrintHtml companyNameAr={companyAr} companyNameEn={companyEn} emp={pdfEmp} row={row as RoseSettlementRecord} />,
       );
     } else {
       setPdfName(`شهادة-خبرة-${employee.employeeCode}-${(row as RoseExperienceRecord).id.slice(-6)}.pdf`);
-      setPdfNode(
-        <RoseExperiencePdfDoc companyNameAr={companyAr} companyNameEn={companyEn} emp={pdfEmp} row={row as RoseExperienceRecord} />,
+      setPrintable(
+        <RoseExperienceRecordPrintHtml companyNameAr={companyAr} companyNameEn={companyEn} emp={pdfEmp} row={row as RoseExperienceRecord} />,
       );
     }
     setPdfOpen(true);
@@ -723,10 +726,15 @@ export function EmployeeRoseFormsPanel({ employee, departmentName, branchName }:
 
       <PdfPreviewExportDialog
         open={pdfOpen}
-        onOpenChange={setPdfOpen}
+        onOpenChange={(open) => {
+          setPdfOpen(open);
+          if (!open) {
+            setPrintable(null);
+          }
+        }}
         title={pdfTitle}
         fileName={pdfName}
-        document={pdfNode}
+        printable={printable}
       />
 
       <ConfirmationModal

@@ -18,6 +18,14 @@ type Props = {
 export function EmployeeProfileShell({ model, children }: Props) {
   const { employee, SECTIONS, activeSection, setActiveSection, contentRef, counts } = model;
 
+  /** Persisted Zustand slices are empty on SSR; defer badges until after mount to avoid hydration mismatch. */
+  const [countsReady, setCountsReady] = React.useState(false);
+  React.useEffect(() => {
+    setCountsReady(true);
+  }, []);
+
+  const showCount = (n: number | undefined) => countsReady && n !== undefined && n > 0;
+
   return (
     <div dir="rtl" className="h-full flex flex-col overflow-hidden bg-background -mx-4 sm:-mx-6">
       <div className="shrink-0 border-b border-border/60 bg-card/50 backdrop-blur-md">
@@ -65,7 +73,7 @@ export function EmployeeProfileShell({ model, children }: Props) {
               >
                 <s.icon className="h-3.5 w-3.5 shrink-0" />
                 {s.label}
-                {count !== undefined && count > 0 && (
+                {showCount(count) && (
                   <span
                     className={cn(
                       'flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] tabular-nums',
@@ -125,7 +133,7 @@ export function EmployeeProfileShell({ model, children }: Props) {
                   >
                     <s.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
                     <span className="flex-1  text-right">{s.label}</span>
-                    {count !== undefined && count > 0 && (
+                    {showCount(count) && (
                       <Badge variant={isActive ? 'gold' : 'subtle'} className="h-5 min-w-5 px-1.5 text-[10px] tabular-nums">
                         {count}
                       </Badge>

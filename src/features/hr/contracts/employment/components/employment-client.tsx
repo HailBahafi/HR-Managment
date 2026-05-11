@@ -54,9 +54,8 @@ import {
   EMPLOYMENT_KIND_FILTER_OPTIONS,
 } from '@/features/hr/contracts/employment/utils/employment-contract-form';
 import { EmploymentContractTerminateModal as TerminateModal } from '@/features/hr/contracts/employment/components/employment-contract-terminate-modal';
-import type { DocumentProps } from '@react-pdf/renderer';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { EmploymentContractPdfDoc } from '@/components/pdf/employment-contract-pdf';
+import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
 import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
 import { data } from '@/lib/data';
 
@@ -146,12 +145,12 @@ export function EmploymentContractsClient() {
   const [copyFromContractId, setCopyFromContractId] = React.useState('');
 
   const [contractPdfOpen, setContractPdfOpen] = React.useState(false);
-  const [contractPdfDoc, setContractPdfDoc] = React.useState<React.ReactElement<DocumentProps> | null>(null);
+  const [contractPrintable, setContractPrintable] = React.useState<React.ReactElement | null>(null);
 
   const getEmpName = (id: string) => allEmployees.find(e => e.id === id)?.nameAr ?? id;
 
   React.useEffect(() => {
-    if (!contractPdfOpen) setContractPdfDoc(null);
+    if (!contractPdfOpen) setContractPrintable(null);
   }, [contractPdfOpen]);
 
   const openEmploymentContractPdf = React.useCallback(() => {
@@ -191,8 +190,8 @@ export function EmploymentContractsClient() {
       nameEn: ((data.company as { nameEn?: string }).nameEn ?? 'rose'),
     };
 
-    const doc = (
-      <EmploymentContractPdfDoc
+    const printable = (
+      <EmploymentContractPrintHtml
         logoSrc={getPdfLogoSrc()}
         company={company}
         employeeNameAr={empAr}
@@ -211,7 +210,7 @@ export function EmploymentContractsClient() {
         articles={artLines}
       />
     );
-    setContractPdfDoc(doc);
+    setContractPrintable(printable);
     setContractPdfOpen(true);
   }, [
     form,
@@ -775,7 +774,7 @@ export function EmploymentContractsClient() {
         onOpenChange={setContractPdfOpen}
         title="معاينة — عقد العمل الحالي في النموذج"
         fileName={`employment-contract-${(form.contractNumber || 'draft').replace(/[^\w\-]+/g, '_')}.pdf`}
-        document={contractPdfDoc}
+        printable={contractPrintable}
         emptyMessage="تعذر إعداد المعاينة — تحقق من بيانات النموذج."
       />
 

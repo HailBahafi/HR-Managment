@@ -18,7 +18,7 @@ import {
 import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
 import { dateToYMD, matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { DisciplineAuditLogPdf } from '@/components/pdf/discipline-audit-log-pdf';
+import { DisciplineAuditLogPrintHtml } from '@/components/pdf/print/discipline-audit-log-print-html';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -199,10 +199,10 @@ export function DisciplineAuditLogClient() {
     [listFiltered],
   );
 
-  const pdfDoc = React.useMemo(
+  const printable = React.useMemo(
     () =>
       pdfRows.length === 0 ? null : (
-        <DisciplineAuditLogPdf
+        <DisciplineAuditLogPrintHtml
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="سجل عمليات الانضباط الوظيفي"
@@ -315,7 +315,7 @@ export function DisciplineAuditLogClient() {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير سجل العمليات"
         fileName="discipline-audit-log.pdf"
-        document={pdfDoc}
+        printable={printable}
       />
 
       <DisciplineFilterToolbar

@@ -22,7 +22,7 @@ export function EmployeesListViews({ model }: Props) {
     setNewEmpOpen,
     pdfOpen,
     setPdfOpen,
-    employeesPdfDoc,
+    employeesPrintable,
   } = model;
 
   return (
@@ -32,7 +32,7 @@ export function EmployeesListViews({ model }: Props) {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير سجل الموظفين"
         fileName="employees-register.pdf"
-        document={employeesPdfDoc}
+        printable={employeesPrintable}
       />
       <NewEmployeeDrawer open={newEmpOpen} onOpenChange={setNewEmpOpen} />
 

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
-import { AttendanceRegisterPdf } from '@/components/pdf/attendance-register-pdf';
+import { AttendanceRegisterPrintHtml } from '@/components/pdf/print/attendance-register-print-html';
 import { hasDateRangeFilter, thisCalendarMonthYMD } from '@/lib/hr-discipline/discipline-date-filter';
 import { useAttendanceStore } from '@/lib/attendance/store';
 import type { AttendanceDaySummary } from '@/lib/attendance/types';
@@ -119,10 +119,10 @@ export function useDailyAttendanceModel() {
     [denseForView],
   );
 
-  const attendancePdfDoc = React.useMemo(
+  const attendancePrintable = React.useMemo(
     () =>
       attendancePdfRows.length === 0 ? null : (
-        <AttendanceRegisterPdf
+        <AttendanceRegisterPrintHtml
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="تقرير الحضور اليومي"
@@ -250,7 +250,7 @@ export function useDailyAttendanceModel() {
     denseForView,
     eventsForView,
     stats,
-    attendancePdfDoc,
+    attendancePrintable,
     attendancePdfFileName,
     pdfOpen,
     setPdfOpen,

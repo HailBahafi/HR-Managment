@@ -1,8 +1,8 @@
-/** Default logo under `public/`. */
-export const PDF_LOGO_PUBLIC_PATH = '/logo.png';
+/** Default logo under `public/` (DOM / html2pdf templates). */
+export const PDF_LOGO_PUBLIC_PATH = '/logo.webp';
 
 /**
- * Absolute URL for `@react-pdf/renderer` `<Image src={…}>` in the browser.
+ * Absolute URL for `<img src={…}>` in DOM-based PDF / print previews.
  * Returns `undefined` during SSR or if `URL` fails.
  */
 export function getPdfLogoSrc(path: string = PDF_LOGO_PUBLIC_PATH): string | undefined {

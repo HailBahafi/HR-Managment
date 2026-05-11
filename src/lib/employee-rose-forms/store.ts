@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { genId } from '@/lib/attendance/utils';
+import { repairUtf8MojibakeDeep } from '@/lib/pdf/repair-utf8-mojibake';
 import type {
   RoseClearanceRecord,
   RoseEmployeeFormBucket,
@@ -10,6 +11,30 @@ import type {
 } from './types';
 
 const STORAGE_KEY = 'rose-hr-employee-rose-forms-v1';
+
+/** Repair mojibake in any string field of a record (in-place copy). */
+function repairRecordStrings<T>(obj: T): T {
+  if (!obj || typeof obj !== 'object') return obj;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      out[key] = repairUtf8MojibakeDeep(value);
+    } else {
+      out[key] = value;
+    }
+  }
+  return out as T;
+}
+
+/** Repair entire bucket (called when rehydrating from storage). */
+function repairBucket(bucket: RoseEmployeeFormBucket): RoseEmployeeFormBucket {
+  return {
+    resignations: bucket.resignations.map(repairRecordStrings<RoseResignationRecord>),
+    clearances: bucket.clearances.map(repairRecordStrings<RoseClearanceRecord>),
+    settlements: bucket.settlements.map(repairRecordStrings<RoseSettlementRecord>),
+    experiences: bucket.experiences.map(repairRecordStrings<RoseExperienceRecord>),
+  };
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -25,9 +50,14 @@ const EMPTY_BUCKET: RoseEmployeeFormBucket = {
 
 type State = {
   buckets: Record<string, RoseEmployeeFormBucket>;
+  _hasHydrated: boolean;
   getBucket: (employeeId: string) => RoseEmployeeFormBucket;
   /** إجمالي عدد النماذج المحفوظة لموظف */
   totalCountFor: (employeeId: string) => number;
+  /** إشارة اكتمال استعادة التخزين (لتجنب hydration mismatch) */
+  hasHydrated: () => boolean;
+  /** انهاء الـ hydration وإصلاح البيانات المخزنة */
+  finishHydration: () => void;
 
   addResignation: (employeeId: string, input: Omit<RoseResignationRecord, 'id' | 'employeeId' | 'createdAt' | 'updatedAt'>) => string;
   updateResignation: (employeeId: string, id: string, patch: Partial<Omit<RoseResignationRecord, 'id' | 'employeeId' | 'createdAt'>>) => void;
@@ -50,8 +80,24 @@ export const useEmployeeRoseFormsStore = create<State>()(
   persist(
     (set, get) => ({
       buckets: {},
+      _hasHydrated: false,
 
-      getBucket: (employeeId) => get().buckets[employeeId] ?? EMPTY_BUCKET,
+      getBucket: (employeeId) => {
+        return get().buckets[employeeId] ?? EMPTY_BUCKET;
+      },
+
+      hasHydrated: () => get()._hasHydrated,
+
+      finishHydration: () => {
+        // Repair any mojibake in stored data and mark as hydrated
+        set((s) => {
+          const repairedBuckets: Record<string, RoseEmployeeFormBucket> = {};
+          for (const [employeeId, bucket] of Object.entries(s.buckets)) {
+            repairedBuckets[employeeId] = repairBucket(bucket);
+          }
+          return { buckets: repairedBuckets, _hasHydrated: true };
+        });
+      },
 
       totalCountFor: (employeeId) => {
         const b = get().buckets[employeeId];
@@ -62,13 +108,13 @@ export const useEmployeeRoseFormsStore = create<State>()(
       addResignation: (employeeId, input) => {
         const id = genId('rose-res');
         const t = nowIso();
-        const row: RoseResignationRecord = {
+        const row: RoseResignationRecord = repairRecordStrings<RoseResignationRecord>({
           ...input,
           id,
           employeeId,
           createdAt: t,
           updatedAt: t,
-        };
+        });
         set((s) => {
           const prev = s.buckets[employeeId] ?? EMPTY_BUCKET;
           return {
@@ -111,7 +157,7 @@ export const useEmployeeRoseFormsStore = create<State>()(
       addClearance: (employeeId, input) => {
         const id = genId('rose-clr');
         const t = nowIso();
-        const row: RoseClearanceRecord = { ...input, id, employeeId, createdAt: t, updatedAt: t };
+        const row: RoseClearanceRecord = repairRecordStrings<RoseClearanceRecord>({ ...input, id, employeeId, createdAt: t, updatedAt: t });
         set((s) => {
           const prev = s.buckets[employeeId] ?? EMPTY_BUCKET;
           return {
@@ -241,6 +287,11 @@ export const useEmployeeRoseFormsStore = create<State>()(
       name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       version: 1,
+      onRehydrateStorage: (state) => {
+        // Note: Cannot call setState here due to initialization order.
+        // Hydration is handled via useEffect in components.
+        void state;
+      },
     },
   ),
 );

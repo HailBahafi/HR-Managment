@@ -23,7 +23,7 @@ import {
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { data } from '@/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { GenericRegisterPdf } from '@/components/pdf/generic-register-pdf';
+import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
 
@@ -113,10 +113,10 @@ export function NoticesClient() {
     [listFiltered],
   );
 
-  const noticesPdfDoc = React.useMemo(
+  const printable = React.useMemo(
     () =>
       noticesPdfRows.length === 0 ? null : (
-        <GenericRegisterPdf
+        <GenericRegisterPrintHtml
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="سجل الإنذارات"
@@ -226,7 +226,7 @@ export function NoticesClient() {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير الإنذارات"
         fileName="discipline-notices.pdf"
-        document={noticesPdfDoc}
+        printable={printable}
       />
 
       {searchFiltered.length === 0 ? (

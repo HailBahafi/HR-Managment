@@ -28,7 +28,7 @@ import {
 import { cn, formatDate, formatTime } from '@/lib/utils';
 import { data } from '@/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { ViolationCasesRegisterPdf } from '@/components/pdf/violation-cases-register-pdf';
+import { ViolationCasesRegisterPrintHtml } from '@/components/pdf/print/violation-cases-register-print-html';
 import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
 import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
 import {
@@ -207,10 +207,10 @@ export function ViolationCasesClient() {
     [listFiltered],
   );
 
-  const violationPdfDoc = React.useMemo(
+  const printable = React.useMemo(
     () =>
       violationPdfRows.length === 0 ? null : (
-        <ViolationCasesRegisterPdf
+        <ViolationCasesRegisterPrintHtml
           companyNameAr={data.company.name}
           companyNameEn={data.company.nameEn}
           titleAr="سجل مخالفات الموظفين"
@@ -362,7 +362,7 @@ export function ViolationCasesClient() {
         onOpenChange={setPdfOpen}
         title="معاينة تصدير سجل المخالفات"
         fileName={violationPdfFileName}
-        document={violationPdfDoc}
+        printable={printable}
       />
 
       {searchFiltered.length === 0 ? (

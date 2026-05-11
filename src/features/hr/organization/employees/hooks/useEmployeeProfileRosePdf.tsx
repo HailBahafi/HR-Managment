@@ -8,20 +8,19 @@ import {
   buildRoseTradingHrPdfProps,
   type RoseTradingHrPdfOverrides,
 } from '@/lib/pdf/build-rose-trading-hr-pdf-props';
-import type { DocumentProps } from '@react-pdf/renderer';
+import { RoseClearancePrintHtml } from '@/components/pdf/rose-trading/rose-clearance-print-html';
 import {
-  RoseClearanceFormPdf,
-  RoseExperienceCertificatePdf,
-  RoseFinalSettlementFormPdf,
-  RoseResignationFormPdf,
-} from '@/components/pdf/rose-trading/rose-trading-hr-forms-pdf';
-import { CashReceiptDoc, type CashReceiptReason } from '@/features/hr/contracts/reports/components/pdf-cash-receipt';
+  RoseExperienceCertificatePrintHtml,
+  RoseFinalSettlementFormPrintHtml,
+  RoseResignationFormPrintHtml,
+} from '@/components/pdf/rose-trading/rose-trading-hr-forms-print-html';
+import { CashReceiptPrintHtml, type CashReceiptReason } from '@/features/hr/contracts/reports/components/pdf-cash-receipt-print-html';
 import type { EmployeeProfileDraft } from '@/features/hr/organization/employees/components/employee-profile-field';
 
 export type EmployeeHrPdfPrepKind = 'resignation' | 'clearance' | 'cash-receipt' | 'experience' | null;
 
 export type EmployeeProfileHrPdfPayload = {
-  doc: React.ReactElement<DocumentProps>;
+  printable: React.ReactElement | null;
   title: string;
   fileName: string;
 };
@@ -67,7 +66,7 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
     const logo = rosePdfLogo;
     const b = buildRoseTradingHrPdfProps(pdfCtx, {});
     setPreview({
-      doc: <RoseFinalSettlementFormPdf logoSrc={logo} {...b.settlement} />,
+      printable: <RoseFinalSettlementFormPrintHtml logoSrc={logo} {...b.settlement} />,
       title: 'معاينة — مخالصة نهائية',
       fileName: `rose-settlement-${draft.employeeCode}.pdf`,
     });
@@ -96,8 +95,8 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
           nameEn: ((data.company as { nameEn?: string }).nameEn ?? 'rose'),
         };
         setPreview({
-          doc: (
-            <CashReceiptDoc
+          printable: (
+            <CashReceiptPrintHtml
               company={company}
               employeeNameAr={draft.name}
               branchNameAr={branch?.name ?? '—'}
@@ -119,7 +118,7 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
 
       if (previewTarget === 'resignation') {
         setPreview({
-          doc: <RoseResignationFormPdf logoSrc={logo} {...b.resignation} />,
+          printable: <RoseResignationFormPrintHtml logoSrc={logo} {...b.resignation} />,
           title: 'معاينة — نموذج استقالة',
           fileName: `rose-resignation-${code}.pdf`,
         });
@@ -127,7 +126,7 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
       }
       if (previewTarget === 'clearance') {
         setPreview({
-          doc: <RoseClearanceFormPdf logoSrc={logo} {...b.clearance} />,
+          printable: <RoseClearancePrintHtml logoSrc={logo} {...b.clearance} />,
           title: 'معاينة — نموذج إخلاء طرف',
           fileName: `rose-clearance-${code}.pdf`,
         });
@@ -135,7 +134,7 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
       }
       if (previewTarget === 'experience') {
         setPreview({
-          doc: <RoseExperienceCertificatePdf logoSrc={logo} {...b.experience} />,
+          printable: <RoseExperienceCertificatePrintHtml logoSrc={logo} {...b.experience} />,
           title: 'معاينة — شهادة خبرة',
           fileName: `rose-experience-${code}.pdf`,
         });
@@ -149,7 +148,11 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
     () =>
       preview
         ? preview
-        : { doc: null as React.ReactElement<DocumentProps> | null, title: '', fileName: '' },
+        : {
+            printable: null as React.ReactElement | null,
+            title: '',
+            fileName: '',
+          },
     [preview],
   );
 

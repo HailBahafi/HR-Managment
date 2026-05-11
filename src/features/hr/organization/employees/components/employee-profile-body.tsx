@@ -59,7 +59,7 @@ export function EmployeeProfileBody({ employee }: { employee: Employee }) {
         }}
         title={model.rosePdfPreviewPayload.title}
         fileName={model.rosePdfPreviewPayload.fileName}
-        document={model.rosePdfPreviewPayload.doc}
+        printable={model.rosePdfPreviewPayload.printable}
       />
 
       <NewRequestDialog
