@@ -48,11 +48,14 @@ const PAGE_STYLE: React.CSSProperties = {
 
 function RowKV({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'row-reverse', borderBottom: `0.5px solid ${PDF_PRINT_C.border}`, padding: '6px 0' }}>
+    <div dir="rtl" style={{ display: 'flex', flexDirection: 'row', borderBottom: `0.5px solid ${PDF_PRINT_C.border}`, padding: '6px 0' }}>
       <div style={{ width: '32%', fontSize: 9, fontWeight: 700, textAlign: 'right', paddingInlineEnd: 6, boxSizing: 'border-box' }}>
         {sanitizePdfText(label)}
+        <span dir="ltr" style={{ unicodeBidi: 'embed' }}>
+          :
+        </span>
       </div>
-      <div style={{ flex: 1, fontSize: 9, textAlign: 'right', lineHeight: 1.55, wordBreak: 'break-word' }}>
+      <div style={{ flex: 1, fontSize: 9, textAlign: 'right', lineHeight: 1.55, wordBreak: 'break-word' }} dir="auto">
         {sanitizePdfText(value || '—')}
       </div>
     </div>

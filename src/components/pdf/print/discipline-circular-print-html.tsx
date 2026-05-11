@@ -58,7 +58,7 @@ export const DisciplineCircularPrintHtml = React.forwardRef<HTMLDivElement, Disc
           <div
             style={{
               display: 'flex',
-              flexDirection: 'row-reverse',
+              flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'flex-end',
               gap: 10,

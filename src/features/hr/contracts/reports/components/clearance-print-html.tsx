@@ -50,7 +50,7 @@ function InfoTable({ rows }: { rows: [string, string][] }) {
           key={label}
           style={{
             display: 'flex',
-            flexDirection: 'row-reverse',
+            flexDirection: 'row',
             borderBottom: i < rows.length - 1 ? `1px solid ${C.border}` : undefined,
           }}
         >
@@ -201,7 +201,7 @@ export const ClearancePrintHtml = React.forwardRef<HTMLDivElement, ClearancePrin
               key={lbl}
               style={{
                 display: 'flex',
-                flexDirection: 'row-reverse',
+                flexDirection: 'row',
                 justifyContent: 'space-between',
                 marginBottom: idx < 2 ? 14 : 0,
                 alignItems: 'flex-end',
@@ -231,7 +231,7 @@ export const ClearancePrintHtml = React.forwardRef<HTMLDivElement, ClearancePrin
           style={{
             marginTop: 16,
             display: 'flex',
-            flexDirection: 'row-reverse',
+            flexDirection: 'row',
             justifyContent: 'center',
             gap: 6,
             fontSize: 7,

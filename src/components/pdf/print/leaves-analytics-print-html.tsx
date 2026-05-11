@@ -72,7 +72,7 @@ export const LeavesAnalyticsPrintHtml = React.forwardRef<HTMLDivElement, LeavesA
             {sanitizePdfText(filterSummary)}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'row-reverse', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
             {[
               { value: kpi.total, label: 'إجمالي الطلبات' },
               { value: kpi.approved, label: 'موافق عليها' },
@@ -100,7 +100,7 @@ export const LeavesAnalyticsPrintHtml = React.forwardRef<HTMLDivElement, LeavesA
 
           <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 8, color: '#1f2937' }}>طلبات الإجازات المصفّاة</div>
           <div style={{ border: '1px solid #cbd5e1' }}>
-            <div style={{ display: 'flex', flexDirection: 'row-reverse', backgroundColor: '#e8f2ef', borderBottom: '1px solid #cbd5e1' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', backgroundColor: '#e8f2ef', borderBottom: '1px solid #cbd5e1' }}>
               {[
                 { label: 'الموظف', w: '28%', align: 'right' as const },
                 { label: 'من', w: '14%', align: 'center' as const },
@@ -134,7 +134,7 @@ export const LeavesAnalyticsPrintHtml = React.forwardRef<HTMLDivElement, LeavesA
                   key={`${l.employeeNameAr}-${l.start}-${idx}`}
                   style={{
                     display: 'flex',
-                    flexDirection: 'row-reverse',
+                    flexDirection: 'row',
                     borderTop: idx === 0 ? undefined : '1px solid #e2e8f0',
                     backgroundColor: idx % 2 === 1 ? '#fafafa' : '#fff',
                   }}
@@ -164,7 +164,7 @@ export const LeavesAnalyticsPrintHtml = React.forwardRef<HTMLDivElement, LeavesA
 
           <div style={{ fontSize: 11, fontWeight: 700, marginTop: 16, marginBottom: 8, color: '#1f2937' }}>أرصدة الموظفين</div>
           <div style={{ border: '1px solid #cbd5e1' }}>
-            <div style={{ display: 'flex', flexDirection: 'row-reverse', backgroundColor: '#e8f2ef', borderBottom: '1px solid #cbd5e1' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', backgroundColor: '#e8f2ef', borderBottom: '1px solid #cbd5e1' }}>
               {[
                 { label: 'الموظف', w: '44%', align: 'right' as const },
                 { label: 'الفرع', w: '26%', align: 'right' as const },
@@ -195,7 +195,7 @@ export const LeavesAnalyticsPrintHtml = React.forwardRef<HTMLDivElement, LeavesA
                   key={`${e.nameAr}-${idx}`}
                   style={{
                     display: 'flex',
-                    flexDirection: 'row-reverse',
+                    flexDirection: 'row',
                     borderTop: idx === 0 ? undefined : '1px solid #e2e8f0',
                     backgroundColor: idx % 2 === 1 ? '#fafafa' : '#fff',
                   }}

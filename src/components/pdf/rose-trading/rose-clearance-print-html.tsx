@@ -74,7 +74,7 @@ export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClear
         <div
           style={{
             display: 'flex',
-            flexDirection: 'row-reverse',
+            flexDirection: 'row',
             alignItems: 'flex-end',
             gap: 8,
             marginBottom: 8,
@@ -93,7 +93,7 @@ export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClear
         <div
           style={{
             display: 'flex',
-            flexDirection: 'row-reverse',
+            flexDirection: 'row',
             alignItems: 'flex-end',
             gap: 8,
             marginBottom: 8,
@@ -148,7 +148,7 @@ export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClear
           style={{
             paddingTop: 20,
             display: 'flex',
-            flexDirection: 'row-reverse',
+            flexDirection: 'row',
             justifyContent: 'space-between',
             gap: 12,
           }}

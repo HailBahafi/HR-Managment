@@ -96,7 +96,7 @@ export const ViolationCasesRegisterPrintHtml = React.forwardRef<
             {sanitizePdfText(filterSummary)}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'row-reverse', backgroundColor: '#e8f2ef', border: '1px solid #94a3b8' }}>
+          <div style={{ display: 'flex', flexDirection: 'row', backgroundColor: '#e8f2ef', border: '1px solid #94a3b8' }}>
             {[
               { label: 'الرقم', width: '14%', align: 'center' as const },
               { label: 'الموظف', width: '22%', align: 'right' as const, pad: true },
@@ -134,7 +134,7 @@ export const ViolationCasesRegisterPrintHtml = React.forwardRef<
                   backgroundColor: ri % 2 === 1 ? '#fafafa' : '#fff',
                 }}
               >
-                <div style={{ display: 'flex', flexDirection: 'row-reverse' }}>
+                <div dir="rtl" style={{ display: 'flex', flexDirection: 'row' }}>
                   <div style={{ width: '14%', boxSizing: 'border-box', padding: '4px 2px', fontSize: 7, textAlign: 'center' }}>
                     <span dir="ltr">{sanitizePdfText(r.caseNumber)}</span>
                   </div>

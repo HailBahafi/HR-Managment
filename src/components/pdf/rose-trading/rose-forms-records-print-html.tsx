@@ -30,25 +30,40 @@ export type RoseFormPdfEmployee = {
   hireDate: string;
 };
 
-function MetaPair({ end, start }: { end: string; start: string }) {
+/**
+ * صفّان من «تسمية: قيمة» داخل RTL — العمود الأيمن أولاً في DOM ليظهر يميناً.
+ * يُصدَّر لإعادة الاستخدام في نماذج روز الأخرى (مثل سجل إخلاء الطرف).
+ */
+export function RosePrintPairedTwoColumnRow({
+  pairEnd,
+  pairStart,
+}: {
+  pairEnd: { label: string; value: string };
+  pairStart: { label: string; value: string };
+}) {
+  const cell = (p: { label: string; value: string }) => (
+    <div style={{ flex: '1 1 48%', minWidth: 140, fontSize: 8, color: '#334155', textAlign: 'right' }}>
+      <span style={{ fontWeight: 700 }}>{sanitizePdfText(p.label)}</span>
+      <span>:</span>
+      <span dir="auto"> {sanitizePdfText(p.value)}</span>
+    </div>
+  );
+
   return (
     <div
+      dir="rtl"
       style={{
         display: 'flex',
-        flexDirection: 'row-reverse',
+        flexDirection: 'row',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         marginTop: 10,
-        gap: 4,
+        gap: 8,
         fontFamily: 'Arial, Helvetica, sans-serif',
       }}
     >
-      <div style={{ flex: '1 1 48%', minWidth: 140, fontSize: 8, color: '#334155', textAlign: 'right' }}>
-        {sanitizePdfText(end)}
-      </div>
-      <div style={{ flex: '1 1 48%', minWidth: 140, fontSize: 8, color: '#334155', textAlign: 'right' }}>
-        {sanitizePdfText(start)}
-      </div>
+      {cell(pairEnd)}
+      {cell(pairStart)}
     </div>
   );
 }
@@ -56,9 +71,10 @@ function MetaPair({ end, start }: { end: string; start: string }) {
 function TableRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
     <div
+      dir="rtl"
       style={{
         display: 'flex',
-        flexDirection: 'row-reverse',
+        flexDirection: 'row',
         alignItems: 'stretch',
         borderBottom: last ? undefined : `0.5px solid ${C.border}`,
         padding: '5px 6px',
@@ -77,9 +93,12 @@ function TableRow({ label, value, last }: { label: string; value: string; last?:
         }}
       >
         {sanitizePdfText(label)}
+        <span dir="ltr" style={{ unicodeBidi: 'embed' }}>
+          :
+        </span>
       </div>
       <div
-        dir="rtl"
+        dir="auto"
         style={{
           width: '72%',
           boxSizing: 'border-box',
@@ -125,7 +144,7 @@ function RecordsDocumentLetterhead({
           fontWeight: 700,
           marginTop: 4,
           marginBottom: 2,
-          textAlign: 'center',
+          textAlign: 'right',
           color: C.primary,
           fontFamily: 'Arial, Helvetica, sans-serif',
         }}
@@ -139,10 +158,22 @@ function RecordsDocumentLetterhead({
 function EmployeeStrip({ emp }: { emp: RoseFormPdfEmployee }) {
   return (
     <section>
-      <MetaPair end={`الاسم: ${emp.nameAr}`} start={`الرقم الوظيفي: ${emp.employeeCode}`} />
-      <MetaPair end={`الوظيفة: ${emp.positionAr}`} start={`الهوية: ${emp.nationalId}`} />
-      <MetaPair end={`القسم: ${emp.departmentAr}`} start={`الفرع: ${emp.branchAr}`} />
-      <MetaPair end={`تاريخ الالتحاق: ${emp.hireDate}`} start={`الاسم (إنجليزي): ${emp.nameEn}`} />
+      <RosePrintPairedTwoColumnRow
+        pairEnd={{ label: 'الاسم', value: emp.nameAr }}
+        pairStart={{ label: 'الرقم الوظيفي', value: emp.employeeCode }}
+      />
+      <RosePrintPairedTwoColumnRow
+        pairEnd={{ label: 'الوظيفة', value: emp.positionAr }}
+        pairStart={{ label: 'الهوية', value: emp.nationalId }}
+      />
+      <RosePrintPairedTwoColumnRow
+        pairEnd={{ label: 'القسم', value: emp.departmentAr }}
+        pairStart={{ label: 'الفرع', value: emp.branchAr }}
+      />
+      <RosePrintPairedTwoColumnRow
+        pairEnd={{ label: 'تاريخ الالتحاق', value: emp.hireDate }}
+        pairStart={{ label: 'الاسم (إنجليزي)', value: emp.nameEn }}
+      />
     </section>
   );
 }
@@ -177,9 +208,10 @@ function SignatureRow({
 }) {
   return (
     <div
+      dir="rtl"
       style={{
         display: 'flex',
-        flexDirection: 'row-reverse',
+        flexDirection: 'row',
         justifyContent: 'space-between',
         marginTop: 28,
         paddingTop: 12,
@@ -236,7 +268,7 @@ export const RoseResignationRecordPrintHtml = React.forwardRef<HTMLDivElement, R
         <RecordsDocumentLetterhead companyNameAr={companyNameAr} companyNameEn={companyNameEn} titleAr="نموذج استقالة" />
         <EmployeeStrip emp={emp} />
 
-        <div style={{ marginTop: 10, fontSize: 9, fontWeight: 700, color: C.primary, textAlign: 'right', borderRight: `3px solid ${C.gold}`, paddingRight: 6 }}>
+        <div style={{ marginTop: 10, fontSize: 9, fontWeight: 700, color: C.primary, textAlign: 'right', borderInlineStart: `3px solid ${C.gold}`, paddingInlineStart: 6 }}>
           بيانات طلب الاستقالة
         </div>
         <div style={{ marginTop: 6, border: `0.5px solid ${C.border}` }}>
@@ -304,7 +336,7 @@ export const RoseSettlementRecordPrintHtml = React.forwardRef<HTMLDivElement, Ro
           <TableRow label="الصافي / البيان" value={row.netAmountAr || '—'} last />
         </div>
 
-        <div style={{ marginTop: 10, fontSize: 9, fontWeight: 700, color: C.primary, textAlign: 'right', borderRight: `3px solid ${C.gold}`, paddingRight: 6 }}>
+        <div style={{ marginTop: 10, fontSize: 9, fontWeight: 700, color: C.primary, textAlign: 'right', borderInlineStart: `3px solid ${C.gold}`, paddingInlineStart: 6 }}>
           إقرار الموظف
         </div>
         <p style={{ marginTop: 8, fontSize: 9.5, lineHeight: 1.55, textAlign: 'right', color: '#1e293b' }}>
@@ -364,7 +396,7 @@ export const RoseExperienceRecordPrintHtml = React.forwardRef<HTMLDivElement, Ro
         <div style={{ fontSize: 9.5, lineHeight: 1.55, textAlign: 'right' }}>{para1}</div>
         <div style={{ marginTop: 8, fontSize: 9.5, lineHeight: 1.55, textAlign: 'right' }}>{para2}</div>
 
-        <div style={{ marginTop: 10, fontSize: 9, fontWeight: 700, color: C.primary, textAlign: 'right', borderRight: `3px solid ${C.gold}`, paddingRight: 6 }}>
+        <div style={{ marginTop: 10, fontSize: 9, fontWeight: 700, color: C.primary, textAlign: 'right', borderInlineStart: `3px solid ${C.gold}`, paddingInlineStart: 6 }}>
           طبيعة العمل والمهام
         </div>
         <div style={{ marginTop: 6, fontSize: 9.5, lineHeight: 1.55, textAlign: 'right', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -373,7 +405,7 @@ export const RoseExperienceRecordPrintHtml = React.forwardRef<HTMLDivElement, Ro
 
         {row.certificatePurposeAr?.trim() ? (
           <>
-            <div style={{ marginTop: 10, fontSize: 9, fontWeight: 700, color: C.primary, textAlign: 'right', borderRight: `3px solid ${C.gold}`, paddingRight: 6 }}>
+            <div style={{ marginTop: 10, fontSize: 9, fontWeight: 700, color: C.primary, textAlign: 'right', borderInlineStart: `3px solid ${C.gold}`, paddingInlineStart: 6 }}>
               الغرض من الشهادة
             </div>
             <div style={{ marginTop: 6, fontSize: 9.5, lineHeight: 1.55, textAlign: 'right', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -386,7 +418,7 @@ export const RoseExperienceRecordPrintHtml = React.forwardRef<HTMLDivElement, Ro
           وقد أُعطيت هذه الشهادة بناءً على طلبه دون تحمّل أدنى مسؤولية تجاه الغير، ولمن يهمه الأمر اتخاذ ما يلزم.
         </p>
 
-        <div style={{ marginTop: 36, display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', gap: 12 }}>
+        <div dir="rtl" style={{ marginTop: 36, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ width: '42%', borderTop: `0.5px solid ${C.muted}`, paddingTop: 6 }}>
             <div style={{ fontSize: 8, color: C.muted, textAlign: 'center' }}>{sanitizePdfText(`ختم ${companyNameAr}`)}</div>
           </div>

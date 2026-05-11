@@ -35,9 +35,10 @@ const PAGE_STYLE: React.CSSProperties = {
 function LabelRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div
+      dir="rtl"
       style={{
         display: 'flex',
-        flexDirection: 'row-reverse',
+        flexDirection: 'row',
         gap: 8,
         borderBottom: '0.5px solid #d1d5db',
         padding: '6px 0',
@@ -149,7 +150,7 @@ export const RoseResignationFormPrintHtml = React.forwardRef<HTMLDivElement, Ros
 
         <div style={{ flex: 1, minHeight: 10 }} aria-hidden />
 
-        <div style={{ display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', gap: 12, marginTop: 24 }}>
+        <div dir="rtl" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 24 }}>
           <SigBlock label="اسم مقدم الطلب" value={footerApplicantName} />
           <SigBlock label="التوقيع" />
           <SigBlock label="التاريخ" value={footerDateGregorian} />
@@ -204,7 +205,7 @@ export const RoseFinalSettlementFormPrintHtml = React.forwardRef<HTMLDivElement,
 
         <div style={{ flex: 1, minHeight: 10 }} aria-hidden />
 
-        <div style={{ display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', gap: 12, marginTop: 24 }}>
+        <div dir="rtl" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 24 }}>
           <SigBlock label="الاسم" value={footerName} />
           <SigBlock label="التوقيع" />
           <SigBlock label="التاريخ" value={footerDateGregorian} />

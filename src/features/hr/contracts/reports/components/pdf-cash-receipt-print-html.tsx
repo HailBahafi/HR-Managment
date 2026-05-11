@@ -40,7 +40,7 @@ export type CashReceiptPrintHtmlProps = {
 
 function CheckRow({ checked, label }: { checked: boolean; label: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', marginBottom: 6 }}>
+    <div dir="rtl" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
       <div
         style={{
           width: 10,
@@ -58,7 +58,7 @@ function CheckRow({ checked, label }: { checked: boolean; label: string }) {
 
 function LabeledField({ label, value, dir = 'rtl' }: { label: string; value: string; dir?: 'rtl' | 'ltr' }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'row-reverse', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+    <div dir="rtl" style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
       <div style={{ fontSize: 9, fontWeight: 700, color: '#111', textAlign: 'right', minWidth: 110 }}>
         {sanitizePdfText(label)}
       </div>
@@ -113,7 +113,7 @@ export const CashReceiptPrintHtml = React.forwardRef<HTMLDivElement, CashReceipt
         </div>
 
         <div style={{ marginTop: 12, backgroundColor: '#f9f9f9', border: `1px solid ${PDF_PRINT_C.border}`, padding: 10, borderRadius: 3 }}>
-          <div style={{ display: 'flex', flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ flex: '1 1 180px' }}>
               <LabeledField label="مبلغ وقدره ( )" value={amountNum} dir="ltr" />
             </div>
@@ -124,7 +124,7 @@ export const CashReceiptPrintHtml = React.forwardRef<HTMLDivElement, CashReceipt
           <div style={{ fontSize: 9, fontWeight: 700, textAlign: 'right', marginTop: 6 }}>وذلك مقابل:</div>
         </div>
 
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ width: '48%', minWidth: 200 }}>
             <CheckRow checked={reason === 'salary'} label={`${CASH_RECEIPT_REASON_LABELS.salary}${reason === 'salary' && reasonDetail ? ` ${reasonDetail}` : ''}`} />
             <CheckRow checked={reason === 'advance'} label={`${CASH_RECEIPT_REASON_LABELS.advance}${reason === 'advance' && reasonDetail ? ` ${reasonDetail}` : ''}`} />
@@ -144,7 +144,7 @@ export const CashReceiptPrintHtml = React.forwardRef<HTMLDivElement, CashReceipt
           <LabeledField label="التاريخ :" value={fmtPrintDate(date)} dir="ltr" />
         </div>
 
-        <div style={{ marginTop: 18, display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ marginTop: 18, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
           {['مسؤول الفرع', 'إدارة شؤون الموظفين', 'المشرف العام', 'المدير المالي'].map((l) => (
             <div key={l} style={{ flex: 1, borderTop: `0.5px solid ${PDF_PRINT_C.muted}`, paddingTop: 6 }}>
               <div style={{ fontSize: 8, color: PDF_PRINT_C.muted, textAlign: 'center' }}>{sanitizePdfText(l)}</div>

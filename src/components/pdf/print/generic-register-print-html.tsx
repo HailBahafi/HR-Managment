@@ -78,7 +78,7 @@ export const GenericRegisterPrintHtml = React.forwardRef<HTMLDivElement, Generic
               {sanitizePdfText(filterSummary)}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'row-reverse', backgroundColor: '#e8f2ef', border: '1px solid #94a3b8' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', backgroundColor: '#e8f2ef', border: '1px solid #94a3b8' }}>
               {headers.map((h, i) => (
                 <div
                   key={`h-${i}`}
@@ -105,7 +105,7 @@ export const GenericRegisterPrintHtml = React.forwardRef<HTMLDivElement, Generic
                   key={`r-${pi}-${ri}`}
                   style={{
                     display: 'flex',
-                    flexDirection: 'row-reverse',
+                    flexDirection: 'row',
                     border: '1px solid #e2e8f0',
                     borderTop: 'none',
                     backgroundColor: ri % 2 === 1 ? '#fafafa' : '#fff',

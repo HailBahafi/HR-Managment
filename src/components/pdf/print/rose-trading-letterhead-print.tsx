@@ -105,7 +105,7 @@ export function RoseTradingLetterheadPrint({
           ) : null}
         </div>
 
-        {/* Physical right — Arabic */}
+        {/* Physical right — Arabic: column + dir=rtl → align stretch + textAlign right = flush to page end */}
         <div
           dir="rtl"
           lang="ar"
@@ -114,7 +114,7 @@ export function RoseTradingLetterheadPrint({
             minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'flex-end',
+            alignItems: 'stretch',
           }}
         >
           <div
@@ -125,23 +125,27 @@ export function RoseTradingLetterheadPrint({
               textAlign: 'right',
               lineHeight: 1.25,
               fontFamily: 'Arial, Helvetica, sans-serif',
+              width: '100%',
             }}
           >
             {nameAr}
           </div>
           <div
+            dir="rtl"
+            lang="ar"
             style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'baseline',
               marginTop: 4,
               fontSize: 9,
               color: '#111111',
               fontFamily: 'Arial, Helvetica, sans-serif',
+              width: '100%',
+              textAlign: 'right',
+              lineHeight: 1.35,
             }}
           >
             <span>س.ت</span>
-            <span dir="ltr" style={{ marginInlineStart: 4 }}>
+            {'\u00a0'}
+            <span dir="ltr" style={{ unicodeBidi: 'embed' }}>
               {cr}
             </span>
           </div>

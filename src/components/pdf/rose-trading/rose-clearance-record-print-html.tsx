@@ -4,7 +4,10 @@ import * as React from 'react';
 import { sanitizePdfText } from '@/lib/pdf/sanitize-pdf-text';
 import { RoseTradingLetterheadPrint } from '@/components/pdf/print/rose-trading-letterhead-print';
 import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
-import type { RoseFormPdfEmployee } from '@/components/pdf/rose-trading/rose-forms-records-print-html';
+import {
+  RosePrintPairedTwoColumnRow,
+  type RoseFormPdfEmployee,
+} from '@/components/pdf/rose-trading/rose-forms-records-print-html';
 import { ROSE_TRADING_COMPANY_AR_DEFAULT } from '@/lib/employee-rose-forms/types';
 import type { RoseClearanceRecord } from '@/lib/employee-rose-forms/types';
 
@@ -40,9 +43,10 @@ function CellValue({ value }: { value: string }) {
 function TableRow({ label, value }: { label: string; value: string; last?: boolean }) {
   return (
     <div
+      dir="rtl"
       style={{
         display: 'flex',
-        flexDirection: 'row-reverse',
+        flexDirection: 'row',
         alignItems: 'stretch',
         borderBottom: `0.5px solid ${C.border}`,
         padding: '5px 6px',
@@ -60,33 +64,12 @@ function TableRow({ label, value }: { label: string; value: string; last?: boole
           paddingInlineEnd: 4,
         }}
       >
-        {label}
+        {sanitizePdfText(label)}
+        <span dir="ltr" style={{ unicodeBidi: 'embed' }}>
+          :
+        </span>
       </div>
       <CellValue value={value} />
-    </div>
-  );
-}
-
-/** `end` = يمين الصف (أول عنصر في RTL row-reverse)، `start` = يسار الصف */
-function MetaPair({ end, start }: { end: string; start: string }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'row-reverse',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        marginTop: 10,
-        gap: 4,
-        fontFamily: 'Arial, Helvetica, sans-serif',
-      }}
-    >
-      <div style={{ flex: '1 1 48%', minWidth: 140, fontSize: 8, color: '#334155', textAlign: 'right' }}>
-        {sanitizePdfText(end)}
-      </div>
-      <div style={{ flex: '1 1 48%', minWidth: 140, fontSize: 8, color: '#334155', textAlign: 'right' }}>
-        {sanitizePdfText(start)}
-      </div>
     </div>
   );
 }
@@ -158,10 +141,22 @@ export const RoseClearanceRecordPrintHtml = React.forwardRef<
         </div>
 
         <section>
-          <MetaPair end={`الاسم: ${emp.nameAr}`} start={`الرقم الوظيفي: ${emp.employeeCode}`} />
-          <MetaPair end={`الوظيفة: ${emp.positionAr}`} start={`الهوية: ${emp.nationalId}`} />
-          <MetaPair end={`القسم: ${emp.departmentAr}`} start={`الفرع: ${emp.branchAr}`} />
-          <MetaPair end={`تاريخ الالتحاق: ${emp.hireDate}`} start={`الاسم (إنجليزي): ${emp.nameEn}`} />
+          <RosePrintPairedTwoColumnRow
+            pairEnd={{ label: 'الاسم', value: emp.nameAr }}
+            pairStart={{ label: 'الرقم الوظيفي', value: emp.employeeCode }}
+          />
+          <RosePrintPairedTwoColumnRow
+            pairEnd={{ label: 'الوظيفة', value: emp.positionAr }}
+            pairStart={{ label: 'الهوية', value: emp.nationalId }}
+          />
+          <RosePrintPairedTwoColumnRow
+            pairEnd={{ label: 'القسم', value: emp.departmentAr }}
+            pairStart={{ label: 'الفرع', value: emp.branchAr }}
+          />
+          <RosePrintPairedTwoColumnRow
+            pairEnd={{ label: 'تاريخ الالتحاق', value: emp.hireDate }}
+            pairStart={{ label: 'الاسم (إنجليزي)', value: emp.nameEn }}
+          />
         </section>
 
         <div
@@ -179,9 +174,10 @@ export const RoseClearanceRecordPrintHtml = React.forwardRef<
           <TableRow label="تقنية المعلومات" value={row.itClearAr || '—'} />
           <TableRow label="الإدارة / العمليات" value={row.adminClearAr || '—'} />
           <div
+            dir="rtl"
             style={{
               display: 'flex',
-              flexDirection: 'row-reverse',
+              flexDirection: 'row',
               padding: '5px 6px',
               fontFamily: 'Arial, Helvetica, sans-serif',
             }}
@@ -217,9 +213,10 @@ export const RoseClearanceRecordPrintHtml = React.forwardRef<
         </p>
 
         <div
+          dir="rtl"
           style={{
             display: 'flex',
-            flexDirection: 'row-reverse',
+            flexDirection: 'row',
             justifyContent: 'space-between',
             marginTop: 28,
             paddingTop: 12,
