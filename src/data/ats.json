@@ -1,0 +1,228 @@
+{
+  "tenants": [
+    {
+      "id": "tenant-1",
+      "name": "نظام ناوا للموارد البشرية",
+      "slug": "nawa-hr",
+      "logo": "/logo.png",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "user-1",
+      "tenantId": "tenant-1",
+      "name": "مدير النظام",
+      "email": "admin@nawa.com",
+      "role": "admin",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "user-2",
+      "tenantId": "tenant-1",
+      "name": "مسؤول التوظيف",
+      "email": "recruiter@nawa.com",
+      "role": "recruiter",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "job-1",
+      "tenantId": "tenant-1",
+      "title": "مطور برمجيات",
+      "slug": "software-developer",
+      "description": "نبحث عن مطور برمجيات ذو خبرة في React و Node.js",
+      "department": "تقنية المعلومات",
+      "location": "الرياض",
+      "type": "full-time",
+      "isActive": true,
+      "formId": "form-1",
+      "createdAt": "2024-01-15T00:00:00.000Z"
+    },
+    {
+      "id": "job-2",
+      "tenantId": "tenant-1",
+      "title": "مدير موارد بشرية",
+      "slug": "hr-manager",
+      "description": "مدير موارد بشرية ذو خبرة 5+ سنوات",
+      "department": "الموارد البشرية",
+      "location": "جدة",
+      "type": "full-time",
+      "isActive": true,
+      "formId": "form-2",
+      "createdAt": "2024-01-20T00:00:00.000Z"
+    }
+  ],
+  "forms": [
+    {
+      "id": "form-1",
+      "tenantId": "tenant-1",
+      "jobId": "job-1",
+      "title": "نموذج التقديم - مطور برمجيات",
+      "description": "يرجى تعبئة البيانات التالية",
+      "fields": [
+        {
+          "id": "field-name",
+          "type": "text",
+          "label": "الاسم الكامل",
+          "required": true
+        },
+        {
+          "id": "field-email",
+          "type": "text",
+          "label": "البريد الإلكتروني",
+          "required": true
+        },
+        {
+          "id": "field-phone",
+          "type": "text",
+          "label": "رقم الجوال",
+          "required": true
+        },
+        {
+          "id": "field-experience",
+          "type": "number",
+          "label": "سنوات الخبرة",
+          "required": true
+        },
+        {
+          "id": "field-skills",
+          "type": "select",
+          "label": "المهارات التقنية",
+          "required": true,
+          "options": ["React", "Node.js", "TypeScript", "Python", "AWS"]
+        },
+        {
+          "id": "field-cv",
+          "type": "file",
+          "label": "السيرة الذاتية",
+          "required": true
+        }
+      ],
+      "createdAt": "2024-01-15T00:00:00.000Z"
+    },
+    {
+      "id": "form-2",
+      "tenantId": "tenant-1",
+      "jobId": "job-2",
+      "title": "نموذج التقديم - مدير موارد بشرية",
+      "description": "يرجى تعبئة البيانات التالية",
+      "fields": [
+        {
+          "id": "field-name",
+          "type": "text",
+          "label": "الاسم الكامل",
+          "required": true
+        },
+        {
+          "id": "field-email",
+          "type": "text",
+          "label": "البريد الإلكتروني",
+          "required": true
+        },
+        {
+          "id": "field-experience",
+          "type": "number",
+          "label": "سنوات الخبرة في HR",
+          "required": true
+        },
+        {
+          "id": "field-cert",
+          "type": "select",
+          "label": "الشهادات",
+          "required": false,
+          "options": ["SHRM-CP", "PHR", "CHRP", "SPHR"]
+        },
+        {
+          "id": "field-cv",
+          "type": "file",
+          "label": "السيرة الذاتية",
+          "required": true
+        }
+      ],
+      "createdAt": "2024-01-20T00:00:00.000Z"
+    }
+  ],
+  "applicants": [
+    {
+      "id": "app-1",
+      "tenantId": "tenant-1",
+      "jobId": "job-1",
+      "formId": "form-1",
+      "answers": {
+        "field-name": "أحمد محمد",
+        "field-email": "ahmed@example.com",
+        "field-phone": "0501234567",
+        "field-experience": "5",
+        "field-skills": "React, TypeScript"
+      },
+      "cvFileName": "ahmed-cv.pdf",
+      "cvFileData": null,
+      "pipelineStage": "screening",
+      "score": {
+        "ruleScore": 78,
+        "aiScore": 82,
+        "finalScore": 79.6,
+        "reasoning": "خبرة قوية في React و TypeScript مع 5 سنوات خبرة"
+      },
+      "submittedAt": "2024-02-01T10:00:00.000Z"
+    },
+    {
+      "id": "app-2",
+      "tenantId": "tenant-1",
+      "jobId": "job-1",
+      "formId": "form-1",
+      "answers": {
+        "field-name": "سارة علي",
+        "field-email": "sara@example.com",
+        "field-phone": "0559876543",
+        "field-experience": "3",
+        "field-skills": "Node.js, Python"
+      },
+      "cvFileName": "sara-cv.pdf",
+      "cvFileData": null,
+      "pipelineStage": "applied",
+      "score": {
+        "ruleScore": 65,
+        "aiScore": 70,
+        "finalScore": 67.0,
+        "reasoning": "خبرة متوسطة، مهارات تقنية متنوعة"
+      },
+      "submittedAt": "2024-02-05T14:30:00.000Z"
+    },
+    {
+      "id": "app-3",
+      "tenantId": "tenant-1",
+      "jobId": "job-2",
+      "formId": "form-2",
+      "answers": {
+        "field-name": "خالد عبدالله",
+        "field-email": "khaled@example.com",
+        "field-experience": "7",
+        "field-cert": "SHRM-CP, CHRP"
+      },
+      "cvFileName": "khaled-cv.pdf",
+      "cvFileData": null,
+      "pipelineStage": "interview",
+      "score": {
+        "ruleScore": 88,
+        "aiScore": 85,
+        "finalScore": 86.8,
+        "reasoning": "خبرة واسعة 7 سنوات مع شهادات معتمدة"
+      },
+      "submittedAt": "2024-02-10T09:00:00.000Z"
+    }
+  ],
+  "pipelineConfig": {
+    "stages": [
+      { "id": "applied", "label": "تم التقديم", "color": "bg-slate-100 text-slate-700 border-slate-200" },
+      { "id": "screening", "label": "الفرز", "color": "bg-blue-50 text-blue-700 border-blue-200" },
+      { "id": "interview", "label": "المقابلة", "color": "bg-amber-50 text-amber-700 border-amber-200" },
+      { "id": "technical", "label": "تقني", "color": "bg-purple-50 text-purple-700 border-purple-200" },
+      { "id": "offer", "label": "العرض", "color": "bg-emerald-50 text-emerald-700 border-emerald-200" },
+      { "id": "hired", "label": "تم التعيين", "color": "bg-green-50 text-green-700 border-green-200" },
+      { "id": "rejected", "label": "مرفوض", "color": "bg-rose-50 text-rose-700 border-rose-200" }
+    ]
+  }
+}

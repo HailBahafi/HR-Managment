@@ -52,6 +52,7 @@ function buildPdfEmp(employee: Employee, departmentName: string, branchName: str
     nameEn: employee.nameEn,
     employeeCode: employee.employeeCode,
     nationalId: employee.nationalId,
+    nationalityAr: employee.nationality,
     positionAr: employee.position,
     departmentAr: departmentName,
     branchAr: branchName,

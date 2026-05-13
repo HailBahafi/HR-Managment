@@ -3,6 +3,7 @@ import employeesData from '../../data/employees.json';
 import attendanceData from '../../data/attendance.json';
 import requestsData from '../../data/requests.json';
 import payrollData from '../../data/payroll.json';
+import recruitmentData from '../../data/recruitment.json';
 
 export const data = {
   company: mockData.company,
@@ -22,6 +23,8 @@ export const data = {
   payslips: payrollData.payslips,
   payrollTrend: payrollData.trend,
   payrollByBranch: payrollData.byBranch,
+  recruitmentForms: recruitmentData.forms,
+  recruitmentApplicants: recruitmentData.applicants,
 };
 
 export function getEmployee(id: string) {

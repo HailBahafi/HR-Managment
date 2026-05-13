@@ -1,4 +1,5 @@
 import type { Employee } from '@/types';
+import { ROSE_TRADING_COMPANY_AR_DEFAULT } from '@/lib/employee-rose-forms/types';
 
 function toHijri(iso: string): string {
   try {
@@ -63,6 +64,7 @@ export function buildRoseTradingHrPdfProps(
   return {
     resignation: {
       employeeNameAr: employee.name,
+      companyNameAr: ROSE_TRADING_COMPANY_AR_DEFAULT,
       branchAr: branchNameAr,
       positionAr: employee.position,
       nationalityAr: employee.nationality,
@@ -86,11 +88,14 @@ export function buildRoseTradingHrPdfProps(
       nationalId: employee.nationalId,
       serviceStartGregorian: toGregorianAr(serviceStart),
       serviceStartHijri: toHijri(serviceStart),
+      endDateGregorian: toGregorianAr(certEnd),
+      endDateHijri: toHijri(certEnd),
       footerName: employee.name,
       footerDateGregorian: toGregorianAr(new Date().toISOString().slice(0, 10)),
     },
     experience: {
       certificateDateGregorian: toGregorianAr(certIssue),
+      companyNameAr: ROSE_TRADING_COMPANY_AR_DEFAULT,
       recipientLineAr: experienceRecipientLine(employee),
       departmentAr: departmentNameAr,
       jobTitleAr: employee.position,

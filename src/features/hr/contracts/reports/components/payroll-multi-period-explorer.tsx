@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import {
-  Download, FileSpreadsheet, Loader2, UserCheck,
+  Download, FileSpreadsheet, FileText, Loader2, UserCheck,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,8 @@ import {
 import { CompensationReportPanel } from '@/features/hr/contracts/compensation/components/compensation-report-panel';
 import { hrContractsPayrollSalaryApprovalsQueryHref, hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 import { MinimalDropdown } from '@/components/hr-requests/shared-ui';
+import { PayrollPrintHtml } from './payroll-print-html';
+import { exportDomToPdf } from '@/lib/pdf/exportDomToPdf';
 
 const PERIOD_STATUS_LABEL: Record<string, string> = {
   draft:  'مسودة',
@@ -34,6 +36,8 @@ export function PayrollMultiPeriodExplorer() {
   );
   const [empFilter, setEmpFilter] = React.useState<Set<string>>(() => new Set());
   const [downloading, setDownloading] = React.useState(false);
+  const [pdfExporting, setPdfExporting] = React.useState(false);
+  const payrollPrintRef = React.useRef<HTMLDivElement>(null);
 
   const selectedPeriod = React.useMemo(
     () => periods.find(p => p.id === selectedId) ?? null,
@@ -60,6 +64,50 @@ export function PayrollMultiPeriodExplorer() {
     if (empFilter.size === 0 || empFilter.size >= periodEmployees.length) return undefined;
     return [...empFilter];
   }, [selectedPeriod?.id, periodEmployees.length, empFilterKey]);
+
+  const payrollPrintData = React.useMemo(() => {
+    if (!selectedPeriod) return null;
+    const getContract = (id: string) => contracts.find(c => c.id === id);
+    const getAlloType = (id: string) => allowanceTypes.find(a => a.id === id);
+    let previews = buildCompensationPreviews(selectedPeriod, getContract, getAlloType);
+    if (employeeIdsForFilter?.length) {
+      const allow = new Set(employeeIdsForFilter);
+      previews = previews.filter(r => allow.has(r.employeeId));
+    }
+    const branchName = selectedPeriod.employmentLines[0]?.departmentSnapshot ?? 'المقر الرئيسي';
+    return {
+      monthNameAr: selectedPeriod.nameAr || selectedPeriod.code,
+      branchNameAr: branchName,
+      rows: previews.map((r, i) => ({
+        no: i + 1,
+        employeeName: r.namePrimary,
+        baseSalary: r.baseSalary,
+        bonusOrOvertime: r.entitlementOvertimeSar + r.entitlementBonusSar,
+        totalSalary: r.lineNetSar,
+      })),
+    };
+  }, [selectedPeriod, contracts, allowanceTypes, employeeIdsForFilter]);
+
+  const handleDownloadPdf = React.useCallback(async () => {
+    if (!payrollPrintData || !selectedPeriod) {
+      alert('لا توجد بيانات للتصدير');
+      return;
+    }
+    const el = payrollPrintRef.current;
+    if (!el) {
+      alert('تعذر العثور على منطقة الطباعة');
+      return;
+    }
+    setPdfExporting(true);
+    try {
+      await exportDomToPdf(el, `payroll-${selectedPeriod.code}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ أثناء تصدير PDF');
+    } finally {
+      setPdfExporting(false);
+    }
+  }, [payrollPrintData, selectedPeriod]);
 
   /* ── Excel download ──────────────────────────────────────────────────── */
   const handleDownloadExcel = async () => {
@@ -181,14 +229,38 @@ export function PayrollMultiPeriodExplorer() {
             >
               {downloading
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Download className="h-3.5 w-3.5" />}
+                : <FileSpreadsheet className="h-3.5 w-3.5" />}
               تحميل Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={pdfExporting || !selectedId}
+              onClick={handleDownloadPdf}
+            >
+              {pdfExporting
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <FileText className="h-3.5 w-3.5" />}
+              تحميل PDF
             </Button>
           </div>
         </div>
       </div>
 
       {/* ── Content ── */}
+      {/* Hidden PDF print area */}
+      <div style={{ position: 'absolute', left: -9999, top: 0 }}>
+        {payrollPrintData && (
+          <PayrollPrintHtml
+            ref={payrollPrintRef}
+            monthNameAr={payrollPrintData.monthNameAr}
+            branchNameAr={payrollPrintData.branchNameAr}
+            rows={payrollPrintData.rows}
+          />
+        )}
+      </div>
+
       {!selectedPeriod ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 px-6 py-20 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/50">

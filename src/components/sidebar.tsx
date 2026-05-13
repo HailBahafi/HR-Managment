@@ -9,7 +9,7 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet,
-  UserCircle, Briefcase,
+  UserCircle, Briefcase, UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
@@ -42,6 +42,14 @@ const mobileNav: MobileNavItem[] = [
       { label: 'الفروع', href: '/hr/organization/branches', icon: Building2 },
       { label: 'الأقسام', href: '/hr/organization/departments', icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/hr/organization/chart', icon: Building2 },
+    ],
+  },
+  {
+    key: 'recruitment', label: 'التوظيف', icon: UserPlus,
+    children: [
+      { label: 'إدارة الوظائف', href: '/hr/recruitment/ats-admin', icon: LayoutDashboard },
+      { label: 'المتقدمون', href: '/hr/recruitment/ats-applicants', icon: Users },
+      { label: 'مسار التوظيف', href: '/hr/recruitment/ats-pipeline', icon: ClipboardList },
     ],
   },
   {

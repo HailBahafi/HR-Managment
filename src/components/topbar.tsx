@@ -9,7 +9,7 @@ import {
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
   InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
-  Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck,
+  Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck, UserPlus,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ export const PAGE_ICONS: Record<string, React.ElementType> = {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
   CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet, Bell,
-  UserCircle, Briefcase, UserCheck,
+  UserCircle, Briefcase, UserCheck, UserPlus,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */
@@ -60,6 +60,16 @@ export const navConfig: NavItem[] = [
       { label: 'الأقسام',          href: '/hr/organization/departments', icon: Building2 },
       { label: 'الهيكل التنظيمي', href: '/hr/organization/chart',       icon: Building2 },
     ]}],
+  },
+  {
+    key: 'recruitment', label: 'التوظيف', icon: UserPlus,
+    groups: [
+      { items: [
+        { label: 'إدارة الوظائف', href: '/hr/recruitment/ats-admin', icon: LayoutDashboard },
+        { label: 'المتقدمون', href: '/hr/recruitment/ats-applicants', icon: Users },
+        { label: 'مسار التوظيف', href: '/hr/recruitment/ats-pipeline', icon: ClipboardList },
+      ]},
+    ],
   },
   {
     key: 'attendance', label: 'الحضور', icon: Clock,
