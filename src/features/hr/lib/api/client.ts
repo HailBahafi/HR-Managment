@@ -14,6 +14,23 @@ export type PaginatedResult<T> = {
   pagination: PaginationMeta;
 };
 
+const EMPTY_PAGINATION: PaginationMeta = {
+  page: 1,
+  limit: 200,
+  total: 0,
+  totalPages: 0,
+};
+
+/** Guards list endpoints when `data` is missing or malformed. */
+export function ensurePaginatedResult<T>(
+  value: PaginatedResult<T> | null | undefined,
+): PaginatedResult<T> {
+  if (!value || !Array.isArray(value.items)) {
+    return { items: [], pagination: value?.pagination ?? EMPTY_PAGINATION };
+  }
+  return value;
+}
+
 export class ApiError extends Error {
   status: number;
   /** Raw JSON body from fetch (same as Network tab). */
@@ -50,11 +67,6 @@ function buildUrl(path: string, query?: Record<string, QueryValue>) {
   return `${urlBase}${normalizedPath}${buildQuery(query)}`;
 }
 
-function getAuthToken() {
-  if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem('access_token');
-}
-
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   query?: Record<string, QueryValue>;
@@ -85,16 +97,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
   }
-  const token = getAuthToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
   const response = await fetch(buildUrl(path, query), {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     signal,
+    credentials: 'include',
   });
 
   if (response.status === 204) {
@@ -109,14 +117,32 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!response.ok) {
-    const envelope = isApiErrorEnvelope(payload)
-      ? payload
-      : {
-          status: response.status,
-          message: response.statusText || 'Request failed',
-          data: null,
-          error: payload,
-        };
+    let envelope: ApiErrorEnvelope;
+    if (isApiErrorEnvelope(payload)) {
+      envelope = payload;
+    } else if (payload && typeof payload === 'object') {
+      const body = payload as Record<string, unknown>;
+      const nestedMsg = body.message;
+      const message =
+        typeof nestedMsg === 'string'
+          ? nestedMsg
+          : Array.isArray(nestedMsg)
+            ? nestedMsg.map(String).join('; ')
+            : response.statusText || 'Request failed';
+      envelope = {
+        status: typeof body.status === 'number' ? body.status : response.status,
+        message,
+        data: null,
+        error: body.error ?? body,
+      };
+    } else {
+      envelope = {
+        status: response.status,
+        message: response.statusText || 'Request failed',
+        data: null,
+        error: payload,
+      };
+    }
     throw new ApiError(envelope, response.status, payload);
   }
 

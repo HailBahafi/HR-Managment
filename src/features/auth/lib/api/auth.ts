@@ -1,4 +1,5 @@
 import { apiRequest } from '@/features/hr/lib/api/client';
+import type { AccessProfile, AuthUser } from '@/features/auth/types/access-profile';
 
 export type LoginPayload = {
   email: string;
@@ -6,26 +7,26 @@ export type LoginPayload = {
 };
 
 export type LoginResult = {
-  access_token: string;
-  user: {
-    id: string;
-    email: string | null;
-    phone: string | null;
-  };
+  user: AuthUser;
 };
 
 export const authApi = {
   login(payload: LoginPayload) {
     return apiRequest<LoginResult>('/auth/login', { method: 'POST', body: payload });
   },
+
+  me() {
+    return apiRequest<AuthUser>('/auth/me');
+  },
+
+  logout() {
+    return apiRequest<{ message: string; userId: string }>('/auth/logout', { method: 'POST' });
+  },
+
+  getAccessProfile(userId: string) {
+    return apiRequest<AccessProfile>('/auth/access-profile', {
+      method: 'POST',
+      body: { userId },
+    });
+  },
 };
-
-export function persistAccessToken(token: string) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem('access_token', token);
-}
-
-export function clearAccessToken() {
-  if (typeof window === 'undefined') return;
-  window.localStorage.removeItem('access_token');
-}

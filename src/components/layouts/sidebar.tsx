@@ -69,7 +69,7 @@ const mobileNav: MobileNavItem[] = [
     children: [
       { label: 'التحليلات', href: '/hr/leaves/analytics', icon: BarChart3 },
       { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
-      { label: 'إضافة رصيد إجازات', href: '/hr/requests/unified-management/balance-credit', icon: CirclePlus },
+      { label: 'إضافة رصيد إجازات', href: '/hr/leaves/balance-credit', icon: CirclePlus },
       { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types', icon: ListChecks },
       { label: 'العطل الرسمية', href: '/hr/leaves/public-holidays', icon: CalendarDays },
     ],

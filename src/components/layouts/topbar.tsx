@@ -31,6 +31,7 @@ import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrContractsNavGroups } from '@/features/hr/contracts/constants/nav';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
+import { useLogout } from '@/features/auth/hooks/use-logout';
 
 /* ── Icon registry ────────────────────────────────────────────────────── */
 export const PAGE_ICONS: Record<string, React.ElementType> = {
@@ -227,6 +228,7 @@ function NavDropdownContent({
 /* ── Main Topbar ─────────────────────────────────────────────────────── */
 export function Topbar() {
   const [dark, setDark] = React.useState(false);
+  const { logout, loading: logoutLoading } = useLogout();
   const { toggle } = useSidebar();
   const { meta } = usePageTitle();
   const pathname = usePathname();
@@ -363,8 +365,16 @@ export function Topbar() {
               <DropdownMenuItem><User className="h-4 w-4" /><span>الملف الشخصي</span></DropdownMenuItem>
               <DropdownMenuItem><Settings className="h-4 w-4" /><span>الإعدادات</span></DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="text-destructive focus:text-destructive">
-                <Link href="/login"><LogOut className="h-4 w-4" /><span>تسجيل الخروج</span></Link>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                disabled={logoutLoading}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void logout();
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{logoutLoading ? 'جاري الخروج…' : 'تسجيل الخروج'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

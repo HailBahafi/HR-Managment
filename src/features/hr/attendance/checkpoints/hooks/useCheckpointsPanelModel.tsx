@@ -2,33 +2,56 @@
 
 import * as React from 'react';
 import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
-import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
-import { genId } from '@/features/hr/attendance/lib/utils';
 import { autosuggestQuery } from '@/components/here-map/components/geocoding';
 import type { GeocodingResult } from '@/components/here-map/types/types';
 import { CHECKPOINT_GEO_DEBOUNCE_MS, CHECKPOINT_GEO_MIN_QUERY_LEN } from '@/features/hr/attendance/checkpoints/constants/checkpoints-panel';
 import { validateCheckpointDraft } from '@/features/hr/attendance/checkpoints/utils/checkpoint-validate';
 import { publicConfig } from '@/shared/config';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import {
+  createCheckInPoint,
+  deleteCheckInPoint,
+  loadCheckInPoints,
+  updateCheckInPoint,
+} from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 
 export function useCheckpointsPanelModel() {
-  const checkpoints = useAttendanceStore((s) => s.checkpoints);
-  const upsertCheckpoint = useAttendanceStore((s) => s.upsertCheckpoint);
-  const removeCheckpoint = useAttendanceStore((s) => s.removeCheckpoint);
-
+  const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
+  const [companyId, setCompanyId] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [listError, setListError] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<AttendanceCheckInPoint | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<string | null>(null);
   const [geoQuery, setGeoQuery] = React.useState('');
   const justPickedRef = React.useRef(false);
-
   const [geoLoading, setGeoLoading] = React.useState(false);
   const [geoError, setGeoError] = React.useState<string | null>(null);
   const [geoSuggestions, setGeoSuggestions] = React.useState<GeocodingResult[]>([]);
 
+  const reload = React.useCallback(async () => {
+    setLoading(true);
+    setListError(null);
+    try {
+      const data = await loadCheckInPoints();
+      setCheckpoints(data.items);
+      setCompanyId(data.companyId);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'check-in-points.load');
+      setListError(displayMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void reload();
+  }, [reload]);
+
   const openCreate = React.useCallback(() => {
     setDraft({
-      id: genId('cp'),
+      id: '',
       nameAr: '',
       nameEn: '',
       latitude: 24.7136,
@@ -113,20 +136,63 @@ export function useCheckpointsPanelModel() {
       window.clearTimeout(timer);
       ac.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- matches legacy: center uses latest draft when query fires
-  }, [geoQuery, open]);
+  }, [geoQuery, open, draft]);
 
-  const save = React.useCallback(() => {
+  const save = React.useCallback(async () => {
     if (!draft) return;
     const err = validateCheckpointDraft(draft);
     if (err) {
       setError(err);
       return;
     }
-    upsertCheckpoint({ ...draft, nameEn: draft.nameAr.trim() });
-    setOpen(false);
-    setDraft(null);
-  }, [draft, upsertCheckpoint]);
+    if (!companyId) {
+      setError('تعذر تحديد الشركة');
+      return;
+    }
+    setError(null);
+    const nameAr = draft.nameAr.trim();
+    try {
+      if (draft.id) {
+        await updateCheckInPoint(draft.id, {
+          nameAr,
+          nameEn: nameAr,
+          latitude: draft.latitude,
+          longitude: draft.longitude,
+          radiusMeters: draft.radiusMeters,
+          isActive: draft.isActive,
+        });
+      } else {
+        await createCheckInPoint({
+          companyId,
+          nameAr,
+          nameEn: nameAr,
+          latitude: draft.latitude,
+          longitude: draft.longitude,
+          radiusMeters: draft.radiusMeters,
+          isActive: draft.isActive,
+        });
+      }
+      await reload();
+      setOpen(false);
+      setDraft(null);
+    } catch (apiErr) {
+      const { displayMessage } = handleApiError(apiErr, 'check-in-points.save');
+      setError(displayMessage);
+    }
+  }, [companyId, draft, reload]);
+
+  const removeCheckpoint = React.useCallback(
+    async (id: string) => {
+      try {
+        await deleteCheckInPoint(id);
+        await reload();
+      } catch (apiErr) {
+        const { displayMessage } = handleApiError(apiErr, 'check-in-points.delete');
+        setError(displayMessage);
+      }
+    },
+    [reload],
+  );
 
   const selectedPoint = selected ? checkpoints.find((p) => p.id === selected) ?? null : null;
 
@@ -136,6 +202,8 @@ export function useCheckpointsPanelModel() {
 
   return {
     checkpoints,
+    loading,
+    listError,
     removeCheckpoint,
     open,
     setOpen,

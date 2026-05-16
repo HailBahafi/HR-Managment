@@ -10,8 +10,8 @@ import {
   MOCK_BRANCHES,
   MOCK_UNIFIED_LEAVES,
   STATUS_LABELS,
-} from '@/features/hr/leaves/lib/unified-mock';
-import type { EmployeeLeaveAnalyticsRow } from '@/features/hr/leaves/lib/types';
+} from '@/features/hr/leaves/unified-management/lib/mock';
+import type { EmployeeLeaveAnalyticsRow } from '@/features/hr/leaves/analytics/types';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { LeavesAnalyticsPrintHtml } from '@/components/pdf/print/leaves-analytics-print-html';

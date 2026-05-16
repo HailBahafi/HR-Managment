@@ -21,64 +21,123 @@ Avoid monolithic implementations. Large systems must be split into isolated feat
 
 ---
 
-# 2. Project Structure — Route / Feature Parity (Required)
+# 2. Project Structure — صفحة مستقلة = مجلد واحد كامل (Required)
 
-**Rule:** `features/` MUST mirror the URL segments under `app/`. Every routable page in `app/` has a matching feature segment with the same folder path (excluding route groups like `(app)` and files like `page.tsx`, `layout.tsx`, `loading.tsx`).
+**المبدأ:** كل route له **كبسولة صفحة (page capsule)** — مجلد واحد فيه كل ما يخص هذه الصفحة: components، hooks، services، `lib/api`، types، constants، dialogs.
 
-| App route (example) | Feature path (required) |
-|----------------------|-------------------------|
-| `app/(app)/hr/organization/branches/page.tsx` | `features/hr/organization/branches/` |
-| `app/(app)/hr/organization/departments/page.tsx` | `features/hr/organization/departments/` |
-| `app/(app)/hr/organization/job-titles/page.tsx` | `features/hr/organization/job-titles/` |
-| `app/(app)/hr/organization/employees/page.tsx` | `features/hr/organization/employees/` |
-| `app/(app)/hr/organization/chart/page.tsx` | `features/hr/organization/chart/` |
-| `app/(app)/hr/contracts/employment/page.tsx` | `features/hr/contracts/employment/` |
+**القاعدة:** `features/` مرآة لـ `app/`. مثال `/hr/organization/branches` → كل ملفات الفروع داخل `features/hr/organization/branches/` وليس في `organization/lib/api/`.
 
+---
+
+### مثال مرجعي: `/hr/organization/branches`
+
+| الطبقة | المسار |
+|--------|--------|
+| URL | `/hr/organization/branches` |
+| Routing | `app/(app)/hr/organization/branches/page.tsx` |
+| Business | `features/hr/organization/branches/` |
+
+```text
+app/(app)/hr/organization/branches/
+`-- page.tsx                    # thin — imports BranchesPage only
+
+features/hr/organization/branches/
+|-- components/
+|   |-- branches-page.tsx
+|   `-- branches-list-views.tsx
+|-- hooks/
+|   `-- useBranchesDirectoryModel.tsx
+|-- services/
+|   `-- branches.service.ts
+|-- lib/
+|   `-- api/
+|       `-- branches.ts
+|-- types/
+|   `-- branch.ts
+|-- constants/
+|   `-- branches-directory.ts
+|-- dialogs/
+|   `-- branch-detail-dialog.tsx
+`-- utils/
+```
+
+```tsx
+import BranchesPage from '@/features/hr/organization/branches/components/branches-page';
+export default function Page() { return <BranchesPage />; }
+```
+
+---
+
+### مجلد الوحدة `organization` (أب فقط — بدون منطق صفحات)
+
+```text
+features/hr/organization/
+|-- constants/routes.ts           # module nav only
+|-- lib/api/
+|   `-- organization-context.ts   # optional shared companyId scope
+|-- branches/                   # full page capsule
+|-- departments/
+|-- job-titles/
+|-- employees/
+|-- contacts/
+`-- chart/
+```
+
+---
+
+### `leaves` — نفس الكبسولة لكل صفحة
+
+```text
+features/hr/leaves/
+|-- layout/                     # nav shell only
+|-- leave-types/                # كل شيء داخل leave-types/
+|   |-- components/
+|   |-- hooks/
+|   |-- services/
+|   |-- lib/api/leave-types.ts
+|   `-- types.ts
+|-- public-holidays/
+|-- balance-credit/
+|-- unified-management/
+`-- analytics/
+```
+
+---
+
+### `src/` overview
+
+```text
 src/
-│
-├── app/                              # Routing ONLY — thin entrypoints
-│   └── (app)/hr/
-│       ├── organization/
-│       │   ├── branches/page.tsx
-│       │   ├── departments/page.tsx
-│       │   ├── job-titles/page.tsx
-│       │   ├── employees/page.tsx
-│       │   ├── chart/page.tsx
-│       │   └── layout.tsx
-│       ├── contracts/
-│       ├── attendance/
-│       ├── leaves/
-│       ├── requests/
-│       └── ...
-│
-├── features/                         # Same tree as app routes (business logic)
-│   ├── hr/
-│   │   ├── organization/             # Domain parent (module-wide shared code)
-│   │   │   ├── constants/            # e.g. nav routes for whole organization module
-│   │   │   ├── branches/
-│   │   │   │   ├── components/
-│   │   │   │   ├── hooks/
-│   │   │   │   ├── dialogs/
-│   │   │   │   └── constants/
-│   │   │   ├── departments/
-│   │   │   ├── job-titles/
-│   │   │   ├── employees/
-│   │   │   └── chart/
-│   │   ├── contracts/
-│   │   ├── attendance/
-│   │   ├── leaves/
-│   │   └── requests/
-│   └── auth/
-│
-├── components/                       # Generic UI + cross-domain shared UI
-├── shared/                           # App shell ONLY (see §2b): config, utils, export, app-session
-└── ...
+|-- app/(app)/hr/organization/branches/page.tsx
+|-- features/hr/organization/branches/    # all branch logic here
+|-- features/hr/lib/api/                   # HR transport only
+|-- components/ui/
+`-- shared/
+```
 
-**No monolithic `src/lib/api/` for domain resources.** **No `src/types/`** — types live only under `features/**/types/`.
+---
 
-**Forbidden:** Flat feature folders that skip route segments (e.g. `features/hr/branches/` when the route is `/hr/organization/branches`). **Forbidden:** Page UI living under `features/hr/organization/components/` when the route is `/hr/organization/chart` — use `features/hr/organization/chart/components/` instead.
+### Page capsule template (every route)
 
-**Domain parent folder** (`features/hr/organization/`): Module-wide shared pieces — `constants/`, `lib/`, `types/`, optional layout helpers. Do NOT put a single page’s screen in `components/` here.
+```text
+{segment}/
+|-- components/
+|-- hooks/
+|-- services/
+|-- lib/api/
+|-- types/
+|-- constants/
+|-- dialogs/
+`-- utils/
+```
+
+**Forbidden:** `organization/lib/api/branches.ts` · `features/hr/leaves/lib/` · flat `features/hr/branches/` · chart UI in `organization/components/`.
+
+**Cross-page:** import from owning page, e.g. `@/features/hr/organization/branches/lib/api/branches`.
+
+**No `src/lib/` / `src/types/`** for domain. App-wide → `src/shared/` only.
+
+Always wrap trees in fenced `text` blocks.
 
 ---
 
@@ -91,22 +150,24 @@ src/
 | Scope | Path | Contains |
 |-------|------|----------|
 | App shell | `src/shared/config/`, `src/shared/utils.ts`, `src/shared/export/` | `publicConfig`, `cn()`, env — **no domain API** |
-| HR domain | `features/hr/lib/api/` | `client.ts`, `types.ts` (envelope), `global-error-handler.ts` |
-| Organization module | `features/hr/organization/lib/api/` | `branches.ts`, `departments.ts`, `companies.ts`, `jobTitles.ts`, `organization-context.ts` |
+| HR transport | `features/hr/lib/api/` | `client.ts`, envelope, `global-error-handler.ts` only |
+| Org scope (optional) | `features/hr/organization/lib/api/organization-context.ts` | `companyId` — not page CRUD |
+| Branches page API | `features/hr/organization/branches/lib/api/branches.ts` | inside page folder |
+| Departments page API | `features/hr/organization/departments/lib/api/` | inside page folder |
 | Auth | `features/auth/lib/api/` | `auth.ts` |
-| Other domains | `features/{domain}/lib/` | Domain clients, helpers, stores being migrated |
 
-**Per-page folder** (`features/hr/organization/branches/`): `services/`, `hooks/`, `types/`, `components/` — add `lib/` only for helpers used by that page alone.
+**Per-page capsule** (`features/hr/organization/branches/`): `components/`, `hooks/`, `services/`, `lib/api/`, `types/`, `constants/`, `dialogs/`.
 
 **Forbidden:**
-- `src/lib/api/branches.ts` (and any domain REST client at repo root)
-- `src/lib/attendance/`, `src/lib/hr-discipline/` as permanent homes — migrate to `features/hr/attendance/lib/`, etc.
-- Importing organization API from `@/lib/api/*` in new code (legacy `@/lib/api/*` re-exports exist temporarily)
+- `features/hr/organization/lib/api/branches.ts` — belongs in `branches/lib/api/`
+- `src/lib/api/*` for domain REST
+- Aggregator `features/hr/leaves/lib/` for multiple leave pages
 
 ### Where `types/` lives
 
 | Type | Path |
 |------|------|
+| Branch (page) | `features/hr/organization/branches/types/` |
 | Employee | `features/hr/organization/employees/types/` |
 | Contract enums | `features/hr/contracts/types/` |
 | Attendance / Shift | `features/hr/attendance/types/` |
@@ -122,7 +183,8 @@ src/
 ```ts
 import { apiRequest } from '@/features/hr/lib/api/client';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { branchesApi } from '@/features/hr/organization/lib/api/branches';
+import { branchesApi } from '@/features/hr/organization/branches/lib/api/branches';
+import type { BranchRow } from '@/features/hr/organization/branches/types/branch';
 import type { Employee } from '@/features/hr/organization/employees/types';
 ```
 
@@ -160,28 +222,29 @@ export default function OrganizationEmployeeDetailRoutePage() {
 
 Every routable area lives under `features/` with the **same path as `app/`** (see §2).
 
-**Per-page feature folder** (e.g. `features/hr/organization/branches/`):
-```
+**Per-page capsule** (e.g. `features/hr/organization/branches/`):
+
+```text
 branches/
-├── components/          # Page root + list views (branches-page.tsx)
-├── hooks/               # useBranchesDirectoryModel, etc.
-├── dialogs/
-├── constants/
-├── types/               # Page-owned types (DTOs, view models)
-├── utils/
-├── services/            # API orchestration — calls domain `lib/api/*`
-├── lib/                 # Optional — page-private helpers only
-└── index.ts             # optional public exports
+|-- components/
+|-- hooks/
+|-- services/
+|-- lib/api/branches.ts
+|-- types/
+|-- constants/
+|-- dialogs/
+`-- utils/
 ```
 
-**Domain parent** (e.g. `features/hr/organization/`) may also have:
-```
+**Domain parent** (`features/hr/organization/`) — page folders only + minimal shared:
+
+```text
 organization/
-├── lib/api/             # Module-shared API clients
-├── types/               # Module-shared types
-├── constants/
-├── branches/            # Per-route segment (mirrors app/)
-└── chart/
+|-- constants/routes.ts
+|-- lib/api/organization-context.ts   # optional — not branches CRUD
+|-- branches/                         # full capsule
+|-- departments/
+`-- chart/
 ```
 
 **Rules:**
@@ -207,30 +270,39 @@ Size Limits:
 
 Extract a component when: JSX becomes large, a section becomes independent, local state grows, logic becomes reusable, dialogs/modals appear, a section can evolve independently.
 
-Feature Composition Pattern:
+**Feature composition pattern:**
+
+```text
 EmployeeDetailPage
-├── EmployeeHeader
-├── PersonalSection
-├── EmploymentSection
-├── AttendanceSection
-├── SalarySection
-├── PermissionsSection
-└── ContractsSection
+|-- EmployeeHeader
+|-- PersonalSection
+|-- EmploymentSection
+|-- AttendanceSection
+|-- SalarySection
+|-- PermissionsSection
+`-- ContractsSection
+```
 
-Sections Structure:
+**Sections structure:**
+
+```text
 components/
-└── sections/
-    ├── personal-section.tsx
-    ├── employment-section.tsx
-    ├── attendance-section.tsx
-    ├── salary-section.tsx
-    └── permissions-section.tsx
+`-- sections/
+    |-- personal-section.tsx
+    |-- employment-section.tsx
+    |-- attendance-section.tsx
+    |-- salary-section.tsx
+    `-- permissions-section.tsx
+```
 
-Dialog Rules — every dialog must live in its own file:
+**Dialog rules** — every dialog in its own file:
+
+```text
 dialogs/
-├── employee-shift-dialog.tsx
-├── employee-checkpoint-dialog.tsx
-└── employee-contract-dialog.tsx
+|-- employee-shift-dialog.tsx
+|-- employee-checkpoint-dialog.tsx
+`-- employee-contract-dialog.tsx
+```
 
 components/ui/ → presentation-only (no business logic, no feature coupling)
 components/shared/ → business-aware reusable components
@@ -387,10 +459,12 @@ Use Client Components ONLY for: useState/useEffect, browser APIs, animations, dr
 
 Business logic must be extracted into hooks. Forbidden: massive inline handlers, giant useEffect blocks, derived state clutter.
 
+```text
 hooks/
-├── useEmployeeAttendance.ts
-├── useEmployeePermissions.ts
-└── useEmployeeContracts.ts
+|-- useEmployeeAttendance.ts
+|-- useEmployeePermissions.ts
+`-- useEmployeeContracts.ts
+```
 
 Hooks must be testable independently.
 
@@ -433,15 +507,21 @@ Mocking Rules:
 - Use service layer abstraction for mocking
 - Never mock inside components directly
 
-Test Location:
-__tests__/
-  features/
-  hooks/
-  utils/
+**Test location (central):**
 
-OR colocated:
+```text
+__tests__/
+|-- features/
+|-- hooks/
+`-- utils/
+```
+
+**Or colocated:**
+
+```text
 feature-name/
-└── __tests__/
+`-- __tests__/
+```
 
 ---
 
@@ -467,6 +547,8 @@ Imports → absolute only:
 
 Strict typing required. Forbidden: any, unsafe casting, weak typing.
 Preferred: explicit types, shared schemas, inferred validation types.
+
+**Optional chaining in UI:** Use `item?.nameAr ?? '—'` for API-backed display fields in lists, cards, and tables.
 
 ---
 
@@ -542,6 +624,7 @@ Each domain must scale independently.
 - null returned from API data field
 - string-based error detection
 - independent per-component error handling
+- **Module sub-navigation bars** — horizontal pill/tab link rows (`SegmentedLinkTabs`, `*-nav.tsx` in feature `layout.tsx`) that duplicate sidebar routes. Use the **sidebar** (and breadcrumbs/page title) as the only module navigation; each route gets one page, no in-page section switcher.
 
 ---
 

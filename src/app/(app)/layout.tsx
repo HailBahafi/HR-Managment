@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layouts/sidebar';
 import { Topbar } from '@/components/layouts/topbar';
 import { FilterPanel } from '@/components/layouts/filter-panel';
 import { Toaster } from 'sonner';
+import { AuthenticatedShell } from '@/components/layouts/authenticated-shell';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -20,7 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <FilterPanel />
               <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4">
                 <AppEntityFilterRegion />
-                {children}
+                <AuthenticatedShell>{children}</AuthenticatedShell>
               </main>
               <Toaster richColors position="top-center" dir="rtl" />
             </div>

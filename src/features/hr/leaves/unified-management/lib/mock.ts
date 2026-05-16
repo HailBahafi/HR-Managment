@@ -1,7 +1,10 @@
+import type { EmployeeLeaveAnalyticsRow, TimelineLeaveBar } from '@/features/hr/leaves/analytics/types';
 import type {
-  UnifiedEmployee, UnifiedLeaveRecord, LeaveApprovalStep,
-  EmployeeLeaveBalanceRow, UnifiedLeaveType, EmployeeLeaveAnalyticsRow, TimelineLeaveBar,
-} from './types';
+  UnifiedEmployee,
+  UnifiedLeaveRecord,
+  LeaveApprovalStep,
+  EmployeeLeaveBalanceRow,
+} from '@/features/hr/leaves/unified-management/types';
 
 // ─── Mock branches / departments ──────────────────────────────────────────────
 

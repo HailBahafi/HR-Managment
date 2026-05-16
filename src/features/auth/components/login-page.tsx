@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Logo } from '@/components/layouts/logo';
-import { authApi, persistAccessToken } from '@/features/auth/lib/api/auth';
+import { authApi } from '@/features/auth/lib/api/auth';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { publicConfig } from '@/shared/config';
 import { toast } from 'sonner';
@@ -51,7 +52,7 @@ export function LoginPage() {
         email: values.email.trim().toLowerCase(),
         password: values.password,
       });
-      persistAccessToken(result.access_token);
+      useAuthStore.getState().setUser(result.user);
       router.push('/hr/dashboard');
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'auth.login');

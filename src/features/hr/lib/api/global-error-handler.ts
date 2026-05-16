@@ -35,11 +35,7 @@ export function formatApiErrorForDisplay(error: unknown): string {
 
 function logApiError(error: ApiError, context?: string) {
   const label = context ? `[API Error] ${context}` : '[API Error]';
-  console.error(label, {
-    status: error.status,
-    envelope: error.envelope,
-    payload: error.payload,
-  });
+  console.error(label, formatApiErrorForDisplay(error));
 }
 
 /**

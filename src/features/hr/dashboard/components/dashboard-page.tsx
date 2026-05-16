@@ -13,7 +13,7 @@ import { getInitials, cn, formatNumber, toWesternDigits } from '@/shared/utils';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
 import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
-import { MOCK_UNIFIED_LEAVES } from '@/features/hr/leaves/lib/unified-mock';
+import { MOCK_UNIFIED_LEAVES } from '@/features/hr/leaves/unified-management/lib/mock';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 
 /* ─── Sparkline ──────────────────────────────────────────────────────────────── */
