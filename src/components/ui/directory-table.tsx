@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 
 /** Outer shell + horizontal scroll for directory list tables. */
 export function DirectoryTableContainer({ className, children }: { className?: string; children: React.ReactNode }) {

@@ -4,11 +4,11 @@ import type {
   HRContractNature,
   HRContractRecord,
   HRWorkArrangement,
-} from '@/lib/contracts/contracts-store';
+} from '@/features/hr/contracts/lib/contracts-store';
 import {
   CONTRACT_NATURE_LABELS,
   CONTRACT_STATUS_LABELS,
-} from '@/lib/contracts/contracts-store';
+} from '@/features/hr/contracts/lib/contracts-store';
 
 export const HR_CONTRACTS_MODE_PARAM = 'mode';
 export const CURRENCIES = ['SAR', 'USD', 'EUR', 'GBP'] as const;

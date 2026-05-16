@@ -2,16 +2,16 @@
 
 import * as React from 'react';
 import { toast } from 'sonner';
-import { withIds } from '@/lib/with-ids';
-import { data } from '@/lib/data';
+import { withIds } from '@/shared/with-ids';
+import { data } from '@/features/hr/lib/data';
 import {
   effectiveAssignedRoleId,
   inferAssignedRoleId,
   permissionsForRole,
   type SystemRoleRecord,
-} from '@/lib/employee-access-role';
-import { appendEmployeeAudit } from '@/lib/employee-audit-log/append';
-import type { Employee } from '@/types';
+} from '@/features/hr/organization/employees/lib/employee-access-role';
+import { appendEmployeeAudit } from '@/features/hr/organization/employees/lib/employee-audit-log/append';
+import type { Employee } from '@/features/hr/organization/employees/types';
 
 export function useEmployeeProfilePermissions(employee: Employee) {
   const systemRoles = React.useMemo(() => withIds(data.roles as SystemRoleRecord[]), []);

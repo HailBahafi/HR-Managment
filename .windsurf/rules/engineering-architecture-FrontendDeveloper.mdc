@@ -1,0 +1,578 @@
+---
+alwaysApply: true
+trigger: always_on
+---
+
+# Enterprise ERP — Master Architecture & Contract Rules
+
+This document is the single source of truth for all frontend architecture, API contracts, permissions, error handling, environment configuration, and testing standards.
+
+Designed for: large business systems, modular domains, long-term maintainability, AI-assisted development, high scalability, multi-team collaboration, future microservices, Turborepo compatibility.
+
+The architecture must remain: clean, composable, modular, predictable, scalable, RTL-first, premium-quality.
+
+---
+
+# 1. Core Architecture Philosophy
+
+Always prioritize: separation of concerns, composability, modularity, server-first rendering, reusable systems, predictable structure, maintainable codebases, minimal client-side JavaScript.
+
+Avoid monolithic implementations. Large systems must be split into isolated feature modules.
+
+---
+
+# 2. Project Structure — Route / Feature Parity (Required)
+
+**Rule:** `features/` MUST mirror the URL segments under `app/`. Every routable page in `app/` has a matching feature segment with the same folder path (excluding route groups like `(app)` and files like `page.tsx`, `layout.tsx`, `loading.tsx`).
+
+| App route (example) | Feature path (required) |
+|----------------------|-------------------------|
+| `app/(app)/hr/organization/branches/page.tsx` | `features/hr/organization/branches/` |
+| `app/(app)/hr/organization/departments/page.tsx` | `features/hr/organization/departments/` |
+| `app/(app)/hr/organization/job-titles/page.tsx` | `features/hr/organization/job-titles/` |
+| `app/(app)/hr/organization/employees/page.tsx` | `features/hr/organization/employees/` |
+| `app/(app)/hr/organization/chart/page.tsx` | `features/hr/organization/chart/` |
+| `app/(app)/hr/contracts/employment/page.tsx` | `features/hr/contracts/employment/` |
+
+src/
+│
+├── app/                              # Routing ONLY — thin entrypoints
+│   └── (app)/hr/
+│       ├── organization/
+│       │   ├── branches/page.tsx
+│       │   ├── departments/page.tsx
+│       │   ├── job-titles/page.tsx
+│       │   ├── employees/page.tsx
+│       │   ├── chart/page.tsx
+│       │   └── layout.tsx
+│       ├── contracts/
+│       ├── attendance/
+│       ├── leaves/
+│       ├── requests/
+│       └── ...
+│
+├── features/                         # Same tree as app routes (business logic)
+│   ├── hr/
+│   │   ├── organization/             # Domain parent (module-wide shared code)
+│   │   │   ├── constants/            # e.g. nav routes for whole organization module
+│   │   │   ├── branches/
+│   │   │   │   ├── components/
+│   │   │   │   ├── hooks/
+│   │   │   │   ├── dialogs/
+│   │   │   │   └── constants/
+│   │   │   ├── departments/
+│   │   │   ├── job-titles/
+│   │   │   ├── employees/
+│   │   │   └── chart/
+│   │   ├── contracts/
+│   │   ├── attendance/
+│   │   ├── leaves/
+│   │   └── requests/
+│   └── auth/
+│
+├── components/                       # Generic UI + cross-domain shared UI
+├── shared/                           # App shell ONLY (see §2b): config, utils, export, app-session
+└── ...
+
+**No monolithic `src/lib/api/` for domain resources.** **No `src/types/`** — types live only under `features/**/types/`.
+
+**Forbidden:** Flat feature folders that skip route segments (e.g. `features/hr/branches/` when the route is `/hr/organization/branches`). **Forbidden:** Page UI living under `features/hr/organization/components/` when the route is `/hr/organization/chart` — use `features/hr/organization/chart/components/` instead.
+
+**Domain parent folder** (`features/hr/organization/`): Module-wide shared pieces — `constants/`, `lib/`, `types/`, optional layout helpers. Do NOT put a single page’s screen in `components/` here.
+
+---
+
+# 2b. `lib/` and `types/` — Co-located in Features (Required)
+
+**Principle:** Infrastructure and types live **next to the code that owns them**, not in a global `src/lib/` or `src/types/` bucket.
+
+### Where `lib/` lives
+
+| Scope | Path | Contains |
+|-------|------|----------|
+| App shell | `src/shared/config/`, `src/shared/utils.ts`, `src/shared/export/` | `publicConfig`, `cn()`, env — **no domain API** |
+| HR domain | `features/hr/lib/api/` | `client.ts`, `types.ts` (envelope), `global-error-handler.ts` |
+| Organization module | `features/hr/organization/lib/api/` | `branches.ts`, `departments.ts`, `companies.ts`, `jobTitles.ts`, `organization-context.ts` |
+| Auth | `features/auth/lib/api/` | `auth.ts` |
+| Other domains | `features/{domain}/lib/` | Domain clients, helpers, stores being migrated |
+
+**Per-page folder** (`features/hr/organization/branches/`): `services/`, `hooks/`, `types/`, `components/` — add `lib/` only for helpers used by that page alone.
+
+**Forbidden:**
+- `src/lib/api/branches.ts` (and any domain REST client at repo root)
+- `src/lib/attendance/`, `src/lib/hr-discipline/` as permanent homes — migrate to `features/hr/attendance/lib/`, etc.
+- Importing organization API from `@/lib/api/*` in new code (legacy `@/lib/api/*` re-exports exist temporarily)
+
+### Where `types/` lives
+
+| Type | Path |
+|------|------|
+| Employee | `features/hr/organization/employees/types/` |
+| Contract enums | `features/hr/contracts/types/` |
+| Attendance / Shift | `features/hr/attendance/types/` |
+| HR requests | `features/hr/requests/types/` |
+| Payslip / payroll | `features/hr/payroll/types/` |
+| Permissions / roles | `features/hr/permissions/types.ts` (single file if no subfolder) |
+| Legacy org list mocks | `features/hr/organization/types/` |
+| HERE Maps ambient `.d.ts` | `components/here-map/here-maps.d.ts` (next to the component) |
+
+**Forbidden:** `src/types/` or any root-level business type barrel. Import from the owning feature `types/` path.
+
+**Import examples:**
+```ts
+import { apiRequest } from '@/features/hr/lib/api/client';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { branchesApi } from '@/features/hr/organization/lib/api/branches';
+import type { Employee } from '@/features/hr/organization/employees/types';
+```
+
+---
+
+# 3. App Router Rules
+
+`app/` is ONLY responsible for: routing, layouts, metadata, loading/error boundaries, route groups, and thin `page.tsx` entrypoints.
+
+Never place business logic, data fetching, or heavy UI in `app/`.
+
+**Required page pattern** — import from the mirrored feature path:
+
+```tsx
+// app/(app)/hr/organization/branches/page.tsx
+import BranchesPage from '@/features/hr/organization/branches/components/branches-page';
+
+export default function OrganizationBranchesRoutePage() {
+  return <BranchesPage />;
+}
+```
+
+```tsx
+// app/(app)/hr/organization/employees/[id]/page.tsx
+import EmployeeProfilePage from '@/features/hr/organization/employees/components/employee-detail-page';
+
+export default function OrganizationEmployeeDetailRoutePage() {
+  return <EmployeeProfilePage />;
+}
+```
+
+---
+
+# 4. Feature Module Rules
+
+Every routable area lives under `features/` with the **same path as `app/`** (see §2).
+
+**Per-page feature folder** (e.g. `features/hr/organization/branches/`):
+```
+branches/
+├── components/          # Page root + list views (branches-page.tsx)
+├── hooks/               # useBranchesDirectoryModel, etc.
+├── dialogs/
+├── constants/
+├── types/               # Page-owned types (DTOs, view models)
+├── utils/
+├── services/            # API orchestration — calls domain `lib/api/*`
+├── lib/                 # Optional — page-private helpers only
+└── index.ts             # optional public exports
+```
+
+**Domain parent** (e.g. `features/hr/organization/`) may also have:
+```
+organization/
+├── lib/api/             # Module-shared API clients
+├── types/               # Module-shared types
+├── constants/
+├── branches/            # Per-route segment (mirrors app/)
+└── chart/
+```
+
+**Rules:**
+- One primary `*-page.tsx` component per route, exported for `app/.../page.tsx`.
+- Child routes get their own segment (`employees/[id]` → `employees/components/employee-detail-page.tsx`).
+- Features must stay isolated; no imports from sibling pages unless through the **domain parent** `lib/`, `types/`, or `constants/`.
+- Cross-domain logic → `components/shared/` or the owning feature’s `lib/`.
+
+**Import convention:** `@/features/{same path as app}/{segment}/components/...`
+
+---
+
+# 5. Component Architecture Rules
+
+Components must be small and composable.
+
+Forbidden: giant components, giant JSX trees, multi-responsibility components, inline mega dialogs, deeply nested rendering logic.
+
+Size Limits:
+- No component may exceed 300 lines
+- Prefer extraction before 200 lines
+- JSX blocks over 80–100 lines should become separate components
+
+Extract a component when: JSX becomes large, a section becomes independent, local state grows, logic becomes reusable, dialogs/modals appear, a section can evolve independently.
+
+Feature Composition Pattern:
+EmployeeDetailPage
+├── EmployeeHeader
+├── PersonalSection
+├── EmploymentSection
+├── AttendanceSection
+├── SalarySection
+├── PermissionsSection
+└── ContractsSection
+
+Sections Structure:
+components/
+└── sections/
+    ├── personal-section.tsx
+    ├── employment-section.tsx
+    ├── attendance-section.tsx
+    ├── salary-section.tsx
+    └── permissions-section.tsx
+
+Dialog Rules — every dialog must live in its own file:
+dialogs/
+├── employee-shift-dialog.tsx
+├── employee-checkpoint-dialog.tsx
+└── employee-contract-dialog.tsx
+
+components/ui/ → presentation-only (no business logic, no feature coupling)
+components/shared/ → business-aware reusable components
+
+---
+
+# 6. Authorization & Permissions
+
+Principle: Authorization is backend-driven but enforced in frontend for UX only.
+
+Permission Format:
+resource:action
+Examples: employee:create, employee:edit, payroll:view, request:approve
+
+Frontend Usage — unified helper:
+can("employee:create")
+
+Rules:
+- Backend is the source of truth — never rely on frontend permissions for security
+- Frontend only controls visibility & UX
+- Unauthorized access must always be blocked by backend
+
+UI Behavior:
+- Hide buttons if user lacks permission
+- Disable actions if partially allowed
+- Redirect if user accesses forbidden routes
+
+---
+
+# 7. API Contract Shape (Backend Envelope — Required)
+
+All Nest API responses use this envelope (see `backend/API_CONTRACT.md`):
+
+**Success (2xx, except 204):**
+```json
+{
+  "status": 200,
+  "message": "Success",
+  "data": { },
+  "error": null
+}
+```
+
+**Paginated list inside `data`:**
+```json
+{
+  "status": 200,
+  "message": "Success",
+  "data": {
+    "items": [],
+    "pagination": { "page": 1, "limit": 200, "total": 0, "totalPages": 0 }
+  },
+  "error": null
+}
+```
+
+**Error (4xx / 5xx):**
+```json
+{
+  "status": 400,
+  "message": "Human-readable summary",
+  "data": null,
+  "error": { }
+}
+```
+
+Frontend rules:
+- HTTP calls only through `features/hr/lib/api/client.ts` (`apiRequest`) — never raw `fetch` in components.
+- `apiRequest` unwraps `data` on success; throws `ApiError` with full backend body on failure.
+- `data` must not be `null` on success — use `{}` or `[]`.
+- Do not expect `{ success: true }` — that shape is obsolete in this project.
+
+---
+
+# 8. Error Handling Strategy (Global Handler — Required)
+
+All API failures go through `handleApiError()` in `features/hr/lib/api/global-error-handler.ts`.
+
+**Forbidden in components/pages:** `catch (e) { setError('تعذر التحميل') }` or any custom Arabic override that hides the backend body.
+
+**Required pattern in hooks:**
+```ts
+catch (err) {
+  const { displayMessage } = handleApiError(err, 'departments.load');
+  setListError(displayMessage);
+}
+```
+
+**Dev vs prod display:**
+- **Development** (`NEXT_PUBLIC_ENV` = dev/local/development/empty): UI shows **pretty-printed full backend JSON** (`status`, `message`, `data`, `error`) so DevTools/console match the API body.
+- **Production:** UI shows `envelope.message` from the backend.
+
+**Console:** `handleApiError` always `console.error`s `{ status, envelope, payload }` — same object as Network tab.
+
+**Status behavior (in global handler only):**
+| Status | Action |
+|--------|--------|
+| 401 | Redirect to `/login` |
+| 403 | Toast with backend `message` |
+| ≥500 | Toast with backend `message` |
+| 400 / 422 | Return `displayMessage` for inline form/list UI |
+
+`ApiError` fields: `status`, `envelope`, `payload` (raw JSON body).
+
+---
+
+# 9. Data Fetching Rules (Services + Hooks — Required)
+
+**Layering (no API calls in presentational components):**
+
+```
+app/.../page.tsx                    → imports feature *Page only (no fetch)
+feature/.../components/             → UI only (props / hook model)
+feature/.../hooks/                  → React state, calls services, handleApiError
+feature/.../services/               → orchestration (no JSX)
+feature/{domain}/lib/api/           → domain REST clients + scope helpers
+features/hr/lib/api/                → shared HTTP client, envelope types, handleApiError
+```
+
+Preferred order when adding new data:
+1. Server-side fetch in `page.tsx` / server actions (when no client interactivity needed)
+2. `feature/.../services/*.service.ts` for client-side API orchestration
+3. `feature/.../hooks/*.tsx` for UI state + calling services
+4. TanStack Query only when caching/dedup justifies it
+
+**Forbidden:** `departmentsApi.getAll()` inside `components/*-page.tsx` — move to `services/`.
+
+Server Actions vs API Routes:
+Prefer Server Actions for mutations when appropriate. Use Next API routes only for webhooks, uploads, public callbacks.
+
+---
+
+# 10. Server vs Client Components
+
+Default: everything is a Server Component. Never add 'use client' unless truly necessary.
+
+Use Client Components ONLY for: useState/useEffect, browser APIs, animations, drag/drop, chart interactions, websocket/live updates, forms requiring interactivity.
+
+---
+
+# 11. State Management
+
+**Server/API data:** React state inside feature hooks (loaded via `services/`). Refresh after mutations by re-calling the service — do not copy lists into Zustand.
+
+**Zustand ONLY for:** UI-only state (dialogs open, filters, layout toggles) or features **not yet on API** (clearly temporary).
+
+**Never duplicate server state in Zustand** once a page uses the backend.
+
+**Organization module:** branches, departments, job-titles, chart → API + hook state. employees/contacts → migrate to same pattern; until then do not mix API rows into localStorage stores.
+
+---
+
+# 12. Hooks Rules
+
+Business logic must be extracted into hooks. Forbidden: massive inline handlers, giant useEffect blocks, derived state clutter.
+
+hooks/
+├── useEmployeeAttendance.ts
+├── useEmployeePermissions.ts
+└── useEmployeeContracts.ts
+
+Hooks must be testable independently.
+
+---
+
+# 13. Environment Variables & Configuration
+
+Allowed Variables:
+NEXT_PUBLIC_API_URL
+NEXT_PUBLIC_APP_NAME
+NEXT_PUBLIC_ENV
+
+All env access must go through lib/config/:
+export const config = {
+  apiUrl: process.env.NEXT_PUBLIC_API_URL,
+  appName: process.env.NEXT_PUBLIC_APP_NAME,
+};
+
+Rules:
+- No direct process.env usage inside components
+- No hardcoded URLs
+- No environment branching inside components
+
+---
+
+# 14. Testing Strategy
+
+Unit Tests → utils, hooks, pure functions
+Integration Tests → feature modules, data fetching flows, UI + state interaction
+E2E Tests → login flow, critical ERP workflows, approvals, payroll actions
+
+Rules:
+- Every feature SHOULD have tests (minimum critical flows)
+- No business-critical logic without tests
+- Hooks must be testable independently
+- UI must not depend on untestable logic
+
+Mocking Rules:
+- API calls must be mockable
+- Use service layer abstraction for mocking
+- Never mock inside components directly
+
+Test Location:
+__tests__/
+  features/
+  hooks/
+  utils/
+
+OR colocated:
+feature-name/
+└── __tests__/
+
+---
+
+# 15. Naming Conventions
+
+Files:
+Components  → PascalCase.tsx
+Hooks       → useSomething.ts
+Utils       → camelCase.ts
+Constants   → constants.ts
+Types       → types.ts
+Schemas     → schema.ts
+
+Folders → kebab-case (e.g. employee-requests/)
+
+Imports → absolute only:
+✅ import Button from '@/components/ui/button'
+❌ import Button from '../../../components/ui/button'
+
+---
+
+# 16. TypeScript Rules
+
+Strict typing required. Forbidden: any, unsafe casting, weak typing.
+Preferred: explicit types, shared schemas, inferred validation types.
+
+---
+
+# 17. Styling & Design Identity
+
+Rules:
+- Use ONLY design tokens
+- bg-primary, text-muted-foreground, border-border ✅
+- bg-blue-500, text-red-400 ❌ (unless explicitly approved)
+
+Design Language — must feel: luxurious, editorial, enterprise-grade, elegant, calm, premium.
+
+Visual identity:
+- deep forest teal
+- warm gold accents
+- ivory backgrounds
+- soft shadows
+- subtle motion
+- Arabic-first typography
+
+Radius: rounded-lg, rounded-xl, rounded-2xl sparingly
+Shadows: shadow-soft, shadow-elevated, shadow-luxe
+Animations: soft, elegant, subtle — 150ms / 200ms / 300ms
+Typography: Arabic-first, elegant spacing, font-arabic-display, text-balance
+
+Design Token Sources:
+- tailwind.config.js → utility definitions, theme mappings, animations, shadows, fonts, radius
+- globals.css → root variables, dark mode values, global styles, custom utilities, design tokens
+
+---
+
+# 18. RTL Rules
+
+The system is RTL-first. All layouts/components must support RTL naturally.
+
+Prefer: start/end, ms/me, ps/pe
+Avoid unnecessary left/right hardcoding.
+
+---
+
+# 19. Performance Rules
+
+Always optimize for: minimal client JS, server rendering, fast first paint, lazy loading, route-level splitting, composable rendering, minimal hydration.
+
+---
+
+# 20. ERP Scalability
+
+Architecture must support: multiple business domains, future microservices, websocket infrastructure, background jobs, audit systems, permissions systems, advanced reporting, AI integrations, mobile apps, multi-tenant expansion.
+
+Each domain must scale independently.
+
+---
+
+# 21. Forbidden Patterns
+
+- massive page.tsx files
+- giant components / dialogs / hooks
+- relative imports
+- inline random styles
+- duplicated components
+- unnecessary use client
+- business logic inside UI components
+- deeply nested client fetching
+- hardcoded colors
+- giant global stores
+- monolithic architecture
+- domain API clients in root `src/lib/api/` or business types in `src/types/`
+- feature folders that do not mirror `app/` route segments (e.g. `features/hr/branches` for `/hr/organization/branches`)
+- page-specific UI in a domain parent folder (`features/hr/organization/components/` for one route) instead of the matching child segment
+- direct process.env in components
+- raw API responses without contract shape
+- null returned from API data field
+- string-based error detection
+- independent per-component error handling
+
+---
+
+# 22. AI Generation Rules
+
+When generating code: follow feature-first architecture, prefer Server Components, keep pages minimal, compose instead of nesting giant JSX, extract reusable logic and UI, maintain RTL support, preserve design identity, use existing tokens, avoid unnecessary dependencies, preserve enterprise scalability, generate maintainable code, avoid monolithic implementations.
+
+---
+
+# 23. Recommended Architecture Flow
+
+app route
+    ↓
+feature root component
+    ↓
+feature sections
+    ↓
+shared/ui components
+    ↓
+hooks / services / utils
+    ↓
+feature/{domain}/lib/  →  features/hr/lib/api/ (HTTP)  →  src/shared/config
+feature/.../types/
+
+---
+
+# Final Principle
+
+The codebase must always remain:
+- modular, composable, scalable, maintainable, enterprise-ready
+- consistent across backend contract
+- predictable in error handling
+- secure in permission UX
+- strongly typed throughout

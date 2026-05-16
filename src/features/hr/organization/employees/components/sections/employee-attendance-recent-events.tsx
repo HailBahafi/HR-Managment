@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { Calendar, CheckCircle2, CircleDot, Clock, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn, formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/shared/utils';
 import { Empty } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
-import type { AttendanceEvent } from '@/lib/attendance/types';
+import type { AttendanceEvent } from '@/features/hr/attendance/lib/types';
 
 type Props = { employeeEvents: AttendanceEvent[] };
 

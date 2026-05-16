@@ -1,7 +1,7 @@
 import {
   EXTERNAL_PARTY_KIND_LABELS,
   type ExternalPartyKind,
-} from '@/lib/directory/external-contacts-store';
+} from '@/features/hr/organization/lib/directory/external-contacts-store';
 
 export type ContactsKindFilter = 'all' | ExternalPartyKind;
 

@@ -9,8 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { HRSettingsFormDrawer, FormField, ConfirmationModal } from '@/components/hr-requests/shared-ui';
-import { data } from '@/lib/data';
+import { HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useJobTitlesDirectoryModel } from '@/features/hr/organization/job-titles/hooks/useJobTitlesDirectoryModel';
 import { JobTitlesListViews } from '@/features/hr/organization/job-titles/components/job-titles-list-views';
 import { JobTitleTemplateDetailDialog } from '@/features/hr/organization/job-titles/dialogs/job-title-template-detail-dialog';
@@ -20,7 +19,13 @@ export default function JobTitlesPage() {
 
   return (
     <div className="space-y-4">
-      <JobTitlesListViews model={model} />
+      {model.loading ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">جاري التحميل…</div>
+      ) : model.listError ? (
+        <EmptyState title="تعذر تحميل المسميات" description={model.listError} />
+      ) : (
+        <JobTitlesListViews model={model} />
+      )}
 
       <HRSettingsFormDrawer
         open={model.drawerOpen}
@@ -46,9 +51,9 @@ export default function JobTitlesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_none">بدون اقتراح</SelectItem>
-              {data.departments.map((d) => (
+              {model.departments.map((d) => (
                 <SelectItem key={d.id} value={d.id}>
-                  {d.name}
+                  {d.nameAr}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -78,6 +83,7 @@ export default function JobTitlesPage() {
 
       <JobTitleTemplateDetailDialog
         row={model.viewRow}
+        getDepartmentName={model.getDepartmentName}
         onOpenChange={(open) => {
           if (!open) model.setViewRow(null);
         }}

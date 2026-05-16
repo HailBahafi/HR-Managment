@@ -1,4 +1,4 @@
-import type { DaySummaryStatus } from '@/lib/attendance/types';
+import type { DaySummaryStatus } from '@/features/hr/attendance/lib/types';
 import { STATUS, type StatusVisualKey } from '@/features/hr/attendance/daily/constants/daily-attendance-status';
 
 export function resolveVisualKey(s: DaySummaryStatus): StatusVisualKey {

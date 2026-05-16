@@ -15,9 +15,9 @@ import { Separator } from '@/components/ui/separator';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { LeavesManagementToolbar } from '@/features/hr/leaves/components/leaves-management-toolbar';
-import { intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
+import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -25,9 +25,9 @@ import {
   MOCK_UNIFIED_EMPLOYEES, MOCK_UNIFIED_LEAVES, MOCK_BALANCES, MOCK_BRANCHES, MOCK_DEPARTMENTS,
   applyStepDecision, canActOnLeave, getApprovalStage, defaultPendingApprovalChain,
   LEAVE_TYPE_LABELS, STATUS_LABELS,
-} from '@/lib/leaves/unified-mock';
-import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/lib/leaves/types';
-import { cn, toWesternDigits } from '@/lib/utils';
+} from '@/features/hr/leaves/lib/unified-mock';
+import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/features/hr/leaves/lib/types';
+import { cn, toWesternDigits } from '@/shared/utils';
 
 // ─── Style config ─────────────────────────────────────────────────────────────
 

@@ -2,9 +2,9 @@
 
 import { Eye, Trash2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/lib/hr-requests/types';
-import { deriveSubmissionApprovalSummary, getPerStageApprovalUi } from '@/lib/hr-requests/types';
-import { cn, formatDateShort } from '@/lib/utils';
+import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/features/hr/requests/lib/types';
+import { deriveSubmissionApprovalSummary, getPerStageApprovalUi } from '@/features/hr/requests/lib/types';
+import { cn, formatDateShort } from '@/shared/utils';
 import { formatFieldSummary } from '@/features/hr/requests/general/utils/general-request-submission-helpers';
 
 export type GeneralRequestSubmissionCardProps = {

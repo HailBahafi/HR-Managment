@@ -3,11 +3,21 @@
 import * as React from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useSetPageTitle } from '@/components/page-title-context';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { useJobTitleTemplatesStore, type JobTitleTemplateRecord } from '@/lib/directory/job-title-templates-store';
 import { toast } from 'sonner';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import type { CreateJobTitleDto, UpdateJobTitleDto } from '@/features/hr/organization/lib/api/jobTitles';
+import type { DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
+import {
+  createJobTitle,
+  deleteJobTitle,
+  loadJobTitlesDirectory,
+  updateJobTitle,
+} from '@/features/hr/organization/job-titles/services/job-titles.service';
+import { slugify } from '@/features/hr/requests/lib/types';
+import type { JobTitleTemplateRecord } from '@/features/hr/organization/lib/directory/job-title-templates-store';
 import {
   JOB_TITLE_EMPTY_FORM,
   type JobTitleDraftForm,
@@ -20,10 +30,11 @@ export function useJobTitlesDirectoryModel() {
     iconName: 'Briefcase',
   });
 
-  const templates = useJobTitleTemplatesStore((s) => s.templates);
-  const addTemplate = useJobTitleTemplatesStore((s) => s.add);
-  const updateTemplate = useJobTitleTemplatesStore((s) => s.update);
-  const removeTemplate = useJobTitleTemplatesStore((s) => s.remove);
+  const [templates, setTemplates] = React.useState<JobTitleTemplateRecord[]>([]);
+  const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [listError, setListError] = React.useState<string | null>(null);
+  const [defaultCompanyId, setDefaultCompanyId] = React.useState<string | null>(null);
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('table');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -32,6 +43,26 @@ export function useJobTitlesDirectoryModel() {
   const [error, setError] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewRow, setViewRow] = React.useState<JobTitleTemplateRecord | null>(null);
+
+  const loadData = React.useCallback(async () => {
+    setLoading(true);
+    setListError(null);
+    try {
+      const data = await loadJobTitlesDirectory();
+      setTemplates(data.templates);
+      setDepartments(data.departments);
+      setDefaultCompanyId(data.scope.companyId);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'job-titles.load');
+      setListError(displayMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   const patch = React.useCallback((p: Partial<JobTitleDraftForm>) => {
     setForm((f) => ({ ...f, ...p }));
@@ -55,43 +86,62 @@ export function useJobTitlesDirectoryModel() {
     setDrawerOpen(true);
   }, []);
 
-  const handleSave = React.useCallback(() => {
+  const handleSave = React.useCallback(async () => {
     const titleAr = form.titleAr.trim();
     if (!titleAr) {
       setError('المسمى الوظيفي مطلوب');
       return;
     }
-    const defaultDepartmentId = form.defaultDepartmentId || null;
+    if (!defaultCompanyId) {
+      setError('تعذر تحديد الشركة لهذا المسمى');
+      return;
+    }
     const descriptionAr = form.descriptionAr.trim() || undefined;
 
-    if (editId) {
-      const r = updateTemplate(editId, { titleAr, descriptionAr, defaultDepartmentId });
-      if (!r.ok) {
-        setError(r.error ?? 'تعذر الحفظ');
-        return;
+    try {
+      if (editId) {
+        const payload: UpdateJobTitleDto = {
+          code: slugify(titleAr),
+          nameAr: titleAr,
+          description: descriptionAr ?? null,
+        };
+        await updateJobTitle(editId, payload);
+      } else {
+        const payload: CreateJobTitleDto = {
+          companyId: defaultCompanyId,
+          code: slugify(titleAr),
+          nameAr: titleAr,
+          description: descriptionAr ?? null,
+        };
+        await createJobTitle(payload);
       }
-    } else {
-      const r = addTemplate({
-        titleAr,
-        descriptionAr,
-        defaultDepartmentId,
-      });
-      if (!r.ok) {
-        setError(r.error ?? 'تعذر الحفظ');
-        return;
-      }
+      await loadData();
+      setDrawerOpen(false);
+      setError(null);
+      toast.success(editId ? 'تم تحديث القالب' : 'تمت إضافة القالب');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'job-titles.save');
+      setError(displayMessage);
     }
-    setDrawerOpen(false);
-    setError(null);
-    toast.success(editId ? 'تم تحديث القالب' : 'تمت إضافة القالب');
-  }, [addTemplate, editId, form, updateTemplate]);
+  }, [defaultCompanyId, editId, form.descriptionAr, form.titleAr, loadData]);
 
-  const handleDelete = React.useCallback(() => {
+  const handleDelete = React.useCallback(async () => {
     if (!confirmId) return;
-    removeTemplate(confirmId);
-    setConfirmId(null);
-    toast.success('تم حذف القالب');
-  }, [confirmId, removeTemplate]);
+    try {
+      await deleteJobTitle(confirmId);
+      await loadData();
+      setConfirmId(null);
+      toast.success('تم حذف القالب');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'job-titles.delete');
+      setError(displayMessage);
+    }
+  }, [confirmId, loadData]);
+
+  const getDepartmentName = React.useCallback(
+    (id?: string | null) => departments.find((d) => d.id === id)?.nameAr,
+    [departments],
+  );
 
   useEntityFilterSlot(
     () => (
@@ -121,6 +171,10 @@ export function useJobTitlesDirectoryModel() {
 
   return {
     templates,
+    departments,
+    getDepartmentName,
+    loading,
+    listError,
     layoutView,
     drawerOpen,
     setDrawerOpen,

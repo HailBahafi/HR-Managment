@@ -11,9 +11,9 @@ import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { useLeaveTypesStore } from '@/lib/leaves/store';
-import type { HRLeaveTypeRecord } from '@/lib/leaves/types';
-import { cn } from '@/lib/utils';
+import { useLeaveTypesStore } from '@/features/hr/leaves/lib/store';
+import type { HRLeaveTypeRecord } from '@/features/hr/leaves/lib/types';
+import { cn } from '@/shared/utils';
 
 type DraftState = Omit<HRLeaveTypeRecord, 'id' | 'updatedAt'>;
 

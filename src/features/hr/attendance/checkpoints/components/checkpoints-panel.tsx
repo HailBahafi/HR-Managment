@@ -4,7 +4,7 @@ import { MapPin, Navigation2, Pencil, Plus, Radio, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPicker } from '@/components/ui/map-picker';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 import { useCheckpointsPanelModel } from '@/features/hr/attendance/checkpoints/hooks/useCheckpointsPanelModel';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { CheckpointsEditDialog } from '@/features/hr/attendance/checkpoints/components/checkpoints-edit-dialog';

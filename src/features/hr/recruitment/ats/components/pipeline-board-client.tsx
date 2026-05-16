@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { Users } from 'lucide-react';
-import { useAtsStore } from '@/lib/ats/store';
-import type { AtsPipelineStage } from '@/lib/ats/types';
-import { getApplicantName, getInitials } from '@/lib/ats/utils';
+import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
+import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
 
 interface StageConfig {
   label: string;

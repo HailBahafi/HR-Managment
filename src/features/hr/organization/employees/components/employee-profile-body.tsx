@@ -16,7 +16,7 @@ import { EmployeeRoseFormsSection } from '@/features/hr/organization/employees/c
 import { EmployeeActivityLogSection } from '@/features/hr/organization/employees/components/sections/employee-activity-log-section';
 import { EmployeePermissionsSection } from '@/features/hr/organization/employees/components/sections/employee-permissions-section';
 import { EmployeeSalarySection } from '@/features/hr/organization/employees/components/sections/employee-salary-section';
-import type { Employee } from '@/types';
+import type { Employee } from '@/features/hr/organization/employees/types';
 import { EmployeeHrPdfPrepDialog } from '@/features/hr/organization/employees/components/dialogs/employee-hr-pdf-prep-dialog';
 
 export function EmployeeProfileBody({ employee }: { employee: Employee }) {

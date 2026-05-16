@@ -11,7 +11,7 @@ import {
 } from 'react-day-picker';
 import { arSA } from 'date-fns/locale';
 
-import { cn, toWesternDigits } from '@/lib/utils';
+import { cn, toWesternDigits } from '@/shared/utils';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 

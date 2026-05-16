@@ -3,13 +3,20 @@
 import * as React from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useSetPageTitle } from '@/components/page-title-context';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { data } from '@/lib/data';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import type { CreateBranchDto, UpdateBranchDto } from '@/features/hr/organization/lib/api/branches';
+import {
+  createBranch,
+  deleteBranch,
+  loadBranchesDirectory,
+  updateBranch,
+} from '@/features/hr/organization/branches/services/branches.service';
+import { slugify } from '@/features/hr/requests/lib/types';
 import {
   BRANCH_EMPTY_FORM,
-  newBranchId,
   type BranchDraftForm,
   type BranchRow,
 } from '@/features/hr/organization/branches/constants/branches-directory';
@@ -18,21 +25,35 @@ export function useBranchesDirectoryModel() {
   useSetPageTitle({ titleAr: 'الفروع', descriptionAr: 'إدارة فروع الشركة وتوزيع الموظفين.', iconName: 'Building2' });
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
-  const [branches, setBranches] = React.useState<BranchRow[]>(() =>
-    data.branches.map((b) => ({
-      id: b.id,
-      name: b.name,
-      city: b.city,
-      manager: b.manager,
-      employeesCount: b.employeesCount,
-    })),
-  );
+  const [branches, setBranches] = React.useState<BranchRow[]>([]);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<BranchDraftForm>(BRANCH_EMPTY_FORM);
   const [error, setError] = React.useState<string | null>(null);
+  const [listError, setListError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [defaultCompanyId, setDefaultCompanyId] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewBranch, setViewBranch] = React.useState<BranchRow | null>(null);
+
+  const loadBranches = React.useCallback(async () => {
+    setLoading(true);
+    setListError(null);
+    try {
+      const data = await loadBranchesDirectory();
+      setBranches(data.branches);
+      setDefaultCompanyId(data.scope.companyId);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'branches.load');
+      setListError(displayMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadBranches();
+  }, [loadBranches]);
 
   const filtered = branches;
 
@@ -54,7 +75,7 @@ export function useBranchesDirectoryModel() {
     setDrawerOpen(true);
   }, []);
 
-  const handleSave = React.useCallback(() => {
+  const handleSave = React.useCallback(async () => {
     if (!form.name.trim()) {
       setError('اسم الفرع مطلوب');
       return;
@@ -63,26 +84,48 @@ export function useBranchesDirectoryModel() {
       setError('المدينة مطلوبة');
       return;
     }
-    const existing = editId ? branches.find((b) => b.id === editId) : undefined;
-    const payload: Omit<BranchRow, 'id'> = {
-      name: form.name.trim(),
-      city: form.city.trim(),
-      manager: existing?.manager ?? '',
-      employeesCount: existing?.employeesCount ?? 0,
-    };
-    if (editId) {
-      setBranches((list) => list.map((b) => (b.id === editId ? { ...b, ...payload } : b)));
-    } else {
-      setBranches((list) => [{ id: newBranchId(), ...payload }, ...list]);
+    if (!defaultCompanyId) {
+      setError('تعذر تحديد الشركة لهذا الفرع');
+      return;
     }
-    setDrawerOpen(false);
-  }, [branches, editId, form.city, form.name]);
 
-  const handleDelete = React.useCallback(() => {
+    setError(null);
+    try {
+      if (editId) {
+        const payload: UpdateBranchDto = {
+          nameAr: form.name.trim(),
+          city: form.city.trim(),
+        };
+        await updateBranch(editId, payload);
+      } else {
+        const payload: CreateBranchDto = {
+          companyId: defaultCompanyId,
+          code: slugify(form.name),
+          nameAr: form.name.trim(),
+          city: form.city.trim(),
+        };
+        await createBranch(payload);
+      }
+      await loadBranches();
+      setDrawerOpen(false);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'branches.save');
+      setError(displayMessage);
+    }
+  }, [defaultCompanyId, editId, form.city, form.name, loadBranches]);
+
+  const handleDelete = React.useCallback(async () => {
     if (!confirmId) return;
-    setBranches((list) => list.filter((b) => b.id !== confirmId));
-    setConfirmId(null);
-  }, [confirmId]);
+    setError(null);
+    try {
+      await deleteBranch(confirmId);
+      await loadBranches();
+      setConfirmId(null);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'branches.delete');
+      setError(displayMessage);
+    }
+  }, [confirmId, loadBranches]);
 
   useEntityFilterSlot(
     () => (
@@ -114,6 +157,8 @@ export function useBranchesDirectoryModel() {
     layoutView,
     branches,
     filtered,
+    loading,
+    listError,
     drawerOpen,
     setDrawerOpen,
     editId,

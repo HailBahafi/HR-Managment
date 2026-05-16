@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/shared/utils';
 import { Empty } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
-import type { Payslip } from '@/types';
+import type { Payslip } from '@/features/hr/payroll/types';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 
 type Props = {

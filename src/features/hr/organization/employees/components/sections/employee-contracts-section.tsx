@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { ExternalLink, FileSignature, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/status-badge';
-import { formatCurrency, formatNumber, cn } from '@/lib/utils';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { formatCurrency, formatNumber, cn } from '@/shared/utils';
 import { Empty, SectionH } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';

@@ -10,9 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { useHolidaysStore } from '@/lib/leaves/store';
-import type { HRPublicHolidayRecord } from '@/lib/leaves/types';
-import { cn } from '@/lib/utils';
+import { useHolidaysStore } from '@/features/hr/leaves/lib/store';
+import type { HRPublicHolidayRecord } from '@/features/hr/leaves/lib/types';
+import { cn } from '@/shared/utils';
 
 type DraftState = Omit<HRPublicHolidayRecord, 'id' | 'updatedAt'>;
 

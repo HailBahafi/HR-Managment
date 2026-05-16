@@ -8,17 +8,17 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { EmployeePicker } from '@/components/ui/employee-picker';
-import { useHRPayrollPeriodsStore } from '@/lib/contracts/payroll-periods-store';
-import { useHRContractsStore } from '@/lib/contracts/contracts-store';
-import { useHRAllowanceTypesStore } from '@/lib/contracts/allowance-types-store';
+import { useHRPayrollPeriodsStore } from '@/features/hr/contracts/lib/payroll-periods-store';
+import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
+import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
 import {
   buildCompensationPreviews,
-} from '@/lib/contracts/compensation-preview';
+} from '@/features/hr/contracts/lib/compensation-preview';
 import { CompensationReportPanel } from '@/features/hr/contracts/compensation/components/compensation-report-panel';
 import { hrContractsPayrollSalaryApprovalsQueryHref, hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
-import { MinimalDropdown } from '@/components/hr-requests/shared-ui';
+import { MinimalDropdown } from '@/features/hr/requests/components/shared-ui';
 import { PayrollPrintHtml } from './payroll-print-html';
-import { exportDomToPdf } from '@/lib/pdf/exportDomToPdf';
+import { exportDomToPdf } from '@/components/pdf/lib/exportDomToPdf';
 
 const PERIOD_STATUS_LABEL: Record<string, string> = {
   draft:  'مسودة',

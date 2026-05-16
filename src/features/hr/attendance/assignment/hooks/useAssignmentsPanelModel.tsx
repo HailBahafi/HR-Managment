@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { useAttendanceStore } from '@/lib/attendance/store';
-import type { AssignmentTargetType } from '@/lib/attendance/types';
-import { data } from '@/lib/data';
+import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
+import type { AssignmentTargetType } from '@/features/hr/attendance/lib/types';
+import { data } from '@/features/hr/lib/data';
 import type { MultiSelectOption } from '@/components/ui/multi-select';
 import { ASSIGNMENTS_ALL_DEPARTMENTS } from '@/features/hr/attendance/assignment/constants/assignments-panel';
 

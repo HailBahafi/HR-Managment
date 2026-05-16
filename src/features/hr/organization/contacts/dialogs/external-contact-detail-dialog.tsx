@@ -9,8 +9,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { EXTERNAL_PARTY_KIND_LABELS } from '@/lib/directory/external-contacts-store';
-import type { ExternalPartyRecord } from '@/lib/directory/external-contacts-store';
+import { EXTERNAL_PARTY_KIND_LABELS } from '@/features/hr/organization/lib/directory/external-contacts-store';
+import type { ExternalPartyRecord } from '@/features/hr/organization/lib/directory/external-contacts-store';
 
 type Props = {
   row: ExternalPartyRecord | null;

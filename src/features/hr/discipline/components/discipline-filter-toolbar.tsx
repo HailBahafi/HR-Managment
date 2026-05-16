@@ -7,7 +7,7 @@ import {
   EntityFilterToolbar,
   type EntityFilterToolbarHandle,
 } from '@/components/ui/entity-filter-toolbar';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 
 export {
   DATE_TAB_BASE,

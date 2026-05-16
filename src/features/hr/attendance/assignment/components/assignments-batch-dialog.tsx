@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { data } from '@/lib/data';
-import type { AssignmentTargetType, ShiftTemplate } from '@/lib/attendance/types';
+import { data } from '@/features/hr/lib/data';
+import type { AssignmentTargetType, ShiftTemplate } from '@/features/hr/attendance/lib/types';
 import { ASSIGNMENTS_ALL_DEPARTMENTS } from '@/features/hr/attendance/assignment/constants/assignments-panel';
 import type { AssignmentsPanelModel } from '@/features/hr/attendance/assignment/hooks/useAssignmentsPanelModel';
 

@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useAttendanceStore } from '@/lib/attendance/store';
-import { data } from '@/lib/data';
+import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
+import { data } from '@/features/hr/lib/data';
 import { CP_LINKS_ALL_DEPARTMENTS } from '@/features/hr/attendance/checkpoint-links/constants/checkpoint-links-panel';
 import { employeeSearchHaystack } from '@/features/hr/attendance/checkpoint-links/utils/employee-search-haystack';
 

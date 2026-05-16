@@ -9,11 +9,11 @@ import { Switch } from '@/components/ui/switch';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, ActiveBadge, MinimalDropdown,
-} from '@/components/hr-requests/shared-ui';
-import { useHRViolationTypesStore } from '@/lib/hr-discipline/violation-types-store';
-import type { HRViolationTypeRecord, HRViolationDeductionKind } from '@/lib/hr-discipline/types';
-import { DEDUCTION_KIND_LABELS } from '@/lib/hr-discipline/types';
-import { cn } from '@/lib/utils';
+} from '@/features/hr/requests/components/shared-ui';
+import { useHRViolationTypesStore } from '@/features/hr/discipline/lib/violation-types-store';
+import type { HRViolationTypeRecord, HRViolationDeductionKind } from '@/features/hr/discipline/lib/types';
+import { DEDUCTION_KIND_LABELS } from '@/features/hr/discipline/lib/types';
+import { cn } from '@/shared/utils';
 
 const DEDUCTION_KIND_OPTIONS = (Object.entries(DEDUCTION_KIND_LABELS) as [HRViolationDeductionKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 

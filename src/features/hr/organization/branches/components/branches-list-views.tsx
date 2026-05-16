@@ -22,7 +22,7 @@ import {
   DirectoryTableRow,
   DirectoryTable,
 } from '@/components/ui/directory-table';
-import { EmptyState } from '@/components/hr-requests/shared-ui';
+import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import type { BranchesDirectoryModel } from '@/features/hr/organization/branches/hooks/useBranchesDirectoryModel';
 
 export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) {

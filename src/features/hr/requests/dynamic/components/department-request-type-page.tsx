@@ -3,8 +3,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Info } from 'lucide-react';
-import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
-import { hrRequestPath, HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID } from '@/lib/hr-requests/types';
+import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
+import { hrRequestPath, HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID } from '@/features/hr/requests/lib/types';
 
 interface Props {
   params: Promise<{ department: string; requestType: string }>;

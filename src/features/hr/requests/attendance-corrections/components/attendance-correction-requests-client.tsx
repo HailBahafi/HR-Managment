@@ -12,21 +12,21 @@ import {
 } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { FormField, EmptyState } from '@/components/hr-requests/shared-ui';
-import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
-import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
+import { FormField, EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import {
   useAttendanceCorrectionRequestsStore,
   attendanceCorrectionStatusLabelAr,
-} from '@/lib/hr-requests/attendance-correction-store';
-import type { AttendanceCorrectionRequest } from '@/lib/hr-requests/attendance-correction-types';
-import { ATTENDANCE_PREVIOUS_STATUS_PRESETS } from '@/lib/hr-requests/attendance-correction-types';
-import { cn } from '@/lib/utils';
+} from '@/features/hr/requests/lib/attendance-correction-store';
+import type { AttendanceCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-types';
+import { ATTENDANCE_PREVIOUS_STATUS_PRESETS } from '@/features/hr/requests/lib/attendance-correction-types';
+import { cn } from '@/shared/utils';
 
 const STATUS_ORDER: readonly string[] = ['pending', 'approved', 'rejected'];
 const STATUS_LABELS: Record<string, string> = {

@@ -12,10 +12,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
-import { defaultShiftPeriod, normalizeShiftTemplate } from '@/lib/attendance/defaults';
-import type { ShiftTemplate, WeekDayIndex } from '@/lib/attendance/types';
-import { useAttendanceStore } from '@/lib/attendance/store';
-import { genId } from '@/lib/attendance/utils';
+import { defaultShiftPeriod, normalizeShiftTemplate } from '@/features/hr/attendance/lib/defaults';
+import type { ShiftTemplate, WeekDayIndex } from '@/features/hr/attendance/lib/types';
+import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
+import { genId } from '@/features/hr/attendance/lib/utils';
 import { ShiftTemplateCard } from '@/features/hr/attendance/templates/components/shift-template-card';
 import { ShiftTemplateDialogForm } from '@/features/hr/attendance/templates/components/shift-template-dialog-form';
 import { DEFAULT_REST } from '@/features/hr/attendance/templates/constants/shift-templates-ui';

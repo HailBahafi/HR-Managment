@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { appendEmployeeAudit } from '@/lib/employee-audit-log/append';
-import { diffEmployeeShallowAudit } from '@/lib/employee-audit-log/diff-employee';
-import type { Employee } from '@/types';
+import { appendEmployeeAudit } from '@/features/hr/organization/employees/lib/employee-audit-log/append';
+import { diffEmployeeShallowAudit } from '@/features/hr/organization/employees/lib/employee-audit-log/diff-employee';
+import type { Employee } from '@/features/hr/organization/employees/types';
 import type { EmployeeProfileSectionId } from '@/features/hr/organization/employees/constants/EmployeeProfileSections';
 import type { EmployeeProfileDraft } from '@/features/hr/organization/employees/components/employee-profile-field';
 

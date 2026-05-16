@@ -9,14 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { SetPageTitle } from '@/components/set-page-title';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
   MinimalDropdown, SearchableDropdown,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
@@ -33,12 +33,12 @@ import {
   type HRContractNature,
   type HRContractRecord,
   type HRWorkArrangement,
-} from '@/lib/contracts/contracts-store';
-import { useHRContractTemplatesStore } from '@/lib/contracts/contract-templates-store';
-import { useHRAllowanceTypesStore } from '@/lib/contracts/allowance-types-store';
-import { useHRContractArticlesStore } from '@/lib/contracts/contract-articles-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import { cn, formatNumber } from '@/lib/utils';
+} from '@/features/hr/contracts/lib/contracts-store';
+import { useHRContractTemplatesStore } from '@/features/hr/contracts/lib/contract-templates-store';
+import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
+import { useHRContractArticlesStore } from '@/features/hr/contracts/lib/contract-articles-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import { cn, formatNumber } from '@/shared/utils';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 import {
   HR_CONTRACTS_MODE_PARAM,
@@ -56,8 +56,8 @@ import {
 import { EmploymentContractTerminateModal as TerminateModal } from '@/features/hr/contracts/employment/components/employment-contract-terminate-modal';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
-import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
-import { data } from '@/lib/data';
+import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
+import { data } from '@/features/hr/lib/data';
 
 type FormValues = EmploymentContractFormValues;
 const emptyForm = emptyEmploymentContractForm;

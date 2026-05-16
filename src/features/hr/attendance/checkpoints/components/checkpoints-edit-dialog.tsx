@@ -15,8 +15,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { MapPicker } from '@/components/ui/map-picker';
-import type { AttendanceCheckInPoint } from '@/lib/attendance/types';
-import { cn } from '@/lib/utils';
+import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
+import { cn } from '@/shared/utils';
 import type { CheckpointsPanelModel } from '@/features/hr/attendance/checkpoints/hooks/useCheckpointsPanelModel';
 
 export function CheckpointsEditDialog({

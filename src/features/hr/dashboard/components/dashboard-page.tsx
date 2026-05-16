@@ -8,12 +8,12 @@ import {
   ShieldAlert, UserX, Timer, ArrowUpRight, ChevronLeft,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { data, getEmployee } from '@/lib/data';
-import { getInitials, cn, formatNumber, toWesternDigits } from '@/lib/utils';
-import { useSetPageTitle } from '@/components/page-title-context';
-import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
-import { useHRContractsStore } from '@/lib/contracts/contracts-store';
-import { MOCK_UNIFIED_LEAVES } from '@/lib/leaves/unified-mock';
+import { data, getEmployee } from '@/features/hr/lib/data';
+import { getInitials, cn, formatNumber, toWesternDigits } from '@/shared/utils';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
+import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
+import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
+import { MOCK_UNIFIED_LEAVES } from '@/features/hr/leaves/lib/unified-mock';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 
 /* ─── Sparkline ──────────────────────────────────────────────────────────────── */

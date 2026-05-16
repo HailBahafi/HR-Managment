@@ -24,6 +24,15 @@ const nextConfig = {
       { protocol: 'https', hostname: 'i.pravatar.cc' },
     ],
   },
+  async rewrites() {
+    const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:3000';
+    return [
+      {
+        source: '/api-backend/:path*',
+        destination: `${backendUrl}/:path*`,
+      },
+    ];
+  },
   async redirects() {
     return [
       { source: '/employees', destination: '/hr/organization/employees', permanent: true },

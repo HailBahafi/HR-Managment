@@ -13,31 +13,31 @@ import {
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, SearchableDropdown,
-} from '@/components/hr-requests/shared-ui';
-import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
-import { useHRViolationTypesStore } from '@/lib/hr-discipline/violation-types-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import type { HRViolationCaseRecord, HRViolationCaseStatus, HRApproverRole } from '@/lib/hr-discipline/types';
+} from '@/features/hr/requests/components/shared-ui';
+import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
+import { useHRViolationTypesStore } from '@/features/hr/discipline/lib/violation-types-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import type { HRViolationCaseRecord, HRViolationCaseStatus, HRApproverRole } from '@/features/hr/discipline/lib/types';
 import {
   CASE_STATUS_LABELS,
   CASE_STATUS_COLORS,
   CASE_STATUS_FILTER_ORDER,
   CASE_MAIN_FLOW,
   caseMainFlowIndex,
-} from '@/lib/hr-discipline/types';
-import { cn, formatDate, formatTime } from '@/lib/utils';
-import { data } from '@/lib/data';
+} from '@/features/hr/discipline/lib/types';
+import { cn, formatDate, formatTime } from '@/shared/utils';
+import { data } from '@/features/hr/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { ViolationCasesRegisterPrintHtml } from '@/components/pdf/print/violation-cases-register-print-html';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
-import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 
 type StatusFilter = 'all' | HRViolationCaseStatus;
 

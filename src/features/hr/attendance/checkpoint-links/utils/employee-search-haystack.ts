@@ -1,5 +1,5 @@
-import { data } from '@/lib/data';
-import type { ContractStatus, ContractType } from '@/types';
+import { data } from '@/features/hr/lib/data';
+import type { ContractStatus, ContractType } from '@/features/hr/contracts/types';
 import {
   CONTRACT_STATUS_AR,
   CONTRACT_TYPE_AR,

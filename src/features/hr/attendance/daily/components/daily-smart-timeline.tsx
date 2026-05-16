@@ -1,6 +1,6 @@
 'use client';
 
-import type { AttendanceDaySummary, AttendanceEvent } from '@/lib/attendance/types';
+import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { Clock3 } from 'lucide-react';
 import { DailyGanttTimeline } from '@/features/hr/attendance/daily/components/daily-gantt-timeline';

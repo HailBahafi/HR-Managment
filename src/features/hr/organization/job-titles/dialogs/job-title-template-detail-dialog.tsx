@@ -9,16 +9,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { getDepartment } from '@/lib/data';
-import type { JobTitleTemplateRecord } from '@/lib/directory/job-title-templates-store';
+import type { JobTitleTemplateRecord } from '@/features/hr/organization/lib/directory/job-title-templates-store';
 
 type Props = {
   row: JobTitleTemplateRecord | null;
   onOpenChange: (open: boolean) => void;
   onEdit: (row: JobTitleTemplateRecord) => void;
+  getDepartmentName: (id?: string | null) => string | undefined;
 };
 
-export function JobTitleTemplateDetailDialog({ row, onOpenChange, onEdit }: Props) {
+export function JobTitleTemplateDetailDialog({ row, onOpenChange, onEdit, getDepartmentName }: Props) {
   return (
     <Dialog open={!!row} onOpenChange={(v) => !v && onOpenChange(false)}>
       <DialogContent className="border-border sm:max-w-md">
@@ -33,7 +33,7 @@ export function JobTitleTemplateDetailDialog({ row, onOpenChange, onEdit }: Prop
             <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">القسم المقترج</span>
               <span className="font-medium">
-                {row.defaultDepartmentId ? getDepartment(row.defaultDepartmentId)?.name ?? '—' : '—'}
+                {row.defaultDepartmentId ? getDepartmentName(row.defaultDepartmentId) ?? '—' : '—'}
               </span>
             </div>
             {row.descriptionAr && (

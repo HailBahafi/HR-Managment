@@ -18,10 +18,10 @@ import {
   AtSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/status-badge';
+import { StatusBadge } from '@/components/shared/status-badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn, formatDate, getInitials } from '@/lib/utils';
-import type { Employee } from '@/types';
+import { cn, formatDate, getInitials } from '@/shared/utils';
+import type { Employee } from '@/features/hr/organization/employees/types';
 import { Prop, FieldGroup } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import { EmployeeProfileField } from '@/features/hr/organization/employees/components/employee-profile-field';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';

@@ -10,14 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useSetPageTitle } from '@/components/page-title-context';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import {
   useExternalContactsStore,
   type ExternalPartyKind,
   type ExternalPartyRecord,
-} from '@/lib/directory/external-contacts-store';
+} from '@/features/hr/organization/lib/directory/external-contacts-store';
 import {
   CONTACT_KIND_FILTER_OPTIONS,
   CONTACTS_EMPTY_FORM,

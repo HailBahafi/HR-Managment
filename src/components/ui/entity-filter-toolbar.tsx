@@ -12,12 +12,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FormField } from '@/components/hr-requests/shared-ui';
+import { FormField } from '@/features/hr/requests/components/shared-ui';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
+import { cn } from '@/shared/utils';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   effectiveDateRange,
   dateFilterHasRestriction,
@@ -27,7 +27,7 @@ import {
   thisWeekSunSatYMD,
   thisCalendarMonthYMD,
   ymdToMDYDisplay,
-} from '@/lib/hr-discipline/discipline-date-filter';
+} from '@/features/hr/discipline/lib/discipline-date-filter';
 
 export const DATE_TAB_BASE =
   'discipline-tab-trigger shrink-0 gap-1 px-3 text-[11px] transition-all duration-150 border';

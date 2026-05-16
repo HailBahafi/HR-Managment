@@ -8,23 +8,23 @@ import { Input } from '@/components/ui/input';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
-} from '@/components/hr-requests/shared-ui';
-import { useHRDisciplineInvestigationsStore } from '@/lib/hr-discipline/investigations-store';
-import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
-import type { HRInvestigationResult } from '@/lib/hr-discipline/types';
-import { INVESTIGATION_RESULT_LABELS, INVESTIGATION_RESULT_FILTER_ORDER } from '@/lib/hr-discipline/types';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
-import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+} from '@/features/hr/requests/components/shared-ui';
+import { useHRDisciplineInvestigationsStore } from '@/features/hr/discipline/lib/investigations-store';
+import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
+import type { HRInvestigationResult } from '@/features/hr/discipline/lib/types';
+import { INVESTIGATION_RESULT_LABELS, INVESTIGATION_RESULT_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { data } from '@/lib/data';
+import { data } from '@/features/hr/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
-import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 
 const RESULT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][]).map(([v, l]) => ({ value: v, label: l }));
 

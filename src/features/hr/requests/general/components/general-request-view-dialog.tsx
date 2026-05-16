@@ -3,13 +3,13 @@
 import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/lib/hr-requests/types';
+import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/features/hr/requests/lib/types';
 import {
   approvalStageModeLabelAr,
   approvalStageStateLabelAr,
   getPerStageApprovalUi,
-} from '@/lib/hr-requests/types';
-import { cn } from '@/lib/utils';
+} from '@/features/hr/requests/lib/types';
+import { cn } from '@/shared/utils';
 
 export type GeneralRequestViewDialogProps = {
   record: HRRequestSubmissionRecord | null;

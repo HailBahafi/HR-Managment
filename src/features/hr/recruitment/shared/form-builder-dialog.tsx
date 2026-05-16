@@ -18,8 +18,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import type { RecruitmentForm, RecruitmentFormField, RecruitmentFormFieldType } from '@/lib/recruitment/types';
-import { uid } from '@/lib/recruitment/utils';
+import type { RecruitmentForm, RecruitmentFormField, RecruitmentFormFieldType } from '@/features/hr/recruitment/lib/types';
+import { uid } from '@/features/hr/recruitment/lib/utils';
 
 const FIELD_TYPE_LABELS: Record<RecruitmentFormFieldType, string> = {
   text: 'نص',

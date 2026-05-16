@@ -15,9 +15,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { AtsFormField, AtsFormFieldType, AtsJobType } from '@/lib/ats/types';
-import { uid, slugify } from '@/lib/ats/utils';
-import { useAtsStore } from '@/lib/ats/store';
+import type { AtsFormField, AtsFormFieldType, AtsJobType } from '@/features/hr/recruitment/lib/ats/types';
+import { uid, slugify } from '@/features/hr/recruitment/lib/ats/utils';
+import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
 
 const FIELD_TYPES: { type: AtsFormFieldType; label: string; icon: React.ElementType; color: string }[] = [
   { type: 'text',   label: 'نص',     icon: FileText,   color: 'bg-blue-50 text-blue-700 border-blue-200' },

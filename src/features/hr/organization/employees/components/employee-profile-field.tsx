@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import type { Employee } from '@/types';
-import { cn } from '@/lib/utils';
+import type { Employee } from '@/features/hr/organization/employees/types';
+import { cn } from '@/shared/utils';
 import { Prop } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 
 export type EmployeeProfileDraft = Employee;

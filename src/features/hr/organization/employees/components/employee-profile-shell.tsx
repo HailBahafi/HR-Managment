@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { StatusBadge } from '@/components/status-badge';
-import { cn, getInitials } from '@/lib/utils';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { cn, getInitials } from '@/shared/utils';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { hrOrganizationRoutes } from '@/features/hr/organization/constants/routes';
 

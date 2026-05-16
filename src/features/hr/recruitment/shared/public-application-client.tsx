@@ -10,9 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Image from 'next/image';
-import { useRecruitmentStore } from '@/lib/recruitment/store';
-import { data } from '@/lib/data';
-import type { RecruitmentFormField } from '@/lib/recruitment/types';
+import { useRecruitmentStore } from '@/features/hr/recruitment/lib/store';
+import { data } from '@/features/hr/lib/data';
+import type { RecruitmentFormField } from '@/features/hr/recruitment/lib/types';
 
 export function PublicApplicationClient() {
   const params = useParams<{ formId: string }>();

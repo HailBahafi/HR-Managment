@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { isDisciplineSection, hrDisciplineSections } from '@/lib/hr-discipline/types';
+import { isDisciplineSection, hrDisciplineSections } from '@/features/hr/discipline/lib/types';
 import { HRDisciplineSectionRoot } from '@/features/hr/discipline/components/discipline-section-root';
 
 export function generateStaticParams() {

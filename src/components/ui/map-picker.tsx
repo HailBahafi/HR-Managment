@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 
 export interface MapPickerValue {
   latitude: number;

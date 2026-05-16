@@ -4,7 +4,7 @@ import * as React from 'react';
 import {
   Shield, Plus, Edit2, Trash2, AlertTriangle, Check,
 } from 'lucide-react';
-import { useSetPageTitle } from '@/components/page-title-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -15,8 +15,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { data } from '@/lib/data';
-import { cn } from '@/lib/utils';
+import { data } from '@/features/hr/lib/data';
+import { cn } from '@/shared/utils';
 import { PERMISSION_RESOURCES, PERMISSION_ACTIONS, PERMISSION_MATRIX_TOTAL } from '@/features/hr/permissions/constants/permission-matrix';
 import {
   PERMISSION_ROLE_COLOR_TOKENS,

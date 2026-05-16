@@ -11,22 +11,22 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { SetPageTitle } from '@/components/set-page-title';
-import { cn } from '@/lib/utils';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
+import { cn } from '@/shared/utils';
 import {
   useHRPayrollPeriodsStore,
   PERIOD_STATUS_LABELS,
   type HRPayrollCompensationReviewStatus,
   type HRPayrollPeriodRecord,
   type HRPayrollMonthlyInput,
-} from '@/lib/contracts/payroll-periods-store';
-import { useHRContractsStore } from '@/lib/contracts/contracts-store';
-import { useHRAllowanceTypesStore } from '@/lib/contracts/allowance-types-store';
+} from '@/features/hr/contracts/lib/payroll-periods-store';
+import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
+import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
 import {
   buildCompensationPreviews, lineNetFromVisibleColumns, formatLatinNumber,
   type CompensationColumnVisibility,
   type PayrollLineCompensationPreview,
-} from '@/lib/contracts/compensation-preview';
+} from '@/features/hr/contracts/lib/compensation-preview';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 
 /* ── Inline-edit cell ──────────────────────────────────────────────────────── */

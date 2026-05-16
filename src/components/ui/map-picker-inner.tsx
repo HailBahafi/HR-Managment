@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { publicConfig } from '@/lib/config';
+import { publicConfig } from '@/shared/config';
 import { loadHereMapsSdk } from '@/components/here-map/components/here-loader';
 import { Minus, Plus, LocateFixed, Loader2 } from 'lucide-react';
 import { Button } from './button';

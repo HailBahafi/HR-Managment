@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { SetPageTitle } from '@/components/set-page-title';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown, MinimalDropdown,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import {
   useHREmployeeAdvancesStore,
   ADVANCE_STATUS_LABELS,
@@ -20,9 +20,9 @@ import {
   type HREmployeeAdvanceKind,
   type HREmployeeAdvanceRepaymentMode,
   type HREmployeeAdvanceStatus,
-} from '@/lib/contracts/employee-advances-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import { cn, formatNumber } from '@/lib/utils';
+} from '@/features/hr/contracts/lib/employee-advances-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import { cn, formatNumber } from '@/shared/utils';
 
 type StatusFilter = 'all' | HREmployeeAdvanceStatus;
 

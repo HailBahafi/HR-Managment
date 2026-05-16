@@ -15,9 +15,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { data } from '@/lib/data';
-import type { ContractStatus } from '@/types';
-import { cn } from '@/lib/utils';
+import { data } from '@/features/hr/lib/data';
+import type { ContractStatus } from '@/features/hr/contracts/types';
+import { cn } from '@/shared/utils';
 import {
   CONTRACT_STATUS_AR,
   CP_LINKS_ALL_DEPARTMENTS,

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 
 export function fmtAttendanceHours(hours: number): string {
   if (!Number.isFinite(hours) || hours === 0) return '0';

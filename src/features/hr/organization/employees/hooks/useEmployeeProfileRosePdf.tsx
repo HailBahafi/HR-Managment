@@ -1,13 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { getBranch, getDepartment } from '@/lib/data';
-import { data } from '@/lib/data';
-import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
+import { getBranch, getDepartment } from '@/features/hr/lib/data';
+import { data } from '@/features/hr/lib/data';
+import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import {
   buildRoseTradingHrPdfProps,
   type RoseTradingHrPdfOverrides,
-} from '@/lib/pdf/build-rose-trading-hr-pdf-props';
+} from '@/components/pdf/lib/build-rose-trading-hr-pdf-props';
 import { RoseClearancePrintHtml } from '@/components/pdf/rose-trading/rose-clearance-print-html';
 import {
   RoseExperienceCertificatePrintHtml,

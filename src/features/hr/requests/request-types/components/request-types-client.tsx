@@ -6,20 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Switch } from '@/components/ui/switch';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import {
   MinimalDropdown, ConfirmationModal, HRSettingsFormDrawer,
   FormField, ActiveBadge,
-} from '@/components/hr-requests/shared-ui';
-import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
-import { useHRApprovalAssignmentTemplatesStore } from '@/lib/hr-requests/approval-assignment-store';
-import type { HRRequestTypeEntity, HRRequestTypeCategory } from '@/lib/hr-requests/types';
+} from '@/features/hr/requests/components/shared-ui';
+import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
+import { useHRApprovalAssignmentTemplatesStore } from '@/features/hr/requests/lib/approval-assignment-store';
+import type { HRRequestTypeEntity, HRRequestTypeCategory } from '@/features/hr/requests/lib/types';
 import {
   HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
   HR_REQUEST_TYPE_CATEGORIES,
   HR_REQUEST_TYPE_CATEGORY_LABELS_AR,
-} from '@/lib/hr-requests/types';
-import { cn } from '@/lib/utils';
+} from '@/features/hr/requests/lib/types';
+import { cn } from '@/shared/utils';
 
 interface DraftForm {
   requestCategory: HRRequestTypeCategory;

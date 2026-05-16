@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { SetPageTitle } from '@/components/set-page-title';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { ConditionalLeavesNav } from '@/features/hr/leaves/components/conditional-leaves-nav';
 
 export default function LeavesLayout({ children }: { children: React.ReactNode }) {

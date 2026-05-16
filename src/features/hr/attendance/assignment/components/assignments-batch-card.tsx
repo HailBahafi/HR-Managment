@@ -2,7 +2,7 @@
 
 import { Building2, CalendarDays, Clock, MapPin, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ShiftAssignment, ShiftTemplate } from '@/lib/attendance/types';
+import type { ShiftAssignment, ShiftTemplate } from '@/features/hr/attendance/lib/types';
 
 type Batch = {
   batchId: string;

@@ -6,7 +6,7 @@ import { arSA } from 'date-fns/locale';
 import { CalendarDays, X } from 'lucide-react';
 import type { Matcher } from 'react-day-picker';
 
-import { cn, toWesternDigits } from '@/lib/utils';
+import { cn, toWesternDigits } from '@/shared/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 

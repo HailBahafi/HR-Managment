@@ -1,7 +1,7 @@
 'use client';
 
-import type { HRDisciplineSection } from '@/lib/hr-discipline/types';
-import { useSetPageTitle } from '@/components/page-title-context';
+import type { HRDisciplineSection } from '@/features/hr/discipline/lib/types';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { ViolationTypesClient } from '@/features/hr/discipline/violation-types/components/violation-types-client';
 import { DisciplineApprovalClient } from '@/features/hr/discipline/approval-assignment/components/discipline-approval-client';
 import { ViolationCasesClient } from '@/features/hr/discipline/violation-cases/components/violation-cases-client';

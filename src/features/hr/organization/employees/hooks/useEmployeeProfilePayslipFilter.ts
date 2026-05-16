@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { PAYSLIP_MONTHS_AR, PAYSLIP_YEAR_OPTIONS } from '@/lib/payroll/employee-payslip-series';
-import type { Payslip } from '@/types';
+import { PAYSLIP_MONTHS_AR, PAYSLIP_YEAR_OPTIONS } from '@/features/hr/payroll/lib/employee-payslip-series';
+import type { Payslip } from '@/features/hr/payroll/types';
 
 export function useEmployeeProfilePayslipFilter(employeePayslipSeries: Payslip[]) {
   const payslipDistinctYears = React.useMemo(

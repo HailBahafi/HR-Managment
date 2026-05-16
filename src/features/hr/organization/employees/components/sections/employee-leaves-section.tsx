@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { Calendar, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusBadge } from '@/components/status-badge';
-import { formatDate, cn } from '@/lib/utils';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { formatDate, cn } from '@/shared/utils';
 import { Empty, LeaveBalanceCard } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 

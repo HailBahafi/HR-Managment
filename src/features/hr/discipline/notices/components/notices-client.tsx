@@ -8,24 +8,24 @@ import { Input } from '@/components/ui/input';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
-} from '@/components/hr-requests/shared-ui';
-import { useHRDisciplineNoticesStore } from '@/lib/hr-discipline/notices-store';
-import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import type { HRDisciplineNoticeKind } from '@/lib/hr-discipline/types';
-import { NOTICE_KIND_LABELS, NOTICE_KIND_FILTER_ORDER } from '@/lib/hr-discipline/types';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
-import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+} from '@/features/hr/requests/components/shared-ui';
+import { useHRDisciplineNoticesStore } from '@/features/hr/discipline/lib/notices-store';
+import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import type { HRDisciplineNoticeKind } from '@/features/hr/discipline/lib/types';
+import { NOTICE_KIND_LABELS, NOTICE_KIND_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { data } from '@/lib/data';
+import { data } from '@/features/hr/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
-import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 
 const KIND_OPTIONS = (Object.entries(NOTICE_KIND_LABELS) as [HRDisciplineNoticeKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 

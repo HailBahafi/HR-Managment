@@ -1,7 +1,7 @@
 'use client';
 
 import { CreditCard, Wallet } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/shared/utils';
 import { Prop, FieldGroup, SectionH } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import { EmployeeProfileField } from '@/features/hr/organization/employees/components/employee-profile-field';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';

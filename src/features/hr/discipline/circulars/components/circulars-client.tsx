@@ -5,32 +5,32 @@ import { Trash2, CalendarDays, Megaphone, Send, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmployeePicker } from '@/components/ui/employee-picker';
-import { useHRDisciplineCircularsStore } from '@/lib/hr-discipline/circulars-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import type { HRDisciplineCircularAudience } from '@/lib/hr-discipline/types';
+import { useHRDisciplineCircularsStore } from '@/features/hr/discipline/lib/circulars-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import type { HRDisciplineCircularAudience } from '@/features/hr/discipline/lib/types';
 import {
   CIRCULAR_AUDIENCE_LABELS,
   CIRCULAR_AUDIENCE_FILTER_ORDER,
-} from '@/lib/hr-discipline/types';
-import type { HRDisciplineCircularRecord } from '@/lib/hr-discipline/types';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
-import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+} from '@/features/hr/discipline/lib/types';
+import type { HRDisciplineCircularRecord } from '@/features/hr/discipline/lib/types';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { data, getEmployee } from '@/lib/data';
+import { data, getEmployee } from '@/features/hr/lib/data';
 import { DisciplineCircularPrintHtml } from '@/components/pdf/print/discipline-circular-print-html';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
+import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import { tryBuildCircularAudienceSnapshot } from '@/features/hr/discipline/circulars/utils/build-circular-audience-summary';
 
 const AUDIENCE_OPTIONS = (Object.entries(CIRCULAR_AUDIENCE_LABELS) as [HRDisciplineCircularAudience, string][]).map(

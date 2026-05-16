@@ -7,7 +7,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { exportDomToPdf } from '@/lib/pdf/exportDomToPdf';
+import { exportDomToPdf } from '@/components/pdf/lib/exportDomToPdf';
 
 type PdfPreviewExportDialogProps = {
   open: boolean;

@@ -8,24 +8,24 @@ import { Input } from '@/components/ui/input';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
-} from '@/components/hr-requests/shared-ui';
-import { useHRDisciplineAppealsStore } from '@/lib/hr-discipline/appeals-store';
-import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
-import type { HRAppealChannel, HRAppealStatus } from '@/lib/hr-discipline/types';
-import { APPEAL_CHANNEL_LABELS, APPEAL_STATUS_LABELS, APPEAL_STATUS_FILTER_ORDER } from '@/lib/hr-discipline/types';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
-import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+} from '@/features/hr/requests/components/shared-ui';
+import { useHRDisciplineAppealsStore } from '@/features/hr/discipline/lib/appeals-store';
+import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
+import type { HRAppealChannel, HRAppealStatus } from '@/features/hr/discipline/lib/types';
+import { APPEAL_CHANNEL_LABELS, APPEAL_STATUS_LABELS, APPEAL_STATUS_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { cn } from '@/lib/utils';
-import { data } from '@/lib/data';
+import { cn } from '@/shared/utils';
+import { data } from '@/features/hr/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
-import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 
 const CHANNEL_OPTIONS = (Object.entries(APPEAL_CHANNEL_LABELS) as [HRAppealChannel, string][]).map(([v, l]) => ({ value: v, label: l }));
 const STATUS_OPTIONS = (Object.entries(APPEAL_STATUS_LABELS) as [HRAppealStatus, string][]).map(([v, l]) => ({ value: v, label: l }));

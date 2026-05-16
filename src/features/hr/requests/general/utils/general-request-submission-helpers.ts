@@ -1,5 +1,5 @@
-import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/lib/hr-requests/types';
-import { deriveSubmissionApprovalSummary } from '@/lib/hr-requests/types';
+import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/features/hr/requests/lib/types';
+import { deriveSubmissionApprovalSummary } from '@/features/hr/requests/lib/types';
 import { REQUEST_APPROVAL_TAB_ORDER } from '@/features/hr/requests/general/constants/general-requests-ui';
 
 export function submissionCreatedYmd(s: HRRequestSubmissionRecord): string {

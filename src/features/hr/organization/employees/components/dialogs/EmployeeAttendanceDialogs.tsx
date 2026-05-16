@@ -16,8 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
-import { cn } from '@/lib/utils';
-import type { AttendanceCheckInPoint, AttendanceCheckInPointLink, ShiftTemplate } from '@/lib/attendance/types';
+import { cn } from '@/shared/utils';
+import type { AttendanceCheckInPoint, AttendanceCheckInPointLink, ShiftTemplate } from '@/features/hr/attendance/lib/types';
 
 export type EmployeeAttendanceDialogsProps = {
   employeeName: string;

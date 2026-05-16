@@ -10,21 +10,21 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
-import { FormField, EmptyState } from '@/components/hr-requests/shared-ui';
+import { FormField, EmptyState } from '@/features/hr/requests/components/shared-ui';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { LeavesManagementToolbar } from '@/features/hr/leaves/components/leaves-management-toolbar';
-import { intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
-import { cn, toWesternDigits } from '@/lib/utils';
+import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { cn, toWesternDigits } from '@/shared/utils';
 import {
   MOCK_UNIFIED_EMPLOYEES,
   MOCK_BRANCHES,
   MOCK_DEPARTMENTS,
-} from '@/lib/leaves/unified-mock';
-import { useLeaveBalanceCreditStore } from '@/lib/leaves/leave-balance-credit-store';
-import type { LeaveBalanceCreditRequest } from '@/lib/leaves/types';
+} from '@/features/hr/leaves/lib/unified-mock';
+import { useLeaveBalanceCreditStore } from '@/features/hr/leaves/lib/leave-balance-credit-store';
+import type { LeaveBalanceCreditRequest } from '@/features/hr/leaves/lib/types';
 
 const CREDIT_STATUS_ORDER: readonly string[] = ['pending', 'approved', 'rejected'];
 

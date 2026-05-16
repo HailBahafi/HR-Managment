@@ -1,6 +1,6 @@
-import type { HRDisciplineCircularAudience } from '@/lib/hr-discipline/types';
-import { CIRCULAR_AUDIENCE_LABELS } from '@/lib/hr-discipline/types';
-import { data } from '@/lib/data';
+import type { HRDisciplineCircularAudience } from '@/features/hr/discipline/lib/types';
+import { CIRCULAR_AUDIENCE_LABELS } from '@/features/hr/discipline/lib/types';
+import { data } from '@/features/hr/lib/data';
 
 export type CircularDraftAudienceShape = {
   audience: HRDisciplineCircularAudience;

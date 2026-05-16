@@ -8,22 +8,22 @@ import { Switch } from '@/components/ui/switch';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import {
   useHRDisciplineApprovalAssignmentTemplatesStore,
   disciplineApprovalLinkedIds,
-} from '@/lib/hr-discipline/discipline-approval-store';
-import { useHRViolationTypesStore } from '@/lib/hr-discipline/violation-types-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
+} from '@/features/hr/discipline/lib/discipline-approval-store';
+import { useHRViolationTypesStore } from '@/features/hr/discipline/lib/violation-types-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import {
   approvalStageModeLabelAr,
   type HRApprovalAssignmentTemplate,
   type HRApprovalTemplateStage,
   type HRApprovalStageMode,
-} from '@/lib/hr-requests/types';
-import type { HREmployeeDirectoryRow } from '@/lib/hr-requests/employee-directory-store';
-import { cn } from '@/lib/utils';
+} from '@/features/hr/requests/lib/types';
+import type { HREmployeeDirectoryRow } from '@/features/hr/requests/lib/employee-directory-store';
+import { cn } from '@/shared/utils';
 
 function uid() { return `dats-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; }
 

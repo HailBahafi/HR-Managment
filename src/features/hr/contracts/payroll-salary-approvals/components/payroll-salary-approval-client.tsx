@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Send, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { SetPageTitle } from '@/components/set-page-title';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -21,10 +21,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useHRPayrollPeriodsStore, type HRPayrollEmploymentLine } from '@/lib/contracts/payroll-periods-store';
-import { useHRContractsStore } from '@/lib/contracts/contracts-store';
-import { useHRAllowanceTypesStore } from '@/lib/contracts/allowance-types-store';
-import { buildCompensationPreviews, formatLatinNumber } from '@/lib/contracts/compensation-preview';
+import { useHRPayrollPeriodsStore, type HRPayrollEmploymentLine } from '@/features/hr/contracts/lib/payroll-periods-store';
+import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
+import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
+import { buildCompensationPreviews, formatLatinNumber } from '@/features/hr/contracts/lib/compensation-preview';
 import {
   usePayrollSalaryCircularStore,
   DEFAULT_PAYROLL_SALARY_CIRCULAR_ENTRY,
@@ -33,8 +33,8 @@ import {
   READ_STATUS_LABELS_AR,
   APPROVAL_STATUS_LABELS_AR,
   type PayrollSalaryCircularApprovalStatus,
-} from '@/lib/contracts/payroll-salary-circular-store';
-import { cn } from '@/lib/utils';
+} from '@/features/hr/contracts/lib/payroll-salary-circular-store';
+import { cn } from '@/shared/utils';
 
 function sendBadgeClass(s: 'not_sent' | 'sent') {
   return s === 'sent'

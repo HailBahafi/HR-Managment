@@ -15,8 +15,8 @@ import {
   Banknote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StatusBadge, ContractTypeLabel } from '@/components/status-badge';
-import { formatDate } from '@/lib/utils';
+import { StatusBadge, ContractTypeLabel } from '@/components/shared/status-badge';
+import { formatDate } from '@/shared/utils';
 import { Prop, FieldGroup, SectionH } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import { EmployeeProfileField } from '@/features/hr/organization/employees/components/employee-profile-field';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';

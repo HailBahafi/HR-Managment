@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import type { Employee } from '@/types';
+import type { Employee } from '@/features/hr/organization/employees/types';
 import type { EmployeeHrPdfPrepKind } from '@/features/hr/organization/employees/hooks/useEmployeeProfileRosePdf';
-import type { RoseTradingHrPdfOverrides } from '@/lib/pdf/build-rose-trading-hr-pdf-props';
+import type { RoseTradingHrPdfOverrides } from '@/components/pdf/lib/build-rose-trading-hr-pdf-props';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { MinimalDropdown } from '@/components/hr-requests/shared-ui';
+import { MinimalDropdown } from '@/features/hr/requests/components/shared-ui';
 import { REASON_LABELS, type CashReceiptReason } from '@/features/hr/contracts/reports/components/pdf-cash-receipt-print-html';
 
 type Props = {

@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { defaultShiftPeriod } from '@/lib/attendance/defaults';
-import type { ShiftPeriod, ShiftTemplate, WeekDayIndex } from '@/lib/attendance/types';
-import { genId } from '@/lib/attendance/utils';
-import { cn } from '@/lib/utils';
+import { defaultShiftPeriod } from '@/features/hr/attendance/lib/defaults';
+import type { ShiftPeriod, ShiftTemplate, WeekDayIndex } from '@/features/hr/attendance/lib/types';
+import { genId } from '@/features/hr/attendance/lib/utils';
+import { cn } from '@/shared/utils';
 import {
   DAY_LABELS,
   GROUP_COLORS,

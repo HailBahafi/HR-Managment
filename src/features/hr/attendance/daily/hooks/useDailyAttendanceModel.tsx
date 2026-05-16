@@ -5,14 +5,14 @@ import { FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { AttendanceRegisterPrintHtml } from '@/components/pdf/print/attendance-register-print-html';
-import { hasDateRangeFilter, thisCalendarMonthYMD } from '@/lib/hr-discipline/discipline-date-filter';
-import { useAttendanceStore } from '@/lib/attendance/store';
-import type { AttendanceDaySummary } from '@/lib/attendance/types';
-import { enumerateDates } from '@/lib/attendance/utils';
-import { data } from '@/lib/data';
-import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
+import { hasDateRangeFilter, thisCalendarMonthYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
+import type { AttendanceDaySummary } from '@/features/hr/attendance/lib/types';
+import { enumerateDates } from '@/features/hr/attendance/lib/utils';
+import { data } from '@/features/hr/lib/data';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import {
   ATT_VISUAL_STATUS_ORDER,
   DEFAULT_ABSENT_DAY_HOURS,

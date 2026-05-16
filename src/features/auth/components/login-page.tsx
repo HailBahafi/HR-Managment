@@ -11,7 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Logo } from '@/components/logo';
+import { Logo } from '@/components/layouts/logo';
+import { authApi, persistAccessToken } from '@/features/auth/lib/api/auth';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { publicConfig } from '@/shared/config';
+import { toast } from 'sonner';
 
 const schema = z.object({
   email: z.string().email('بريد إلكتروني غير صالح'),
@@ -32,13 +36,29 @@ export function LoginPage() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: 'admin@rose.sa', password: 'rose2026' },
+    defaultValues: { email: 'admin@test.com', password: 'Admin123!' },
   });
 
-  const onSubmit = async (_values: FormValues) => {
+  const onSubmit = async (values: FormValues) => {
+    if (!publicConfig.apiUrl) {
+      toast.error('لم يتم ضبط عنوان الـ API (NEXT_PUBLIC_API_URL)');
+      return;
+    }
+
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    router.push('/hr/dashboard');
+    try {
+      const result = await authApi.login({
+        email: values.email.trim().toLowerCase(),
+        password: values.password,
+      });
+      persistAccessToken(result.access_token);
+      router.push('/hr/dashboard');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'auth.login');
+      toast.error(displayMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

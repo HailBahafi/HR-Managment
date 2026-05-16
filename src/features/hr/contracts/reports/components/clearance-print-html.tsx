@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { RoseTradingLetterheadPrint } from '@/components/pdf/print/rose-trading-letterhead-print';
-import { getPdfLogoSrc } from '@/lib/pdf/pdf-logo-url';
-import { toWesternDigits } from '@/lib/utils';
+import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
+import { toWesternDigits } from '@/shared/utils';
 
 export type ClearancePrintProps = {
   company: { nameAr: string; nameEn: string };

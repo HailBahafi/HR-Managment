@@ -1,15 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { getEmployee, getBranch, getDepartment, data } from '@/lib/data';
-import { withIds } from '@/lib/with-ids';
-import { useAttendanceStore } from '@/lib/attendance/store';
-import { useHRViolationCasesStore } from '@/lib/hr-discipline/violation-cases-store';
-import { useHRContractsStore } from '@/lib/contracts/contracts-store';
-import { useEmployeeRoseFormsStore } from '@/lib/employee-rose-forms/store';
-import { useEmployeeAuditLogStore, EMPTY_EMPLOYEE_AUDIT_LOG } from '@/lib/employee-audit-log/store';
-import { buildEmployeePayslipSeries } from '@/lib/payroll/employee-payslip-series';
-import type { Employee } from '@/types';
+import { getEmployee, getBranch, getDepartment, data } from '@/features/hr/lib/data';
+import { withIds } from '@/shared/with-ids';
+import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
+import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
+import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
+import { useEmployeeRoseFormsStore } from '@/features/hr/organization/employees/lib/employee-rose-forms/store';
+import { useEmployeeAuditLogStore, EMPTY_EMPLOYEE_AUDIT_LOG } from '@/features/hr/organization/employees/lib/employee-audit-log/store';
+import { buildEmployeePayslipSeries } from '@/features/hr/payroll/lib/employee-payslip-series';
+import type { Employee } from '@/features/hr/organization/employees/types';
 
 export function useEmployeeProfileData(employee: Employee) {
   const branch = getBranch(employee.branchId);

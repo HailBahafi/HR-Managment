@@ -7,10 +7,10 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useRecruitmentStore } from '@/lib/recruitment/store';
+import { useRecruitmentStore } from '@/features/hr/recruitment/lib/store';
 import { ApplicantDetailDialog } from './applicant-detail-dialog';
-import type { RecruitmentApplicant, RecruitmentForm } from '@/lib/recruitment/types';
-import { formatDate } from '@/lib/utils';
+import type { RecruitmentApplicant, RecruitmentForm } from '@/features/hr/recruitment/lib/types';
+import { formatDate } from '@/shared/utils';
 import Link from 'next/link';
 
 export function ApplicantManagementClient() {

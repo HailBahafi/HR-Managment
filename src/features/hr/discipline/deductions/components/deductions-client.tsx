@@ -8,22 +8,22 @@ import {
 import { Label } from '@/components/ui/label';
 import {
   EmptyState,
-} from '@/components/hr-requests/shared-ui';
-import { useHRDisciplinePayrollDeductionsStore } from '@/lib/hr-discipline/payroll-deductions-store';
+} from '@/features/hr/requests/components/shared-ui';
+import { useHRDisciplinePayrollDeductionsStore } from '@/features/hr/discipline/lib/payroll-deductions-store';
 import {
   DEDUCTION_KIND_LABELS,
   DEDUCTION_STATUS_LABELS,
-} from '@/lib/hr-discipline/types';
-import type { HRDeductionStatus, HRViolationDeductionKind } from '@/lib/hr-discipline/types';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
-import { dateToYMD, matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
-import { cn, formatNumber } from '@/lib/utils';
+} from '@/features/hr/discipline/lib/types';
+import type { HRDeductionStatus, HRViolationDeductionKind } from '@/features/hr/discipline/lib/types';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { dateToYMD, matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { cn, formatNumber } from '@/shared/utils';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 
 const DEDUCTION_STATUS_ORDER: readonly HRDeductionStatus[] = ['ready', 'posted', 'calculated', 'cancelled'];
 

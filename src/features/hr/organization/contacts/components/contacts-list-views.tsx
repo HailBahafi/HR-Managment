@@ -23,9 +23,9 @@ import {
   DirectoryTableRow,
   DirectoryTable,
 } from '@/components/ui/directory-table';
-import { EmptyState } from '@/components/hr-requests/shared-ui';
-import { EXTERNAL_PARTY_KIND_LABELS } from '@/lib/directory/external-contacts-store';
-import type { ExternalPartyRecord } from '@/lib/directory/external-contacts-store';
+import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { EXTERNAL_PARTY_KIND_LABELS } from '@/features/hr/organization/lib/directory/external-contacts-store';
+import type { ExternalPartyRecord } from '@/features/hr/organization/lib/directory/external-contacts-store';
 import type { ContactsDirectoryModel } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 
 type Props = {

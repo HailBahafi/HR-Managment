@@ -4,15 +4,15 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSetPageTitle } from '@/components/page-title-context';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { data, getBranch, getDepartment } from '@/lib/data';
-import { formatCurrency } from '@/lib/utils';
-import { matchesDateRange, hasDateRangeFilter } from '@/lib/hr-discipline/discipline-date-filter';
+import { data, getBranch, getDepartment } from '@/features/hr/lib/data';
+import { formatCurrency } from '@/shared/utils';
+import { matchesDateRange, hasDateRangeFilter } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeesRegisterPrintHtml } from '@/components/pdf/print/employees-register-print-html';
-import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import {
   CONTRACT_TYPE_AR,
   EMP_CONTRACT_STATUS_LABELS,

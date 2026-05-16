@@ -1,11 +1,11 @@
 'use client';
 
 import { Shield, Users, Building2, Clock, Plus, Edit, Trash2, Check } from 'lucide-react';
-import { useSetPageTitle } from '@/components/page-title-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { data } from '@/lib/data';
-import { cn } from '@/lib/utils';
+import { data } from '@/features/hr/lib/data';
+import { cn } from '@/shared/utils';
 import {
   coercePermissionRoleColorToken,
   permissionRoleCssColor,

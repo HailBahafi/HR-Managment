@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { Building2, Mail } from 'lucide-react';
-import { NewEmployeeDrawer } from '@/components/employees/new-employee-drawer';
+import { NewEmployeeDrawer } from '@/features/hr/organization/employees/components/new-employee-drawer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { StatusBadge, ContractTypeLabel } from '@/components/status-badge';
-import { data, getBranch, getDepartment } from '@/lib/data';
-import { formatCurrency, formatDateShort, getInitials } from '@/lib/utils';
+import { StatusBadge, ContractTypeLabel } from '@/components/shared/status-badge';
+import { data, getBranch, getDepartment } from '@/features/hr/lib/data';
+import { formatCurrency, formatDateShort, getInitials } from '@/shared/utils';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import type { EmployeesListModel } from '@/features/hr/organization/employees/hooks/useEmployeesListModel';
 import { hrOrganizationRoutes } from '@/features/hr/organization/constants/routes';

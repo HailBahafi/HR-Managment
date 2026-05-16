@@ -6,33 +6,33 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Separator } from '@/components/ui/separator';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import {
   MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer,
   FormField,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import {
   HRRequestTemplateFieldsForm,
   validateTemplateRequired,
   type HRRequestTemplateFieldsFormValues,
 } from '@/features/hr/requests/shared/template-fields-form';
-import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
-import { useHRRequestSubmissionsStore } from '@/lib/hr-requests/submissions-store';
-import { useHRApprovalAssignmentTemplatesStore } from '@/lib/hr-requests/approval-assignment-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/lib/hr-requests/types';
+import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
+import { useHRRequestSubmissionsStore } from '@/features/hr/requests/lib/submissions-store';
+import { useHRApprovalAssignmentTemplatesStore } from '@/features/hr/requests/lib/approval-assignment-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import type { HRRequestSubmissionRecord, HRRequestTemplateEntity } from '@/features/hr/requests/lib/types';
 import {
   HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
   buildApprovalSnapshotFromTemplate,
   deriveSubmissionApprovalSummary,
   getDefaultHRRequestFormTemplate,
-} from '@/lib/hr-requests/types';
-import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
-import { cn, formatDateShort } from '@/lib/utils';
-import { data } from '@/lib/data';
+} from '@/features/hr/requests/lib/types';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { cn, formatDateShort } from '@/shared/utils';
+import { data } from '@/features/hr/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
-import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
+import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import {
   REQUEST_APPROVAL_TAB_ORDER,
   REQUEST_APPROVAL_TAB_LABELS,

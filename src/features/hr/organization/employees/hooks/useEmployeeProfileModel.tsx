@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Employee } from '@/types';
+import type { Employee } from '@/features/hr/organization/employees/types';
 import { EMPLOYEE_PROFILE_SECTIONS } from '@/features/hr/organization/employees/constants/EmployeeProfileSections';
 import type { EmployeeProfileSectionId } from '@/features/hr/organization/employees/constants/EmployeeProfileSections';
 import { useEmployeeProfileData } from '@/features/hr/organization/employees/hooks/useEmployeeProfileData';

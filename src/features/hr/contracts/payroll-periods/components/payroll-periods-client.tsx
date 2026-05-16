@@ -9,21 +9,21 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { SetPageTitle } from '@/components/set-page-title';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
+import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
-import { intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import {
   useHRPayrollPeriodsStore,
   PERIOD_STATUS_LABELS, PERIOD_STATUS_COLORS, COMPENSATION_STATUS_LABELS,
   type HRPayrollPeriodDraft, type HRPayrollPeriodStatus, type HRPayrollCompensationReviewStatus,
-} from '@/lib/contracts/payroll-periods-store';
+} from '@/features/hr/contracts/lib/payroll-periods-store';
 import { hrContractsPeriodCompensationHref } from '@/features/hr/contracts/constants/routes';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 
 type StatusFilter = 'all' | HRPayrollPeriodStatus;
 

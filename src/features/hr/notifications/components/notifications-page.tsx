@@ -3,24 +3,24 @@
 import * as React from 'react';
 import { Bell, Check, Circle, Eye, EyeOff, FileDown, LayoutGrid, List } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSetPageTitle } from '@/components/page-title-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EmptyState } from '@/components/hr-requests/shared-ui';
+import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { NotificationsRegisterPrintHtml } from '@/components/pdf/print/notifications-register-print-html';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
-import { MOCK_APP_SESSION } from '@/lib/app-session';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import { MOCK_APP_SESSION } from '@/shared/app-session';
 import {
   useHRNotificationsStore,
   type HRNotificationRecord,
-} from '@/lib/notifications/notifications-store';
-import { data } from '@/lib/data';
-import { matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
-import { cn, formatDate } from '@/lib/utils';
+} from '@/features/hr/notifications/lib/notifications-store';
+import { data } from '@/features/hr/lib/data';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { cn, formatDate } from '@/shared/utils';
 
 type StatusFilter = 'all' | 'unread' | 'read';
 type ViewMode = 'cards' | 'list';

@@ -7,10 +7,10 @@ import { PayrollMultiPeriodExplorer } from './payroll-multi-period-explorer';
 import { ClearancePrintHtml, type ClearancePrintProps } from './clearance-print-html';
 import { CashReceiptPrintHtml, type CashReceiptPrintHtmlProps } from './pdf-cash-receipt-print-html';
 import { Button } from '@/components/ui/button';
-import { SetPageTitle } from '@/components/set-page-title';
-import { useHRContractsStore } from '@/lib/contracts/contracts-store';
-import { data, getBranch } from '@/lib/data';
-import { exportDomToPdf } from '@/lib/pdf/exportDomToPdf';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
+import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
+import { data, getBranch } from '@/features/hr/lib/data';
+import { exportDomToPdf } from '@/components/pdf/lib/exportDomToPdf';
 import type { CashReceiptReason } from './pdf-cash-receipt-print-html';
 
 function amountWords(n: number): string {

@@ -3,20 +3,20 @@
 import * as React from 'react';
 import { FileDown, Rows3, Table2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePageFilters } from '@/components/filter-panel-context';
-import { EmptyState } from '@/components/hr-requests/shared-ui';
+import { usePageFilters } from '@/components/layouts/filter-panel-context';
+import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { data } from '@/lib/data';
-import { useHRDisciplineAuditLogStore } from '@/lib/hr-discipline/discipline-audit-log-store';
-import type { HRDisciplineAuditAction, HRDisciplineAuditCategory, HRDisciplineAuditLogEntry } from '@/lib/hr-discipline/discipline-audit-log';
+import { cn } from '@/shared/utils';
+import { data } from '@/features/hr/lib/data';
+import { useHRDisciplineAuditLogStore } from '@/features/hr/discipline/lib/discipline-audit-log-store';
+import type { HRDisciplineAuditAction, HRDisciplineAuditCategory, HRDisciplineAuditLogEntry } from '@/features/hr/discipline/lib/discipline-audit-log';
 import {
   AUDIT_ACTION_FILTER_ORDER,
   AUDIT_ACTION_LABELS_AR,
   AUDIT_CATEGORY_LABELS_AR,
-} from '@/lib/hr-discipline/discipline-audit-log';
-import type { DateFilterTab } from '@/lib/hr-discipline/discipline-date-filter';
-import { dateToYMD, matchesDateRange } from '@/lib/hr-discipline/discipline-date-filter';
+} from '@/features/hr/discipline/lib/discipline-audit-log';
+import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { dateToYMD, matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { DisciplineAuditLogPrintHtml } from '@/components/pdf/print/discipline-audit-log-print-html';
 import {

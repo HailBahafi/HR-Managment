@@ -3,8 +3,8 @@
 import * as React from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import type { ShiftPeriod } from '@/lib/attendance/types';
-import { cn } from '@/lib/utils';
+import type { ShiftPeriod } from '@/features/hr/attendance/lib/types';
+import { cn } from '@/shared/utils';
 import { ShiftScheduleForm } from '@/features/hr/attendance/templates/components/shift-schedule-form';
 import { durationLabel } from '@/features/hr/attendance/templates/utils/shift-template-helpers';
 

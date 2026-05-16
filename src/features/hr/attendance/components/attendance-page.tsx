@@ -1,13 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { useSetPageTitle } from '@/components/page-title-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { ShiftTemplatesPanel } from '@/features/hr/attendance/templates/components/shift-templates-panel';
 import { AssignmentsPanel } from '@/features/hr/attendance/assignment/components/assignments-panel';
 import { DailyAttendancePanel } from '@/features/hr/attendance/daily/components/daily-attendance-panel';
 import { CheckpointsPanel } from '@/features/hr/attendance/checkpoints/components/checkpoints-panel';
 import { CheckpointLinksPanel } from '@/features/hr/attendance/checkpoint-links/components/checkpoint-links-panel';
-import type { AttendanceSection } from '@/lib/attendance/types';
+import type { AttendanceSection } from '@/features/hr/attendance/lib/types';
 
 const SECTION_COPY: Record<AttendanceSection, { title: string; desc: string }> = {
   templates: { title: 'قوالب الشفت', desc: 'تعريف الجداول الأسبوعية والفترات والنوافذ.' },

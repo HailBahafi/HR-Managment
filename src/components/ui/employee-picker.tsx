@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Users, X, ChevronDown, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 
 export function EmployeePicker({
   employees,

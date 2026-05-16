@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/utils';
 import { fmtAttendanceHours } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 
 type Stat = {

@@ -11,8 +11,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import type { RecruitmentApplicant, RecruitmentForm, RecruitmentFormFieldType } from '@/lib/recruitment/types';
-import { formatDate } from '@/lib/utils';
+import type { RecruitmentApplicant, RecruitmentForm, RecruitmentFormFieldType } from '@/features/hr/recruitment/lib/types';
+import { formatDate } from '@/shared/utils';
 
 const FIELD_ICONS: Record<RecruitmentFormFieldType, React.ElementType> = {
   text: Type,

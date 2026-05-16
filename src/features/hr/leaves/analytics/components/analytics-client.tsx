@@ -4,20 +4,20 @@ import * as React from 'react';
 import { FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import {
   MOCK_ANALYTICS_EMPLOYEES,
   MOCK_BRANCHES,
   MOCK_UNIFIED_LEAVES,
   STATUS_LABELS,
-} from '@/lib/leaves/unified-mock';
-import type { EmployeeLeaveAnalyticsRow } from '@/lib/leaves/types';
+} from '@/features/hr/leaves/lib/unified-mock';
+import type { EmployeeLeaveAnalyticsRow } from '@/features/hr/leaves/lib/types';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { LeavesAnalyticsPrintHtml } from '@/components/pdf/print/leaves-analytics-print-html';
-import { data } from '@/lib/data';
-import { hasDateRangeFilter, intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
-import { downloadXlsxMultiSheet, type XlsxCell } from '@/lib/export/download-xlsx';
+import { data } from '@/features/hr/lib/data';
+import { hasDateRangeFilter, intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { downloadXlsxMultiSheet, type XlsxCell } from '@/shared/export/download-xlsx';
 
 const TYPE_LABEL: Record<string, string> = {
   annual: 'سنوية', sick: 'مرضية', unpaid: 'بدون راتب', maternity: 'أمومة', emergency: 'طارئة',

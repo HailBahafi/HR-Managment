@@ -1,8 +1,8 @@
 'use client';
 
 import { FileText } from 'lucide-react';
-import { StatusBadge, RequestTypeLabel } from '@/components/status-badge';
-import { formatDate, cn } from '@/lib/utils';
+import { StatusBadge, RequestTypeLabel } from '@/components/shared/status-badge';
+import { formatDate, cn } from '@/shared/utils';
 import { Empty, SectionH } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 

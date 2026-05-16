@@ -2,8 +2,8 @@
 
 import { use } from 'react';
 import { notFound } from 'next/navigation';
-import { getEmployee } from '@/lib/data';
-import type { Employee } from '@/types';
+import { getEmployee } from '@/features/hr/lib/data';
+import type { Employee } from '@/features/hr/organization/employees/types';
 import { EmployeeProfileBody } from '@/features/hr/organization/employees/components/employee-profile-body';
 
 export default function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {

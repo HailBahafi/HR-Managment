@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAtsStore } from '@/lib/ats/store';
-import type { AtsPipelineStage } from '@/lib/ats/types';
-import { getApplicantName, getInitials } from '@/lib/ats/utils';
-import { formatDate } from '@/lib/utils';
+import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
+import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
+import { formatDate } from '@/shared/utils';
 
 /* ─── Stage config ────────────────────────────────────────────── */
 type StageTab = AtsPipelineStage | 'all';

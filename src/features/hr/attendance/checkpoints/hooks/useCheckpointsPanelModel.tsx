@@ -1,14 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import type { AttendanceCheckInPoint } from '@/lib/attendance/types';
-import { useAttendanceStore } from '@/lib/attendance/store';
-import { genId } from '@/lib/attendance/utils';
+import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
+import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
+import { genId } from '@/features/hr/attendance/lib/utils';
 import { autosuggestQuery } from '@/components/here-map/components/geocoding';
 import type { GeocodingResult } from '@/components/here-map/types/types';
 import { CHECKPOINT_GEO_DEBOUNCE_MS, CHECKPOINT_GEO_MIN_QUERY_LEN } from '@/features/hr/attendance/checkpoints/constants/checkpoints-panel';
 import { validateCheckpointDraft } from '@/features/hr/attendance/checkpoints/utils/checkpoint-validate';
-import { publicConfig } from '@/lib/config';
+import { publicConfig } from '@/shared/config';
 
 export function useCheckpointsPanelModel() {
   const checkpoints = useAttendanceStore((s) => s.checkpoints);

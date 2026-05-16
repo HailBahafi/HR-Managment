@@ -1,7 +1,7 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
-import { HRSettingsFormDrawer, FormField, ConfirmationModal } from '@/components/hr-requests/shared-ui';
+import { HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useBranchesDirectoryModel } from '@/features/hr/organization/branches/hooks/useBranchesDirectoryModel';
 import { BranchesListViews } from '@/features/hr/organization/branches/components/branches-list-views';
 import { BranchDetailDialog } from '@/features/hr/organization/branches/dialogs/branch-detail-dialog';
@@ -11,7 +11,13 @@ export default function BranchesPage() {
 
   return (
     <div className="space-y-4">
-      <BranchesListViews model={model} />
+      {model.loading ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">جاري التحميل…</div>
+      ) : model.listError ? (
+        <EmptyState title="تعذر تحميل الفروع" description={model.listError} />
+      ) : (
+        <BranchesListViews model={model} />
+      )}
 
       <HRSettingsFormDrawer
         open={model.drawerOpen}

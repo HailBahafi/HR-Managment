@@ -5,7 +5,7 @@ import { Check, Layers, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { permissionLabelAr } from '@/lib/employee-access-role';
+import { permissionLabelAr } from '@/features/hr/organization/employees/lib/employee-access-role';
 import { Empty } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';

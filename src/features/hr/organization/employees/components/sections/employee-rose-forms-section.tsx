@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { EmployeeRoseFormsPanel } from '@/components/employees/employee-rose-forms-panel';
-import { useEmployeeRoseFormsStore } from '@/lib/employee-rose-forms/store';
+import { EmployeeRoseFormsPanel } from '@/features/hr/organization/employees/components/employee-rose-forms-panel';
+import { useEmployeeRoseFormsStore } from '@/features/hr/organization/employees/lib/employee-rose-forms/store';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 
 export function EmployeeRoseFormsSection({ model }: { model: EmployeeProfileModel }) {

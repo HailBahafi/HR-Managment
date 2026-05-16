@@ -1,4 +1,4 @@
-import { toWesternDigits } from '@/lib/utils';
+import { toWesternDigits } from '@/shared/utils';
 
 export const PDF_PRINT_C = {
   primary: '#1a3a5c',

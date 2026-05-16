@@ -10,14 +10,14 @@ import { Label } from '@/components/ui/label';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import {
   useHRApprovalAssignmentTemplatesStore,
   requestLinkedIds,
-} from '@/lib/hr-requests/approval-assignment-store';
-import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
-import { useHREmployeeDirectoryStore } from '@/lib/hr-requests/employee-directory-store';
+} from '@/features/hr/requests/lib/approval-assignment-store';
+import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
+import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import {
   approvalStageModeLabelAr,
   HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
@@ -25,9 +25,9 @@ import {
   type HRApprovalTemplateStage,
   type HRApprovalStageMode,
   type HRRequestTypeEntity,
-} from '@/lib/hr-requests/types';
-import type { HREmployeeDirectoryRow } from '@/lib/hr-requests/employee-directory-store';
-import { cn } from '@/lib/utils';
+} from '@/features/hr/requests/lib/types';
+import type { HREmployeeDirectoryRow } from '@/features/hr/requests/lib/employee-directory-store';
+import { cn } from '@/shared/utils';
 
 function uid() { return `ats-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; }
 

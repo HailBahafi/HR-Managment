@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { useAttendanceStore } from '@/lib/attendance/store';
-import type { AttendanceDaySummary, AttendanceEvent } from '@/lib/attendance/types';
-import type { Employee } from '@/types';
+import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
+import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
+import type { Employee } from '@/features/hr/organization/employees/types';
 
 export function useEmployeeProfileAttendance(
   employee: Employee,

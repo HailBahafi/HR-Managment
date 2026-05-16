@@ -1,11 +1,11 @@
-import { SidebarProvider } from '@/components/sidebar-context';
-import { PageTitleProvider } from '@/components/page-title-context';
-import { FilterPanelProvider } from '@/components/filter-panel-context';
-import { EntityFilterSlotProvider } from '@/components/entity-filter-slot-context';
-import { AppEntityFilterRegion } from '@/components/app-entity-filter-region';
-import { Sidebar } from '@/components/sidebar';
-import { Topbar } from '@/components/topbar';
-import { FilterPanel } from '@/components/filter-panel';
+import { SidebarProvider } from '@/components/layouts/sidebar-context';
+import { PageTitleProvider } from '@/components/layouts/page-title-context';
+import { FilterPanelProvider } from '@/components/layouts/filter-panel-context';
+import { EntityFilterSlotProvider } from '@/components/layouts/entity-filter-slot-context';
+import { AppEntityFilterRegion } from '@/components/layouts/app-entity-filter-region';
+import { Sidebar } from '@/components/layouts/sidebar';
+import { Topbar } from '@/components/layouts/topbar';
+import { FilterPanel } from '@/components/layouts/filter-panel';
 import { Toaster } from 'sonner';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

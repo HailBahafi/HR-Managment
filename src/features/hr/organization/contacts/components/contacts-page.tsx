@@ -13,11 +13,11 @@ import {
   HRSettingsFormDrawer,
   FormField,
   ConfirmationModal,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import {
   EXTERNAL_PARTY_KIND_LABELS,
   type ExternalPartyKind,
-} from '@/lib/directory/external-contacts-store';
+} from '@/features/hr/organization/lib/directory/external-contacts-store';
 import { useContactsDirectoryModel } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 import { ContactsListViews } from '@/features/hr/organization/contacts/components/contacts-list-views';
 import { ExternalContactDetailDialog } from '@/features/hr/organization/contacts/dialogs/external-contact-detail-dialog';

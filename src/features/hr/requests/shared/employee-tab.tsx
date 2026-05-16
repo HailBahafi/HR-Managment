@@ -5,11 +5,11 @@ import { Plus, RefreshCw, Pencil, Trash2, Eye, ChevronRight, ChevronDown, User, 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { useHREmployeeDirectoryStore, type HREmployeeDirectoryRow, type HREmployeeStatus, type HREmployeeHierarchyRole } from '@/lib/hr-requests/employee-directory-store';
-import { useHRConfigurationStore } from '@/lib/hr-requests/configuration-store';
-import { buildEmployeeForest, HIERARCHY_ROLE_LABELS, STATUS_LABELS, STATUS_COLORS, type EmpTreeNode } from '@/lib/hr-requests/hierarchy-utils';
-import { MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, Pagination } from '@/components/hr-requests/shared-ui';
-import { cn, formatDate, formatDateShort } from '@/lib/utils';
+import { useHREmployeeDirectoryStore, type HREmployeeDirectoryRow, type HREmployeeStatus, type HREmployeeHierarchyRole } from '@/features/hr/requests/lib/employee-directory-store';
+import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
+import { buildEmployeeForest, HIERARCHY_ROLE_LABELS, STATUS_LABELS, STATUS_COLORS, type EmpTreeNode } from '@/features/hr/requests/lib/hierarchy-utils';
+import { MinimalDropdown, SearchableDropdown, ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, Pagination } from '@/features/hr/requests/components/shared-ui';
+import { cn, formatDate, formatDateShort } from '@/shared/utils';
 
 const LS_VIEW = 'hr_employees_list_view_mode';
 const LS_PAGE = 'hr_employees_list_page';

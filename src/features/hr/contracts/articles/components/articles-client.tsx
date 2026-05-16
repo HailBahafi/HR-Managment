@@ -9,16 +9,16 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { SetPageTitle } from '@/components/set-page-title';
-import { usePageFilters } from '@/components/filter-panel-context';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
+import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, Pagination, ActiveBadge,
-} from '@/components/hr-requests/shared-ui';
+} from '@/features/hr/requests/components/shared-ui';
 import {
   useHRContractArticlesStore, normalizeArticleBody,
   type HRContractArticle,
-} from '@/lib/contracts/contract-articles-store';
-import { cn } from '@/lib/utils';
+} from '@/features/hr/contracts/lib/contract-articles-store';
+import { cn } from '@/shared/utils';
 
 type DraftForm = {
   code: string;

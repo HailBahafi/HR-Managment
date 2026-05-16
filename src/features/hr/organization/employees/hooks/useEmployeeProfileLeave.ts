@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Employee } from '@/types';
+import type { Employee } from '@/features/hr/organization/employees/types';
 
 const LEAVE_YEARLY_ENTITLEMENT = 21;
 
