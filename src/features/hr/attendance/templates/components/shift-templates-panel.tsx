@@ -14,7 +14,6 @@ import {
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { defaultShiftPeriod, normalizeShiftTemplate } from '@/features/hr/attendance/lib/defaults';
 import type { ShiftTemplate, WeekDayIndex } from '@/features/hr/attendance/lib/types';
-import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
 import { genId } from '@/features/hr/attendance/lib/utils';
 import { ShiftTemplateCard } from '@/features/hr/attendance/templates/components/shift-template-card';
 import { ShiftTemplateDialogForm } from '@/features/hr/attendance/templates/components/shift-template-dialog-form';
@@ -23,15 +22,74 @@ import {
   cloneTemplate,
   validateTemplate,
 } from '@/features/hr/attendance/templates/utils/shift-template-helpers';
+import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
+import { companiesApi } from '@/features/hr/lib/api/companies';
+
+function dtoToLocal(dto: ShiftTemplateResponseDto): ShiftTemplate {
+  return {
+    id: dto.id,
+    nameAr: dto.nameAr,
+    nameEn: dto.nameEn ?? '',
+    colorHex: dto.colorHex,
+    effectiveFrom: dto.effectiveFrom,
+    isActive: dto.isActive,
+    weekDays: dto.weekDays.map((wd) => ({
+      day: wd.day as WeekDayIndex,
+      isRest: wd.isRest,
+      periods: wd.periods.map((p) => ({
+        id: p.id ?? genId('per'),
+        startTime: p.startTime,
+        endTime: p.endTime,
+        breakEnabled: p.breakEnabled,
+        breakStart: p.breakStart ?? '',
+        breakEnd: p.breakEnd ?? '',
+        flexibilityEnabled: p.flexibilityEnabled,
+        flexibilityMinutes: p.flexibilityMinutes ?? 0,
+        checkIn: {
+          beforeStartMinutes: p.checkIn.beforeStartMinutes,
+          graceMinutes: p.checkIn.graceMinutes,
+          afterStartMinutes: p.checkIn.afterStartMinutes,
+        },
+        checkOut: {
+          beforeEndMinutes: p.checkOut.beforeEndMinutes,
+          allowedShortageMinutes: p.checkOut.allowedShortageMinutes,
+          afterEndMinutes: p.checkOut.afterEndMinutes,
+        },
+        checkOutNotRequired: p.checkOutNotRequired,
+        autoOvertime: p.autoOvertime,
+        strictMode: p.strictMode,
+        strictPenaltyWarning: p.strictPenaltyWarning,
+        strictPenaltyBalanceEnabled: p.strictPenaltyBalanceEnabled,
+        strictPenaltyBalanceDays: p.strictPenaltyBalanceDays,
+        strictPenaltyVacationEnabled: p.strictPenaltyVacationEnabled,
+      })),
+    })),
+  };
+}
 
 export function ShiftTemplatesPanel() {
-  const shiftTemplates = useAttendanceStore((s) => s.shiftTemplates);
-  const upsertTemplate = useAttendanceStore((s) => s.upsertTemplate);
-  const removeTemplate = useAttendanceStore((s) => s.removeTemplate);
-
+  const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplate[]>([]);
+  const [companyId, setCompanyId] = React.useState('');
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<ShiftTemplate | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+
+  const reload = React.useCallback(async () => {
+    try {
+      const res = await shiftTemplatesApi.getAll({ limit: 200 });
+      setShiftTemplates(res.items.map(dtoToLocal));
+    } catch { /* ignore */ }
+  }, []);
+
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const cRes = await companiesApi.getAll({ limit: 1 });
+        setCompanyId(cRes.items[0]?.id ?? '');
+      } catch { /* ignore */ }
+    })();
+    void reload();
+  }, [reload]);
 
   const buildDefault = (): ShiftTemplate => {
     const per = defaultShiftPeriod(genId('per'));
@@ -62,19 +120,63 @@ export function ShiftTemplatesPanel() {
     setOpen(true);
   };
 
-  const save = () => {
+  const isEdit = !!draft && shiftTemplates.some((x) => x.id === draft.id);
+
+  const save = async () => {
     if (!draft) return;
     const err = validateTemplate(draft);
-    if (err) {
-      setError(err);
-      return;
-    }
-    upsertTemplate({ ...draft, nameEn: draft.nameAr.trim() });
+    if (err) { setError(err); return; }
+
+    const weekDays = draft.weekDays.map((wd) => ({
+      day: wd.day,
+      isRest: wd.isRest,
+      periods: wd.periods.map((p) => ({
+        startTime: p.startTime,
+        endTime: p.endTime,
+        breakEnabled: p.breakEnabled,
+        breakStart: p.breakStart || null,
+        breakEnd: p.breakEnd || null,
+        flexibilityEnabled: p.flexibilityEnabled,
+        flexibilityMinutes: p.flexibilityMinutes || null,
+        checkIn: {
+          beforeStartMinutes: p.checkIn.beforeStartMinutes,
+          graceMinutes: p.checkIn.graceMinutes,
+          afterStartMinutes: p.checkIn.afterStartMinutes,
+        },
+        checkOut: {
+          beforeEndMinutes: p.checkOut.beforeEndMinutes,
+          allowedShortageMinutes: p.checkOut.allowedShortageMinutes,
+          afterEndMinutes: p.checkOut.afterEndMinutes,
+        },
+        checkOutNotRequired: p.checkOutNotRequired,
+        autoOvertime: p.autoOvertime,
+        strictMode: p.strictMode,
+        strictPenaltyWarning: p.strictPenaltyWarning,
+        strictPenaltyBalanceEnabled: p.strictPenaltyBalanceEnabled,
+        strictPenaltyBalanceDays: p.strictPenaltyBalanceDays,
+        strictPenaltyVacationEnabled: p.strictPenaltyVacationEnabled,
+      })),
+    }));
+
+    try {
+      if (isEdit) {
+        await shiftTemplatesApi.update(draft.id, {
+          nameAr: draft.nameAr, nameEn: draft.nameEn,
+          colorHex: draft.colorHex, effectiveFrom: draft.effectiveFrom,
+          isActive: draft.isActive, weekDays,
+        });
+      } else {
+        await shiftTemplatesApi.create({
+          companyId, nameAr: draft.nameAr, nameEn: draft.nameEn,
+          colorHex: draft.colorHex, effectiveFrom: draft.effectiveFrom,
+          isActive: draft.isActive, weekDays,
+        });
+      }
+      await reload();
+    } catch { /* ignore */ }
     setOpen(false);
     setDraft(null);
   };
-
-  const isEdit = !!draft && shiftTemplates.some((x) => x.id === draft.id);
 
   return (
     <div className="space-y-4">
@@ -97,8 +199,11 @@ export function ShiftTemplatesPanel() {
               key={t.id}
               t={t}
               onEdit={() => openEdit(t)}
-              onDelete={() => {
-                if (window.confirm('حذف القالب؟')) removeTemplate(t.id);
+              onDelete={async () => {
+                if (window.confirm('حذف القالب؟')) {
+                  try { await shiftTemplatesApi.remove(t.id); } catch { /* ignore */ }
+                  await reload();
+                }
               }}
             />
           ))}
@@ -113,7 +218,7 @@ export function ShiftTemplatesPanel() {
                 {isEdit ? 'تعديل القالب' : 'قالب دوام جديد'}
               </DialogTitle>
               <DialogDescription>
-                حدد أيام العمل ثم أدخل أوقات الدوام — تُطبَّق تلقائياً على جميع الأيام المحددة.
+                حدد أيام العمل ثم أدخل أوقات الدوام — تُطبَّق تلقائياً على جميع الأيام المحددة.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -133,7 +238,7 @@ export function ShiftTemplatesPanel() {
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
               إلغاء
             </Button>
-            <Button variant="luxe" type="button" onClick={save}>
+            <Button variant="luxe" type="button" onClick={() => void save()}>
               حفظ القالب
             </Button>
           </DialogFooter>

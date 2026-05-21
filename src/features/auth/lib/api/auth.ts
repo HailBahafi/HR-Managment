@@ -7,6 +7,7 @@ export type LoginPayload = {
 };
 
 export type LoginResult = {
+  access_token: string;
   user: AuthUser;
 };
 

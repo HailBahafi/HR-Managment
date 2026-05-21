@@ -1,10 +1,11 @@
 export type HRViolationDeductionKind = 'none' | 'amount' | 'hours' | 'day';
 export type HRViolationCaseStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'executed' | 'closed';
 export type HRDisciplineNoticeKind = 'verbal' | 'first' | 'second' | 'final';
-export type HRInvestigationResult = 'upheld' | 'cancelled' | 'to_warning' | 'to_deduction';
+export type HRInvestigationResult = 'proven' | 'not_proven';
+export type HRInvestigationRecommendation = 'warning' | 'deduction';
 export type HRPenaltyType = 'reprimand' | 'warning' | 'monetary' | 'suspension' | 'termination_recommendation';
-export type HRAppealChannel = 'manager' | 'hr' | 'committee';
-export type HRAppealStatus = 'submitted' | 'in_review' | 'accepted' | 'rejected' | 'closed';
+export type HRAppealChannel = 'in_person' | 'written' | 'email' | 'phone' | 'system';
+export type HRAppealStatus = 'pending' | 'under_review' | 'accepted' | 'rejected' | 'withdrawn';
 export type HRDeductionStatus = 'ready' | 'posted' | 'calculated' | 'cancelled';
 export type HRApproverRole = 'manager' | 'hr' | 'executive';
 
@@ -69,6 +70,7 @@ export interface HRDisciplineInvestigationRecord {
   investigatorName: string; date: string;
   employeeStatement: string; witnessStatement: string;
   result: HRInvestigationResult; recommendation: string;
+  recommendationType: HRInvestigationRecommendation | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -152,20 +154,23 @@ export const CIRCULAR_AUDIENCE_LABELS: Record<HRDisciplineCircularAudience, stri
 export const CIRCULAR_AUDIENCE_FILTER_ORDER: HRDisciplineCircularAudience[] = ['all', 'employees', 'branch', 'department'];
 
 export const INVESTIGATION_RESULT_LABELS: Record<HRInvestigationResult, string> = {
-  upheld: 'ثبتت المخالفة', cancelled: 'لم تثبت', to_warning: 'توجيه إنذار', to_deduction: 'استقطاع',
+  proven: 'ثبتت المخالفة', not_proven: 'لم تثبت',
 };
-export const INVESTIGATION_RESULT_FILTER_ORDER: HRInvestigationResult[] = ['upheld', 'cancelled', 'to_warning', 'to_deduction'];
+export const INVESTIGATION_RECOMMENDATION_LABELS: Record<HRInvestigationRecommendation, string> = {
+  warning: 'توجيه إنذار', deduction: 'استقطاع',
+};
+export const INVESTIGATION_RESULT_FILTER_ORDER: HRInvestigationResult[] = ['proven', 'not_proven'];
 export const PENALTY_TYPE_LABELS: Record<HRPenaltyType, string> = {
   reprimand: 'توبيخ', warning: 'إنذار رسمي', monetary: 'غرامة مالية',
   suspension: 'إيقاف عن العمل', termination_recommendation: 'توصية بالإنهاء',
 };
 export const APPEAL_CHANNEL_LABELS: Record<HRAppealChannel, string> = {
-  manager: 'المدير المباشر', hr: 'الموارد البشرية', committee: 'لجنة تظلمات',
+  in_person: 'حضوري', written: 'مكتوب', email: 'بريد إلكتروني', phone: 'هاتفي', system: 'النظام',
 };
 export const APPEAL_STATUS_LABELS: Record<HRAppealStatus, string> = {
-  submitted: 'مُقدَّم', in_review: 'قيد المراجعة', accepted: 'مقبول', rejected: 'مرفوض', closed: 'مغلق',
+  pending: 'قيد الانتظار', under_review: 'قيد المراجعة', accepted: 'مقبول', rejected: 'مرفوض', withdrawn: 'مسحوب',
 };
-export const APPEAL_STATUS_FILTER_ORDER: HRAppealStatus[] = ['submitted', 'in_review', 'accepted', 'rejected', 'closed'];
+export const APPEAL_STATUS_FILTER_ORDER: HRAppealStatus[] = ['pending', 'under_review', 'accepted', 'rejected', 'withdrawn'];
 /** تسميات عربية لمسارات الإنظباط الإداري: مسودة → تقديم → سلسلة الموافقات → قرار → تنفيذ/إغلاق. */
 export const CASE_STATUS_LABELS: Record<HRViolationCaseStatus, string> = {
   draft: 'مسودة',

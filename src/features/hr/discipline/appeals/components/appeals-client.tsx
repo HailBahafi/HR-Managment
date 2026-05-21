@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,10 @@ import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/features/hr/requests/components/shared-ui';
-import { useHRDisciplineAppealsStore } from '@/features/hr/discipline/lib/appeals-store';
-import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
+import { useDisciplineAppealsDirectoryModel } from '@/features/hr/discipline/appeals/hooks/useDisciplineAppealsDirectoryModel';
 import type { HRAppealChannel, HRAppealStatus } from '@/features/hr/discipline/lib/types';
 import { APPEAL_CHANNEL_LABELS, APPEAL_STATUS_LABELS, APPEAL_STATUS_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
+import type { AppealChannelDto, AppealStatusDto } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
@@ -21,7 +21,7 @@ import {
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { cn } from '@/shared/utils';
-import { data } from '@/features/hr/lib/data';
+import { companiesApi } from '@/features/hr/lib/api/companies';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -31,28 +31,36 @@ const CHANNEL_OPTIONS = (Object.entries(APPEAL_CHANNEL_LABELS) as [HRAppealChann
 const STATUS_OPTIONS = (Object.entries(APPEAL_STATUS_LABELS) as [HRAppealStatus, string][]).map(([v, l]) => ({ value: v, label: l }));
 
 const STATUS_COLORS: Record<HRAppealStatus, string> = {
-  submitted: 'text-primary border-primary/25 bg-primary/5 dark:border-primary/40 dark:bg-primary/15',
-  in_review: 'text-warning border-warning/30 bg-warning/10 dark:border-warning/40 dark:bg-warning/10',
+  pending: 'text-primary border-primary/25 bg-primary/5 dark:border-primary/40 dark:bg-primary/15',
+  under_review: 'text-warning border-warning/30 bg-warning/10 dark:border-warning/40 dark:bg-warning/10',
   accepted: 'text-success border-success/30 bg-success/10 dark:border-success/40 dark:bg-success/10',
   rejected: 'text-destructive border-destructive/30 bg-destructive/10 dark:border-destructive/40 dark:bg-destructive/10',
-  closed: 'text-muted-foreground border-border bg-muted/30',
+  withdrawn: 'text-muted-foreground border-border bg-muted/30',
 };
 
 type StatusFilter = 'all' | HRAppealStatus;
 
 interface DraftForm {
-  caseId: string; caseNumber: string; employeeId: string; employeeNameAr: string;
+  caseId: string; employeeNameAr: string;
   date: string; channel: HRAppealChannel; grounds: string;
-  status: HRAppealStatus; responseNote: string;
 }
-const EMPTY: DraftForm = {
-  caseId: '', caseNumber: '', employeeId: '', employeeNameAr: '',
-  date: '', channel: 'hr', grounds: '', status: 'submitted', responseNote: '',
-};
+const EMPTY: DraftForm = { caseId: '', employeeNameAr: '', date: '', channel: 'in_person', grounds: '' };
 
 export function AppealsClient() {
-  const { appeals, add, update, remove } = useHRDisciplineAppealsStore();
-  const { cases } = useHRViolationCasesStore();
+  const hook = useDisciplineAppealsDirectoryModel();
+  const { appeals, cases, loading, listError, createAppeal, updateAppeal, deleteAppeal } = hook;
+
+  const [companyNameAr, setCompanyNameAr] = React.useState('');
+  const [companyNameEn, setCompanyNameEn] = React.useState('');
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const res = await companiesApi.getAll({ limit: 1 });
+        const c = res.items[0];
+        if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
@@ -71,6 +79,7 @@ export function AppealsClient() {
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
+  const [saving, setSaving] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
@@ -78,10 +87,7 @@ export function AppealsClient() {
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
   const searchFiltered = React.useMemo(
-    () =>
-      appeals.filter(
-        (a) => selectedEmpIds.size === 0 || selectedEmpIds.has(a.employeeId),
-      ),
+    () => appeals.filter((a) => selectedEmpIds.size === 0 || selectedEmpIds.has(a.employeeId)),
     [appeals, selectedEmpIds],
   );
 
@@ -113,15 +119,7 @@ export function AppealsClient() {
   }, [selectedEmpIds.size, statusFilter, dateBounds.from, dateBounds.to]);
 
   const appealsPdfRows = React.useMemo(
-    () =>
-      listFiltered.map((a) => [
-        a.caseNumber,
-        a.employeeNameAr,
-        a.date,
-        APPEAL_CHANNEL_LABELS[a.channel],
-        APPEAL_STATUS_LABELS[a.status],
-        a.grounds,
-      ]),
+    () => listFiltered.map((a) => [a.caseNumber, a.employeeNameAr, a.date, APPEAL_CHANNEL_LABELS[a.channel], APPEAL_STATUS_LABELS[a.status], a.grounds]),
     [listFiltered],
   );
 
@@ -129,8 +127,8 @@ export function AppealsClient() {
     () =>
       appealsPdfRows.length === 0 ? null : (
         <GenericRegisterPrintHtml
-          companyNameAr={data.company.name}
-          companyNameEn={data.company.nameEn}
+          companyNameAr={companyNameAr}
+          companyNameEn={companyNameEn}
           titleAr="سجل التظلمات"
           filterSummary={appealsFilterSummary}
           headers={['رقم القضية', 'الموظف', 'التاريخ', 'القناة', 'الحالة', 'أسباب التظلم']}
@@ -142,21 +140,10 @@ export function AppealsClient() {
   );
 
   const handleExportAppealsExcel = React.useCallback(async () => {
-    if (listFiltered.length === 0) {
-      toast.error('لا توجد تظلمات للتصدير ضمن الفلاتر الحالية.');
-      return;
-    }
-    const header: XlsxCell[] = ['رقم القضية', 'الموظف', 'التاريخ', 'القناة', 'الحالة', 'أسباب التظلم'];
+    if (listFiltered.length === 0) { toast.error('لا توجد تظلمات للتصدير ضمن الفلاتر الحالية.'); return; }
     const rows: XlsxCell[][] = [
-      header,
-      ...listFiltered.map((a) => [
-        a.caseNumber,
-        a.employeeNameAr,
-        a.date,
-        APPEAL_CHANNEL_LABELS[a.channel],
-        APPEAL_STATUS_LABELS[a.status],
-        a.grounds,
-      ]),
+      ['رقم القضية', 'الموظف', 'التاريخ', 'القناة', 'الحالة', 'أسباب التظلم'],
+      ...listFiltered.map((a) => [a.caseNumber, a.employeeNameAr, a.date, APPEAL_CHANNEL_LABELS[a.channel], APPEAL_STATUS_LABELS[a.status], a.grounds]),
     ];
     await downloadXlsxFromAoA('discipline-appeals.xlsx', 'التظلمات', rows);
     toast.success('تم تنزيل ملف Excel.');
@@ -166,19 +153,35 @@ export function AppealsClient() {
 
   const handleCaseSelect = (caseId: string) => {
     const c = cases.find(x => x.id === caseId);
-    if (!c) { set({ caseId: '', caseNumber: '', employeeId: '', employeeNameAr: '' }); return; }
-    set({ caseId: c.id, caseNumber: c.caseNumber, employeeId: c.employeeId, employeeNameAr: c.employeeNameAr });
+    if (!c) { set({ caseId: '', employeeNameAr: '' }); return; }
+    set({ caseId: c.id, employeeNameAr: c.employeeNameAr });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setFormError(null);
     if (!draft.caseId) { setFormError('المخالفة مطلوبة'); return; }
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
     if (!draft.grounds.trim()) { setFormError('أسباب التظلم مطلوبة'); return; }
-    add(draft);
-    toast.success('تم تقديم التظلم');
-    setDrawerOpen(false);
-    setDraft(EMPTY);
+    setSaving(true);
+    try {
+      await createAppeal({ caseId: draft.caseId, date: draft.date, channel: draft.channel as AppealChannelDto, grounds: draft.grounds });
+      toast.success('تم تقديم التظلم');
+      setDrawerOpen(false);
+      setDraft(EMPTY);
+    } catch {
+      setFormError('حدث خطأ أثناء الحفظ');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStatusChange = async (id: string, status: string) => {
+    try {
+      await updateAppeal(id, { status: status as AppealStatusDto });
+      toast.success('تم تحديث الحالة');
+    } catch {
+      toast.error('فشل تحديث الحالة');
+    }
   };
 
   useEntityFilterSlot(
@@ -194,13 +197,7 @@ export function AppealsClient() {
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 text-xs"
-              onClick={() => {
-                if (appealsPdfRows.length === 0) {
-                  toast.error('لا توجد تظلمات للتصدير ضمن الفلاتر الحالية.');
-                  return;
-                }
-                setPdfOpen(true);
-              }}
+              onClick={() => { if (appealsPdfRows.length === 0) { toast.error('لا توجد تظلمات للتصدير ضمن الفلاتر الحالية.'); return; } setPdfOpen(true); }}
             >
               <FileDown className="h-3.5 w-3.5" />
               PDF
@@ -225,57 +222,50 @@ export function AppealsClient() {
         onDateFilterMetaChange={onDateFilterMetaChange}
       />
     ),
-    [
-      empPickerList,
-      selectedEmpIds,
-      statusFilter,
-      statusCounts,
-      viewMode,
-      listFiltered,
-      onDateBoundsChange,
-      onDateFilterMetaChange,
-    ],
+    [empPickerList, selectedEmpIds, statusFilter, statusCounts, viewMode, listFiltered, onDateBoundsChange, onDateFilterMetaChange],
   );
+
+  if (loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" />
+        ))}
+      </div>
+    );
+  }
+
+  if (listError) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center text-sm text-destructive">
+        {listError}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <PdfPreviewExportDialog
-        open={pdfOpen}
-        onOpenChange={setPdfOpen}
-        title="معاينة تصدير التظلمات"
-        fileName="discipline-appeals.pdf"
-        printable={printable}
-      />
+      <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير التظلمات" fileName="discipline-appeals.pdf" printable={printable} />
 
       {searchFiltered.length === 0 ? (
         <EmptyState title="لا توجد تظلمات مطابقة للبحث أو الموظفين المحددين." />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today'
-              ? 'لا توجد تظلمات بتاريخ اليوم ضمن النتائج الحالية.'
-              : dateMeta.tab === 'week'
-                ? 'لا توجد تظلمات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-                : dateMeta.tab === 'month'
-                  ? 'لا توجد تظلمات ضمن هذا الشهر ضمن النتائج الحالية.'
-                  : dateMeta.tab === 'custom' && dateRangeActive
-                    ? 'لا توجد تظلمات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
-                    : 'لا توجد تظلمات ضمن النتائج الحالية.'}
+            {dateMeta.tab === 'today' ? 'لا توجد تظلمات بتاريخ اليوم ضمن النتائج الحالية.'
+              : dateMeta.tab === 'week' ? 'لا توجد تظلمات ضمن هذا الأسبوع ضمن النتائج الحالية.'
+              : dateMeta.tab === 'month' ? 'لا توجد تظلمات ضمن هذا الشهر ضمن النتائج الحالية.'
+              : dateMeta.tab === 'custom' && dateRangeActive ? 'لا توجد تظلمات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
+              : 'لا توجد تظلمات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
-              عرض كل الفترات
-            </Button>
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>عرض كل الفترات</Button>
           ) : null}
         </div>
       ) : listFiltered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
-          <p className="text-sm text-muted-foreground">
-            لا توجد تظلمات بحالة «{statusFilter === 'all' ? '' : APPEAL_STATUS_LABELS[statusFilter]}» مع عوامل البحث الحالية.
-          </p>
-          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>
-            عرض الكل
-          </Button>
+          <p className="text-sm text-muted-foreground">لا توجد تظلمات بحالة «{statusFilter === 'all' ? '' : APPEAL_STATUS_LABELS[statusFilter]}» مع عوامل البحث الحالية.</p>
+          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>عرض الكل</Button>
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -295,13 +285,12 @@ export function AppealsClient() {
                   {APPEAL_CHANNEL_LABELS[a.channel]}
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground tabular-nums" dir="ltr">
-                  <CalendarDays className="h-3 w-3 shrink-0" />
-                  {a.date}
+                  <CalendarDays className="h-3 w-3 shrink-0" />{a.date}
                 </span>
               </div>
               <MinimalDropdown
                 value={a.status}
-                onChange={v => { update(a.id, { status: v as HRAppealStatus }); toast.success('تم تحديث الحالة'); }}
+                onChange={v => void handleStatusChange(a.id, v)}
                 options={STATUS_OPTIONS}
               />
               <div className="mt-auto flex justify-end border-t border-border pt-3">
@@ -335,7 +324,7 @@ export function AppealsClient() {
                   <td className="p-3">
                     <MinimalDropdown
                       value={a.status}
-                      onChange={v => { update(a.id, { status: v as HRAppealStatus }); toast.success('تم تحديث الحالة'); }}
+                      onChange={v => void handleStatusChange(a.id, v)}
                       options={STATUS_OPTIONS}
                     />
                   </td>
@@ -351,7 +340,7 @@ export function AppealsClient() {
         </div>
       )}
 
-      <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="تقديم تظلم" size="lg" onSave={handleSave} error={formError}>
+      <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="تقديم تظلم" size="lg" onSave={() => void handleSave()} saveDisabled={saving} error={formError}>
         <FormField label="المخالفة" required>
           <SearchableDropdown value={draft.caseId} onChange={handleCaseSelect} options={caseOptions} placeholder="اختر المخالفة…" />
         </FormField>
@@ -369,7 +358,17 @@ export function AppealsClient() {
         </FormField>
       </HRSettingsFormDrawer>
 
-      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} onConfirm={() => { if (deleteId) { remove(deleteId); toast.success('تم الحذف'); setDeleteId(null); } }} title="حذف التظلم" />
+      <ConfirmationModal
+        open={!!deleteId}
+        onOpenChange={v => !v && setDeleteId(null)}
+        onConfirm={async () => {
+          if (deleteId) {
+            try { await deleteAppeal(deleteId); toast.success('تم الحذف'); } catch { toast.error('فشل الحذف'); }
+            setDeleteId(null);
+          }
+        }}
+        title="حذف التظلم"
+      />
     </div>
   );
 }

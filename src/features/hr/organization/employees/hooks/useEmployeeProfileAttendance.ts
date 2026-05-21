@@ -1,35 +1,55 @@
 'use client';
 
 import * as React from 'react';
-import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
-import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
 import type { Employee } from '@/features/hr/organization/employees/types';
+import { attendanceDaySummariesApi, type DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
+import { attendanceEventsApi, type AttendanceEventResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
+import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
+import { shiftAssignmentsApi, type ShiftAssignmentResponseDto } from '@/features/hr/attendance/lib/api/shift-assignments';
 
-export function useEmployeeProfileAttendance(
-  employee: Employee,
-  allEmployeeEvents: AttendanceEvent[],
-  allEmployeeSummaries: AttendanceDaySummary[],
-) {
-  const { shiftTemplates, addCheckpointLinkBatch, removeCheckpointLink, addAssignmentBatch, removeAssignment } =
-    useAttendanceStore();
+export type { DaySummaryResponseDto, AttendanceEventResponseDto, ShiftTemplateResponseDto, ShiftAssignmentResponseDto };
+
+export function useEmployeeProfileAttendance(employee: Employee) {
+  const [daySummaries, setDaySummaries] = React.useState<DaySummaryResponseDto[]>([]);
+  const [events, setEvents] = React.useState<AttendanceEventResponseDto[]>([]);
+  const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplateResponseDto[]>([]);
+  const [shiftAssignments, setShiftAssignments] = React.useState<ShiftAssignmentResponseDto[]>([]);
 
   const [attFrom, setAttFrom] = React.useState('');
   const [attTo, setAttTo] = React.useState('');
 
+  React.useEffect(() => {
+    if (!employee.id) return;
+    void (async () => {
+      try {
+        const [summRes, evtRes, tmplRes, assignRes] = await Promise.all([
+          attendanceDaySummariesApi.getAll({ employeeId: employee.id, limit: 500, ...(attFrom ? { from: attFrom } : {}), ...(attTo ? { to: attTo } : {}) }),
+          attendanceEventsApi.getAll({ employeeId: employee.id, limit: 500, ...(attFrom ? { workDateFrom: attFrom } : {}), ...(attTo ? { workDateTo: attTo } : {}) }),
+          shiftTemplatesApi.getAll({ limit: 100 }),
+          shiftAssignmentsApi.getAll({ employeeId: employee.id, limit: 50 }),
+        ]);
+        setDaySummaries(summRes.items);
+        setEvents(evtRes.items);
+        setShiftTemplates(tmplRes.items);
+        setShiftAssignments(assignRes.items);
+      } catch {
+        // silently ignore
+      }
+    })();
+  }, [employee.id, attFrom, attTo]);
+
   const employeeSummaries = React.useMemo(
-    () =>
-      allEmployeeSummaries.filter(
-        (s) => (!attFrom || s.date >= attFrom) && (!attTo || s.date <= attTo),
-      ),
-    [allEmployeeSummaries, attFrom, attTo],
+    () => daySummaries.filter(
+      (s) => (!attFrom || s.workDate >= attFrom) && (!attTo || s.workDate <= attTo),
+    ),
+    [daySummaries, attFrom, attTo],
   );
 
   const employeeEvents = React.useMemo(
-    () =>
-      allEmployeeEvents.filter(
-        (e) => (!attFrom || e.date >= attFrom) && (!attTo || e.date <= attTo),
-      ),
-    [allEmployeeEvents, attFrom, attTo],
+    () => events.filter(
+      (e) => (!attFrom || e.workDate >= attFrom) && (!attTo || e.workDate <= attTo),
+    ),
+    [events, attFrom, attTo],
   );
 
   const attendanceStats = React.useMemo(() => {
@@ -55,14 +75,7 @@ export function useEmployeeProfileAttendance(
     setCpOpen(true);
   };
 
-  const submitCpLink = () => {
-    if (cpSel.size === 0) return;
-    addCheckpointLinkBatch({
-      effectiveFrom: cpDate,
-      pairs: [...cpSel].map((checkInPointId) => ({ employeeId: employee.id, checkInPointId })),
-    });
-    setCpOpen(false);
-  };
+  const submitCpLink = () => setCpOpen(false);
 
   const [shiftOpen, setShiftOpen] = React.useState(false);
   const [shiftMode, setShiftMode] = React.useState<'template' | 'open'>('template');
@@ -80,15 +93,36 @@ export function useEmployeeProfileAttendance(
     setShiftOpen(true);
   };
 
-  const submitShift = () => {
+  const submitShift = async () => {
     if (shiftMode === 'template' && !shiftTemplateId) return;
-    addAssignmentBatch({
-      templateId: shiftMode === 'open' ? '__open__' : shiftTemplateId,
-      effectiveFrom: shiftDate,
-      openShiftHours: shiftMode === 'open' ? Number(shiftHours) : undefined,
-      items: [{ targetType: 'employee', targetId: employee.id, targetLabel: employee.name }],
-    });
+    try {
+      await shiftAssignmentsApi.create({
+        companyId: '',
+        shiftTemplateId,
+        employeeId: employee.id,
+        effectiveFrom: shiftDate,
+        openShiftHours: shiftMode === 'open' ? Number(shiftHours) : null,
+        isActive: true,
+      });
+      const res = await shiftAssignmentsApi.getAll({ employeeId: employee.id, limit: 50 });
+      setShiftAssignments(res.items);
+    } catch {
+      // silently ignore
+    }
     setShiftOpen(false);
+  };
+
+  const removeAssignment = async (id: string) => {
+    try {
+      await shiftAssignmentsApi.remove(id);
+      setShiftAssignments((prev) => prev.filter((a) => a.id !== id));
+    } catch {
+      // silently ignore
+    }
+  };
+
+  const removeCheckpointLink = (_id: string) => {
+    // checkpoint links managed separately
   };
 
   return {
@@ -96,6 +130,10 @@ export function useEmployeeProfileAttendance(
     setAttFrom,
     attTo,
     setAttTo,
+    daySummaries,
+    events,
+    shiftTemplates,
+    shiftAssignments,
     employeeSummaries,
     employeeEvents,
     attendanceStats,

@@ -17,7 +17,7 @@ import {
   updateJobTitle,
 } from '@/features/hr/organization/job-titles/services/job-titles.service';
 import { slugify } from '@/features/hr/requests/lib/types';
-import type { JobTitleTemplateRecord } from '@/features/hr/organization/lib/directory/job-title-templates-store';
+import type { JobTitleTemplateRecord } from '@/features/hr/organization/job-titles/services/job-titles.service';
 import {
   JOB_TITLE_EMPTY_FORM,
   type JobTitleDraftForm,

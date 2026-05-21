@@ -6,14 +6,15 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown,
 } from '@/features/hr/requests/components/shared-ui';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmployeePicker } from '@/components/ui/employee-picker';
-import { useHRDisciplineCircularsStore } from '@/features/hr/discipline/lib/circulars-store';
-import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import { useDisciplineCircularsDirectoryModel } from '@/features/hr/discipline/circulars/hooks/useDisciplineCircularsDirectoryModel';
+import { toCircularAudienceType } from '@/features/hr/discipline/circulars/services/discipline-circulars.service';
 import type { HRDisciplineCircularAudience } from '@/features/hr/discipline/lib/types';
 import {
   CIRCULAR_AUDIENCE_LABELS,
@@ -27,7 +28,6 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { data, getEmployee } from '@/features/hr/lib/data';
 import { DisciplineCircularPrintHtml } from '@/components/pdf/print/discipline-circular-print-html';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
@@ -95,8 +95,8 @@ function IdCheckboxList({
 function circularAppliesToEmployee(
   c: HRDisciplineCircularRecord,
   empId: string,
-  branchId: string,
-  departmentId: string,
+  branchId: string | null,
+  departmentId: string | null,
 ): boolean {
   switch (c.audience) {
     case 'all':
@@ -104,8 +104,10 @@ function circularAppliesToEmployee(
     case 'employees':
       return c.targetEmployeeIds.includes(empId);
     case 'branch':
+      if (!branchId) return false;
       return c.branchIds.length > 0 && c.branchIds.includes(branchId);
     case 'department':
+      if (!departmentId) return false;
       return c.departmentIds.length > 0 && c.departmentIds.includes(departmentId);
     default:
       return false;
@@ -115,10 +117,11 @@ function circularAppliesToEmployee(
 function circularMatchesEmpToolbarFilter(
   c: HRDisciplineCircularRecord,
   selectedEmpIds: Set<string>,
+  employeeById: Map<string, { branchId: string | null; departmentId: string | null }>,
 ): boolean {
   if (selectedEmpIds.size === 0) return true;
   for (const empId of selectedEmpIds) {
-    const emp = getEmployee(empId);
+    const emp = employeeById.get(empId);
     if (!emp) continue;
     if (circularAppliesToEmployee(c, empId, emp.branchId, emp.departmentId)) return true;
   }
@@ -126,8 +129,8 @@ function circularMatchesEmpToolbarFilter(
 }
 
 export function CircularsClient() {
-  const { circulars, add, remove, markSent } = useHRDisciplineCircularsStore();
-  const { activeEmployees } = useHREmployeeDirectoryStore();
+  const m = useDisciplineCircularsDirectoryModel();
+  const { circulars } = m;
 
   const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث في العنوان أو النص أو النطاق…' }]);
   const q = ((values.q as string) ?? '').trim();
@@ -141,17 +144,22 @@ export function CircularsClient() {
   const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
 
   const empPickerList = React.useMemo(
-    () => activeEmployees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [activeEmployees],
+    () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [m.employees],
   );
-
-  const branchOptions = React.useMemo(
-    () => data.branches.map((b) => ({ value: b.id, label: b.name })),
-    [],
+  const employeeById = React.useMemo(
+    () => new Map(m.employees.map((e) => [e.id, e])),
+    [m.employees],
   );
-  const departmentOptions = React.useMemo(
-    () => data.departments.map((d) => ({ value: d.id, label: d.name })),
-    [],
+  const branchOptions = m.branchOptions;
+  const departmentOptions = m.departmentOptions;
+  const branchNameById = React.useMemo(
+    () => Object.fromEntries(branchOptions.map((o) => [o.value, o.label])),
+    [branchOptions],
+  );
+  const departmentNameById = React.useMemo(
+    () => Object.fromEntries(departmentOptions.map((o) => [o.value, o.label])),
+    [departmentOptions],
   );
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -167,13 +175,15 @@ export function CircularsClient() {
       toast.error('أدخل نص التعميم قبل التصدير');
       return;
     }
-    const built = tryBuildCircularAudienceSnapshot(draft);
+    const built = tryBuildCircularAudienceSnapshot(draft, { branchNameById, departmentNameById });
     if (!built.ok) {
       toast.error(built.error);
       return;
     }
     const logo = getPdfLogoSrc();
-    const company = { nameAr: data.company.name as string, nameEn: ((data.company as { nameEn?: string }).nameEn ?? 'rose') };
+    const company = m.company
+      ? { nameAr: m.company.nameAr, nameEn: m.company.nameEn ?? m.company.nameAr }
+      : { nameAr: '—', nameEn: '—' };
     setCircularPrintable(
       <DisciplineCircularPrintHtml
         logoSrc={logo}
@@ -186,7 +196,7 @@ export function CircularsClient() {
       />,
     );
     setCircularPdfOpen(true);
-  }, [draft]);
+  }, [branchNameById, departmentNameById, draft, m.company]);
 
   React.useEffect(() => {
     if (!circularPdfOpen) setCircularPrintable(null);
@@ -197,9 +207,9 @@ export function CircularsClient() {
       circulars.filter((c) => {
         const hay = `${c.titleAr} ${c.bodyAr} ${c.audienceSummaryAr}`;
         const matchQ = !q || hay.includes(q);
-        return matchQ && circularMatchesEmpToolbarFilter(c, selectedEmpIds);
+        return matchQ && circularMatchesEmpToolbarFilter(c, selectedEmpIds, employeeById);
       }),
-    [circulars, q, selectedEmpIds],
+    [circulars, employeeById, q, selectedEmpIds],
   );
 
   const filtered = React.useMemo(
@@ -223,44 +233,48 @@ export function CircularsClient() {
 
   const set = (patch: Partial<DraftForm>) => setDraft((d) => ({ ...d, ...patch }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setFormError(null);
     if (!draft.bodyAr.trim()) { setFormError('نص التعميم مطلوب'); return; }
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
+    if (!m.companyId) { setFormError('تعذر تحديد الشركة'); return; }
 
-    const built = tryBuildCircularAudienceSnapshot(draft);
+    const built = tryBuildCircularAudienceSnapshot(draft, { branchNameById, departmentNameById });
     if (!built.ok) { setFormError(built.error); return; }
 
-    const {
-      audienceSummaryAr,
-      branchIds,
-      branchNamesArSnapshot,
-      departmentIds,
-      departmentNamesArSnapshot,
-      targetEmployeeIds,
-    } = built.data;
+    const { branchIds, departmentIds, targetEmployeeIds } = built.data;
 
-    const sentAt = draft.executeSend ? new Date().toISOString() : null;
-    add({
-      date: draft.date,
-      titleAr: draft.titleAr.trim(),
-      bodyAr: draft.bodyAr.trim(),
-      audience: draft.audience,
-      targetEmployeeIds,
-      branchIds,
-      branchNamesArSnapshot,
-      departmentIds,
-      departmentNamesArSnapshot,
-      audienceSummaryAr,
-      sentAt,
-    });
-    toast.success(
-      draft.executeSend
-        ? 'تم إصدار التعميم وإرساله إلى المستلمين'
-        : 'تم حفظ التعميم دون إرسال — يمكنك الإرسال لاحقاً من عرض الجدول',
-    );
-    setDrawerOpen(false);
-    setDraft(EMPTY);
+    const audienceType = toCircularAudienceType(draft.audience);
+    const audienceTargetIds =
+      draft.audience === 'employees'
+        ? targetEmployeeIds
+        : draft.audience === 'branch'
+          ? branchIds
+          : draft.audience === 'department'
+            ? departmentIds
+            : undefined;
+
+    try {
+      await m.add({
+        companyId: m.companyId,
+        titleAr: draft.titleAr.trim() ? draft.titleAr.trim() : null,
+        bodyAr: draft.bodyAr.trim(),
+        issueDate: draft.date,
+        audienceType,
+        audienceTargetIds,
+        sendOnSave: draft.executeSend,
+      });
+      toast.success(
+        draft.executeSend
+          ? 'تم إصدار التعميم وإرساله إلى المستلمين'
+          : 'تم حفظ التعميم دون إرسال — يمكنك الإرسال لاحقاً من عرض الجدول',
+      );
+      setDrawerOpen(false);
+      setDraft(EMPTY);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-circulars.save');
+      setFormError(displayMessage);
+    }
   };
 
   return (
@@ -287,7 +301,15 @@ export function CircularsClient() {
         onDateFilterMetaChange={onDateFilterMetaChange}
       />
 
-      {searchFiltered.length === 0 ? (
+      {m.listError ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">
+          {m.listError}
+        </p>
+      ) : null}
+
+      {m.loading ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
+      ) : searchFiltered.length === 0 ? (
         <EmptyState title="لا توجد تعميمات مطابقة للبحث أو للموظفين المحددين في شريط الفلاتر." />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
@@ -356,8 +378,15 @@ export function CircularsClient() {
                     className="gap-1.5"
                     type="button"
                     onClick={() => {
-                      markSent(c.id);
-                      toast.success('تم إرسال التعميم');
+                      void (async () => {
+                        try {
+                          await m.markSent(c.id);
+                          toast.success('تم إرسال التعميم');
+                        } catch (err) {
+                          const { displayMessage } = handleApiError(err, 'discipline-circulars.send');
+                          toast.error(displayMessage);
+                        }
+                      })();
                     }}
                   >
                     <Send className="h-3.5 w-3.5" /> إرسال التعميم
@@ -399,8 +428,15 @@ export function CircularsClient() {
                         className="h-8 gap-1 text-xs"
                         type="button"
                         onClick={() => {
-                          markSent(c.id);
-                          toast.success('تم إرسال التعميم');
+                          void (async () => {
+                            try {
+                              await m.markSent(c.id);
+                              toast.success('تم إرسال التعميم');
+                            } catch (err) {
+                              const { displayMessage } = handleApiError(err, 'discipline-circulars.send');
+                              toast.error(displayMessage);
+                            }
+                          })();
                         }}
                       >
                         <Send className="h-3 w-3" />
@@ -426,7 +462,7 @@ export function CircularsClient() {
         onOpenChange={setDrawerOpen}
         title="تعميم جديد"
         size="lg"
-        onSave={handleSave}
+        onSave={() => void handleSave()}
         error={formError}
         footerExtra={(
           <Button type="button" variant="secondary" size="sm" className="gap-1.5 text-xs h-9" onClick={openCircularPdfPreview}>
@@ -521,11 +557,17 @@ export function CircularsClient() {
         open={!!deleteId}
         onOpenChange={(v) => !v && setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) {
-            remove(deleteId);
-            toast.success('تم حذف التعميم');
-            setDeleteId(null);
-          }
+          if (!deleteId) return;
+          void (async () => {
+            try {
+              await m.remove(deleteId);
+              toast.success('تم حذف التعميم');
+              setDeleteId(null);
+            } catch (err) {
+              const { displayMessage } = handleApiError(err, 'discipline-circulars.delete');
+              toast.error(displayMessage);
+            }
+          })();
         }}
         title="حذف التعميم"
       />

@@ -17,12 +17,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { cn } from '@/shared/utils';
-import type { AttendanceCheckInPoint, AttendanceCheckInPointLink, ShiftTemplate } from '@/features/hr/attendance/lib/types';
+import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 
 export type EmployeeAttendanceDialogsProps = {
   employeeName: string;
   checkpoints: AttendanceCheckInPoint[];
-  shiftTemplates: ShiftTemplate[];
+  shiftTemplates: Array<{
+    id: string;
+    nameAr: string;
+    nameEn: string | null;
+    colorHex: string;
+    effectiveFrom: string;
+    isActive: boolean;
+  }>;
   employeeCheckpoints: AttendanceCheckInPointLink[];
   shiftOpen: boolean;
   setShiftOpen: (v: boolean) => void;

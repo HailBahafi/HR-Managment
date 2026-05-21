@@ -2,21 +2,21 @@
 
 import * as React from 'react';
 import { toast } from 'sonner';
-import { data } from '@/features/hr/lib/data';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 import { CP_LINKS_ALL_DEPARTMENTS } from '@/features/hr/attendance/checkpoint-links/constants/checkpoint-links-panel';
-import { employeeSearchHaystack } from '@/features/hr/attendance/checkpoint-links/utils/employee-search-haystack';
 import { loadCheckInPoints } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 import {
   createCheckInPointLinkBatch,
   deleteCheckInPointLinkBatch,
   loadCheckInPointLinks,
 } from '@/features/hr/attendance/checkpoint-links/services/check-in-point-links.service';
+import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 
 export function useCheckpointLinksPanelModel() {
   const [checkpointLinks, setCheckpointLinks] = React.useState<AttendanceCheckInPointLink[]>([]);
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
+  const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
@@ -33,9 +33,14 @@ export function useCheckpointLinksPanelModel() {
     setLoading(true);
     setListError(null);
     try {
-      const [linksData, pointsData] = await Promise.all([loadCheckInPointLinks(), loadCheckInPoints()]);
+      const [linksData, pointsData, empRes] = await Promise.all([
+        loadCheckInPointLinks(),
+        loadCheckInPoints(),
+        employeesApi.getAll({ limit: 500 }),
+      ]);
       setCheckpointLinks(linksData.items);
       setCheckpoints(pointsData.items);
+      setEmployees(empRes.items);
       setCompanyId(linksData.companyId ?? pointsData.companyId);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'check-in-point-links.load');
@@ -125,14 +130,17 @@ export function useCheckpointLinksPanelModel() {
   );
 
   const employeesFiltered = React.useMemo(() => {
-    const base =
-      employeeDepartmentFilter === CP_LINKS_ALL_DEPARTMENTS
-        ? data.employees
-        : data.employees.filter((e) => e.departmentId === employeeDepartmentFilter);
+    const base = employees;
     const q = eq.trim().toLowerCase();
     if (!q) return base;
-    return base.filter((e) => employeeSearchHaystack(e).includes(q));
-  }, [eq, employeeDepartmentFilter]);
+    return base.filter((e) =>
+      [e.nameAr, e.employeeCode, e.email, e.phone, e.position]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [employees, eq]);
 
   React.useEffect(() => {
     const allowed = new Set(employeesFiltered.map((e) => e.id));
@@ -155,6 +163,7 @@ export function useCheckpointLinksPanelModel() {
   return {
     batches,
     checkpoints,
+    employees,
     loading,
     listError,
     removeCheckpointLinkBatch,

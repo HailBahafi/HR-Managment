@@ -9,8 +9,8 @@ import { Empty, LeaveBalanceCard } from '@/features/hr/organization/employees/co
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 
 export function EmployeeLeavesSection({ model }: { model: EmployeeProfileModel }) {
-  const { leaveBalanceDisplay, setLeaveRequestOpen, employeeRequests } = model;
-  const leaveReqs = employeeRequests.filter((r) => r.type === 'leave');
+  const { leaveBalanceDisplay, setLeaveRequestOpen, leaveRequests } = model;
+  const leaveReqs = leaveRequests;
 
   return (
     <section>
@@ -81,10 +81,11 @@ export function EmployeeLeavesSection({ model }: { model: EmployeeProfileModel }
                     <Calendar className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{req.title}</div>
+                    <div className="text-sm font-medium truncate">{req.noteAr ?? 'طلب إجازة'}</div>
                     <div className="text-xs text-muted-foreground">
-                      {req.fromDate && formatDate(req.fromDate)}
-                      {req.toDate && ` ← ${formatDate(req.toDate)}`}
+                      {req.startDate && formatDate(req.startDate)}
+                      {req.endDate && ` ← ${formatDate(req.endDate)}`}
+                      {req.workingDays != null && <> · {req.workingDays} يوم</>}
                     </div>
                   </div>
                 </div>

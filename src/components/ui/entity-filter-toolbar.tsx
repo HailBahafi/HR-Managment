@@ -2,8 +2,9 @@
 
 import * as React from 'react';
 import {
-  CalendarDays, LayoutGrid, List, X,
+  CalendarDays, LayoutGrid, List, X, SlidersHorizontal,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,9 @@ import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormField } from '@/features/hr/requests/components/shared-ui';
 import {
@@ -211,8 +215,11 @@ export interface EntityFilterToolbarProps {
   trailingActions?: React.ReactNode;
   beforeEmployeePicker?: React.ReactNode;
 
-  /** قوائم فرعية (فرع، قسم، نوع، …) بدون تكرار في الشريط الجانبي */
+  /** Primary inline selects always visible in the toolbar */
   inlineSelects?: readonly EntityFilterInlineSelect[];
+
+  /** Secondary filters shown in a "More filters" popover */
+  moreFilters?: readonly EntityFilterInlineSelect[];
 
   /**
    * `tabs` — قوائم منسدلة للفترات والحالات (الافتراضي).
@@ -222,6 +229,58 @@ export interface EntityFilterToolbarProps {
 
   /** تبديل عرض البيانات (جدول / شبكة / بطاقات / تقويم …) قبل `trailingActions` */
   dataView?: EntityDataViewConfig;
+}
+
+// ─── Shared clearable select used by every filter dropdown in the toolbar ─────
+
+function SelectWithClear({
+  value,
+  onValueChange,
+  onClear,
+  placeholder,
+  children,
+  className,
+}: {
+  value: string;
+  onValueChange: (v: string) => void;
+  onClear: () => void;
+  placeholder?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const isActive = value !== '' && value !== undefined;
+  return (
+    <div className="relative shrink-0">
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger
+          dir="rtl"
+          hideChevron={isActive}
+          className={cn(
+            'h-8 text-xs overflow-hidden [&_span]:truncate',
+            'focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus:border-input',
+            'data-[state=open]:ring-0 data-[state=open]:border-input',
+            className,
+          )}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent dir="rtl">
+          {children}
+        </SelectContent>
+      </Select>
+      {isActive && (
+        <button
+          type="button"
+          aria-label="مسح"
+          className="absolute end-2 top-1/2 -translate-y-1/2 z-10 flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={(e) => { e.stopPropagation(); onClear(); }}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export const EntityFilterToolbar = React.forwardRef<
@@ -246,6 +305,7 @@ export const EntityFilterToolbar = React.forwardRef<
     trailingActions,
     beforeEmployeePicker,
     inlineSelects,
+    moreFilters,
     filterLayout = 'tabs',
     dataView,
   },
@@ -341,15 +401,18 @@ export const EntityFilterToolbar = React.forwardRef<
     onStatusFilterChange('all');
   }, [onStatusFilterChange]);
 
+  const prevDateTabRef = React.useRef<DateFilterTab>('all');
+
   const handleDatePeriodSelect = React.useCallback((v: string) => {
     const next = v as DateFilterTab;
     if (next === 'custom') {
+      prevDateTabRef.current = dateFilterTab;
       setDateFilterTab('custom');
       openCustomDateDialog();
       return;
     }
     setDateFilterTab(next);
-  }, [openCustomDateDialog]);
+  }, [dateFilterTab, openCustomDateDialog]);
 
   React.useImperativeHandle(ref, () => ({
     resetDateFilter,
@@ -394,73 +457,33 @@ export const EntityFilterToolbar = React.forwardRef<
     <>
       <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-2 gap-y-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {showDateSection ? (
-          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-            <span className="shrink-0 text-[11px] font-medium text-muted-foreground">الفترات</span>
-            <Select value={dateTabForSelect} onValueChange={handleDatePeriodSelect}>
-              <SelectTrigger className="h-8 w-[9.25rem] max-w-[9.25rem] shrink-0 text-xs overflow-hidden [&_span]:truncate" dir="rtl" aria-label="فلتر الفترة">
-                <SelectValue placeholder="الفترة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">كل الفترات</SelectItem>
-                <SelectItem value="today">اليوم</SelectItem>
-                <SelectItem value="week">هذا الأسبوع</SelectItem>
-                <SelectItem value="month">هذا الشهر</SelectItem>
-                <SelectItem value="custom">مخصص…</SelectItem>
-              </SelectContent>
-            </Select>
-            {showDateReset ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                aria-label="إعادة ضبط الفترات"
-                title="إعادة ضبط الفترات"
-                onClick={(e) => {
-                  e.preventDefault();
-                  resetDateFilter();
-                }}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            ) : null}
-          </div>
+          <SelectWithClear
+            value={dateTabForSelect === 'all' ? '' : dateTabForSelect}
+            onValueChange={(v) => handleDatePeriodSelect(v || 'all')}
+            onClear={resetDateFilter}
+            placeholder="اختر الفترة"
+            className="w-[9.25rem] max-w-[9.25rem]"
+          >
+            <SelectItem value="today">اليوم</SelectItem>
+            <SelectItem value="week">هذا الأسبوع</SelectItem>
+            <SelectItem value="month">هذا الشهر</SelectItem>
+            <SelectItem value="custom">مخصص…</SelectItem>
+          </SelectWithClear>
         ) : null}
         {showStatusSection ? (
-          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-            <span className="shrink-0 text-[11px] font-medium text-muted-foreground">الحالات</span>
-            <Select value={statusSelectValue} onValueChange={onStatusFilterChange}>
-              <SelectTrigger className="h-8 w-[9.25rem] max-w-[9.25rem] shrink-0 text-xs overflow-hidden [&_span]:truncate" dir="rtl" aria-label="فلتر الحالة">
-                <SelectValue placeholder="الحالة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  {`الكل (${statusCounts.all ?? 0})`}
-                </SelectItem>
-                {statusOrder.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {`${statusLabels[s] ?? s} (${statusCounts[s] ?? 0})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {showStatusReset ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                aria-label="إعادة ضبط الحالات"
-                title="إعادة ضبط الحالات"
-                onClick={(e) => {
-                  e.preventDefault();
-                  resetStatusFilter();
-                }}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            ) : null}
-          </div>
+          <SelectWithClear
+            value={statusSelectValue === 'all' ? '' : statusSelectValue}
+            onValueChange={(v) => onStatusFilterChange(v || 'all')}
+            onClear={resetStatusFilter}
+            placeholder="اختر الحالة"
+            className="w-[9.25rem] max-w-[9.25rem]"
+          >
+            {statusOrder.map((s) => (
+              <SelectItem key={s} value={s}>
+                {statusLabels[s] ?? s}
+              </SelectItem>
+            ))}
+          </SelectWithClear>
         ) : null}
       </div>
       {dateCustomRangeRow}
@@ -472,71 +495,181 @@ export const EntityFilterToolbar = React.forwardRef<
   const hasDataView = Boolean(dataView && dataView.options.length >= 2);
   const hasActionStrip = hasDataView || Boolean(trailingActions);
 
+
+  const [moreFiltersOpen, setMoreFiltersOpen] = React.useState(false);
+  const activeMoreCount = React.useMemo(
+    () => moreFilters?.filter((f) => f.value !== 'all' && f.value !== '').length ?? 0,
+    [moreFilters],
+  );
+
+  const hasAnyActiveFilter = React.useMemo(() =>
+    (showDateSection && dateFilterTab !== 'all') ||
+    (showStatusSection && statusFilter !== 'all') ||
+    (inlineSelects?.some((s) => s.value !== 'all' && s.value !== '') ?? false) ||
+    (moreFilters?.some((s) => s.value !== 'all' && s.value !== '') ?? false),
+    [showDateSection, dateFilterTab, showStatusSection, statusFilter, inlineSelects, moreFilters],
+  );
+
+  const clearAllFilters = React.useCallback(() => {
+    resetDateFilter();
+    resetStatusFilter();
+    inlineSelects?.forEach((s) => s.onChange('all'));
+    moreFilters?.forEach((s) => s.onChange('all'));
+  }, [resetDateFilter, resetStatusFilter, inlineSelects, moreFilters]);
+
+  const moreFiltersPopover = moreFilters?.length ? (
+    <Popover open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(
+            'relative h-8 gap-1.5 px-3 text-xs shrink-0',
+            activeMoreCount > 0 && 'border-primary/50 bg-primary/5 text-primary hover:bg-primary/10',
+          )}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          فلاتر
+          {activeMoreCount > 0 && (
+            <Badge
+              variant="secondary"
+              className="ms-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground"
+            >
+              {activeMoreCount}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="w-72 p-4"
+        dir="rtl"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold">فلاتر إضافية</p>
+          {activeMoreCount > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
+              onClick={() => {
+                moreFilters.forEach((f) => {
+                  const allOpt = f.options.find((o) => o.value === 'all');
+                  if (allOpt) f.onChange('all');
+                });
+              }}
+            >
+              <X className="h-3 w-3" />
+              إعادة ضبط
+            </Button>
+          )}
+        </div>
+        <div className="space-y-3">
+          {moreFilters.map((sel) => {
+            const allowed = new Set(sel.options.map((o) => o.value));
+            const coerced = allowed.has(sel.value)
+              ? sel.value
+              : (sel.options.find((o) => o.value === 'all')?.value ?? sel.options[0]?.value ?? '');
+            if (!sel.options.length) return null;
+            const isActive = coerced !== 'all' && coerced !== '';
+            return (
+              <div key={sel.id} className="space-y-1.5">
+                <label className={cn('block text-xs font-medium', isActive ? 'text-primary' : 'text-muted-foreground')}>
+                  {sel.placeholder ?? sel.id}
+                </label>
+                <SelectWithClear
+                  value={coerced === 'all' ? '' : coerced}
+                  onValueChange={(v) => sel.onChange(v || 'all')}
+                  onClear={() => sel.onChange('all')}
+                  placeholder={sel.placeholder ?? '—'}
+                  className={cn('w-full', isActive && 'border-primary/40 bg-primary/5')}
+                >
+                  {sel.options.filter((o) => o.value !== 'all').map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectWithClear>
+              </div>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  ) : null;
+
   return (
     <>
-      <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-3 shadow-sm backdrop-blur-sm sm:px-4">
-        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-3 sm:gap-y-2">
-          {/* صف واحد يتفاف: فترة/حالة ثم فروع وأقسام… ثم الموظفين — بدون عمود بعرض الشاشة يفرغ المساحة */}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
-            {filterDropdownRow}
-            {hasSecondaryFilters ? (
-              <>
-                {inlineSelects?.map((sel) => {
-                  const allowed = new Set(sel.options.map((o) => o.value));
-                  const coerced =
-                    allowed.has(sel.value)
-                      ? sel.value
-                      : (sel.options.find((o) => o.value === 'all')?.value ?? sel.options[0]?.value ?? '');
-                  if (!sel.options.length) return null;
-                  return (
-                    <Select key={sel.id} value={coerced} onValueChange={sel.onChange}>
-                      <SelectTrigger
-                        className={cn(
-                          'h-8 w-[9rem] max-w-[9rem] shrink-0 text-xs overflow-hidden [&_span]:truncate',
-                          sel.className,
-                        )}
-                      >
-                        <SelectValue placeholder={sel.placeholder ?? '—'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sel.options.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  );
-                })}
-                {beforeEmployeePicker}
-                {showEmployeePicker ? (
-                  <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
-                ) : null}
-              </>
-            ) : null}
-          </div>
-
-          {/* عرض + أزرار التصدير والإضافة — سطر واحد دون تفاف يقطع الأزرار */}
-          {hasActionStrip ? (
-            <div className="flex min-h-[2rem] w-full shrink-0 flex-nowrap items-center justify-end gap-2 border-t border-border/45 pt-2.5 sm:ms-auto sm:w-auto sm:border-t-0 sm:border-s sm:border-border/45 sm:ps-3 sm:pt-0">
-              {hasDataView && dataView ? (
-                <Tabs value={dataView.value} onValueChange={dataView.onChange}>
-                  <TabsList className="h-8 shrink-0 gap-0.5 bg-muted/70 p-0.5">
-                    {dataView.options.map((opt) => (
-                      <TabsTrigger key={opt.value} value={opt.value} className={DATA_VIEW_TAB_CLASS}>
-                        <DataViewIcon name={opt.icon} />
-                        {opt.label}
-                      </TabsTrigger>
+      <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:px-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
+          {filterDropdownRow}
+          {hasSecondaryFilters ? (
+            <>
+              {inlineSelects?.map((sel) => {
+                const allowed = new Set(sel.options.map((o) => o.value));
+                const coerced =
+                  allowed.has(sel.value)
+                    ? sel.value
+                    : (sel.options.find((o) => o.value === 'all')?.value ?? sel.options[0]?.value ?? '');
+                if (!sel.options.length) return null;
+                return (
+                  <SelectWithClear
+                    key={sel.id}
+                    value={coerced === 'all' ? '' : coerced}
+                    onValueChange={(v) => sel.onChange(v || 'all')}
+                    onClear={() => sel.onChange('all')}
+                    placeholder={sel.placeholder ?? '—'}
+                    className={cn('w-[9rem] max-w-[9rem]', sel.className)}
+                  >
+                    {sel.options.filter((o) => o.value !== 'all').map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                     ))}
-                  </TabsList>
-                </Tabs>
+                  </SelectWithClear>
+                );
+              })}
+              {beforeEmployeePicker}
+              {showEmployeePicker ? (
+                <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
               ) : null}
-              {trailingActions}
+            </>
+          ) : null}
+          {moreFiltersPopover}
+          {hasDataView && dataView ? (
+            <div className="ms-auto">
+              <Tabs value={dataView.value} onValueChange={dataView.onChange}>
+                <TabsList className="h-8 shrink-0 gap-0.5 bg-muted/70 p-0.5">
+                  {dataView.options.map((opt) => (
+                    <TabsTrigger key={opt.value} value={opt.value} className={DATA_VIEW_TAB_CLASS}>
+                      <DataViewIcon name={opt.icon} />
+                      {opt.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
             </div>
           ) : null}
+          {hasAnyActiveFilter && (
+            <button
+              type="button"
+              aria-label="مسح كل الفلاتر"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+              onClick={clearAllFilters}
+            >
+              <X className="h-3.5 w-3.5" />
+              مسح الكل
+            </button>
+          )}
         </div>
       </div>
 
       {showDateSection ? (
-        <Dialog open={customDialogOpen} onOpenChange={setCustomDialogOpen}>
+        <Dialog open={customDialogOpen} onOpenChange={(open) => {
+          if (!open && !appliedCustomFrom && !appliedCustomTo) {
+            setDateFilterTab(prevDateTabRef.current);
+          }
+          setCustomDialogOpen(open);
+        }}>
           <DialogContent className="border-border sm:max-w-md" dir="rtl">
             <DialogHeader>
               <DialogTitle>نطاق تاريخ مخصص</DialogTitle>
@@ -578,7 +711,16 @@ export const EntityFilterToolbar = React.forwardRef<
               </div>
             </div>
             <DialogFooter className="gap-2 sm:justify-end">
-              <Button type="button" variant="outline" onClick={() => setCustomDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCustomDialogOpen(false);
+                  if (!appliedCustomFrom && !appliedCustomTo) {
+                    setDateFilterTab(prevDateTabRef.current);
+                  }
+                }}
+              >
                 إلغاء
               </Button>
               <Button type="button" onClick={applyCustomDialog}>

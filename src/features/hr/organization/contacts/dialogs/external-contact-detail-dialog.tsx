@@ -9,13 +9,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { EXTERNAL_PARTY_KIND_LABELS } from '@/features/hr/organization/lib/directory/external-contacts-store';
-import type { ExternalPartyRecord } from '@/features/hr/organization/lib/directory/external-contacts-store';
+import { USER_TYPE_LABELS } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
+import type { UserRecord } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 
 type Props = {
-  row: ExternalPartyRecord | null;
+  row: UserRecord | null;
   onOpenChange: (open: boolean) => void;
-  onEdit: (row: ExternalPartyRecord) => void;
+  onEdit: (row: UserRecord) => void;
 };
 
 export function ExternalContactDetailDialog({ row, onOpenChange, onEdit }: Props) {
@@ -25,41 +25,43 @@ export function ExternalContactDetailDialog({ row, onOpenChange, onEdit }: Props
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserCircle className="h-5 w-5 text-primary" />
-            {row?.nameAr}
+            {row?.fullNameAr ?? row?.email}
           </DialogTitle>
         </DialogHeader>
         {row && (
-          <div className="space-y-3">
-            <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4 text-sm">
-              <div className="flex justify-between gap-2">
-                <span className="text-muted-foreground">النوع</span>
-                <span className="font-medium">{EXTERNAL_PARTY_KIND_LABELS[row.kind]}</span>
-              </div>
-              {row.organizationAr && (
-                <div className="flex justify-between gap-2 border-t border-border pt-3">
-                  <span className="text-muted-foreground">الجهة</span>
-                  <span className="font-medium">{row.organizationAr}</span>
-                </div>
-              )}
-              {row.phone && (
-                <div className="flex justify-between gap-2 border-t border-border pt-3" dir="ltr">
-                  <span className="text-muted-foreground">الجوال</span>
-                  <span>{row.phone}</span>
-                </div>
-              )}
-              {row.email && (
-                <div className="flex justify-between gap-2 border-t border-border pt-3" dir="ltr">
-                  <span className="text-muted-foreground">البريد</span>
-                  <span className="truncate">{row.email}</span>
-                </div>
-              )}
-              {row.notes && (
-                <div className="border-t border-border pt-3">
-                  <p className="text-muted-foreground">ملاحظات</p>
-                  <p className="mt-1 leading-relaxed">{row.notes}</p>
-                </div>
-              )}
+          <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4 text-sm">
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">نوع المستخدم</span>
+              <span className="font-medium">{USER_TYPE_LABELS[row.userType ?? ''] ?? row.userType ?? '—'}</span>
             </div>
+            <div className="flex justify-between gap-2 border-t border-border pt-3" dir="ltr">
+              <span className="text-muted-foreground">البريد الإلكتروني</span>
+              <span className="truncate font-medium">{row.email}</span>
+            </div>
+            {row.phone && (
+              <div className="flex justify-between gap-2 border-t border-border pt-3" dir="ltr">
+                <span className="text-muted-foreground">الجوال</span>
+                <span>{row.phone}</span>
+              </div>
+            )}
+            {row.fullNameEn && (
+              <div className="flex justify-between gap-2 border-t border-border pt-3" dir="ltr">
+                <span className="text-muted-foreground">Name (EN)</span>
+                <span>{row.fullNameEn}</span>
+              </div>
+            )}
+            <div className="flex justify-between gap-2 border-t border-border pt-3">
+              <span className="text-muted-foreground">الحالة</span>
+              <span className={row.isActive ? 'text-green-700 dark:text-green-400 font-medium' : 'text-destructive font-medium'}>
+                {row.isActive ? 'نشط' : 'غير نشط'}
+              </span>
+            </div>
+            {row.notes && (
+              <div className="border-t border-border pt-3">
+                <p className="text-muted-foreground">ملاحظات</p>
+                <p className="mt-1 leading-relaxed">{row.notes}</p>
+              </div>
+            )}
           </div>
         )}
         <DialogFooter className="gap-2">
@@ -69,9 +71,8 @@ export function ExternalContactDetailDialog({ row, onOpenChange, onEdit }: Props
           <Button
             onClick={() => {
               if (row) {
-                const r = row;
                 onOpenChange(false);
-                onEdit(r);
+                onEdit(row);
               }
             }}
             className="gap-1.5"

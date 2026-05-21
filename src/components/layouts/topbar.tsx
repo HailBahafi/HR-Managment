@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange,
-  InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
+  ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck, UserPlus,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSidebar } from '@/components/layouts/sidebar-context';
 import { usePageTitle } from '@/components/layouts/page-title-context';
+import { usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
 import { FilterTrigger } from '@/components/layouts/filter-panel';
 import { Logo } from '@/components/layouts/logo';
 import { NotificationBellPopover } from '@/features/hr/notifications/components/notification-bell-popover';
@@ -39,6 +40,7 @@ export const PAGE_ICONS: Record<string, React.ElementType> = {
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
   CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet, Bell,
   UserCircle, Briefcase, UserCheck, UserPlus,
+  CalendarClock, LayoutList, ListChecks, ShieldCheck,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */
@@ -55,7 +57,7 @@ export const navConfig: NavItem[] = [
     key: 'employees', label: 'الهيكل الإداري', icon: Users,
     groups: [{ items: [
       { label: 'سجل الموظفين',     href: '/hr/organization/employees',  icon: Users },
-      { label: 'العملاء والزوار', href: '/hr/organization/contacts',    icon: UserCircle },
+      { label: 'المستخدمين', href: '/hr/organization/contacts',    icon: UserCircle },
       { label: 'المسميات الوظيفية', href: '/hr/organization/job-titles', icon: Briefcase },
       { label: 'الفروع',           href: '/hr/organization/branches',   icon: Building2 },
       { label: 'الأقسام',          href: '/hr/organization/departments', icon: Building2 },
@@ -105,7 +107,6 @@ export const navConfig: NavItem[] = [
     key: 'requests', label: 'الطلبات', icon: ClipboardList,
     groups: [
       { labelAr: 'الطلبات', items: [
-        { label: 'إدارة الطلبات', href: '/hr/requests/general', icon: InboxIcon },
         { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
         { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList },
       ] },
@@ -233,6 +234,7 @@ export function Topbar() {
   const { meta } = usePageTitle();
   const pathname = usePathname();
 
+  const { slot: headerActionsSlot } = usePageHeaderActionsRegion();
   const [activeMenu, setActiveMenu] = React.useState<string | null>(null);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const openMenu   = (key: string) => { if (closeTimer.current) clearTimeout(closeTimer.current); setActiveMenu(key); };
@@ -386,25 +388,26 @@ export function Topbar() {
         </div>
       </div>
 
-      {/* ── Row 2: page title (عنوان أوضح + وصف منفصل عن شريط الفلاتر في المحتوى) ── */}
+      {/* ── Row 2: page title + page-level actions ── */}
       <div
         className={cn(
-          'flex flex-col gap-1 border-t px-4 py-2.5 sm:flex-row sm:items-baseline sm:gap-3 sm:px-5 sm:py-3',
+          'flex items-center justify-between gap-3 border-t px-4 py-2 sm:px-5 sm:py-2.5',
           'border-border/25 bg-white/55 backdrop-blur-sm dark:border-border/30 dark:bg-muted/15',
         )}
       >
+        {/* Title + subtitle */}
         {meta.titleAr ? (
           <div className="flex min-w-0 items-start gap-2.5">
             {PageIcon && <PageIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <h1 className="text-base font-bold leading-tight tracking-tight text-foreground sm:text-lg">
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-bold leading-tight tracking-tight text-foreground sm:text-[17px]">
                 {meta.titleAr}
               </h1>
-              {meta.descriptionAr ? (
-                <p className="max-w-3xl text-xs leading-snug text-muted-foreground sm:text-[13px]">
+              {meta.descriptionAr && (
+                <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground sm:text-xs">
                   {meta.descriptionAr}
                 </p>
-              ) : null}
+              )}
             </div>
           </div>
         ) : (
@@ -413,6 +416,13 @@ export function Topbar() {
             <div className="h-3 w-40 animate-pulse rounded-full bg-muted" />
           </div>
         )}
+
+        {/* Per-page actions (filter toggle, add button, …) */}
+        {headerActionsSlot ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {headerActionsSlot}
+          </div>
+        ) : null}
       </div>
     </header>
   );

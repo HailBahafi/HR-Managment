@@ -8,10 +8,8 @@ import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { AttendanceRegisterPrintHtml } from '@/components/pdf/print/attendance-register-print-html';
 import { hasDateRangeFilter, thisCalendarMonthYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
-import type { AttendanceDaySummary } from '@/features/hr/attendance/lib/types';
+import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
 import { enumerateDates } from '@/features/hr/attendance/lib/utils';
-import { data } from '@/features/hr/lib/data';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import {
   ATT_VISUAL_STATUS_ORDER,
@@ -21,17 +19,90 @@ import {
 import { densifySummaries } from '@/features/hr/attendance/daily/utils/daily-attendance-densify';
 import { resolveVisualKey } from '@/features/hr/attendance/daily/utils/daily-attendance-status-resolve';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
+import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
+import { attendanceEventsApi } from '@/features/hr/attendance/lib/api/attendance-events';
+import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
+import { companiesApi } from '@/features/hr/lib/api/companies';
 
 export function useDailyAttendanceModel() {
-  const daySummaries = useAttendanceStore((s) => s.daySummaries);
-  const events = useAttendanceStore((s) => s.events);
+  const [daySummaries, setDaySummaries] = React.useState<AttendanceDaySummary[]>([]);
+  const [events, setEvents] = React.useState<AttendanceEvent[]>([]);
+  const [allEmployees, setAllEmployees] = React.useState<{ id: string; name: string }[]>([]);
+  const [companyNameAr, setCompanyNameAr] = React.useState('');
+  const [companyNameEn, setCompanyNameEn] = React.useState('');
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [dateBounds, setDateBounds] = React.useState(() => thisCalendarMonthYMD());
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [pdfOpen, setPdfOpen] = React.useState(false);
 
-  const spanFromStore = React.useMemo(() => {
+  const { from: filterFrom, to: filterTo } = dateBounds;
+
+  // Load company info once
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const res = await companiesApi.getAll({ limit: 1 });
+        const c = res.items[0];
+        if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  // Load employees once
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const res = await employeesApi.getAll({ limit: 500 });
+        setAllEmployees(res.items.map((e) => ({ id: e.id, name: e.nameAr })));
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  // Load day summaries & events when date range changes
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const query: Record<string, unknown> = { limit: 2000 };
+        if (hasDateRangeFilter(filterFrom, filterTo)) {
+          query.from = filterFrom;
+          query.to = filterTo;
+        }
+        const [summRes, evtRes] = await Promise.all([
+          attendanceDaySummariesApi.getAll(query as Parameters<typeof attendanceDaySummariesApi.getAll>[0]),
+          attendanceEventsApi.getAll({ limit: 2000, ...(hasDateRangeFilter(filterFrom, filterTo) ? { workDateFrom: filterFrom, workDateTo: filterTo } : {}) }),
+        ]);
+        setDaySummaries(
+          summRes.items.map((s) => ({
+            id: s.id,
+            employeeId: s.employeeId,
+            employeeName: s.employeeNameAr,
+            date: s.workDate,
+            templateId: s.shiftAssignmentId ?? null,
+            status: s.status as AttendanceDaySummary['status'],
+            lateMinutes: s.lateMinutes,
+            earlyLeaveMinutes: s.earlyLeaveMinutes,
+            overtimeMinutes: s.overtimeMinutes,
+            workedMinutes: s.workedMinutes,
+            notes: s.notes ?? undefined,
+          })),
+        );
+        setEvents(
+          evtRes.items.map((e) => ({
+            id: e.id,
+            employeeId: e.employeeId,
+            employeeName: e.employeeNameAr,
+            date: e.workDate,
+            type: e.eventType,
+            at: e.occurredAt,
+            source: e.source ?? 'manual',
+          })) as AttendanceEvent[],
+        );
+      } catch { /* ignore */ }
+    })();
+  }, [filterFrom, filterTo]);
+
+  const spanFromData = React.useMemo(() => {
     let lo = '';
     let hi = '';
     for (const s of daySummaries) {
@@ -43,13 +114,11 @@ export function useDailyAttendanceModel() {
   }, [daySummaries]);
 
   const { from, to } = React.useMemo(() => {
-    if (hasDateRangeFilter(dateBounds.from, dateBounds.to)) return dateBounds;
-    return spanFromStore;
-  }, [dateBounds, spanFromStore]);
+    if (hasDateRangeFilter(filterFrom, filterTo)) return dateBounds;
+    return spanFromData;
+  }, [dateBounds, spanFromData, filterFrom, filterTo]);
 
   const dates = React.useMemo(() => enumerateDates(from, to), [from, to]);
-
-  const allEmployees = React.useMemo(() => data.employees.map((e) => ({ id: e.id, name: e.name })), []);
 
   const roster = React.useMemo(() => {
     let emps = allEmployees;
@@ -123,8 +192,8 @@ export function useDailyAttendanceModel() {
     () =>
       attendancePdfRows.length === 0 ? null : (
         <AttendanceRegisterPrintHtml
-          companyNameAr={data.company.name}
-          companyNameEn={data.company.nameEn}
+          companyNameAr={companyNameAr}
+          companyNameEn={companyNameEn}
           titleAr="تقرير الحضور اليومي"
           periodDateFrom={from}
           periodDateTo={to}
@@ -136,7 +205,7 @@ export function useDailyAttendanceModel() {
           rows={attendancePdfRows}
         />
       ),
-    [attendancePdfRows, from, to, selectedEmpIds.size, statusFilter, attendanceStatusLabels],
+    [attendancePdfRows, from, to, selectedEmpIds.size, statusFilter, attendanceStatusLabels, companyNameAr, companyNameEn],
   );
 
   const attendancePdfFileName = `attendance-${from}-${to}.pdf`;

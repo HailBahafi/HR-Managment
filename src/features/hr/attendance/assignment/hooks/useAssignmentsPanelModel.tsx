@@ -1,17 +1,29 @@
 'use client';
 
 import * as React from 'react';
-import { useAttendanceStore } from '@/features/hr/attendance/lib/store';
 import type { AssignmentTargetType } from '@/features/hr/attendance/lib/types';
-import { data } from '@/features/hr/lib/data';
 import type { MultiSelectOption } from '@/components/ui/multi-select';
 import { ASSIGNMENTS_ALL_DEPARTMENTS } from '@/features/hr/attendance/assignment/constants/assignments-panel';
+import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
+import { shiftAssignmentsApi, type ShiftAssignmentResponseDto } from '@/features/hr/attendance/lib/api/shift-assignments';
+import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
+import { companiesApi } from '@/features/hr/lib/api/companies';
+
+type LocalAssignment = {
+  id: string;
+  batchId?: string;
+  templateId: string;
+  effectiveFrom: string;
+  targetType: AssignmentTargetType;
+  targetId: string;
+  targetLabel: string;
+};
 
 export function useAssignmentsPanelModel() {
-  const assignments = useAttendanceStore((s) => s.assignments);
-  const shiftTemplates = useAttendanceStore((s) => s.shiftTemplates);
-  const addAssignmentBatch = useAttendanceStore((s) => s.addAssignmentBatch);
-  const removeAssignmentBatch = useAttendanceStore((s) => s.removeAssignmentBatch);
+  const [assignments, setAssignments] = React.useState<LocalAssignment[]>([]);
+  const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplateResponseDto[]>([]);
+  const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
+  const [companyId, setCompanyId] = React.useState('');
 
   const [open, setOpen] = React.useState(false);
   const [dialogContentEl, setDialogContentEl] = React.useState<HTMLElement | null>(null);
@@ -20,6 +32,40 @@ export function useAssignmentsPanelModel() {
   const [targetType, setTargetType] = React.useState<AssignmentTargetType>('employee');
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = React.useState(ASSIGNMENTS_ALL_DEPARTMENTS);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+
+  const reloadAssignments = React.useCallback(async (cid: string) => {
+    try {
+      const res = await shiftAssignmentsApi.getAll({ limit: 500 });
+      setAssignments(
+        res.items.map((a: ShiftAssignmentResponseDto) => ({
+          id: a.id,
+          batchId: a.batchId ?? undefined,
+          templateId: a.shiftTemplateId,
+          effectiveFrom: a.effectiveFrom,
+          targetType: 'employee' as AssignmentTargetType,
+          targetId: a.employeeId,
+          targetLabel: a.employeeId,
+        })),
+      );
+    } catch { /* ignore */ }
+  }, []);
+
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const [cRes, tmplRes, empRes] = await Promise.all([
+          companiesApi.getAll({ limit: 1 }),
+          shiftTemplatesApi.getAll({ limit: 200 }),
+          employeesApi.getAll({ limit: 500 }),
+        ]);
+        const cid = cRes.items[0]?.id ?? '';
+        setCompanyId(cid);
+        setShiftTemplates(tmplRes.items);
+        setEmployees(empRes.items);
+        await reloadAssignments(cid);
+      } catch { /* ignore */ }
+    })();
+  }, [reloadAssignments]);
 
   const batches = React.useMemo(() => {
     const m = new Map<string, typeof assignments>();
@@ -47,59 +93,54 @@ export function useAssignmentsPanelModel() {
     setOpen(true);
   }, [activeTemplates]);
 
-  const submit = React.useCallback(() => {
+  const submit = React.useCallback(async () => {
     if (!templateId || selectedIds.size === 0) return;
-    const items = [...selectedIds].map((id) => {
-      if (targetType === 'employee') {
-        const e = data.employees.find((x) => x.id === id)!;
-        return { targetType: 'employee' as const, targetId: id, targetLabel: e.name };
-      }
-      if (targetType === 'department') {
-        const d = data.departments.find((x) => x.id === id)!;
-        return { targetType: 'department' as const, targetId: id, targetLabel: d.name };
-      }
-      const b = data.branches.find((x) => x.id === id)!;
-      return { targetType: 'location' as const, targetId: id, targetLabel: b.name };
-    });
-    addAssignmentBatch({ templateId, effectiveFrom, items });
+    try {
+      await Promise.all(
+        [...selectedIds].map((empId) =>
+          shiftAssignmentsApi.create({
+            companyId,
+            shiftTemplateId: templateId,
+            employeeId: empId,
+            effectiveFrom,
+            openShiftHours: null,
+            isActive: true,
+          }),
+        ),
+      );
+      await reloadAssignments(companyId);
+    } catch { /* ignore */ }
     setOpen(false);
-  }, [templateId, selectedIds, targetType, effectiveFrom, addAssignmentBatch]);
+  }, [templateId, selectedIds, companyId, effectiveFrom, reloadAssignments]);
+
+  const removeAssignmentBatch = React.useCallback(async (batchId: string) => {
+    const toRemove = assignments.filter((a) => (a.batchId ?? a.id) === batchId);
+    try {
+      await Promise.all(toRemove.map((a) => shiftAssignmentsApi.remove(a.id)));
+      await reloadAssignments(companyId);
+    } catch { /* ignore */ }
+  }, [assignments, companyId, reloadAssignments]);
 
   const multiOptions = React.useMemo((): MultiSelectOption[] => {
     if (targetType === 'employee') {
-      const emps =
-        employeeDepartmentFilter === ASSIGNMENTS_ALL_DEPARTMENTS
-          ? data.employees
-          : data.employees.filter((e) => e.departmentId === employeeDepartmentFilter);
-      return emps.map((e) => {
-        const dept = data.departments.find((d) => d.id === e.departmentId);
-        return {
-          value: e.id,
-          label: e.name,
-          subtitle: [e.employeeCode, dept?.name].filter(Boolean).join(' · '),
-        };
-      });
+      return employees.map((e) => ({
+        value: e.id,
+        label: e.nameAr,
+        subtitle: e.employeeCode,
+      }));
     }
-    if (targetType === 'department') {
-      return data.departments.map((d) => ({ value: d.id, label: d.name }));
-    }
-    return data.branches.map((b) => ({ value: b.id, label: b.name }));
-  }, [targetType, employeeDepartmentFilter]);
+    return [];
+  }, [targetType, employees]);
 
   React.useEffect(() => {
     if (targetType !== 'employee') return;
-    const allowedIds = new Set(
-      (employeeDepartmentFilter === ASSIGNMENTS_ALL_DEPARTMENTS
-        ? data.employees
-        : data.employees.filter((e) => e.departmentId === employeeDepartmentFilter)
-      ).map((e) => e.id),
-    );
+    const allowedIds = new Set(employees.map((e) => e.id));
     setSelectedIds((prev) => {
       const next = new Set([...prev].filter((id) => allowedIds.has(id)));
       if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
       return next;
     });
-  }, [targetType, employeeDepartmentFilter]);
+  }, [targetType, employees]);
 
   const onTargetTypeChange = React.useCallback((v: AssignmentTargetType) => {
     setTargetType(v);

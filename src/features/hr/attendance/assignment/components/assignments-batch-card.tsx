@@ -2,7 +2,8 @@
 
 import { Building2, CalendarDays, Clock, MapPin, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ShiftAssignment, ShiftTemplate } from '@/features/hr/attendance/lib/types';
+import type { ShiftAssignment } from '@/features/hr/attendance/lib/types';
+import type { ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
 
 type Batch = {
   batchId: string;
@@ -17,7 +18,7 @@ export function AssignmentsBatchCard({
   onRemoveBatch,
 }: {
   batch: Batch;
-  shiftTemplates: ShiftTemplate[];
+  shiftTemplates: ShiftTemplateResponseDto[];
   onRemoveBatch: (batchId: string) => void;
 }) {
   const { batchId, rows, templateId: tid, effectiveFrom: ef } = batch;

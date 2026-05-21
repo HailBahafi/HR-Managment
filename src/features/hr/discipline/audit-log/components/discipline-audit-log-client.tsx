@@ -7,9 +7,11 @@ import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/utils';
-import { data } from '@/features/hr/lib/data';
-import { useHRDisciplineAuditLogStore } from '@/features/hr/discipline/lib/discipline-audit-log-store';
-import type { HRDisciplineAuditAction, HRDisciplineAuditCategory, HRDisciplineAuditLogEntry } from '@/features/hr/discipline/lib/discipline-audit-log';
+import { companiesApi } from '@/features/hr/lib/api/companies';
+import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { auditLogsApi, type AuditLogResponseDto } from '@/features/hr/discipline/lib/api/audit-logs';
+import type { HRDisciplineAuditCategory, HRDisciplineAuditAction } from '@/features/hr/discipline/lib/discipline-audit-log';
 import {
   AUDIT_ACTION_FILTER_ORDER,
   AUDIT_ACTION_LABELS_AR,
@@ -27,6 +29,57 @@ import {
 
 type CatFilter = 'all' | HRDisciplineAuditCategory;
 type StatusFilter = 'all' | HRDisciplineAuditAction;
+
+const DISCIPLINE_ENTITY_NAMES = [
+  'hr_job_discipline_violation_records',
+  'hr_job_discipline_notices',
+  'hr_job_discipline_circulars',
+  'hr_job_discipline_investigations',
+  'hr_job_discipline_appeals',
+  'hr_job_discipline_payroll_deductions',
+  'hr_job_discipline_approval_templates',
+];
+
+const ENTITY_TO_CATEGORY: Record<string, HRDisciplineAuditCategory> = {
+  hr_job_discipline_violation_records: 'violation_case',
+  hr_job_discipline_notices: 'violation_case',
+  hr_job_discipline_investigations: 'investigation',
+  hr_job_discipline_appeals: 'appeal',
+};
+
+function mapAction(action: string): HRDisciplineAuditAction {
+  const upper = action.toUpperCase();
+  if (upper === 'CREATE') return 'create';
+  if (upper === 'UPDATE' || upper === 'PATCH') return 'update';
+  if (upper === 'DELETE' || upper === 'REMOVE') return 'delete';
+  if (upper === 'SUBMIT') return 'submit';
+  if (upper === 'APPROVE') return 'approve';
+  if (upper === 'REJECT') return 'reject';
+  if (upper === 'REQUEST_EDIT') return 'request_edit';
+  if (upper === 'PAYROLL_POSTED') return 'payroll_posted';
+  return 'update';
+}
+
+function mapCategory(entityName: string): HRDisciplineAuditCategory {
+  return ENTITY_TO_CATEGORY[entityName] ?? 'violation_case';
+}
+
+function dtoToEntry(dto: AuditLogResponseDto) {
+  const prev = dto.oldValues ? JSON.stringify(dto.oldValues, null, 2) : '';
+  const next = dto.newValues ? JSON.stringify(dto.newValues, null, 2) : '';
+  return {
+    id: dto.id,
+    occurredAt: typeof dto.occurredAt === 'string' ? dto.occurredAt : new Date(dto.occurredAt).toISOString(),
+    actorNameAr: dto.actorName ?? dto.actorEmail ?? 'غير محدد',
+    category: mapCategory(dto.entityName),
+    actionType: mapAction(dto.action),
+    recordId: dto.entityId ?? dto.id,
+    recordRefAr: dto.entityDisplayName ?? dto.entityId ?? '—',
+    recordStatusAfterAr: dto.description ?? dto.actionNameAr ?? dto.action,
+    previousSnapshotAr: prev,
+    currentSnapshotAr: next,
+  };
+}
 
 function occurredAtToYmd(iso: string): string {
   const d = new Date(iso);
@@ -46,7 +99,7 @@ function formatOccurred(iso: string): string {
   }
 }
 
-function SnapshotComparisonTable({ previousSnapshotAr, currentSnapshotAr }: Pick<HRDisciplineAuditLogEntry, 'previousSnapshotAr' | 'currentSnapshotAr'>) {
+function SnapshotComparisonTable({ previousSnapshotAr, currentSnapshotAr }: { previousSnapshotAr: string; currentSnapshotAr: string }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-background">
       <table className="w-full min-w-[280px] border-collapse text-xs" dir="rtl">
@@ -71,15 +124,7 @@ function SnapshotComparisonTable({ previousSnapshotAr, currentSnapshotAr }: Pick
   );
 }
 
-function CompareToggle({
-  expanded,
-  onToggle,
-  compact,
-}: {
-  expanded: boolean;
-  onToggle: () => void;
-  compact?: boolean;
-}) {
+function CompareToggle({ expanded, onToggle, compact }: { expanded: boolean; onToggle: () => void; compact?: boolean }) {
   return (
     <Button
       type="button"
@@ -96,7 +141,49 @@ function CompareToggle({
 }
 
 export function DisciplineAuditLogClient() {
-  const entries = useHRDisciplineAuditLogStore((s) => s.entries);
+  const [rawEntries, setRawEntries] = React.useState<ReturnType<typeof dtoToEntry>[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [companyNameAr, setCompanyNameAr] = React.useState('');
+  const [companyNameEn, setCompanyNameEn] = React.useState('');
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const res = await companiesApi.getAll({ limit: 1 });
+        const c = res.items[0];
+        if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const scope = await resolveOrganizationScope();
+        const cid = scope.companyId ?? undefined;
+        const allResults = await Promise.all(
+          DISCIPLINE_ENTITY_NAMES.map((entityName) =>
+            auditLogsApi.getAll({ companyId: cid, entityName, limit: 200 }).catch(() => ({ items: [] as AuditLogResponseDto[], total: 0, page: 1, limit: 200 })),
+          ),
+        );
+        if (cancelled) return;
+        const all = allResults.flatMap((r) => r.items).map(dtoToEntry);
+        all.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+        setRawEntries(all);
+      } catch (err) {
+        if (cancelled) return;
+        const { displayMessage } = handleApiError(err, 'audit-logs.load');
+        setLoadError(displayMessage);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const { values } = usePageFilters([
     { key: 'q', label: 'بحث', type: 'text', placeholder: 'مرجع، اسم المُعدّل، محتوى…' },
   ]);
@@ -108,10 +195,7 @@ export function DisciplineAuditLogClient() {
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('list');
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({
-    tab: 'all',
-    hasRestriction: false,
-  });
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
   const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [expandedSnapshots, setExpandedSnapshots] = React.useState<Set<string>>(() => new Set());
@@ -127,57 +211,35 @@ export function DisciplineAuditLogClient() {
 
   const actorPickerList = React.useMemo(() => {
     const names = new Set<string>();
-    for (const e of entries) {
+    for (const e of rawEntries) {
       if (e.actorNameAr?.trim()) names.add(e.actorNameAr.trim());
     }
     return [...names].sort((a, b) => a.localeCompare(b, 'ar')).map((name) => ({ id: name, name }));
-  }, [entries]);
-
-  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
-    setDateBounds(b);
-  }, []);
-
-  const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => {
-    setDateMeta(m);
-  }, []);
+  }, [rawEntries]);
 
   const searchAndActorFiltered = React.useMemo(() => {
-    return entries.filter((e) => {
+    return rawEntries.filter((e) => {
       if (catFilter !== 'all' && e.category !== catFilter) return false;
       if (selectedActorIds.size > 0 && !selectedActorIds.has(e.actorNameAr.trim())) return false;
       if (!q) return true;
       const hay = [
-        e.recordRefAr,
-        e.actorNameAr,
-        e.recordStatusAfterAr,
-        e.previousSnapshotAr,
-        e.currentSnapshotAr,
-        e.recordId,
-        AUDIT_CATEGORY_LABELS_AR[e.category],
-        AUDIT_ACTION_LABELS_AR[e.actionType],
-      ]
-        .join('\n')
-        .toLowerCase();
+        e.recordRefAr, e.actorNameAr, e.recordStatusAfterAr,
+        e.previousSnapshotAr, e.currentSnapshotAr, e.recordId,
+        AUDIT_CATEGORY_LABELS_AR[e.category], AUDIT_ACTION_LABELS_AR[e.actionType],
+      ].join('\n').toLowerCase();
       return hay.includes(q);
     });
-  }, [entries, catFilter, selectedActorIds, q]);
+  }, [rawEntries, catFilter, selectedActorIds, q]);
 
   const dateFiltered = React.useMemo(
-    () =>
-      searchAndActorFiltered.filter((e) =>
-        matchesDateRange(occurredAtToYmd(e.occurredAt), dateBounds.from, dateBounds.to),
-      ),
+    () => searchAndActorFiltered.filter((e) => matchesDateRange(occurredAtToYmd(e.occurredAt), dateBounds.from, dateBounds.to)),
     [searchAndActorFiltered, dateBounds.from, dateBounds.to],
   );
-
-  const dateRangeActive = dateMeta.hasRestriction;
 
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = { all: dateFiltered.length };
     for (const a of AUDIT_ACTION_FILTER_ORDER) counts[a] = 0;
-    for (const e of dateFiltered) {
-      counts[e.actionType] = (counts[e.actionType] ?? 0) + 1;
-    }
+    for (const e of dateFiltered) counts[e.actionType] = (counts[e.actionType] ?? 0) + 1;
     return counts;
   }, [dateFiltered]);
 
@@ -187,37 +249,33 @@ export function DisciplineAuditLogClient() {
   );
 
   const pdfRows = React.useMemo(
-    () =>
-      listFiltered.map((e) => ({
-        occurredAtDisplay: formatOccurred(e.occurredAt),
-        actorNameAr: e.actorNameAr,
-        categoryAr: AUDIT_CATEGORY_LABELS_AR[e.category],
-        actionAr: AUDIT_ACTION_LABELS_AR[e.actionType],
-        recordRefAr: e.recordRefAr,
-        statusAfterAr: e.recordStatusAfterAr,
-      })),
+    () => listFiltered.map((e) => ({
+      occurredAtDisplay: formatOccurred(e.occurredAt),
+      actorNameAr: e.actorNameAr,
+      categoryAr: AUDIT_CATEGORY_LABELS_AR[e.category],
+      actionAr: AUDIT_ACTION_LABELS_AR[e.actionType],
+      recordRefAr: e.recordRefAr,
+      statusAfterAr: e.recordStatusAfterAr,
+    })),
     [listFiltered],
   );
 
   const printable = React.useMemo(
-    () =>
-      pdfRows.length === 0 ? null : (
-        <DisciplineAuditLogPrintHtml
-          companyNameAr={data.company.name}
-          companyNameEn={data.company.nameEn}
-          titleAr="سجل عمليات الانضباط الوظيفي"
-          filterSummary={`الفئة: ${catFilter === 'all' ? 'الكل' : AUDIT_CATEGORY_LABELS_AR[catFilter]} · المُعدّلون: ${selectedActorIds.size === 0 ? 'الكل' : `${selectedActorIds.size} محدد`} · نوع العملية: ${statusFilter === 'all' ? 'الكل' : AUDIT_ACTION_LABELS_AR[statusFilter]} · التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}${qRaw.trim() ? ` · بحث: ${qRaw.trim()}` : ''}`}
-          rows={pdfRows}
-        />
-      ),
+    () => pdfRows.length === 0 ? null : (
+      <DisciplineAuditLogPrintHtml
+        companyNameAr={companyNameAr}
+        companyNameEn={companyNameEn}
+        titleAr="سجل عمليات الانضباط الوظيفي"
+        filterSummary={`الفئة: ${catFilter === 'all' ? 'الكل' : AUDIT_CATEGORY_LABELS_AR[catFilter]} · المُعدّلون: ${selectedActorIds.size === 0 ? 'الكل' : `${selectedActorIds.size} محدد`} · نوع العملية: ${statusFilter === 'all' ? 'الكل' : AUDIT_ACTION_LABELS_AR[statusFilter]} · التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}${qRaw.trim() ? ` · بحث: ${qRaw.trim()}` : ''}`}
+        rows={pdfRows}
+      />
+    ),
     [pdfRows, catFilter, selectedActorIds.size, statusFilter, dateBounds.from, dateBounds.to, qRaw],
   );
 
   const categorySelect = (
     <div className="flex items-center gap-2">
-      <label htmlFor="audit-log-category" className="text-[11px] text-muted-foreground whitespace-nowrap">
-        فئة السجل
-      </label>
+      <label htmlFor="audit-log-category" className="text-[11px] text-muted-foreground whitespace-nowrap">فئة السجل</label>
       <select
         id="audit-log-category"
         title="فئة السجل"
@@ -234,19 +292,14 @@ export function DisciplineAuditLogClient() {
     </div>
   );
 
-  const renderEntryCard = (e: HRDisciplineAuditLogEntry) => {
+  const renderEntryCard = (e: ReturnType<typeof dtoToEntry>) => {
     const expanded = expandedSnapshots.has(e.id);
     return (
-      <article
-        key={e.id}
-        className="rounded-xl border border-border bg-card p-4 shadow-soft space-y-3"
-      >
+      <article key={e.id} className="rounded-xl border border-border bg-card p-4 shadow-soft space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="space-y-1 min-w-0">
             <p className="text-xs font-mono text-muted-foreground">{formatOccurred(e.occurredAt)}</p>
-            <p className="font-semibold truncate">
-              المُعدّل: <span className="font-normal">{e.actorNameAr}</span>
-            </p>
+            <p className="font-semibold truncate">المُعدّل: <span className="font-normal">{e.actorNameAr}</span></p>
             <p className="text-sm text-muted-foreground">
               المرجع: <span className="font-mono text-foreground">{e.recordRefAr}</span>
               <span className="mx-1 text-border">·</span>
@@ -254,12 +307,8 @@ export function DisciplineAuditLogClient() {
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5 shrink-0">
-            <span className="inline-flex rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium">
-              {AUDIT_CATEGORY_LABELS_AR[e.category]}
-            </span>
-            <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
-              {AUDIT_ACTION_LABELS_AR[e.actionType]}
-            </span>
+            <span className="inline-flex rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium">{AUDIT_CATEGORY_LABELS_AR[e.category]}</span>
+            <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">{AUDIT_ACTION_LABELS_AR[e.actionType]}</span>
           </div>
         </div>
         <div>
@@ -278,15 +327,13 @@ export function DisciplineAuditLogClient() {
     );
   };
 
-  const renderEntryList = (e: HRDisciplineAuditLogEntry) => {
+  const renderEntryList = (e: ReturnType<typeof dtoToEntry>) => {
     const expanded = expandedSnapshots.has(e.id);
     return (
       <React.Fragment key={e.id}>
         <tr className="border-b border-border/80 hover:bg-muted/25 transition-colors">
           <td className="p-2.5 align-middle text-xs whitespace-nowrap">{formatOccurred(e.occurredAt)}</td>
-          <td className="p-2.5 align-middle text-xs font-medium max-w-[140px] truncate" title={e.actorNameAr}>
-            {e.actorNameAr}
-          </td>
+          <td className="p-2.5 align-middle text-xs font-medium max-w-[140px] truncate" title={e.actorNameAr}>{e.actorNameAr}</td>
           <td className="p-2.5 align-middle text-[11px]">{AUDIT_CATEGORY_LABELS_AR[e.category]}</td>
           <td className="p-2.5 align-middle text-[11px] text-primary font-medium">{AUDIT_ACTION_LABELS_AR[e.actionType]}</td>
           <td className="p-2.5 align-middle font-mono text-[11px]">{e.recordRefAr}</td>
@@ -310,13 +357,7 @@ export function DisciplineAuditLogClient() {
 
   return (
     <div className="space-y-4">
-      <PdfPreviewExportDialog
-        open={pdfOpen}
-        onOpenChange={setPdfOpen}
-        title="معاينة تصدير سجل العمليات"
-        fileName="discipline-audit-log.pdf"
-        printable={printable}
-      />
+      <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير سجل العمليات" fileName="discipline-audit-log.pdf" printable={printable} />
 
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
@@ -325,21 +366,13 @@ export function DisciplineAuditLogClient() {
         onPrimaryAction={() => {}}
         beforeEmployeePicker={categorySelect}
         toolbarExtraTrailing={(
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 text-xs"
+          <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs"
             onClick={() => {
-              if (pdfRows.length === 0) {
-                toast.error('لا توجد عمليات للتصدير ضمن الفلاتر الحالية.');
-                return;
-              }
+              if (pdfRows.length === 0) { toast.error('لا توجد عمليات للتصدير ضمن الفلاتر الحالية.'); return; }
               setPdfOpen(true);
             }}
           >
-            <FileDown className="h-3.5 w-3.5" />
-            تصدير PDF
+            <FileDown className="h-3.5 w-3.5" />تصدير PDF
           </Button>
         )}
         empPickerEmployees={actorPickerList}
@@ -352,58 +385,60 @@ export function DisciplineAuditLogClient() {
         statusCounts={statusCounts}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        onDateBoundsChange={onDateBoundsChange}
-        onDateFilterMetaChange={onDateFilterMetaChange}
+        onDateBoundsChange={setDateBounds}
+        onDateFilterMetaChange={setDateMeta}
       />
 
-      <p className="text-xs text-muted-foreground px-0.5">
-        عرض فقط — سجل مرجعي للعمليات على المخالفات والتحقيقات والتظلمات. القيم التفصيلية السابقة والجديدة تظهر عند الطلب من جدول المقارنة.
-      </p>
-
-      {searchAndActorFiltered.length === 0 ? (
-        <EmptyState title="لا توجد عمليات مطابقة للبحث أو المُعدّلين أو الفئة." />
-      ) : dateFiltered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center px-4">
-          <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today'
-              ? 'لا توجد عمليات بتاريخ اليوم ضمن النتائج الحالية.'
-              : dateMeta.tab === 'week'
-                ? 'لا توجد عمليات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-                : dateMeta.tab === 'month'
-                  ? 'لا توجد عمليات ضمن هذا الشهر ضمن النتائج الحالية.'
-                  : dateMeta.tab === 'custom' && dateRangeActive
-                    ? 'لا توجد عمليات ضمن نطاق التاريخ المخصص.'
-                    : 'لا توجد عمليات ضمن الفترة المحددة.'}
-          </p>
-          {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
-              عرض كل الفترات
-            </Button>
-          ) : null}
-        </div>
-      ) : listFiltered.length === 0 ? (
-        <EmptyState title="لا توجد عمليات مطابقة لنوع العملية المحدد." />
-      ) : viewMode === 'cards' ? (
+      {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {listFiltered.map(renderEntryCard)}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" />
+          ))}
         </div>
+      ) : loadError ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{loadError}</div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
-          <table className="w-full min-w-[860px] border-collapse text-sm" dir="rtl">
-            <thead>
-              <tr className="border-b border-border bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="p-2.5 text-right font-semibold">التاريخ والوقت</th>
-                <th className="p-2.5 text-right font-semibold">المُعدّل</th>
-                <th className="p-2.5 text-right font-semibold">الفئة</th>
-                <th className="p-2.5 text-right font-semibold">العملية</th>
-                <th className="p-2.5 text-right font-semibold">المرجع</th>
-                <th className="p-2.5 text-right font-semibold">الحالة بعد العملية</th>
-                <th className="p-2.5 text-right font-semibold w-[140px]">المقارنة</th>
-              </tr>
-            </thead>
-            <tbody>{listFiltered.map(renderEntryList)}</tbody>
-          </table>
-        </div>
+        <>
+          <p className="text-xs text-muted-foreground px-0.5">
+            عرض فقط — سجل مرجعي للعمليات على المخالفات والتحقيقات والتظلمات. القيم التفصيلية السابقة والجديدة تظهر عند الطلب من جدول المقارنة.
+          </p>
+
+          {searchAndActorFiltered.length === 0 ? (
+            <EmptyState title="لا توجد عمليات مطابقة للبحث أو المُعدّلين أو الفئة." />
+          ) : dateFiltered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center px-4">
+              <p className="text-sm text-muted-foreground">لا توجد عمليات ضمن الفترة المحددة.</p>
+              {dateMeta.hasRestriction ? (
+                <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
+                  عرض كل الفترات
+                </Button>
+              ) : null}
+            </div>
+          ) : listFiltered.length === 0 ? (
+            <EmptyState title="لا توجد عمليات مطابقة لنوع العملية المحدد." />
+          ) : viewMode === 'cards' ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {listFiltered.map(renderEntryCard)}
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
+              <table className="w-full min-w-[860px] border-collapse text-sm" dir="rtl">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <th className="p-2.5 text-right font-semibold">التاريخ والوقت</th>
+                    <th className="p-2.5 text-right font-semibold">المُعدّل</th>
+                    <th className="p-2.5 text-right font-semibold">الفئة</th>
+                    <th className="p-2.5 text-right font-semibold">العملية</th>
+                    <th className="p-2.5 text-right font-semibold">المرجع</th>
+                    <th className="p-2.5 text-right font-semibold">الحالة بعد العملية</th>
+                    <th className="p-2.5 text-right font-semibold w-[140px]">المقارنة</th>
+                  </tr>
+                </thead>
+                <tbody>{listFiltered.map(renderEntryList)}</tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

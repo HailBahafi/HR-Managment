@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { data } from '@/features/hr/lib/data';
 import type { AssignmentTargetType, ShiftTemplate } from '@/features/hr/attendance/lib/types';
 import { ASSIGNMENTS_ALL_DEPARTMENTS } from '@/features/hr/attendance/assignment/constants/assignments-panel';
 import type { AssignmentsPanelModel } from '@/features/hr/attendance/assignment/hooks/useAssignmentsPanelModel';
@@ -59,7 +58,7 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
                 <SelectValue placeholder="قالب" />
               </SelectTrigger>
               <SelectContent>
-                {activeTemplates.map((t: ShiftTemplate) => (
+                {activeTemplates.map((t) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.nameAr}
                   </SelectItem>
@@ -99,11 +98,6 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ASSIGNMENTS_ALL_DEPARTMENTS}>كل الأقسام</SelectItem>
-                  {data.departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +9,7 @@ import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/features/hr/requests/components/shared-ui';
-import { useHRDisciplineNoticesStore } from '@/features/hr/discipline/lib/notices-store';
-import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
-import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import { useDisciplineNoticesDirectoryModel } from '@/features/hr/discipline/notices/hooks/useDisciplineNoticesDirectoryModel';
 import type { HRDisciplineNoticeKind } from '@/features/hr/discipline/lib/types';
 import { NOTICE_KIND_LABELS, NOTICE_KIND_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
@@ -21,7 +19,7 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { data } from '@/features/hr/lib/data';
+import { companiesApi } from '@/features/hr/lib/api/companies';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -38,9 +36,20 @@ interface DraftForm {
 const EMPTY: DraftForm = { employeeId: '', kind: 'verbal', reasonAr: '', date: '', linkedCaseId: '', attachmentsNote: '' };
 
 export function NoticesClient() {
-  const { notices, add, remove } = useHRDisciplineNoticesStore();
-  const { cases } = useHRViolationCasesStore();
-  const { activeEmployees } = useHREmployeeDirectoryStore();
+  const hook = useDisciplineNoticesDirectoryModel();
+  const { notices, employees, cases, loading, listError, createNotice, deleteNotice } = hook;
+
+  const [companyNameAr, setCompanyNameAr] = React.useState('');
+  const [companyNameEn, setCompanyNameEn] = React.useState('');
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const res = await companiesApi.getAll({ limit: 1 });
+        const c = res.items[0];
+        if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
@@ -59,18 +68,16 @@ export function NoticesClient() {
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
+  const [saving, setSaving] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
 
-  const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
+  const empOptions = employees.map(e => ({ value: e.id, label: e.nameAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
   const searchFiltered = React.useMemo(
-    () =>
-      notices.filter(
-        (n) => selectedEmpIds.size === 0 || selectedEmpIds.has(n.employeeId),
-      ),
+    () => notices.filter((n) => selectedEmpIds.size === 0 || selectedEmpIds.has(n.employeeId)),
     [notices, selectedEmpIds],
   );
 
@@ -102,14 +109,7 @@ export function NoticesClient() {
   }, [selectedEmpIds.size, kindFilter, dateBounds.from, dateBounds.to]);
 
   const noticesPdfRows = React.useMemo(
-    () =>
-      listFiltered.map((n) => [
-        n.employeeNameAr,
-        n.date,
-        NOTICE_KIND_LABELS[n.kind],
-        n.reasonAr,
-        n.attachmentsNote || '—',
-      ]),
+    () => listFiltered.map((n) => [n.employeeNameAr, n.date, NOTICE_KIND_LABELS[n.kind], n.reasonAr, n.attachmentsNote || '—']),
     [listFiltered],
   );
 
@@ -117,8 +117,8 @@ export function NoticesClient() {
     () =>
       noticesPdfRows.length === 0 ? null : (
         <GenericRegisterPrintHtml
-          companyNameAr={data.company.name}
-          companyNameEn={data.company.nameEn}
+          companyNameAr={companyNameAr}
+          companyNameEn={companyNameEn}
           titleAr="سجل الإنذارات"
           filterSummary={noticesFilterSummary}
           headers={['الموظف', 'التاريخ', 'النوع', 'السبب', 'المرفقات']}
@@ -130,20 +130,10 @@ export function NoticesClient() {
   );
 
   const handleExportNoticesExcel = React.useCallback(async () => {
-    if (listFiltered.length === 0) {
-      toast.error('لا توجد إنذارات للتصدير ضمن الفلاتر الحالية.');
-      return;
-    }
-    const header: XlsxCell[] = ['الموظف', 'التاريخ', 'النوع', 'السبب', 'المرفقات'];
+    if (listFiltered.length === 0) { toast.error('لا توجد إنذارات للتصدير ضمن الفلاتر الحالية.'); return; }
     const rows: XlsxCell[][] = [
-      header,
-      ...listFiltered.map((n) => [
-        n.employeeNameAr,
-        n.date,
-        NOTICE_KIND_LABELS[n.kind],
-        n.reasonAr,
-        n.attachmentsNote || '—',
-      ]),
+      ['الموظف', 'التاريخ', 'النوع', 'السبب', 'المرفقات'],
+      ...listFiltered.map((n) => [n.employeeNameAr, n.date, NOTICE_KIND_LABELS[n.kind], n.reasonAr, n.attachmentsNote || '—']),
     ];
     await downloadXlsxFromAoA('discipline-notices.xlsx', 'الإنذارات', rows);
     toast.success('تم تنزيل ملف Excel.');
@@ -151,16 +141,29 @@ export function NoticesClient() {
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setFormError(null);
     if (!draft.employeeId) { setFormError('الموظف مطلوب'); return; }
     if (!draft.reasonAr.trim()) { setFormError('السبب مطلوب'); return; }
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
-    const emp = activeEmployees.find(e => e.id === draft.employeeId)!;
-    add({ ...draft, employeeNameAr: emp.nameAr });
-    toast.success('تم إضافة الإنذار');
-    setDrawerOpen(false);
-    setDraft(EMPTY);
+    setSaving(true);
+    try {
+      await createNotice({
+        employeeId: draft.employeeId,
+        kind: draft.kind,
+        reasonAr: draft.reasonAr,
+        date: draft.date,
+        linkedCaseId: draft.linkedCaseId || null,
+        attachmentsNote: draft.attachmentsNote || null,
+      });
+      toast.success('تم إضافة الإنذار');
+      setDrawerOpen(false);
+      setDraft(EMPTY);
+    } catch {
+      setFormError('حدث خطأ أثناء الحفظ');
+    } finally {
+      setSaving(false);
+    }
   };
 
   useEntityFilterSlot(
@@ -176,13 +179,7 @@ export function NoticesClient() {
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 text-xs"
-              onClick={() => {
-                if (noticesPdfRows.length === 0) {
-                  toast.error('لا توجد إنذارات للتصدير ضمن الفلاتر الحالية.');
-                  return;
-                }
-                setPdfOpen(true);
-              }}
+              onClick={() => { if (noticesPdfRows.length === 0) { toast.error('لا توجد إنذارات للتصدير ضمن الفلاتر الحالية.'); return; } setPdfOpen(true); }}
             >
               <FileDown className="h-3.5 w-3.5" />
               PDF
@@ -207,57 +204,50 @@ export function NoticesClient() {
         onDateFilterMetaChange={onDateFilterMetaChange}
       />
     ),
-    [
-      empPickerList,
-      selectedEmpIds,
-      kindFilter,
-      statusCounts,
-      viewMode,
-      listFiltered,
-      onDateBoundsChange,
-      onDateFilterMetaChange,
-    ],
+    [empPickerList, selectedEmpIds, kindFilter, statusCounts, viewMode, listFiltered, onDateBoundsChange, onDateFilterMetaChange],
   );
+
+  if (loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" />
+        ))}
+      </div>
+    );
+  }
+
+  if (listError) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center text-sm text-destructive">
+        {listError}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <PdfPreviewExportDialog
-        open={pdfOpen}
-        onOpenChange={setPdfOpen}
-        title="معاينة تصدير الإنذارات"
-        fileName="discipline-notices.pdf"
-        printable={printable}
-      />
+      <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير الإنذارات" fileName="discipline-notices.pdf" printable={printable} />
 
       {searchFiltered.length === 0 ? (
         <EmptyState title="لا توجد إنذارات مطابقة للبحث أو الموظفين المحددين." />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today'
-              ? 'لا توجد إنذارات بتاريخ اليوم ضمن النتائج الحالية.'
-              : dateMeta.tab === 'week'
-                ? 'لا توجد إنذارات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-                : dateMeta.tab === 'month'
-                  ? 'لا توجد إنذارات ضمن هذا الشهر ضمن النتائج الحالية.'
-                  : dateMeta.tab === 'custom' && dateRangeActive
-                    ? 'لا توجد إنذارات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
-                    : 'لا توجد إنذارات ضمن النتائج الحالية.'}
+            {dateMeta.tab === 'today' ? 'لا توجد إنذارات بتاريخ اليوم ضمن النتائج الحالية.'
+              : dateMeta.tab === 'week' ? 'لا توجد إنذارات ضمن هذا الأسبوع ضمن النتائج الحالية.'
+              : dateMeta.tab === 'month' ? 'لا توجد إنذارات ضمن هذا الشهر ضمن النتائج الحالية.'
+              : dateMeta.tab === 'custom' && dateRangeActive ? 'لا توجد إنذارات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
+              : 'لا توجد إنذارات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
-              عرض كل الفترات
-            </Button>
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>عرض كل الفترات</Button>
           ) : null}
         </div>
       ) : listFiltered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
-          <p className="text-sm text-muted-foreground">
-            لا توجد إنذارات من نوع «{kindFilter === 'all' ? '' : NOTICE_KIND_LABELS[kindFilter]}» مع عوامل البحث الحالية.
-          </p>
-          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>
-            عرض الكل
-          </Button>
+          <p className="text-sm text-muted-foreground">لا توجد إنذارات من نوع «{kindFilter === 'all' ? '' : NOTICE_KIND_LABELS[kindFilter]}» مع عوامل البحث الحالية.</p>
+          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>عرض الكل</Button>
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -267,8 +257,7 @@ export function NoticesClient() {
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{n.employeeNameAr}</p>
                   <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground" dir="ltr">
-                    <CalendarDays className="h-3 w-3 shrink-0" />
-                    {n.date}
+                    <CalendarDays className="h-3 w-3 shrink-0" />{n.date}
                   </p>
                 </div>
                 <span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
@@ -315,7 +304,7 @@ export function NoticesClient() {
         </div>
       )}
 
-      <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة إنذار" size="lg" onSave={handleSave} error={formError}>
+      <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة إنذار" size="lg" onSave={() => void handleSave()} saveDisabled={saving} error={formError}>
         <FormField label="الموظف" required>
           <SearchableDropdown value={draft.employeeId} onChange={v => set({ employeeId: v })} options={empOptions} placeholder="اختر الموظف…" />
         </FormField>
@@ -336,7 +325,17 @@ export function NoticesClient() {
         </FormField>
       </HRSettingsFormDrawer>
 
-      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} onConfirm={() => { if (deleteId) { remove(deleteId); toast.success('تم الحذف'); setDeleteId(null); } }} title="حذف الإنذار" />
+      <ConfirmationModal
+        open={!!deleteId}
+        onOpenChange={v => !v && setDeleteId(null)}
+        onConfirm={async () => {
+          if (deleteId) {
+            try { await deleteNotice(deleteId); toast.success('تم الحذف'); } catch { toast.error('فشل الحذف'); }
+            setDeleteId(null);
+          }
+        }}
+        title="حذف الإنذار"
+      />
     </div>
   );
 }

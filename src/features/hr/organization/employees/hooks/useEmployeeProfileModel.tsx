@@ -7,7 +7,6 @@ import type { EmployeeProfileSectionId } from '@/features/hr/organization/employ
 import { useEmployeeProfileData } from '@/features/hr/organization/employees/hooks/useEmployeeProfileData';
 import { useEmployeeProfilePayslipFilter } from '@/features/hr/organization/employees/hooks/useEmployeeProfilePayslipFilter';
 import { useEmployeeProfileLeave } from '@/features/hr/organization/employees/hooks/useEmployeeProfileLeave';
-import { useEmployeeProfileAttendance } from '@/features/hr/organization/employees/hooks/useEmployeeProfileAttendance';
 import { useEmployeeProfilePersonal } from '@/features/hr/organization/employees/hooks/useEmployeeProfilePersonal';
 import { useEmployeeProfileRosePdf } from '@/features/hr/organization/employees/hooks/useEmployeeProfileRosePdf';
 import { useEmployeeProfilePermissions } from '@/features/hr/organization/employees/hooks/useEmployeeProfilePermissions';
@@ -21,7 +20,6 @@ export function useEmployeeProfileModel(employee: Employee) {
   const data = useEmployeeProfileData(employee);
   const payslip = useEmployeeProfilePayslipFilter(data.employeePayslipSeries);
   const leave = useEmployeeProfileLeave(employee);
-  const attendance = useEmployeeProfileAttendance(employee, data.allEmployeeEvents, data.allEmployeeSummaries);
   const personal = useEmployeeProfilePersonal(employee, activeSection);
   const rose = useEmployeeProfileRosePdf(personal.draft);
   const permissions = useEmployeeProfilePermissions(employee);
@@ -37,6 +35,7 @@ export function useEmployeeProfileModel(employee: Employee) {
     'rose-forms': data.roseFormsCount,
     'activity-log': data.activityLogCount,
     salary: data.employeePayslipSeries.length,
+    leaves: leave.leaveRequests.length,
   };
 
   return {
@@ -49,7 +48,6 @@ export function useEmployeeProfileModel(employee: Employee) {
     ...data,
     ...payslip,
     ...leave,
-    ...attendance,
     ...personal,
     ...rose,
     ...permissions,

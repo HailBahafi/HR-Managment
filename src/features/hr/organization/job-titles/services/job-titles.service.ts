@@ -6,8 +6,16 @@ import {
 } from '@/features/hr/organization/lib/api/jobTitles';
 import { departmentsApi } from '@/features/hr/organization/lib/api/departments';
 import { resolveOrganizationScope, type OrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
-import type { JobTitleTemplateRecord } from '@/features/hr/organization/lib/directory/job-title-templates-store';
 import type { DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
+
+export type JobTitleTemplateRecord = {
+  id: string;
+  titleAr: string;
+  descriptionAr?: string;
+  defaultDepartmentId?: string | null;
+  sortOrder: number;
+  updatedAt: string;
+};
 
 export type JobTitlesDirectoryData = {
   templates: JobTitleTemplateRecord[];

@@ -10,20 +10,21 @@ import {
   EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
 } from '@/features/hr/requests/components/shared-ui';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
-import {
-  useHRDisciplineApprovalAssignmentTemplatesStore,
-  disciplineApprovalLinkedIds,
-} from '@/features/hr/discipline/lib/discipline-approval-store';
-import { useHRViolationTypesStore } from '@/features/hr/discipline/lib/violation-types-store';
-import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
-import {
-  approvalStageModeLabelAr,
-  type HRApprovalAssignmentTemplate,
-  type HRApprovalTemplateStage,
-  type HRApprovalStageMode,
-} from '@/features/hr/requests/lib/types';
-import type { HREmployeeDirectoryRow } from '@/features/hr/requests/lib/employee-directory-store';
+import { useDisciplineApprovalTemplatesModel } from '../hooks/useDisciplineApprovalTemplatesModel';
+import type { ApprovalTemplateStage } from '../hooks/useDisciplineApprovalTemplatesModel';
 import { cn } from '@/shared/utils';
+
+type HRApprovalStageMode = 'sequential' | 'parallel' | 'optional' | 'any_one';
+
+function approvalStageModeLabelAr(mode: HRApprovalStageMode): string {
+  const m: Record<HRApprovalStageMode, string> = {
+    sequential: 'تسلسلي',
+    parallel: 'متوازٍ',
+    any_one: 'موافقة أحد المعتمدين',
+    optional: 'اختياري',
+  };
+  return m[mode] ?? mode;
+}
 
 function uid() { return `dats-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; }
 
@@ -37,18 +38,17 @@ const MODE_OPTIONS: { value: HRApprovalStageMode; label: string }[] = [
 interface DraftForm {
   linkedIds: string[];
   isActive: boolean;
-  stages: HRApprovalTemplateStage[];
+  stages: ApprovalTemplateStage[];
 }
 
-function singleEmptyStage(): HRApprovalTemplateStage[] {
-  return [{ id: uid(), sortOrder: 1, mode: 'sequential' as HRApprovalStageMode, approvers: [] }];
+function singleEmptyStage(): ApprovalTemplateStage[] {
+  return [{ id: uid(), sortOrder: 1, mode: 'sequential', approvers: [] }];
 }
 
-function stagesToSingle(stages: HRApprovalTemplateStage[]): HRApprovalTemplateStage[] {
+function stagesToSingle(stages: ApprovalTemplateStage[]): ApprovalTemplateStage[] {
   if (stages.length === 0) return singleEmptyStage();
   const sorted = [...stages].sort((a, b) => a.sortOrder - b.sortOrder);
-  const first = sorted[0]!;
-  return [{ ...first, sortOrder: 1 }];
+  return [{ ...sorted[0]!, sortOrder: 1 }];
 }
 
 function buildNameAr(linkedIds: string[], violationTypes: { id: string; nameAr: string }[]): string {
@@ -58,24 +58,13 @@ function buildNameAr(linkedIds: string[], violationTypes: { id: string; nameAr: 
   return `${joined.slice(0, 137)}…`;
 }
 
-function approverNamesForStage(
-  stage: HRApprovalTemplateStage,
-  activeEmployees: HREmployeeDirectoryRow[],
-): string[] {
-  return stage.approvers.map((a) => activeEmployees.find((e) => e.id === a.employeeId)?.nameAr ?? a.employeeId);
-}
-
-function StageEditor({ stage, index, onChange, onRemove, showRemove = true }: {
-  stage: HRApprovalTemplateStage; index: number;
-  onChange: (s: HRApprovalTemplateStage) => void; onRemove: () => void;
+function StageEditor({ stage, index, onChange, onRemove, showRemove = true, employees }: {
+  stage: ApprovalTemplateStage; index: number;
+  onChange: (s: ApprovalTemplateStage) => void; onRemove: () => void;
   showRemove?: boolean;
+  employees: { id: string; nameAr: string }[];
 }) {
-  const employees = useHREmployeeDirectoryStore((s) => s.employees);
-  const activeEmployees = React.useMemo(
-    () => employees.filter((e) => e.status === 'active'),
-    [employees],
-  );
-  const empOptions = activeEmployees.map(e => ({ value: e.id, label: e.nameAr, sub: e.jobTitleAr }));
+  const empOptions = employees.map(e => ({ value: e.id, label: e.nameAr, sub: '' }));
   const available = empOptions.filter(o => !stage.approvers.find(a => a.employeeId === o.value));
 
   return (
@@ -94,7 +83,7 @@ function StageEditor({ stage, index, onChange, onRemove, showRemove = true }: {
       <div className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {stage.approvers.map(a => {
-            const emp = activeEmployees.find(e => e.id === a.employeeId);
+            const emp = employees.find(e => e.id === a.employeeId);
             return (
               <span key={a.employeeId} className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium cursor-pointer', a.mandatory ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground')}
                 onClick={() => onChange({ ...stage, approvers: stage.approvers.map(ap => ap.employeeId === a.employeeId ? { ...ap, mandatory: !ap.mandatory } : ap) })}>
@@ -113,13 +102,7 @@ function StageEditor({ stage, index, onChange, onRemove, showRemove = true }: {
 }
 
 export function DisciplineApprovalClient() {
-  const { templates, add, update, remove } = useHRDisciplineApprovalAssignmentTemplatesStore();
-  const violationTypes = useHRViolationTypesStore((s) => s.types);
-  const employees = useHREmployeeDirectoryStore((s) => s.employees);
-  const activeEmployees = React.useMemo(
-    () => employees.filter((e) => e.status === 'active'),
-    [employees],
-  );
+  const { templates, violationTypes, employees, loading, listError, createTemplate, updateTemplate, deleteTemplate } = useDisciplineApprovalTemplatesModel();
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -129,6 +112,7 @@ export function DisciplineApprovalClient() {
     stages: singleEmptyStage(),
   }));
   const [error, setError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [drawerContentEl, setDrawerContentEl] = React.useState<HTMLElement | null>(null);
 
@@ -136,7 +120,7 @@ export function DisciplineApprovalClient() {
     const set = new Set<string>();
     for (const tpl of templates) {
       if (tpl.id === editId) continue;
-      for (const id of disciplineApprovalLinkedIds(tpl)) set.add(id);
+      for (const id of tpl.linkedViolationTypeIds) set.add(id);
     }
     return set;
   }, [templates, editId]);
@@ -162,10 +146,10 @@ export function DisciplineApprovalClient() {
     setDrawerOpen(true);
   };
 
-  const openEdit = (t: HRApprovalAssignmentTemplate) => {
+  const openEdit = (t: typeof templates[number]) => {
     setEditId(t.id);
     setDraft({
-      linkedIds: [...disciplineApprovalLinkedIds(t)],
+      linkedIds: [...t.linkedViolationTypeIds],
       isActive: t.isActive,
       stages: stagesToSingle(t.stages),
     });
@@ -173,7 +157,7 @@ export function DisciplineApprovalClient() {
     setDrawerOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const stagesOne = stagesToSingle(draft.stages);
     const linked = [...new Set(draft.linkedIds.filter(Boolean))];
     if (linked.length === 0) {
@@ -182,23 +166,45 @@ export function DisciplineApprovalClient() {
     }
 
     const nameAr = buildNameAr(linked, violationTypes);
-    const payload = {
-      nameAr,
-      description: '',
-      assignmentLinkKind: 'violation' as const,
-      assignmentLinkedIds: linked,
-      violationTypeId: linked[0] ?? null,
-      isActive: draft.isActive,
-      stages: stagesOne,
-    };
-
-    const result = editId ? update(editId, payload) : add(payload);
-    if (!result.ok) {
-      setError(result.error ?? 'خطأ');
-      return;
+    setSaving(true);
+    setError(null);
+    try {
+      if (editId) {
+        await updateTemplate(editId, {
+          nameAr,
+          isActive: draft.isActive,
+          stages: stagesOne,
+          linkedViolationTypeIds: linked,
+        });
+        toast.success('تم تحديث الإسناد');
+      } else {
+        await createTemplate({
+          nameAr,
+          isActive: draft.isActive,
+          stages: stagesOne,
+          linkedViolationTypeIds: linked,
+        });
+        toast.success('تم إنشاء الإسناد');
+      }
+      setDrawerOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'حدث خطأ';
+      setError(msg);
+    } finally {
+      setSaving(false);
     }
-    toast.success(editId ? 'تم تحديث الإسناد' : 'تم إنشاء الإسناد');
-    setDrawerOpen(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await deleteTemplate(deleteId);
+      toast.success('تم الحذف');
+    } catch {
+      toast.error('فشل الحذف');
+    } finally {
+      setDeleteId(null);
+    }
   };
 
   const patch = <K extends keyof DraftForm>(k: K, v: DraftForm[K]) => setDraft(d => ({ ...d, [k]: v }));
@@ -216,6 +222,24 @@ export function DisciplineApprovalClient() {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-48 animate-pulse rounded-xl border border-border bg-muted/30" />
+        ))}
+      </div>
+    );
+  }
+
+  if (listError) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        {listError}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -226,54 +250,51 @@ export function DisciplineApprovalClient() {
         <EmptyState title="لا توجد إسنادات" description="اربط أنواع المخالفات بمرحلة اعتماد واحدة." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {templates.map((t) => {
-            const linked = disciplineApprovalLinkedIds(t);
-            return (
-              <div key={t.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 space-y-2">
-                    <ol className="list-decimal space-y-1 pr-4 text-sm marker:text-muted-foreground">
-                      {linked.map((id) => (
-                        <li key={id} className="font-medium leading-snug">
-                          {violationTypes.find((v) => v.id === id)?.nameAr ?? id}
-                        </li>
-                      ))}
-                    </ol>
-                    {linked.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">لا أنواع مرتبطة</p>
-                    ) : null}
-                  </div>
-                  <ActiveBadge active={t.isActive} />
-                </div>
-                <div className="rounded-lg border border-border/70 bg-muted/25 p-3 space-y-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">التسلسل</p>
-                  {[...t.stages].sort((a, b) => a.sortOrder - b.sortOrder).map((s, i) => {
-                    const names = approverNamesForStage(s, activeEmployees);
-                    return (
-                      <div key={s.id} className="text-xs">
-                        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
-                          <span className="font-semibold text-foreground">المرحلة {i + 1}</span>
-                          <span className="text-muted-foreground">· {approvalStageModeLabelAr(s.mode)}</span>
-                        </div>
-                        {names.length > 0 ? (
-                          <p className="mt-1 text-[11px] leading-relaxed text-foreground">{names.join('، ')}</p>
-                        ) : (
-                          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">لا معتمدين في هذه المرحلة</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {t.stages.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground">لا توجد مراحل</p>
+          {templates.map((t) => (
+            <div key={t.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-2">
+                  <ol className="list-decimal space-y-1 pr-4 text-sm marker:text-muted-foreground">
+                    {t.linkedViolationTypeIds.map((id) => (
+                      <li key={id} className="font-medium leading-snug">
+                        {violationTypes.find((v) => v.id === id)?.nameAr ?? id}
+                      </li>
+                    ))}
+                  </ol>
+                  {t.linkedViolationTypeIds.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">لا أنواع مرتبطة</p>
                   ) : null}
                 </div>
-                <div className="mt-auto flex items-center gap-1.5 border-t border-border pt-2">
-                  <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" />تعديل</Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
+                <ActiveBadge active={t.isActive} />
               </div>
-            );
-          })}
+              <div className="rounded-lg border border-border/70 bg-muted/25 p-3 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">التسلسل</p>
+                {[...t.stages].sort((a, b) => a.sortOrder - b.sortOrder).map((s, i) => {
+                  const names = s.approvers.map(a => employees.find(e => e.id === a.employeeId)?.nameAr ?? a.employeeId);
+                  return (
+                    <div key={s.id} className="text-xs">
+                      <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
+                        <span className="font-semibold text-foreground">المرحلة {i + 1}</span>
+                        <span className="text-muted-foreground">· {approvalStageModeLabelAr(s.mode)}</span>
+                      </div>
+                      {names.length > 0 ? (
+                        <p className="mt-1 text-[11px] leading-relaxed text-foreground">{names.join('، ')}</p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">لا معتمدين في هذه المرحلة</p>
+                      )}
+                    </div>
+                  );
+                })}
+                {t.stages.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">لا توجد مراحل</p>
+                ) : null}
+              </div>
+              <div className="mt-auto flex items-center gap-1.5 border-t border-border pt-2">
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" />تعديل</Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(t.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -283,6 +304,7 @@ export function DisciplineApprovalClient() {
         title={editId ? 'تعديل إسناد الموافقات' : 'إسناد موافقات جديد'}
         size="lg"
         onSave={handleSave}
+        saveDisabled={saving}
         error={error}
         contentRef={setDrawerContentEl}
       >
@@ -344,12 +366,18 @@ export function DisciplineApprovalClient() {
               onChange={(s) => patch('stages', [{ ...s, sortOrder: 1 }])}
               onRemove={() => {}}
               showRemove={false}
+              employees={employees}
             />
           ) : null}
         </div>
       </HRSettingsFormDrawer>
 
-      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} onConfirm={() => { if (deleteId) { remove(deleteId); toast.success('تم الحذف'); setDeleteId(null); } }} title="حذف الإسناد" />
+      <ConfirmationModal
+        open={!!deleteId}
+        onOpenChange={v => !v && setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="حذف الإسناد"
+      />
     </div>
   );
 }

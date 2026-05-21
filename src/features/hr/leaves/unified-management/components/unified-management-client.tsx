@@ -3,7 +3,7 @@
 import * as React from 'react';
 import {
   Plus, ChevronLeft, ChevronRight,
-  CheckCircle2, XCircle, Clock,
+  CheckCircle2, XCircle, Clock, SlidersHorizontal,
 } from 'lucide-react';
 import { format, addMonths, subMonths, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, getDay, isValid } from 'date-fns';
 import { arSA } from 'date-fns/locale';
@@ -16,6 +16,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions, usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
@@ -90,7 +91,7 @@ export function UnifiedManagementClient() {
   );
   const typeInlineOptions = React.useMemo(
     () => [
-      { value: 'all', label: 'جميع الأنواع' },
+      { value: 'all', label: 'اختر النوع' },
       { value: 'annual', label: 'سنوية' },
       { value: 'sick', label: 'مرضية' },
       { value: 'emergency', label: 'طارئة' },
@@ -196,13 +197,30 @@ export function UnifiedManagementClient() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
+  const activeFilterCount =
+    (branchId !== 'all' ? 1 : 0) + (departmentId !== 'all' ? 1 : 0) +
+    (leaveType !== 'all' ? 1 : 0) + (approvalStageFilter !== 'all' ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0) +
+    (dateBounds.from !== '' ? 1 : 0);
+
+  const onAddClick = React.useCallback(() => { setEditLeave(null); setAddOpen(true); }, []);
+
+  usePageHeaderActions(
+    () => (
+      <LeaveHeaderActions activeFilterCount={activeFilterCount} onAdd={onAddClick} />
+    ),
+    [activeFilterCount, onAddClick],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
         inlineSelects={[
+          { id: 'type', value: leaveType, onChange: setLeaveType, placeholder: 'نوع الإجازة', options: typeInlineOptions },
+        ]}
+        moreFilters={[
           { id: 'branch', value: branchId, onChange: setBranchId, placeholder: 'الفرع', options: branchInlineOptions },
           { id: 'dept', value: departmentId, onChange: setDepartmentId, placeholder: 'القسم', options: deptInlineOptions },
-          { id: 'type', value: leaveType, onChange: setLeaveType, placeholder: 'نوع الإجازة', options: typeInlineOptions },
           { id: 'stage', value: approvalStageFilter, onChange: setApprovalStageFilter, placeholder: 'مرحلة الاعتماد', options: stageInlineOptions },
         ]}
         empPickerEmployees={empPickerList}
@@ -222,34 +240,15 @@ export function UnifiedManagementClient() {
             { value: 'calendar', label: 'تقويم', icon: 'calendar-days' },
           ],
         }}
-        trailingActions={(
-          <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
-            <Plus className="h-3.5 w-3.5" />
-            إضافة إجازة
-          </Button>
-        )}
       />
     ),
     [
-      branchId,
-      departmentId,
-      leaveType,
-      approvalStageFilter,
-      statusFilter,
-      selectedEmpKey,
-      dateBounds.from,
-      dateBounds.to,
-      statusCounts.all,
-      statusCounts.pending,
-      statusCounts.approved,
-      statusCounts.rejected,
-      statusCounts.cancelled,
-      view,
-      empPickerList,
-      branchInlineOptions,
-      deptInlineOptions,
-      typeInlineOptions,
-      stageInlineOptions,
+      branchId, departmentId, leaveType, approvalStageFilter,
+      statusFilter, selectedEmpKey,
+      dateBounds.from, dateBounds.to,
+      statusCounts.all, statusCounts.pending, statusCounts.approved, statusCounts.rejected, statusCounts.cancelled,
+      view, empPickerList,
+      branchInlineOptions, deptInlineOptions, typeInlineOptions, stageInlineOptions,
     ],
   );
 
@@ -286,6 +285,46 @@ export function UnifiedManagementClient() {
           setEditLeave(null);
         }}
       />
+    </div>
+  );
+}
+
+// ─── Header actions (filter toggle + add button) ─────────────────────────────
+
+function LeaveHeaderActions({ activeFilterCount, onAdd }: {
+  activeFilterCount: number;
+  onAdd: () => void;
+}) {
+  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderActionsRegion();
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setFilterPanelOpen((v) => !v)}
+        className={cn(
+          'flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors',
+          filterPanelOpen
+            ? 'border-primary/50 bg-primary/8 text-primary'
+            : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+        )}
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+        فلترة
+        {activeFilterCount > 0 && (
+          <Badge className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground">
+            {activeFilterCount}
+          </Badge>
+        )}
+      </button>
+      <Button
+        variant="luxe"
+        size="sm"
+        className="h-8 gap-1.5 px-3 text-xs shadow-sm"
+        onClick={onAdd}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        إضافة إجازة
+      </Button>
     </div>
   );
 }

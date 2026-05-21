@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { X, User, Briefcase, Banknote, Phone, ChevronDown } from 'lucide-react';
+import { User, Briefcase, Banknote, Phone } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,11 +13,13 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { data } from '@/features/hr/lib/data';
-import { useJobTitleTemplatesStore } from '@/features/hr/organization/lib/directory/job-title-templates-store';
 import { cn, formatNumber } from '@/shared/utils';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
+import { employeeAssignmentsApi } from '@/features/hr/organization/employees/lib/api/employee-assignments';
+import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
+import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
+import { companiesApi } from '@/features/hr/organization/lib/api/companies';
 
 interface NewEmployeeForm {
   nameAr: string;
@@ -42,8 +45,6 @@ const EMPTY_FORM: NewEmployeeForm = {
   role: 'employee',
 };
 
-// ─── Section header ───────────────────────────────────────────────────────────
-
 function SectionHeader({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description?: string }) {
   return (
     <div className="flex items-center gap-3 pb-1">
@@ -58,8 +59,6 @@ function SectionHeader({ icon: Icon, title, description }: { icon: React.Element
   );
 }
 
-// ─── Field row ────────────────────────────────────────────────────────────────
-
 function Field({ label, required, children, span2 }: { label: string; required?: boolean; children: React.ReactNode; span2?: boolean }) {
   return (
     <div className={cn('space-y-1.5', span2 && 'sm:col-span-2')}>
@@ -71,22 +70,41 @@ function Field({ label, required, children, span2 }: { label: string; required?:
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onCreated?: () => void;
 }
 
-export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
-  const jobTitleTemplates = useJobTitleTemplatesStore((s) => s.templates);
-  const [positionTemplateId, setPositionTemplateId] = React.useState<string>('_none');
+export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
   const [form, setForm] = React.useState<NewEmployeeForm>(EMPTY_FORM);
   const [errors, setErrors] = React.useState<Partial<Record<keyof NewEmployeeForm, string>>>({});
-  const [saved, setSaved] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+
+  const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
+  const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
+  const [companyId, setCompanyId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (open) setPositionTemplateId('_none');
+    if (!open) return;
+    void (async () => {
+      try {
+        const companies = await companiesApi.getAll({ limit: 1 });
+        const cid = companies.items[0]?.id ?? null;
+        setCompanyId(cid);
+        if (cid) {
+          const [br, dp] = await Promise.all([
+            branchesApi.getAll({ companyId: cid, limit: 200 }),
+            departmentsApi.getAll({ companyId: cid, limit: 200 }),
+          ]);
+          setBranches(br.items);
+          setDepartments(dp.items);
+        }
+      } catch {
+        // silently ignore — user can still type ids
+      }
+    })();
   }, [open]);
 
   const patch = <K extends keyof NewEmployeeForm>(k: K, v: NewEmployeeForm[K]) =>
@@ -95,34 +113,73 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
   const validate = (): boolean => {
     const e: typeof errors = {};
     if (!form.nameAr.trim()) e.nameAr = 'مطلوب';
-    if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) e.email = 'بريد غير صالح';
-    if (!form.phone.trim()) e.phone = 'مطلوب';
-    if (!form.nationalId.trim()) e.nationalId = 'مطلوب';
-    if (!form.position.trim()) e.position = 'مطلوب';
-    if (!form.departmentId) e.departmentId = 'مطلوب';
-    if (!form.branchId) e.branchId = 'مطلوب';
     if (!form.startDate) e.startDate = 'مطلوب';
-    if (!form.baseSalary || Number(form.baseSalary) <= 0) e.baseSalary = 'مطلوب';
+    if (!form.branchId) e.branchId = 'مطلوب';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
+    if (!companyId) {
+      setSaveError('لم يتم العثور على شركة. تأكد من إعداد بيانات الشركة أولاً.');
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const emp = await employeesApi.create({
+        employeeCode: `EMP-${Date.now()}`,
+        nameAr: form.nameAr.trim(),
+        email: form.email.trim() || null,
+        phone: form.phone.trim() || null,
+        nationalId: form.nationalId.trim() || null,
+        nationality: form.nationality.trim() || null,
+        gender: form.gender || null,
+        birthDate: form.birthDate || null,
+        maritalStatus: form.maritalStatus || null,
+        position: form.position.trim() || null,
+        managerId: form.managerId !== 'none' ? form.managerId : null,
+        contractType: form.contractType || null,
+        startDate: form.startDate || null,
+        baseSalary: form.baseSalary || null,
+        housingAllowance: form.housingAllowance || null,
+        transportAllowance: form.transportAllowance || null,
+        otherAllowances: form.otherAllowances || null,
+        bankAccount: form.bankAccount.trim() || null,
+        iban: form.iban.trim() || null,
+        address: form.address.trim() || null,
+        role: form.role || null,
+      });
+
+      await employeeAssignmentsApi.create(emp.id, {
+        companyId,
+        branchId: form.branchId,
+        departmentId: form.departmentId || null,
+        isPrimary: true,
+        status: 'active',
+        startDate: form.startDate || null,
+      });
+
+      toast.success('تم إضافة الموظف بنجاح');
+      onCreated?.();
       onOpenChange(false);
       setForm(EMPTY_FORM);
-      setPositionTemplateId('_none');
-    }, 1200);
+      setErrors({});
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'employees.create');
+      setSaveError(displayMessage);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleClose = () => {
     onOpenChange(false);
     setForm(EMPTY_FORM);
     setErrors({});
-    setPositionTemplateId('_none');
+    setSaveError(null);
   };
 
   const totalComp = formatNumber(
@@ -135,7 +192,6 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden border-border p-0">
-        {/* Header */}
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">إضافة موظف جديد</DialogTitle>
@@ -143,7 +199,6 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
           </DialogHeader>
         </div>
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
 
           {/* Personal info */}
@@ -185,15 +240,8 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="رقم الهوية / الإقامة" required>
-                <Input
-                  dir="ltr"
-                  value={form.nationalId}
-                  onChange={(e) => patch('nationalId', e.target.value)}
-                  className={cn(errors.nationalId && 'border-destructive')}
-                  placeholder="1098765432"
-                />
-                {errors.nationalId && <p className="text-[11px] text-destructive">{errors.nationalId}</p>}
+              <Field label="رقم الهوية / الإقامة">
+                <Input dir="ltr" value={form.nationalId} onChange={(e) => patch('nationalId', e.target.value)} placeholder="1098765432" />
               </Field>
               <Field label="العنوان">
                 <Input value={form.address} onChange={(e) => patch('address', e.target.value)} placeholder="حي النخيل، الرياض" />
@@ -207,26 +255,11 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
           <div className="space-y-4">
             <SectionHeader icon={Phone} title="بيانات التواصل" />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="البريد الإلكتروني" required>
-                <Input
-                  dir="ltr"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => patch('email', e.target.value)}
-                  className={cn(errors.email && 'border-destructive')}
-                  placeholder="name@company.sa"
-                />
-                {errors.email && <p className="text-[11px] text-destructive">{errors.email}</p>}
+              <Field label="البريد الإلكتروني">
+                <Input dir="ltr" type="email" value={form.email} onChange={(e) => patch('email', e.target.value)} placeholder="name@company.sa" />
               </Field>
-              <Field label="رقم الجوال" required>
-                <Input
-                  dir="ltr"
-                  value={form.phone}
-                  onChange={(e) => patch('phone', e.target.value)}
-                  className={cn(errors.phone && 'border-destructive')}
-                  placeholder="+966 50 123 4567"
-                />
-                {errors.phone && <p className="text-[11px] text-destructive">{errors.phone}</p>}
+              <Field label="رقم الجوال">
+                <Input dir="ltr" value={form.phone} onChange={(e) => patch('phone', e.target.value)} placeholder="+966 50 123 4567" />
               </Field>
               <Field label="جهة اتصال الطوارئ">
                 <Input dir="ltr" value={form.emergencyContact} onChange={(e) => patch('emergencyContact', e.target.value)} placeholder="+966 55 000 1111" />
@@ -240,83 +273,33 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
           <div className="space-y-4">
             <SectionHeader icon={Briefcase} title="بيانات التوظيف" description="المسمى الوظيفي والقسم والفرع" />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="قالب مسمى وظيفي (اختياري)" span2>
-                <Select
-                  value={positionTemplateId}
-                  onValueChange={(v) => {
-                    setPositionTemplateId(v);
-                    if (v === '_none') return;
-                    const t = jobTitleTemplates.find((x) => x.id === v);
-                    if (t) {
-                      patch('position', t.titleAr);
-                      if (t.defaultDepartmentId) patch('departmentId', t.defaultDepartmentId);
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="اختر قالباً من المسميات الوظيفية" />
-                  </SelectTrigger>
+              <Field label="المسمى الوظيفي" span2>
+                <Input value={form.position} onChange={(e) => patch('position', e.target.value)} placeholder="مدير تطوير الأعمال" />
+              </Field>
+              <Field label="القسم">
+                <Select value={form.departmentId || '_none'} onValueChange={(v) => patch('departmentId', v === '_none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="_none">— إدخال يدوي فقط —</SelectItem>
-                    {jobTitleTemplates.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.titleAr}
-                      </SelectItem>
+                    <SelectItem value="_none">— بدون قسم —</SelectItem>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground">
-                  تُدار القوالب من صفحة «المسميات الوظيفية» تحت الهيكل الإداري.
-                </p>
-              </Field>
-              <Field label="المسمى الوظيفي" required span2>
-                <Input
-                  value={form.position}
-                  onChange={(e) => {
-                    patch('position', e.target.value);
-                    setPositionTemplateId('_none');
-                  }}
-                  className={cn(errors.position && 'border-destructive')}
-                  placeholder="مدير تطوير الأعمال"
-                />
-                {errors.position && <p className="text-[11px] text-destructive">{errors.position}</p>}
-              </Field>
-              <Field label="القسم" required>
-                <Select value={form.departmentId} onValueChange={(v) => patch('departmentId', v)}>
-                  <SelectTrigger className={cn(errors.departmentId && 'border-destructive')}>
-                    <SelectValue placeholder="اختر القسم" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {data.departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.departmentId && <p className="text-[11px] text-destructive">{errors.departmentId}</p>}
               </Field>
               <Field label="الفرع" required>
-                <Select value={form.branchId} onValueChange={(v) => patch('branchId', v)}>
+                <Select value={form.branchId || '_none'} onValueChange={(v) => patch('branchId', v === '_none' ? '' : v)}>
                   <SelectTrigger className={cn(errors.branchId && 'border-destructive')}>
                     <SelectValue placeholder="اختر الفرع" />
                   </SelectTrigger>
                   <SelectContent>
-                    {data.branches.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    <SelectItem value="_none">— اختر الفرع —</SelectItem>
+                    {branches.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {errors.branchId && <p className="text-[11px] text-destructive">{errors.branchId}</p>}
-              </Field>
-              <Field label="المدير المباشر">
-                <Select value={form.managerId} onValueChange={(v) => patch('managerId', v)}>
-                  <SelectTrigger><SelectValue placeholder="اختياري" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">بدون مدير مباشر</SelectItem>
-                    {data.employees.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </Field>
               <Field label="نوع العقد">
                 <Select value={form.contractType} onValueChange={(v) => patch('contractType', v)}>
@@ -359,17 +342,8 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
           <div className="space-y-4">
             <SectionHeader icon={Banknote} title="الراتب والبدلات" description="الحزمة التعويضية الشهرية" />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="الراتب الأساسي (ر.س)" required>
-                <Input
-                  type="number"
-                  dir="ltr"
-                  min={0}
-                  value={form.baseSalary}
-                  onChange={(e) => patch('baseSalary', e.target.value)}
-                  className={cn(errors.baseSalary && 'border-destructive')}
-                  placeholder="10000"
-                />
-                {errors.baseSalary && <p className="text-[11px] text-destructive">{errors.baseSalary}</p>}
+              <Field label="الراتب الأساسي (ر.س)">
+                <Input type="number" dir="ltr" min={0} value={form.baseSalary} onChange={(e) => patch('baseSalary', e.target.value)} placeholder="10000" />
               </Field>
               <Field label="بدل السكن (ر.س)">
                 <Input type="number" dir="ltr" min={0} value={form.housingAllowance} onChange={(e) => patch('housingAllowance', e.target.value)} placeholder="0" />
@@ -381,7 +355,7 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
                 <Input type="number" dir="ltr" min={0} value={form.otherAllowances} onChange={(e) => patch('otherAllowances', e.target.value)} placeholder="0" />
               </Field>
             </div>
-            {(Number(form.baseSalary) > 0) && (
+            {Number(form.baseSalary) > 0 && (
               <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">إجمالي الحزمة الشهرية</span>
                 <span className="font-display text-lg font-bold text-primary" dir="ltr">{totalComp} ر.س</span>
@@ -396,13 +370,18 @@ export function NewEmployeeDrawer({ open, onOpenChange }: Props) {
               </Field>
             </div>
           </div>
+
+          {saveError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              {saveError}
+            </div>
+          )}
         </div>
 
-        {/* Footer */}
         <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-          <Button variant="outline" type="button" onClick={handleClose}>إلغاء</Button>
-          <Button variant="luxe" type="button" onClick={handleSave} disabled={saved}>
-            {saved ? '✓ تم الحفظ' : 'إضافة الموظف'}
+          <Button variant="outline" type="button" onClick={handleClose} disabled={saving}>إلغاء</Button>
+          <Button variant="luxe" type="button" onClick={() => void handleSave()} disabled={saving}>
+            {saving ? 'جاري الحفظ…' : 'إضافة الموظف'}
           </Button>
         </DialogFooter>
       </DialogContent>

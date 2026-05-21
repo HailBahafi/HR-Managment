@@ -370,7 +370,6 @@ export function templateStagesToCore(stages: HRApprovalTemplateStage[]): HRAppro
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
-export const HR_REQUESTS_GENERAL_PATH = '/hr/requests/general';
 export const HR_REQUESTS_TYPES_PATH = '/hr/requests/request-types';
 export const HR_REQUESTS_APPROVAL_ASSIGNMENT_PATH = '/hr/requests/approval-assignment';
 

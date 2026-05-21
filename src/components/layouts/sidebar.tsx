@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Shield,
   LayoutGrid, MapPin, Link2, CalendarRange,
-  InboxIcon, ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
+  ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet,
   UserCircle, Briefcase, UserPlus,
 } from 'lucide-react';
@@ -37,7 +37,7 @@ const mobileNav: MobileNavItem[] = [
     key: 'employees', label: 'الهيكل الإداري', href: '/hr/organization/employees', icon: Users,
     children: [
       { label: 'سجل الموظفين', href: '/hr/organization/employees', icon: Users },
-      { label: 'العملاء والزوار', href: '/hr/organization/contacts', icon: UserCircle },
+      { label: 'المستخدمين', href: '/hr/organization/contacts', icon: UserCircle },
       { label: 'المسميات الوظيفية', href: '/hr/organization/job-titles', icon: Briefcase },
       { label: 'الفروع', href: '/hr/organization/branches', icon: Building2 },
       { label: 'الأقسام', href: '/hr/organization/departments', icon: Building2 },
@@ -77,7 +77,6 @@ const mobileNav: MobileNavItem[] = [
   {
     key: 'requests', label: 'الطلبات', icon: ClipboardList,
     children: [
-      { label: 'الطلبات العامة', href: '/hr/requests/general', icon: InboxIcon },
       { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
       { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
       { label: 'أنواع الطلبات', href: '/hr/requests/request-types', icon: ListChecks },

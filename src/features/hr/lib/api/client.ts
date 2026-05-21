@@ -93,9 +93,13 @@ function unwrapEnvelope<T>(payload: unknown): T {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', query, body, signal } = options;
-  const headers: HeadersInit = {};
+  const headers: Record<string, string> = {};
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
+  }
+  const token = typeof window !== 'undefined' ? window.localStorage.getItem('access_token') : null;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
   const response = await fetch(buildUrl(path, query), {
     method,

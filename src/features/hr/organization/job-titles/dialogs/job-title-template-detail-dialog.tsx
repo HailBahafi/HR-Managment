@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { JobTitleTemplateRecord } from '@/features/hr/organization/lib/directory/job-title-templates-store';
+import type { JobTitleTemplateRecord } from '@/features/hr/organization/job-titles/services/job-titles.service';
 
 type Props = {
   row: JobTitleTemplateRecord | null;

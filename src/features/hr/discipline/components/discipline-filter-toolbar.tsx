@@ -32,11 +32,11 @@ export interface DisciplineFilterToolbarProps {
   selectedEmpIds: Set<string>;
   onSelectedEmpIdsChange: (s: Set<string>) => void;
 
-  statusFilter: string;
-  onStatusFilterChange: (v: string) => void;
-  statusOrder: readonly string[];
-  statusLabels: Record<string, string>;
-  statusCounts: Record<string, number>;
+  statusFilter?: string;
+  onStatusFilterChange?: (v: string) => void;
+  statusOrder?: readonly string[];
+  statusLabels?: Record<string, string>;
+  statusCounts?: Record<string, number>;
 
   viewMode: DisciplineViewMode;
   onViewModeChange: (v: DisciplineViewMode) => void;
@@ -63,11 +63,11 @@ export const DisciplineFilterToolbar = React.forwardRef<
     empPickerEmployees,
     selectedEmpIds,
     onSelectedEmpIdsChange,
-    statusFilter,
-    onStatusFilterChange,
-    statusOrder,
-    statusLabels,
-    statusCounts,
+    statusFilter = 'all',
+    onStatusFilterChange = () => {},
+    statusOrder = [],
+    statusLabels = {},
+    statusCounts = {},
     viewMode,
     onViewModeChange,
     onDateBoundsChange,

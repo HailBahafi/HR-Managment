@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import {
   EmptyState,
 } from '@/features/hr/requests/components/shared-ui';
-import { useHRDisciplinePayrollDeductionsStore } from '@/features/hr/discipline/lib/payroll-deductions-store';
+import { useDisciplinePayrollDeductionsDirectoryModel } from '@/features/hr/discipline/deductions/hooks/useDisciplinePayrollDeductionsDirectoryModel';
 import {
   DEDUCTION_KIND_LABELS,
   DEDUCTION_STATUS_LABELS,
@@ -24,6 +24,8 @@ import {
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { toast } from 'sonner';
 
 const DEDUCTION_STATUS_ORDER: readonly HRDeductionStatus[] = ['ready', 'posted', 'calculated', 'cancelled'];
 
@@ -50,7 +52,8 @@ const STATUS_COLORS: Record<HRDeductionStatus, string> = {
 };
 
 export function DeductionsClient() {
-  const { deductions } = useHRDisciplinePayrollDeductionsStore();
+  const m = useDisciplinePayrollDeductionsDirectoryModel();
+  const { deductions } = m;
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
@@ -111,13 +114,26 @@ export function DeductionsClient() {
 
   const dateRangeActive = dateMeta.hasRestriction;
 
+  const handleSendToPayroll = React.useCallback(
+    async (id: string) => {
+      try {
+        await m.sendToPayroll(id);
+        toast.success('تم إرسال الاستقطاع إلى الرواتب');
+      } catch (err) {
+        const { displayMessage } = handleApiError(err, 'discipline-payroll-deductions.send');
+        toast.error(displayMessage);
+      }
+    },
+    [m],
+  );
+
   const kindSelect = (
     <div className="flex min-w-0 items-center gap-2">
       <Label htmlFor="deduction-kind-filter" className="shrink-0 text-[11px] font-medium text-muted-foreground">
         نوع الاستقطاع
       </Label>
       <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as KindFilter)}>
-        <SelectTrigger id="deduction-kind-filter" className="h-8 max-w-[14rem] text-xs" dir="rtl">
+        <SelectTrigger id="deduction-kind-filter" className="h-8 max-w-56 text-xs" dir="rtl">
           <SelectValue placeholder="النوع" />
         </SelectTrigger>
         <SelectContent>
@@ -166,93 +182,120 @@ export function DeductionsClient() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{listFiltered.length} استقطاع</p>
+      {m.listError ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">
+          {m.listError}
+        </p>
+      ) : null}
 
-      {deductions.length === 0 ? (
-        <EmptyState title="لا توجد استقطاعات" />
-      ) : searchFiltered.length === 0 ? (
-        <EmptyState title="لا توجد استقطاعات مطابقة للموظفين المحددين." />
-      ) : dateFiltered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center px-4">
-          <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today'
-              ? 'لا توجد استقطاعات بتاريخ التسجيل ضمن اليوم ضمن النتائج الحالية.'
-              : dateMeta.tab === 'week'
-                ? 'لا توجد استقطاعات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-                : dateMeta.tab === 'month'
-                  ? 'لا توجد استقطاعات ضمن هذا الشهر ضمن النتائج الحالية.'
-                  : dateMeta.tab === 'custom' && dateRangeActive
-                    ? 'لا توجد استقطاعات ضمن نطاق التاريخ المخصص مع عوامل التصفية الحالية.'
-                    : 'لا توجد استقطاعات ضمن الفترة المحددة.'}
-          </p>
-          {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
-              عرض كل الفترات
-            </Button>
-          ) : null}
-        </div>
-      ) : listFiltered.length === 0 ? (
-        <EmptyState title="لا توجد استقطاعات مطابقة لحالة التصفية المحددة." />
-      ) : viewMode === 'list' ? (
-        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50 text-right">
-                <th className="p-3 font-semibold">القضية</th>
-                <th className="p-3 font-semibold">الموظف</th>
-                <th className="p-3 font-semibold">النوع</th>
-                <th className="p-3 font-semibold">الشهر</th>
-                <th className="p-3 font-semibold">الحالة</th>
-                <th className="p-3 font-semibold">المبلغ</th>
-              </tr>
-            </thead>
-            <tbody>
+      {m.loading ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">{listFiltered.length} استقطاع</p>
+
+          {deductions.length === 0 ? (
+            <EmptyState title="لا توجد استقطاعات" />
+          ) : searchFiltered.length === 0 ? (
+            <EmptyState title="لا توجد استقطاعات مطابقة للموظفين المحددين." />
+          ) : dateFiltered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center px-4">
+              <p className="text-sm text-muted-foreground">
+                {dateMeta.tab === 'today'
+                  ? 'لا توجد استقطاعات بتاريخ التسجيل ضمن اليوم ضمن النتائج الحالية.'
+                  : dateMeta.tab === 'week'
+                    ? 'لا توجد استقطاعات ضمن هذا الأسبوع ضمن النتائج الحالية.'
+                    : dateMeta.tab === 'month'
+                      ? 'لا توجد استقطاعات ضمن هذا الشهر ضمن النتائج الحالية.'
+                      : dateMeta.tab === 'custom' && dateRangeActive
+                        ? 'لا توجد استقطاعات ضمن نطاق التاريخ المخصص مع عوامل التصفية الحالية.'
+                        : 'لا توجد استقطاعات ضمن الفترة المحددة.'}
+              </p>
+              {dateRangeActive ? (
+                <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
+                  عرض كل الفترات
+                </Button>
+              ) : null}
+            </div>
+          ) : listFiltered.length === 0 ? (
+            <EmptyState title="لا توجد استقطاعات مطابقة لحالة التصفية المحددة." />
+          ) : viewMode === 'list' ? (
+            <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
+              <table className="w-full min-w-[640px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50 text-right">
+                    <th className="p-3 font-semibold">القضية</th>
+                    <th className="p-3 font-semibold">الموظف</th>
+                    <th className="p-3 font-semibold">النوع</th>
+                    <th className="p-3 font-semibold">الشهر</th>
+                    <th className="p-3 font-semibold">الحالة</th>
+                    <th className="p-3 font-semibold">المبلغ</th>
+                    <th className="p-3 font-semibold"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listFiltered.map((d) => (
+                    <tr key={d.id} className="border-b border-border/60">
+                      <td className="p-3 font-mono text-xs text-muted-foreground">{d.caseNumber}</td>
+                      <td className="p-3 font-medium">{d.employeeNameAr}</td>
+                      <td className="p-3 text-muted-foreground">{DEDUCTION_KIND_LABELS[d.deductionKind]}</td>
+                      <td className="p-3 font-mono text-xs">{d.month}</td>
+                      <td className="p-3">
+                        <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_COLORS[d.status])}>
+                          {DEDUCTION_STATUS_LABELS[d.status]}
+                        </span>
+                      </td>
+                      <td className="p-3 font-semibold tabular-nums">{formatNumber(d.amount)}</td>
+                      <td className="p-3">
+                        {d.status === 'ready' ? (
+                          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => handleSendToPayroll(d.id)}>
+                            إرسال للرواتب
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {listFiltered.map((d) => (
-                <tr key={d.id} className="border-b border-border/60">
-                  <td className="p-3 font-mono text-xs text-muted-foreground">{d.caseNumber}</td>
-                  <td className="p-3 font-medium">{d.employeeNameAr}</td>
-                  <td className="p-3 text-muted-foreground">{DEDUCTION_KIND_LABELS[d.deductionKind]}</td>
-                  <td className="p-3 font-mono text-xs">{d.month}</td>
-                  <td className="p-3">
-                    <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_COLORS[d.status])}>
+                <div key={d.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-mono text-[10px] font-bold text-muted-foreground">{d.caseNumber}</p>
+                      <p className="font-semibold truncate mt-0.5">{d.employeeNameAr}</p>
+                    </div>
+                    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', STATUS_COLORS[d.status])}>
                       {DEDUCTION_STATUS_LABELS[d.status]}
                     </span>
-                  </td>
-                  <td className="p-3 font-semibold tabular-nums">{formatNumber(d.amount)} ر.س</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {listFiltered.map(d => (
-            <div key={d.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-mono text-[10px] font-bold text-muted-foreground">{d.caseNumber}</p>
-                  <p className="font-semibold truncate mt-0.5">{d.employeeNameAr}</p>
+                  </div>
+                  {d.reasonAr && <p className="text-xs text-muted-foreground line-clamp-2">{d.reasonAr}</p>}
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      {DEDUCTION_KIND_LABELS[d.deductionKind]}
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      {d.month}
+                    </span>
+                  </div>
+                  <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
+                    <span className="text-[10px] text-muted-foreground">المبلغ</span>
+                    <span className="font-semibold">{formatNumber(d.amount)}</span>
+                  </div>
+                  {d.status === 'ready' ? (
+                    <div className="pt-1">
+                      <Button size="sm" variant="outline" className="w-full h-7 text-[11px]" onClick={() => handleSendToPayroll(d.id)}>
+                        إرسال للرواتب
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
-                <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', STATUS_COLORS[d.status])}>
-                  {DEDUCTION_STATUS_LABELS[d.status]}
-                </span>
-              </div>
-              {d.reasonAr && <p className="text-xs text-muted-foreground line-clamp-2">{d.reasonAr}</p>}
-              <div className="flex flex-wrap gap-1.5">
-                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  {DEDUCTION_KIND_LABELS[d.deductionKind]}
-                </span>
-                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  {d.month}
-                </span>
-              </div>
-              <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
-                <span className="text-[10px] text-muted-foreground">المبلغ</span>
-                <span className="font-semibold">{formatNumber(d.amount)} ر.س</span>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

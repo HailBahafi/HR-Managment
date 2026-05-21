@@ -53,6 +53,9 @@ export function LoginPage() {
         password: values.password,
       });
       useAuthStore.getState().setUser(result.user);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('access_token', result.access_token);
+      }
       router.push('/hr/dashboard');
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'auth.login');

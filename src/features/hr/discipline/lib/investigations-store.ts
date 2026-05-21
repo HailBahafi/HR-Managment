@@ -13,7 +13,7 @@ const SEED: HRDisciplineInvestigationRecord[] = [
     investigatorName:'محمد الزهراني', date:'2026-03-05',
     employeeStatement:'أنكر المخالفة وقال إن النقاش كان في سياق مهني معتاد.',
     witnessStatement:'شهد ثلاثة زملاء بوقوع الحادثة وأكدوا مضمون الشتائم وحدة.',
-    result:'upheld', recommendation:'توجيه إنذار رسمي أول مع خصم يوم من الراتب.',
+    result:'proven', recommendation:'توجيه إنذار رسمي أول مع خصم يوم من الراتب.', recommendationType: 'warning',
     createdAt:'2026-03-05T10:00:00Z', updatedAt:'2026-03-07T12:00:00Z',
   },
   {
@@ -22,7 +22,7 @@ const SEED: HRDisciplineInvestigationRecord[] = [
     investigatorName:'سارة القحطاني', date:'2026-03-12',
     employeeStatement:'أقرت باستخدام الهاتف لكنها نفت إفشاء معلومات سرية وقالت إن الحديث كان عامًا.',
     witnessStatement:'مدير قسم IT أكد سماعه لتفاصيل سرية خلال الاجتماع.',
-    result:'upheld', recommendation:'خصم 500 ريال وإنذار خطي مع تقييد صلاحية الوصول.',
+    result:'proven', recommendation:'خصم 500 ريال وإنذار خطي مع تقييد صلاحية الوصول.', recommendationType: 'deduction',
     createdAt:'2026-03-12T11:00:00Z', updatedAt:'2026-03-14T09:00:00Z',
   },
   {
@@ -31,7 +31,7 @@ const SEED: HRDisciplineInvestigationRecord[] = [
     investigatorName:'خالد العتيبي', date:'2026-03-17',
     employeeStatement:'ادعى أن البيانات كانت صحيحة وقت الكتابة لكن أجري تعديلات بعد ذلك.',
     witnessStatement:'التدقيق المحاسبي أكد وجود فجوة بين البيانات المقدمة والواقع.',
-    result:'upheld', recommendation:'خصم يومين من الراتب وتحذير خطي رسمي.',
+    result:'proven', recommendation:'خصم يومين من الراتب وتحذير خطي رسمي.', recommendationType: 'deduction',
     createdAt:'2026-03-17T09:00:00Z', updatedAt:'2026-03-19T11:00:00Z',
   },
   {
@@ -40,7 +40,7 @@ const SEED: HRDisciplineInvestigationRecord[] = [
     investigatorName:'محمد الزهراني', date:'2026-03-25',
     employeeStatement:'أكد رفضه للتعليمات قائلاً إنها كانت غير مختصة بمهامه الوظيفية.',
     witnessStatement:'شهدتان تأكدان صدور التعليمات بشكل صريح ورفضها علناً.',
-    result:'upheld', recommendation:'إنذار نهائي مع توصية بخصم ثلاثة أيام.',
+    result:'proven', recommendation:'إنذار نهائي مع توصية بخصم ثلاثة أيام.', recommendationType: 'warning',
     createdAt:'2026-03-25T08:00:00Z', updatedAt:'2026-03-27T10:00:00Z',
   },
   {
@@ -49,7 +49,7 @@ const SEED: HRDisciplineInvestigationRecord[] = [
     investigatorName:'خالد العتيبي', date:'2026-03-27',
     employeeStatement:'ادعى أن استخدام الوسائل كان ضمن نطاق العمل المسموح به.',
     witnessStatement:'سجلات الشبكة تثبت تصفحًا مستمرًا لمواقع غير متعلقة بالعمل.',
-    result:'upheld', recommendation:'غرامة 1000 ريال وتقييد وصول الإنترنت.',
+    result:'proven', recommendation:'غرامة 1000 ريال وتقييد وصول الإنترنت.', recommendationType: 'deduction',
     createdAt:'2026-03-27T09:00:00Z', updatedAt:'2026-03-29T11:00:00Z',
   },
   {
@@ -58,7 +58,7 @@ const SEED: HRDisciplineInvestigationRecord[] = [
     investigatorName:'سارة القحطاني', date:'2026-04-11',
     employeeStatement:'أقرت بحدوث نقاش لكنها نفت استخدام ألفاظ غير لائقة.',
     witnessStatement:'شهد مدير المشاريع تصاعد النقاش وسمع ألفاظًا غير لائقة أمام عملاء.',
-    result:'to_warning', recommendation:'توجيه إنذار رسمي مع خصم 300 ريال.',
+    result:'proven', recommendation:'توجيه إنذار رسمي مع خصم 300 ريال.', recommendationType: 'warning',
     createdAt:'2026-04-11T10:00:00Z', updatedAt:'2026-04-13T09:00:00Z',
   },
   {
@@ -67,7 +67,7 @@ const SEED: HRDisciplineInvestigationRecord[] = [
     investigatorName:'محمد الزهراني', date:'2026-04-12',
     employeeStatement:'أكد أن التواصل مع المورد كان لاستيضاح بعض التفاصيل التقنية فقط.',
     witnessStatement:'رسائل البريد الإلكتروني تثبت تفاوضًا صريحًا حول الأسعار والشروط.',
-    result:'upheld', recommendation:'خصم 1500 ريال وإنذار نهائي.',
+    result:'proven', recommendation:'خصم 1500 ريال وإنذار نهائي.', recommendationType: 'deduction',
     createdAt:'2026-04-12T08:00:00Z', updatedAt:'2026-04-14T10:00:00Z',
   },
   {
@@ -76,7 +76,7 @@ const SEED: HRDisciplineInvestigationRecord[] = [
     investigatorName:'خالد العتيبي', date:'2026-04-06',
     employeeStatement:'أنكر التعمد وقال إن الدخول كان بسبب خطأ في بيانات التسجيل وليس قصدًا.',
     witnessStatement:'سجل الدخول يبين طلبات متعددة لملفات موظفين آخرين بشكل مقصود.',
-    result:'upheld', recommendation:'خصم 700 ريال وتقييد صلاحيات النظام.',
+    result:'proven', recommendation:'خصم 700 ريال وتقييد صلاحيات النظام.', recommendationType: 'deduction',
     createdAt:'2026-04-06T11:00:00Z', updatedAt:'2026-04-08T13:00:00Z',
   },
 ];

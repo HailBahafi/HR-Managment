@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { data } from '@/features/hr/lib/data';
 import type { ContractStatus } from '@/features/hr/contracts/types';
 import { cn } from '@/shared/utils';
 import {
@@ -24,8 +23,6 @@ import {
 } from '@/features/hr/attendance/checkpoint-links/constants/checkpoint-links-panel';
 import { useCheckpointLinksPanelModel } from '@/features/hr/attendance/checkpoint-links/hooks/useCheckpointLinksPanelModel';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
-
-type DataEmployee = (typeof data.employees)[number];
 
 export function CheckpointLinksPanel() {
   const m = useCheckpointLinksPanelModel();
@@ -61,7 +58,7 @@ export function CheckpointLinksPanel() {
           {m.batches.map(({ batchId, rows, eff: efd }) => {
             const empIds = [...new Set(rows.map((r) => r.employeeId))];
             const cpIds  = [...new Set(rows.map((r) => r.checkInPointId))];
-            const emps   = empIds.map((id) => data.employees.find((e) => e.id === id)).filter(Boolean) as (typeof data.employees)[number][];
+            const emps   = empIds.map((id) => m.employees.find((e) => e.id === id)).filter(Boolean) as NonNullable<ReturnType<typeof m.employees.find>>[];
             const cpoints = cpIds.map((id) => m.checkpoints.find((c) => c.id === id)).filter(Boolean) as NonNullable<
               (typeof m.checkpoints)[number]
             >[];
@@ -97,15 +94,15 @@ export function CheckpointLinksPanel() {
                     {emps.slice(0, 3).map((e, i) => (
                       <div
                         key={e.id}
-                        title={e.name}
+                        title={e.nameAr}
                         className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-card bg-muted text-[10px] font-bold text-muted-foreground"
                         style={{ marginRight: i > 0 ? '-8px' : undefined, zIndex: 3 - i }}
                       >
-                        {(e as DataEmployee & { avatar?: string }).avatar ? (
+                        {(e as { avatar?: string }).avatar ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={(e as DataEmployee & { avatar?: string }).avatar} alt={e.name} className="h-full w-full object-cover" />
+                          <img src={e.avatar ?? ''} alt={e.nameAr} className="h-full w-full object-cover" />
                         ) : (
-                          e.name.slice(0, 1)
+                          e.nameAr.slice(0, 1)
                         )}
                       </div>
                     ))}
@@ -223,9 +220,6 @@ export function CheckpointLinksPanel() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={CP_LINKS_ALL_DEPARTMENTS}>كل الأقسام</SelectItem>
-                      {data.departments.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
                   <div className="relative">
@@ -245,10 +239,8 @@ export function CheckpointLinksPanel() {
                     <p className="py-6 text-center text-xs text-muted-foreground">لا يوجد موظف مطابق</p>
                   ) : (
                     m.employeesFiltered.slice(0, 120).map((e) => {
-                      const dept = data.departments.find((d) => d.id === e.departmentId);
                       const st   = e.contractStatus as ContractStatus;
                       const sel  = m.empSel.has(e.id);
-                      const emp  = e as DataEmployee & { avatar?: string };
                       return (
                         <button
                           key={e.id}
@@ -266,18 +258,17 @@ export function CheckpointLinksPanel() {
                             {sel && <Check className="h-3 w-3 text-primary-foreground" />}
                           </div>
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-                            {emp.avatar ? (
+                            {e.avatar ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={emp.avatar} alt={e.name} className="h-full w-full object-cover" />
+                              <img src={e.avatar ?? ''} alt={e.nameAr} className="h-full w-full object-cover" />
                             ) : (
-                              <span className="text-[10px] font-bold">{e.name.slice(0, 1)}</span>
+                              <span className="text-[10px] font-bold">{e.nameAr.slice(0, 1)}</span>
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{e.name}</p>
+                            <p className="truncate font-medium">{e.nameAr}</p>
                             <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
                               <span className="font-mono" dir="ltr">{e.employeeCode}</span>
-                              {dept?.name && <span>· {dept.name}</span>}
                             </p>
                           </div>
                           <Badge

@@ -1,18 +1,29 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/features/hr/requests/components/shared-ui';
-import { useHRDisciplineInvestigationsStore } from '@/features/hr/discipline/lib/investigations-store';
-import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
-import type { HRInvestigationResult } from '@/features/hr/discipline/lib/types';
-import { INVESTIGATION_RESULT_LABELS, INVESTIGATION_RESULT_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
+import { useDisciplineInvestigationsDirectoryModel } from '@/features/hr/discipline/investigations/hooks/useDisciplineInvestigationsDirectoryModel';
+import type {
+  HRInvestigationRecommendation,
+  HRInvestigationResult,
+} from '@/features/hr/discipline/lib/types';
+import {
+  INVESTIGATION_RECOMMENDATION_LABELS,
+  INVESTIGATION_RESULT_LABELS,
+  INVESTIGATION_RESULT_FILTER_ORDER,
+} from '@/features/hr/discipline/lib/types';
+import {
+  toInvestigationRecommendationDto,
+  toInvestigationResultDto,
+} from '@/features/hr/discipline/investigations/services/discipline-investigations.service';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
@@ -20,7 +31,6 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { data } from '@/features/hr/lib/data';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -30,24 +40,31 @@ const RESULT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvest
 
 type ResultFilter = 'all' | HRInvestigationResult;
 
+type RecommendationFilter = 'all' | HRInvestigationRecommendation;
+
 interface DraftForm {
   caseId: string; caseNumber: string; employeeId: string; employeeNameAr: string;
-  investigatorName: string; date: string;
+  investigatorEmployeeId: string; investigatorName: string; date: string;
   employeeStatement: string; witnessStatement: string;
-  result: HRInvestigationResult; recommendation: string;
+  result: HRInvestigationResult;
+  recommendationType: RecommendationFilter;
+  deductionType: 'days' | 'hours' | 'fixed_amount';
+  deductionValue: string;
 }
 const EMPTY: DraftForm = {
   caseId: '', caseNumber: '', employeeId: '', employeeNameAr: '',
-  investigatorName: '', date: '', employeeStatement: '', witnessStatement: '', result: 'upheld', recommendation: '',
+  investigatorEmployeeId: '', investigatorName: '', date: '', employeeStatement: '', witnessStatement: '',
+  result: 'proven', recommendationType: 'all', deductionType: 'days', deductionValue: '',
 };
 
 export function InvestigationsClient() {
-  const { investigations, add, remove } = useHRDisciplineInvestigationsStore();
-  const { cases } = useHRViolationCasesStore();
+  const m = useDisciplineInvestigationsDirectoryModel();
+  const { investigations } = m;
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [resultFilter, setResultFilter] = React.useState<ResultFilter>('all');
+  const [recommendationFilter, setRecommendationFilter] = React.useState<RecommendationFilter>('all');
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
   const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
   const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
@@ -66,7 +83,8 @@ export function InvestigationsClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
 
-  const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
+  const caseOptions = m.cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
+  const investigatorOptions = m.employees.map((e) => ({ value: e.id, label: e.nameAr }));
 
   const searchFiltered = React.useMemo(
     () =>
@@ -82,8 +100,14 @@ export function InvestigationsClient() {
   );
 
   const listFiltered = React.useMemo(
-    () => (resultFilter === 'all' ? filtered : filtered.filter((i) => i.result === resultFilter)),
-    [filtered, resultFilter],
+    () => {
+      const byResult = resultFilter === 'all'
+        ? filtered
+        : filtered.filter((i) => i.result === resultFilter);
+      if (recommendationFilter === 'all') return byResult;
+      return byResult.filter((i) => i.recommendationType === recommendationFilter);
+    },
+    [filtered, recommendationFilter, resultFilter],
   );
 
   const statusCounts = React.useMemo(() => {
@@ -99,9 +123,12 @@ export function InvestigationsClient() {
     const parts: string[] = [];
     parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل' : `الموظفون: ${selectedEmpIds.size} محدد`);
     parts.push(`النتيجة: ${resultFilter === 'all' ? 'الكل' : INVESTIGATION_RESULT_LABELS[resultFilter]}`);
+    if (recommendationFilter !== 'all') {
+      parts.push(`التوصية: ${INVESTIGATION_RECOMMENDATION_LABELS[recommendationFilter]}`);
+    }
     parts.push(`التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`);
     return parts.join(' · ');
-  }, [selectedEmpIds.size, resultFilter, dateBounds.from, dateBounds.to]);
+  }, [selectedEmpIds.size, resultFilter, recommendationFilter, dateBounds.from, dateBounds.to]);
 
   const investigationsPdfRows = React.useMemo(
     () =>
@@ -120,8 +147,8 @@ export function InvestigationsClient() {
     () =>
       investigationsPdfRows.length === 0 ? null : (
         <GenericRegisterPrintHtml
-          companyNameAr={data.company.name}
-          companyNameEn={data.company.nameEn}
+          companyNameAr={m.company?.nameAr ?? '—'}
+          companyNameEn={m.company?.nameEn ?? m.company?.nameAr ?? '—'}
           titleAr="سجل التحقيقات"
           filterSummary={investigationsFilterSummary}
           headers={['رقم القضية', 'الموظف', 'المحقق', 'التاريخ', 'النتيجة', 'التوصية']}
@@ -129,7 +156,7 @@ export function InvestigationsClient() {
           landscape
         />
       ),
-    [investigationsPdfRows, investigationsFilterSummary],
+    [investigationsPdfRows, investigationsFilterSummary, m.company],
   );
 
   const handleExportInvestigationsExcel = React.useCallback(async () => {
@@ -156,20 +183,51 @@ export function InvestigationsClient() {
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
   const handleCaseSelect = (caseId: string) => {
-    const c = cases.find(x => x.id === caseId);
+    const c = m.cases.find(x => x.id === caseId);
     if (!c) { set({ caseId: '', caseNumber: '', employeeId: '', employeeNameAr: '' }); return; }
     set({ caseId: c.id, caseNumber: c.caseNumber, employeeId: c.employeeId, employeeNameAr: c.employeeNameAr });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setFormError(null);
     if (!draft.caseId) { setFormError('المخالفة مطلوبة'); return; }
-    if (!draft.investigatorName.trim()) { setFormError('اسم المحقق مطلوب'); return; }
+    if (!draft.investigatorEmployeeId) { setFormError('المحقق مطلوب'); return; }
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
-    add(draft);
-    toast.success('تم إضافة التحقيق');
-    setDrawerOpen(false);
-    setDraft(EMPTY);
+    if (!m.companyId) { setFormError('تعذر تحديد الشركة'); return; }
+
+    const recommendation = draft.recommendationType === 'all'
+      ? null
+      : toInvestigationRecommendationDto(draft.recommendationType);
+
+    const deductionValue = recommendation === 'deduction'
+      ? Number(draft.deductionValue)
+      : undefined;
+
+    if (recommendation === 'deduction' && (!draft.deductionValue || Number.isNaN(deductionValue))) {
+      setFormError('قيمة الاستقطاع مطلوبة');
+      return;
+    }
+
+    try {
+      await m.add({
+        companyId: m.companyId,
+        violationRecordId: draft.caseId,
+        investigatorEmployeeId: draft.investigatorEmployeeId,
+        investigationDate: draft.date,
+        employeeStatement: draft.employeeStatement || null,
+        witnessStatement: draft.witnessStatement || null,
+        result: toInvestigationResultDto(draft.result),
+        recommendation,
+        deductionType: recommendation === 'deduction' ? draft.deductionType : undefined,
+        deductionValue: recommendation === 'deduction' ? deductionValue : undefined,
+      });
+      toast.success('تم إضافة التحقيق');
+      setDrawerOpen(false);
+      setDraft(EMPTY);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-investigations.save');
+      setFormError(displayMessage);
+    }
   };
 
   useEntityFilterSlot(
@@ -210,6 +268,20 @@ export function InvestigationsClient() {
         statusOrder={INVESTIGATION_RESULT_FILTER_ORDER}
         statusLabels={INVESTIGATION_RESULT_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
+        beforeEmployeePicker={(
+          <MinimalDropdown
+            value={recommendationFilter}
+            onChange={(v) => setRecommendationFilter(v as RecommendationFilter)}
+            options={[
+              { value: 'all', label: 'كل التوصيات' },
+              ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({
+                value,
+                label,
+              })),
+            ]}
+            placeholder="التوصية"
+          />
+        )}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onDateBoundsChange={onDateBoundsChange}
@@ -220,6 +292,7 @@ export function InvestigationsClient() {
       empPickerList,
       selectedEmpIds,
       resultFilter,
+      recommendationFilter,
       statusCounts,
       viewMode,
       listFiltered,
@@ -238,7 +311,15 @@ export function InvestigationsClient() {
         printable={printable}
       />
 
-      {searchFiltered.length === 0 ? (
+      {m.listError ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">
+          {m.listError}
+        </p>
+      ) : null}
+
+      {m.loading ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
+      ) : searchFiltered.length === 0 ? (
         <EmptyState title="لا توجد تحقيقات مطابقة للبحث أو الموظفين المحددين." />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
@@ -329,15 +410,26 @@ export function InvestigationsClient() {
         </div>
       )}
 
-      <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة تحقيق" size="lg" onSave={handleSave} error={formError}>
+      <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة تحقيق" size="lg" onSave={() => void handleSave()} error={formError}>
         <FormField label="المخالفة" required>
           <SearchableDropdown value={draft.caseId} onChange={handleCaseSelect} options={caseOptions} placeholder="اختر المخالفة…" />
         </FormField>
         {draft.employeeNameAr && (
           <div className="rounded-lg bg-muted/40 px-3 py-2 text-sm"><span className="text-muted-foreground">الموظف: </span>{draft.employeeNameAr}</div>
         )}
-        <FormField label="اسم المحقق" required>
-          <Input value={draft.investigatorName} onChange={e => set({ investigatorName: e.target.value })} placeholder="اسم المحقق…" />
+        <FormField label="المحقق" required>
+          <SearchableDropdown
+            value={draft.investigatorEmployeeId}
+            onChange={(v) => {
+              const selected = m.employees.find((emp) => emp.id === v);
+              set({
+                investigatorEmployeeId: v,
+                investigatorName: selected?.nameAr ?? '',
+              });
+            }}
+            options={investigatorOptions}
+            placeholder="اختر المحقق…"
+          />
         </FormField>
         <FormField label="تاريخ التحقيق" required>
           <Input type="date" value={draft.date} onChange={e => set({ date: e.target.value })} />
@@ -352,11 +444,69 @@ export function InvestigationsClient() {
           <MinimalDropdown value={draft.result} onChange={v => set({ result: v as HRInvestigationResult })} options={RESULT_OPTIONS} />
         </FormField>
         <FormField label="التوصية">
-          <textarea value={draft.recommendation} onChange={e => set({ recommendation: e.target.value })} placeholder="توصية المحقق…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          <MinimalDropdown
+            value={draft.recommendationType}
+            onChange={(v) => {
+              const next = v as RecommendationFilter;
+              set({
+                recommendationType: next,
+                deductionValue: next === 'deduction' ? draft.deductionValue : '',
+              });
+            }}
+            options={[
+              { value: 'all', label: 'بدون توصية' },
+              ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({
+                value,
+                label,
+              })),
+            ]}
+          />
         </FormField>
+        {draft.recommendationType === 'deduction' ? (
+          <>
+            <FormField label="نوع الاستقطاع" required>
+              <MinimalDropdown
+                value={draft.deductionType}
+                onChange={(v) => set({ deductionType: v as DraftForm['deductionType'] })}
+                options={[
+                  { value: 'days', label: 'أيام' },
+                  { value: 'hours', label: 'ساعات' },
+                  { value: 'fixed_amount', label: 'مبلغ ثابت' },
+                ]}
+              />
+            </FormField>
+            <FormField label="قيمة الاستقطاع" required>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={draft.deductionValue}
+                onChange={(e) => set({ deductionValue: e.target.value })}
+                placeholder="أدخل القيمة…"
+              />
+            </FormField>
+          </>
+        ) : null}
       </HRSettingsFormDrawer>
 
-      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} onConfirm={() => { if (deleteId) { remove(deleteId); toast.success('تم الحذف'); setDeleteId(null); } }} title="حذف التحقيق" />
+      <ConfirmationModal
+        open={!!deleteId}
+        onOpenChange={v => !v && setDeleteId(null)}
+        onConfirm={() => {
+          if (!deleteId) return;
+          void (async () => {
+            try {
+              await m.remove(deleteId);
+              toast.success('تم الحذف');
+              setDeleteId(null);
+            } catch (err) {
+              const { displayMessage } = handleApiError(err, 'discipline-investigations.delete');
+              toast.error(displayMessage);
+            }
+          })();
+        }}
+        title="حذف التحقيق"
+      />
     </div>
   );
 }

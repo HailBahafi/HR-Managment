@@ -1,12 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Pencil, Trash2, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, Filter, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Switch } from '@/components/ui/switch';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { useSetPageTitle } from '@/components/layouts/page-title-context';
+import { usePageHeaderActions, usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
+import { Badge } from '@/components/ui/badge';
 import {
   MinimalDropdown, ConfirmationModal, HRSettingsFormDrawer,
   FormField, ActiveBadge,
@@ -39,6 +42,41 @@ const CATEGORY_DROPDOWN_OPTIONS = HR_REQUEST_TYPE_CATEGORIES.map((c) => ({
   value: c,
   label: HR_REQUEST_TYPE_CATEGORY_LABELS_AR[c],
 }));
+
+function RequestTypesHeaderActions({
+  activeFilterCount,
+  onNew,
+}: {
+  activeFilterCount: number;
+  onNew: () => void;
+}) {
+  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderActionsRegion();
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setFilterPanelOpen((v) => !v)}
+        className={cn(
+          'flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors',
+          filterPanelOpen
+            ? 'border-primary/50 bg-primary/8 text-primary'
+            : 'border-border bg-muted/40 text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground',
+        )}
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+        فلترة
+        {activeFilterCount > 0 && (
+          <Badge variant="secondary" className="ms-0.5 h-4 min-w-4 rounded-full px-1 py-0 text-[10px] leading-none">
+            {activeFilterCount}
+          </Badge>
+        )}
+      </button>
+      <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={onNew}>
+        <Plus className="h-4 w-4" /> نوع جديد
+      </Button>
+    </div>
+  );
+}
 
 const CATEGORY_FILTER_OPTIONS = [
   { value: 'all', label: 'كل التصنيفات' },
@@ -89,12 +127,12 @@ export function RequestTypesClient() {
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [afterCategoryFilter, typeStatusFilter]);
 
-  const openCreate = () => {
+  const openCreate = React.useCallback(() => {
     setEditId(null);
     setDraft({ ...EMPTY, sortOrder: requestTypes.length + 1 });
     setError(null);
     setDrawerOpen(true);
-  };
+  }, [requestTypes.length]);
 
   const openEdit = (rt: HRRequestTypeEntity) => {
     setEditId(rt.id);
@@ -139,6 +177,20 @@ export function RequestTypesClient() {
     return activeDepts.find(d => d.id === id)?.nameAr ?? '—';
   };
 
+  const activeFilterCount = React.useMemo(() => {
+    let count = 0;
+    if (categoryFilter !== 'all') count++;
+    if (typeStatusFilter !== 'all') count++;
+    return count;
+  }, [categoryFilter, typeStatusFilter]);
+
+  useSetPageTitle({ titleAr: 'أنواع الطلبات', descriptionAr: 'تصنيفات ونماذج طلبات الموارد البشرية', iconName: 'ListChecks' });
+
+  usePageHeaderActions(
+    () => <RequestTypesHeaderActions activeFilterCount={activeFilterCount} onNew={openCreate} />,
+    [activeFilterCount, openCreate],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -168,11 +220,6 @@ export function RequestTypesClient() {
             { value: 'grid', label: 'شبكة', icon: 'layout-grid' },
           ],
         }}
-        trailingActions={(
-          <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> نوع جديد
-          </Button>
-        )}
       />
     ),
     [

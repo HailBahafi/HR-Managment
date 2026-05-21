@@ -170,7 +170,7 @@ interface ConfirmationModalProps {
   onOpenChange: (v: boolean) => void;
   title?: string;
   description?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   confirmLabel?: string;
   variant?: 'destructive' | 'default';
 }
@@ -206,6 +206,7 @@ interface DrawerProps {
   size?: 'md' | 'lg' | 'xl';
   onSave: () => void;
   saveLabel?: string;
+  saveDisabled?: boolean;
   children: React.ReactNode;
   error?: string | null;
   /** لربط قوائم منبثقة (مثل MultiSelect) داخل نفس طبقة محتوى الحوار */
@@ -220,7 +221,7 @@ const DRAWER_SIZE = {
   xl: 'max-w-[min(48rem,calc(100vw-1.5rem))]',
 };
 
-export function HRSettingsFormDrawer({ open, onOpenChange, title, description, size = 'lg', onSave, saveLabel = 'حفظ', children, error, contentRef, footerExtra }: DrawerProps) {
+export function HRSettingsFormDrawer({ open, onOpenChange, title, description, size = 'lg', onSave, saveLabel = 'حفظ', saveDisabled, children, error, contentRef, footerExtra }: DrawerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent ref={contentRef} className={cn('flex max-h-[95vh] w-full flex-col overflow-hidden border-border p-0', DRAWER_SIZE[size])}>
@@ -243,7 +244,7 @@ export function HRSettingsFormDrawer({ open, onOpenChange, title, description, s
         <div className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 flex flex-row-reverse flex-wrap justify-end sm:justify-start sm:flex-row items-center gap-2">
           {footerExtra ? <div className="me-auto flex flex-wrap gap-2 sm:me-0 sm:order-first">{footerExtra}</div> : null}
           <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>إلغاء</Button>
-          <Button variant="luxe" type="button" onClick={onSave}>{saveLabel}</Button>
+          <Button variant="luxe" type="button" onClick={onSave} disabled={saveDisabled}>{saveLabel}</Button>
         </div>
       </DialogContent>
     </Dialog>
