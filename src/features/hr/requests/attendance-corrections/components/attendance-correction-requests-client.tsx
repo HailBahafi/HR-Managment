@@ -27,7 +27,7 @@ import {
   useAttendanceCorrectionRequestsStore,
   attendanceCorrectionStatusLabelAr,
 } from '@/features/hr/requests/lib/attendance-correction-store';
-import type { AttendanceCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-types';
+import type { AttendanceCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
 import { ATTENDANCE_PREVIOUS_STATUS_PRESETS } from '@/features/hr/requests/lib/attendance-correction-types';
 import { cn } from '@/shared/utils';
 
@@ -97,13 +97,21 @@ function statusBadgeClass(s: AttendanceCorrectionRequest['status']) {
 
 export function AttendanceCorrectionRequestsClient() {
   const departments = useHRConfigurationStore((s) => s.departments);
+  const { requestTypes, fetchRequestTypes } = useHRConfigurationStore();
   const employees = useHREmployeeDirectoryStore((s) => s.employees);
   const activeEmployees = React.useMemo(() => employees.filter((e) => e.status === 'active'), [employees]);
 
-  const items = useAttendanceCorrectionRequestsStore((s) => s.items);
-  const submit = useAttendanceCorrectionRequestsStore((s) => s.submit);
-  const approve = useAttendanceCorrectionRequestsStore((s) => s.approve);
-  const reject = useAttendanceCorrectionRequestsStore((s) => s.reject);
+  const { items, fetch: fetchItems, submit, approve, reject } = useAttendanceCorrectionRequestsStore();
+
+  React.useEffect(() => {
+    fetchItems();
+    fetchRequestTypes();
+  }, []);
+
+  const attendanceRequestTypes = React.useMemo(
+    () => requestTypes.filter(rt => rt.requestCategory === 'attendance' && rt.isActive),
+    [requestTypes],
+  );
 
   const [appliedDept, setAppliedDept] = React.useState('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
@@ -112,7 +120,7 @@ export function AttendanceCorrectionRequestsClient() {
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [formEmpId, setFormEmpId] = React.useState('');
-  const [formApproverId, setFormApproverId] = React.useState('');
+  const [formRequestTypeId, setFormRequestTypeId] = React.useState('');
   const [formWorkDate, setFormWorkDate] = React.useState('');
   const [formPrevIn, setFormPrevIn] = React.useState('');
   const [formPrevOut, setFormPrevOut] = React.useState('');
@@ -164,7 +172,7 @@ export function AttendanceCorrectionRequestsClient() {
 
   const resetForm = React.useCallback(() => {
     setFormEmpId('');
-    setFormApproverId('');
+    setFormRequestTypeId('');
     setFormWorkDate('');
     setFormPrevIn('');
     setFormPrevOut('');
@@ -176,35 +184,17 @@ export function AttendanceCorrectionRequestsClient() {
 
   const openNew = React.useCallback(() => {
     resetForm();
-    if (activeEmployees.length) {
-      setFormEmpId(activeEmployees[0]!.id);
-      const mgr = activeEmployees.find((e) => e.hierarchyRole === 'dept_head' || e.hierarchyRole === 'gm') ?? activeEmployees[0];
-      setFormApproverId(mgr!.id);
-    }
+    if (activeEmployees.length) setFormEmpId(activeEmployees[0]!.id);
+    if (attendanceRequestTypes.length) setFormRequestTypeId(attendanceRequestTypes[0]!.id);
     setDialogOpen(true);
-  }, [activeEmployees, resetForm]);
+  }, [activeEmployees, attendanceRequestTypes, resetForm]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emp = activeEmployees.find((x) => x.id === formEmpId);
-    const appr = activeEmployees.find((x) => x.id === formApproverId);
-    if (!emp || !appr) {
-      toast.error('اختر الموظف والمعتمد.');
-      return;
-    }
-    if (!formPrevStatus.trim()) {
-      toast.error('حدد الحالة السابقة للسجل.');
-      return;
-    }
-    const res = submit({
-      employeeId: emp.id,
-      employeeNameAr: emp.nameAr,
-      departmentId: emp.departmentId,
-      approverId: appr.id,
-      approverNameAr: appr.nameAr,
+    const res = await submit({
+      employeeId: formEmpId,
+      requestTypeId: formRequestTypeId,
       workDate: formWorkDate,
-      previousCheckIn: formPrevIn,
-      previousCheckOut: formPrevOut,
       correctedCheckIn: formCorrIn,
       correctedCheckOut: formCorrOut,
       previousStatusAr: formPrevStatus.trim(),
@@ -302,13 +292,12 @@ export function AttendanceCorrectionRequestsClient() {
         render: (r) => <span className="font-mono text-xs" dir="ltr">{r.workDate}</span>,
       },
       {
-        key: 'approver',
-        title: 'المعتمد (الموافقة)',
+        key: 'requestType',
+        title: 'نوع الطلب',
         hideOnMobile: true,
         render: (r) => (
           <div>
-            <p className="text-sm font-medium">{r.approverNameAr}</p>
-            <p className="text-[10px] font-mono text-muted-foreground" dir="ltr">{r.approverId}</p>
+            <p className="text-sm font-medium">{r.requestTypeNameAr}</p>
           </div>
         ),
       },
@@ -353,10 +342,10 @@ export function AttendanceCorrectionRequestsClient() {
           }
           return (
             <div className="flex gap-1" onClick={(ev) => ev.stopPropagation()}>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-emerald-500/10" title="موافقة" aria-label="موافقة" onClick={() => { approve(r.id); toast.success('تم اعتماد طلب التصحيح.'); }}>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-emerald-500/10" title="موافقة" aria-label="موافقة" onClick={async () => { await approve(r.id); toast.success('تم اعتماد طلب التصحيح.'); }}>
                 <CheckCircle2 className="h-4 w-4" />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" title="رفض" aria-label="رفض" onClick={() => { reject(r.id); toast.message('تم رفض الطلب.'); }}>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" title="رفض" aria-label="رفض" onClick={async () => { await reject(r.id); toast.message('تم رفض الطلب.'); }}>
                 <XCircle className="h-4 w-4" />
               </Button>
             </div>
@@ -393,14 +382,14 @@ export function AttendanceCorrectionRequestsClient() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground font-mono" dir="ltr">{r.workDate}</p>
-                <p className="text-xs"><span className="text-muted-foreground">المعتمد:</span> {r.approverNameAr}</p>
+                <p className="text-xs"><span className="text-muted-foreground">نوع الطلب:</span> {r.requestTypeNameAr}</p>
                 {timeCell(r.previousCheckIn, r.previousCheckOut, 'سابق حضور', 'سابق انصراف')}
                 {timeCell(r.correctedCheckIn, r.correctedCheckOut, 'مصحح حضور', 'مصحح انصراف')}
                 <p className="text-xs"><span className="text-muted-foreground">الحالة السابقة:</span> {r.previousStatusAr}</p>
                 {r.status === 'pending' ? (
                   <div className="flex gap-2 pt-1">
-                    <Button type="button" variant="outline" size="sm" className="flex-1 text-xs" onClick={() => { approve(r.id); toast.success('تم اعتماد طلب التصحيح.'); }}>موافقة</Button>
-                    <Button type="button" variant="outline" size="sm" className="flex-1 text-xs text-destructive" onClick={() => { reject(r.id); toast.message('تم رفض الطلب.'); }}>رفض</Button>
+                    <Button type="button" variant="outline" size="sm" className="flex-1 text-xs" onClick={async () => { await approve(r.id); toast.success('تم اعتماد طلب التصحيح.'); }}>موافقة</Button>
+                    <Button type="button" variant="outline" size="sm" className="flex-1 text-xs text-destructive" onClick={async () => { await reject(r.id); toast.message('تم رفض الطلب.'); }}>رفض</Button>
                   </div>
                 ) : null}
               </div>
@@ -429,13 +418,17 @@ export function AttendanceCorrectionRequestsClient() {
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="المعتمد (من يوافق على الطلب)">
-                <Select value={formApproverId} onValueChange={setFormApproverId}>
-                  <SelectTrigger><SelectValue placeholder="اختر المعتمد…" /></SelectTrigger>
+              <FormField label="نوع الطلب">
+                <Select value={formRequestTypeId} onValueChange={setFormRequestTypeId}>
+                  <SelectTrigger><SelectValue placeholder="اختر نوع الطلب…" /></SelectTrigger>
                   <SelectContent>
-                    {activeEmployees.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>{e.nameAr} — {e.jobTitleAr}</SelectItem>
-                    ))}
+                    {attendanceRequestTypes.length === 0 ? (
+                      <SelectItem value="__none__" disabled>لا توجد أنواع طلبات للحضور — أضفها من إعدادات أنواع الطلبات</SelectItem>
+                    ) : (
+                      attendanceRequestTypes.map((rt) => (
+                        <SelectItem key={rt.id} value={rt.id}>{rt.nameAr}</SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </FormField>

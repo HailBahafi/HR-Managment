@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { allowanceTypesApi, type AllowanceTypeResponseDto } from './api/allowance-types';
 
 export type HRAllowanceTypeRecord = {
   id: string;
@@ -13,42 +14,79 @@ export type HRAllowanceTypeRecord = {
   updatedAt: string;
 };
 
-type Draft = Omit<HRAllowanceTypeRecord, 'id' | 'updatedAt'>;
-
-const nowIso = () => new Date().toISOString();
-function newId() { return `halt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`; }
-
-const SEED: HRAllowanceTypeRecord[] = [
-  { id: 'halt-housing', code: 'HOUSING', nameAr: 'بدل سكن', nameEn: 'Housing allowance', typicalAmount: 2500, currency: 'SAR', sortOrder: 10, isActive: true, updatedAt: nowIso() },
-  { id: 'halt-transport', code: 'TRANSPORT', nameAr: 'بدل انتقال / مواصلات', nameEn: 'Transport allowance', typicalAmount: 800, currency: 'SAR', sortOrder: 20, isActive: true, updatedAt: nowIso() },
-  { id: 'halt-phone', code: 'PHONE', nameAr: 'بدل اتصالات', nameEn: 'Phone / communications', typicalAmount: 200, currency: 'SAR', sortOrder: 30, isActive: true, updatedAt: nowIso() },
-  { id: 'halt-food', code: 'FOOD', nameAr: 'بدل طعام', nameEn: 'Food allowance', typicalAmount: 500, currency: 'SAR', sortOrder: 40, isActive: true, updatedAt: nowIso() },
-  { id: 'halt-field', code: 'FIELD', nameAr: 'بدل ميداني / طبيعة عمل', nameEn: 'Field work allowance', typicalAmount: 1200, currency: 'SAR', sortOrder: 50, isActive: true, updatedAt: nowIso() },
-  { id: 'halt-gas', code: 'FUEL', nameAr: 'بدل وقود / مركبة عمل', nameEn: 'Fuel / company vehicle', typicalAmount: 600, currency: 'SAR', sortOrder: 60, isActive: true, updatedAt: nowIso() },
-  { id: 'halt-risk', code: 'RISK', nameAr: 'بدل خطورة / عمل ليلي', nameEn: 'Risk / night shift', typicalAmount: 400, currency: 'SAR', sortOrder: 70, isActive: true, updatedAt: nowIso() },
-];
+function mapApi(r: AllowanceTypeResponseDto): HRAllowanceTypeRecord {
+  return {
+    id: r.id,
+    code: r.code,
+    nameAr: r.nameAr,
+    nameEn: r.nameEn ?? '',
+    typicalAmount: parseFloat(r.typicalAmount ?? '0') || 0,
+    currency: r.currency,
+    sortOrder: r.sortOrder,
+    isActive: r.isActive,
+    updatedAt: r.updatedAt,
+  };
+}
 
 interface State {
   items: HRAllowanceTypeRecord[];
-  add: (data: Draft) => string;
-  update: (id: string, patch: Partial<Draft>) => void;
-  remove: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  fetch: () => Promise<void>;
+  add: (data: Omit<HRAllowanceTypeRecord, 'id' | 'updatedAt'>) => Promise<string>;
+  update: (id: string, patch: Partial<Omit<HRAllowanceTypeRecord, 'id' | 'updatedAt'>>) => Promise<void>;
+  remove: (id: string) => Promise<void>;
 }
 
-export const useHRAllowanceTypesStore = create<State>()(
-  persist(
-    (set) => ({
-      items: SEED.map(x => ({ ...x })),
-      add: (data) => {
-        const id = newId();
-        set(s => ({ items: [...s.items, { ...data, id, updatedAt: nowIso() }] }));
-        return id;
-      },
-      update: (id, patch) => set(s => ({
-        items: s.items.map(row => row.id === id ? { ...row, ...patch, updatedAt: nowIso() } : row),
-      })),
-      remove: (id) => set(s => ({ items: s.items.filter(row => row.id !== id) })),
-    }),
-    { name: 'hr_allowance_types_v1', version: 1, partialize: s => ({ items: s.items }) },
-  ),
-);
+export const useHRAllowanceTypesStore = create<State>()((set) => ({
+  items: [],
+  isLoading: false,
+  error: null,
+
+  fetch: async () => {
+    const companyId = useAuthStore.getState().activeCompanyId;
+    if (!companyId) return;
+    set({ isLoading: true, error: null });
+    try {
+      const result = await allowanceTypesApi.list({ companyId, limit: 200 });
+      set({ items: result.items.map(mapApi), isLoading: false });
+    } catch (e) {
+      set({ error: (e as Error).message, isLoading: false });
+    }
+  },
+
+  add: async (data) => {
+    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const created = await allowanceTypesApi.create({
+      companyId,
+      code: data.code,
+      nameAr: data.nameAr,
+      nameEn: data.nameEn,
+      typicalAmount: data.typicalAmount,
+      currency: data.currency,
+      sortOrder: data.sortOrder,
+      isActive: data.isActive,
+    });
+    const mapped = mapApi(created);
+    set(s => ({ items: [...s.items, mapped] }));
+    return mapped.id;
+  },
+
+  update: async (id, patch) => {
+    const updated = await allowanceTypesApi.update(id, {
+      code: patch.code,
+      nameAr: patch.nameAr,
+      nameEn: patch.nameEn,
+      typicalAmount: patch.typicalAmount,
+      currency: patch.currency,
+      sortOrder: patch.sortOrder,
+      isActive: patch.isActive,
+    });
+    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
+  },
+
+  remove: async (id) => {
+    await allowanceTypesApi.delete(id);
+    set(s => ({ items: s.items.filter(row => row.id !== id) }));
+  },
+}));

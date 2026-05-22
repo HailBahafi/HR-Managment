@@ -5,6 +5,8 @@ import type {
   HRRequestFieldDefinition, HRApprovalStage,
 } from './types';
 import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, slugify, type HRRequestTypeCategory } from './types';
+import { requestTypesApi, type ApiRequestType } from './api/request-types';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 
 function uid() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 function now() { return new Date().toISOString(); }
@@ -14,7 +16,7 @@ function getDescendantIds(depts: HRDepartmentEntity[], id: string): string[] {
   return [...children, ...children.flatMap(cid => getDescendantIds(depts, cid))];
 }
 
-// ─── Seeds ────────────────────────────────────────────────────────────────────
+// ─── Local-only seeds (departments & templates — no backend yet) ──────────────
 
 const DEPT_SEED: HRDepartmentEntity[] = [
   { id: 'd1', nameAr: 'الموارد البشرية', nameEn: 'Human Resources', slug: 'human-resources', sortOrder: 1, isActive: true },
@@ -53,47 +55,30 @@ const TEMPLATE_SEED: HRRequestTemplateEntity[] = [
   },
 ];
 
-function normalizeRequestCategory(v: unknown): HRRequestTypeCategory {
-  if (v === 'leaves' || v === 'attendance' || v === 'advances') return v;
-  return 'leaves';
-}
+// ─── Mapping API → frontend type ─────────────────────────────────────────────
 
-const RT_SEED: HRRequestTypeEntity[] = [
-  {
-    id: 'rt-leave', departmentId: HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
-    nameAr: 'طلب إجازة', nameEn: 'Leave Request',
-    slug: 'leave-request', sortOrder: 1, isActive: true,
-    subtypes: [], requestCategory: 'leaves', approvalAssignmentTemplateId: 'aat-standard', approvalStages: [],
-  },
-  {
-    id: 'rt-sick', departmentId: HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
-    nameAr: 'إجازة مرضية', nameEn: 'Sick Leave',
-    slug: 'sick-leave', sortOrder: 2, isActive: true,
-    subtypes: [], requestCategory: 'leaves', approvalAssignmentTemplateId: 'aat-fast', approvalStages: [],
-  },
-  {
-    id: 'rt-certificate', departmentId: HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
-    nameAr: 'طلب شهادة راتب', nameEn: 'Salary Certificate',
-    slug: 'salary-certificate', sortOrder: 3, isActive: true,
-    subtypes: [], requestCategory: 'advances', approvalAssignmentTemplateId: 'aat-standard', approvalStages: [],
-  },
-  {
-    id: 'rt-equipment', departmentId: 'd2',
-    nameAr: 'طلب معدات', nameEn: 'Equipment Request',
-    slug: 'equipment-request', sortOrder: 4, isActive: true,
-    subtypes: [
-      { id: 'rst-laptop', nameAr: 'لابتوب', nameEn: 'Laptop', slug: 'laptop', sortOrder: 1, isActive: true },
-      { id: 'rst-monitor', nameAr: 'شاشة', nameEn: 'Monitor', slug: 'monitor', sortOrder: 2, isActive: true },
-    ],
-    requestCategory: 'advances', approvalAssignmentTemplateId: 'aat-standard', approvalStages: [],
-  },
-  {
-    id: 'rt-travel', departmentId: 'd5',
-    nameAr: 'طلب سفر', nameEn: 'Travel Request',
-    slug: 'travel-request', sortOrder: 5, isActive: true,
-    subtypes: [], requestCategory: 'attendance', approvalAssignmentTemplateId: 'aat-fast', approvalStages: [],
-  },
-];
+function mapApiRequestType(r: ApiRequestType): HRRequestTypeEntity {
+  return {
+    id: r.id,
+    departmentId: r.departmentId ?? HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
+    nameAr: r.nameAr,
+    nameEn: r.nameEn,
+    slug: r.slug,
+    sortOrder: r.sortOrder,
+    isActive: r.isActive,
+    requestCategory: (r.requestCategory as HRRequestTypeCategory) ?? 'leaves',
+    approvalAssignmentTemplateId: r.approvalAssignmentTemplateId ?? null,
+    approvalStages: (r.approvalStages ?? []) as unknown as HRApprovalStage[],
+    subtypes: (r.subtypes ?? []).map(s => ({
+      id: s.slug,
+      nameAr: s.nameAr,
+      nameEn: s.nameEn ?? '',
+      slug: s.slug,
+      sortOrder: s.sortOrder ?? 0,
+      isActive: s.isActive ?? true,
+    })),
+  };
+}
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -101,20 +86,23 @@ interface HRConfigState {
   departments: HRDepartmentEntity[];
   templates: HRRequestTemplateEntity[];
   requestTypes: HRRequestTypeEntity[];
+  requestTypesLoading: boolean;
+  requestTypesError: string | null;
 
-  // Templates
+  // Request types — async (backed by API)
+  fetchRequestTypes: () => Promise<void>;
+  addRequestType: (draft: Omit<HRRequestTypeEntity, 'id' | 'slug'>) => Promise<void>;
+  updateRequestType: (id: string, patch: Partial<Omit<HRRequestTypeEntity, 'id'>>) => Promise<void>;
+  deleteRequestType: (id: string) => Promise<void>;
+  getRequestTypeBySlugs: (deptSlug: string, typeSlug: string) => { dept: HRDepartmentEntity | null; type: HRRequestTypeEntity } | null;
+
+  // Templates — local only
   addTemplate: (draft: Omit<HRRequestTemplateEntity, 'id' | 'slug'>) => void;
   updateTemplate: (id: string, patch: Partial<Omit<HRRequestTemplateEntity, 'id'>>) => void;
   deleteTemplate: (id: string) => void;
   getTemplateById: (id: string | null | undefined) => HRRequestTemplateEntity | undefined;
 
-  // Request types
-  addRequestType: (draft: Omit<HRRequestTypeEntity, 'id' | 'slug'>) => void;
-  updateRequestType: (id: string, patch: Partial<Omit<HRRequestTypeEntity, 'id'>>) => void;
-  deleteRequestType: (id: string) => void;
-  getRequestTypeBySlugs: (deptSlug: string, typeSlug: string) => { dept: HRDepartmentEntity | null; type: HRRequestTypeEntity } | null;
-
-  // Departments CRUD
+  // Departments — local only
   addDepartment: (draft: Omit<HRDepartmentEntity, 'id' | 'slug'>) => { ok: boolean; error?: string };
   updateDepartment: (id: string, patch: Partial<Omit<HRDepartmentEntity, 'id'>>) => { ok: boolean; error?: string };
   deleteDepartment: (id: string) => { ok: boolean; error?: string; affectedRequestTypes?: number };
@@ -125,7 +113,85 @@ export const useHRConfigurationStore = create<HRConfigState>()(
     (set, get) => ({
       departments: DEPT_SEED,
       templates: TEMPLATE_SEED,
-      requestTypes: RT_SEED,
+      requestTypes: [],
+      requestTypesLoading: false,
+      requestTypesError: null,
+
+      // ── Request types (API-backed) ──────────────────────────────────────────
+
+      fetchRequestTypes: async () => {
+        const companyId = useAuthStore.getState().activeCompanyId;
+        if (!companyId) return;
+        set({ requestTypesLoading: true, requestTypesError: null });
+        try {
+          const result = await requestTypesApi.list({ companyId, limit: 200 });
+          set({ requestTypes: result.items.map(mapApiRequestType), requestTypesLoading: false });
+        } catch (e) {
+          set({ requestTypesError: (e as Error).message, requestTypesLoading: false });
+        }
+      },
+
+      addRequestType: async (draft) => {
+        const companyId = useAuthStore.getState().activeCompanyId ?? '';
+        const created = await requestTypesApi.create({
+          companyId,
+          nameAr: draft.nameAr,
+          nameEn: draft.nameEn,
+          slug: slugify(draft.nameAr),
+          requestCategory: draft.requestCategory,
+          departmentId: draft.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID ? null : draft.departmentId,
+          sortOrder: draft.sortOrder,
+          isActive: draft.isActive,
+          approvalStages: draft.approvalStages as never[],
+          subtypes: draft.subtypes.map(s => ({
+            slug: s.slug,
+            nameAr: s.nameAr,
+            nameEn: s.nameEn,
+            sortOrder: s.sortOrder,
+            isActive: s.isActive,
+          })),
+        });
+        set(s => ({ requestTypes: [...s.requestTypes, mapApiRequestType(created)] }));
+      },
+
+      updateRequestType: async (id, patch) => {
+        const updated = await requestTypesApi.update(id, {
+          nameAr: patch.nameAr,
+          nameEn: patch.nameEn,
+          slug: patch.nameAr ? slugify(patch.nameAr) : undefined,
+          requestCategory: patch.requestCategory,
+          sortOrder: patch.sortOrder,
+          isActive: patch.isActive,
+          approvalStages: patch.approvalStages as never[] | undefined,
+          subtypes: patch.subtypes?.map(s => ({
+            slug: s.slug,
+            nameAr: s.nameAr,
+            nameEn: s.nameEn,
+            sortOrder: s.sortOrder,
+            isActive: s.isActive,
+          })),
+        });
+        set(s => ({
+          requestTypes: s.requestTypes.map(r => r.id === id ? mapApiRequestType(updated) : r),
+        }));
+      },
+
+      deleteRequestType: async (id) => {
+        await requestTypesApi.delete(id);
+        set(s => ({ requestTypes: s.requestTypes.filter(r => r.id !== id) }));
+      },
+
+      getRequestTypeBySlugs: (deptSlug, typeSlug) => {
+        const { departments, requestTypes } = get();
+        const rt = requestTypes.find(r => r.slug === typeSlug);
+        if (!rt) return null;
+        const dept = rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID
+          ? null
+          : departments.find(d => d.slug === deptSlug) ?? null;
+        return { dept, type: rt };
+      },
+
+      // ── Templates (local) ───────────────────────────────────────────────────
 
       addTemplate: (draft) => {
         const isFirst = get().templates.filter(t => t.isUniversalDefault).length === 0;
@@ -163,20 +229,7 @@ export const useHRConfigurationStore = create<HRConfigState>()(
         return get().templates.find(t => t.id === id);
       },
 
-      addRequestType: (draft) => {
-        const rt: HRRequestTypeEntity = { ...draft, id: `rt-${uid()}`, slug: slugify(draft.nameAr) };
-        set((s) => ({ requestTypes: [...s.requestTypes, rt] }));
-      },
-
-      updateRequestType: (id, patch) => {
-        set((s) => ({
-          requestTypes: s.requestTypes.map(r =>
-            r.id === id ? { ...r, ...patch, slug: patch.nameAr ? slugify(patch.nameAr) : r.slug } : r
-          ),
-        }));
-      },
-
-      deleteRequestType: (id) => set((s) => ({ requestTypes: s.requestTypes.filter(r => r.id !== id) })),
+      // ── Departments (local) ─────────────────────────────────────────────────
 
       addDepartment: (draft) => {
         const { departments } = get();
@@ -212,64 +265,17 @@ export const useHRConfigurationStore = create<HRConfigState>()(
         }));
         return { ok: true, affectedRequestTypes: affected };
       },
-
-      getRequestTypeBySlugs: (deptSlug, typeSlug) => {
-        const { departments, requestTypes } = get();
-        const rt = requestTypes.find(r => r.slug === typeSlug);
-        if (!rt) return null;
-        const dept = rt.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID
-          ? null
-          : departments.find(d => d.slug === deptSlug) ?? null;
-        return { dept, type: rt };
-      },
     }),
     {
       name: 'hr-configuration-storage',
       storage: createJSONStorage(() => localStorage),
-      version: 4,
-      migrate: (persisted: unknown, version: number) => {
-        type RT = HRRequestTypeEntity & { templateId?: string | null; requestCategory?: HRRequestTypeCategory };
-        type P = {
-          departments?: HRDepartmentEntity[];
-          templates?: HRRequestTemplateEntity[];
-          requestTypes?: RT[];
-        };
-        let s = persisted as P;
-
-        if (version < 2) {
-          const existing = s.requestTypes ?? [];
-          const withTpl = existing.map((rt) => ({
-            ...rt,
-            approvalAssignmentTemplateId: rt.approvalAssignmentTemplateId ?? (
-              rt.id === 'rt-leave' || rt.id === 'rt-equipment' || rt.id === 'rt-certificate' ? 'aat-standard'
-                : rt.id === 'rt-travel' || rt.id === 'rt-sick' ? 'aat-fast'
-                  : null
-            ),
-          }));
-          const seen = new Set(withTpl.map(r => r.id));
-          const requestTypes = [...withTpl, ...RT_SEED.filter(r => !seen.has(r.id))];
-          s = {
-            departments: s.departments ?? DEPT_SEED,
-            templates: s.templates ?? TEMPLATE_SEED,
-            requestTypes,
-          };
-        }
-
-        if (version < 3) {
-          const requestTypes = (s.requestTypes ?? []).map(({ templateId: _removed, ...rt }) => rt as RT);
-          s = { ...s, requestTypes };
-        }
-
-        if (version < 4) {
-          const requestTypes = (s.requestTypes ?? []).map((rt) => ({
-            ...rt,
-            requestCategory: normalizeRequestCategory(rt.requestCategory),
-          })) as HRRequestTypeEntity[];
-          s = { ...s, requestTypes };
-        }
-
-        return s as P;
-      },
+      version: 5,
+      partialize: (s) => ({
+        departments: s.departments,
+        templates: s.templates,
+        // requestTypes intentionally not persisted — always fetched from API
+      }),
+      migrate: () => ({}),
     },
   ),
 );

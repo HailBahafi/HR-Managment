@@ -28,59 +28,6 @@ function templateUsesRequestTypeId(
   });
 }
 
-/** ترحيل: ربط القوالب المعروفة بأنواع الطلبات عند غياب الحقل في البيانات القديمة */
-const DEFAULT_LINKS_BY_TEMPLATE_ID: Record<string, string[]> = {
-  'aat-standard': ['rt-leave', 'rt-certificate', 'rt-equipment'],
-  'aat-fast': ['rt-sick', 'rt-travel'],
-  'aat-double-same': [],
-};
-
-const SEED: HRApprovalAssignmentTemplate[] = [
-  {
-    id: 'aat-standard',
-    nameAr: 'طلب إجازة · طلب شهادة راتب · طلب معدات',
-    description: '',
-    hrRequestAssignmentLinkedIds: ['rt-leave', 'rt-certificate', 'rt-equipment'],
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    stages: [
-      {
-        id: 'ats-1',
-        sortOrder: 1,
-        mode: 'sequential',
-        approvers: [
-          { employeeId: 'e1', mandatory: true },
-          { employeeId: 'e2', mandatory: true },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'aat-fast',
-    nameAr: 'إجازة مرضية · طلب سفر',
-    description: '',
-    hrRequestAssignmentLinkedIds: ['rt-sick', 'rt-travel'],
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    stages: [
-      { id: 'ats-3', sortOrder: 1, mode: 'any_one', approvers: [{ employeeId: 'e1', mandatory: false }, { employeeId: 'e3', mandatory: false }] },
-    ],
-  },
-  {
-    id: 'aat-double-same',
-    nameAr: 'موافقتان متتابعتان (تجربة)',
-    description: '',
-    hrRequestAssignmentLinkedIds: [],
-    isActive: true,
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    stages: [
-      { id: 'ats-d1', sortOrder: 1, mode: 'sequential', approvers: [{ employeeId: 'e1', mandatory: true }] },
-    ],
-  },
-];
 
 interface AAState {
   templates: HRApprovalAssignmentTemplate[];
@@ -92,7 +39,7 @@ interface AAState {
 export const useHRApprovalAssignmentTemplatesStore = create<AAState>()(
   persist(
     (set, get) => ({
-      templates: SEED,
+      templates: [],
 
       add: (draft) => {
         const linked = [...new Set((draft.hrRequestAssignmentLinkedIds ?? []).filter(Boolean))];
@@ -151,40 +98,14 @@ export const useHRApprovalAssignmentTemplatesStore = create<AAState>()(
       name: 'hr-approval-assignment-templates-v1',
       storage: createJSONStorage(() => localStorage),
       version: 4,
-      migrate: (persisted: unknown, version: number) => {
+      migrate: (persisted: unknown) => {
         const s = persisted as { templates?: HRApprovalAssignmentTemplate[] };
-        let templates = (s.templates ?? SEED).map((t) => ({
+        const templates = (s.templates ?? []).map((t) => ({
           ...collapseToSingleStage(t),
           description: t.description ?? '',
           isActive: t.isActive ?? true,
-          hrRequestAssignmentLinkedIds: t.hrRequestAssignmentLinkedIds ?? [],
+          hrRequestAssignmentLinkedIds: t.hrRequestAssignmentLinkedIds?.filter(Boolean) ?? [],
         }));
-        if (version < 3) {
-          const byId = new Map(templates.map((t) => [t.id, t]));
-          for (const t of SEED) {
-            if (!byId.has(t.id)) {
-              byId.set(t.id, {
-                ...t,
-                description: t.description ?? '',
-                isActive: t.isActive ?? true,
-                hrRequestAssignmentLinkedIds: t.hrRequestAssignmentLinkedIds ?? [],
-              });
-            }
-          }
-          templates = [...byId.values()];
-        }
-        if (version < 4) {
-          templates = templates.map((t) => {
-            const collapsed = collapseToSingleStage(t);
-            const existing = t.hrRequestAssignmentLinkedIds?.filter(Boolean) ?? [];
-            const linked = existing.length > 0 ? existing : (DEFAULT_LINKS_BY_TEMPLATE_ID[t.id] ?? []);
-            return {
-              ...collapsed,
-              description: collapsed.description ?? '',
-              hrRequestAssignmentLinkedIds: linked,
-            };
-          });
-        }
         return { templates };
       },
     },

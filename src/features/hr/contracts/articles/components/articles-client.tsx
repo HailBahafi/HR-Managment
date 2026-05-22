@@ -35,7 +35,9 @@ function makeArticleCode() {
 }
 
 export function ContractArticlesClient() {
-  const { articles, add, update, remove } = useHRContractArticlesStore();
+  const { articles, add, update, remove, fetch: fetchArticles } = useHRContractArticlesStore();
+
+  React.useEffect(() => { fetchArticles(); }, []);
 
   const { values } = usePageFilters([
     {
@@ -87,16 +89,20 @@ export function ContractArticlesClient() {
     setError(null); setDrawerOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.title.trim()) { setError('العنوان مطلوب'); return; }
     if (!form.body.trim()) { setError('نص المادة مطلوب'); return; }
-    const payload = { ...form, code: editId ? form.code : makeArticleCode() };
-    if (editId) {
-      update(editId, payload);
-    } else {
-      add(payload);
+    try {
+      const payload = { ...form, code: editId ? form.code : makeArticleCode() };
+      if (editId) {
+        await update(editId, payload);
+      } else {
+        await add(payload);
+      }
+      setDrawerOpen(false);
+    } catch (e) {
+      setError((e as Error).message);
     }
-    setDrawerOpen(false);
   };
 
   const patch = (p: Partial<DraftForm>) => setForm(f => ({ ...f, ...p }));
@@ -317,7 +323,7 @@ export function ContractArticlesClient() {
         description="هل أنت متأكد من حذف هذه المادة من المكتبة؟"
         confirmLabel="حذف"
         variant="destructive"
-        onConfirm={() => { if (confirmId) { remove(confirmId); setConfirmId(null); } }}
+        onConfirm={async () => { if (confirmId) { await remove(confirmId); setConfirmId(null); } }}
       />
     </>
   );

@@ -1,15 +1,16 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { employeeContractsApi, type ApiEmployeeContract } from './contracts-api';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 
-/** تصنيف العقد (قانوني/إداري) */
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export type HRContractNature =
-  | 'fixed_term' /** محدد المدة */
-  | 'indefinite' /** غير محدد المدة */
-  | 'task_based' /** عقد إنجاز مهام */
-  | 'temporary' /** مؤقت */
-  | 'seasonal'; /** موسمي */
+  | 'fixed_term'
+  | 'indefinite'
+  | 'task_based'
+  | 'temporary'
+  | 'seasonal';
 
-/** نمط الدوام */
 export type HRWorkArrangement = 'flexible' | 'full_time' | 'part_time';
 
 export type HRContractLifecycleStatus = 'draft' | 'active' | 'expired' | 'terminated' | 'archived';
@@ -39,7 +40,6 @@ export type HRContractRecord = {
   supersededByContractId: string | null;
   earlyTerminationReason: string | null;
   articleIds: string[];
-  /** إجمالي أيام الإجازة السنوية في السنة (حسب العقد). */
   annualLeaveDays: number | null;
   updatedAt: string;
 };
@@ -47,338 +47,222 @@ export type HRContractRecord = {
 export type HRContractDraft = Omit<HRContractRecord, 'id' | 'updatedAt'>;
 export type ActivateResult = { ok: true } | { ok: false; message: string };
 
-const nowIso = () => new Date().toISOString();
-function newId() { return `ctr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`; }
+// ─── Mapping ──────────────────────────────────────────────────────────────────
 
-const NATURE_KEYS: HRContractNature[] = ['fixed_term', 'indefinite', 'task_based', 'temporary', 'seasonal'];
-const WORK_KEYS: HRWorkArrangement[] = ['flexible', 'full_time', 'part_time'];
-
-/** يضمن حقول العقد بعد التخزين أو الهجرة من الإصدارات القديمة (نوع العقد + نوع الدوام) */
-export function normalizeContractRow(raw: Record<string, unknown>): HRContractRecord {
-  const r = raw as Partial<HRContractRecord> & { contractType?: unknown; workArrangement?: unknown };
-  const ct = r.contractType as string | undefined;
-  const wa = r.workArrangement as string | undefined;
-  const workOk = WORK_KEYS.includes(wa as HRWorkArrangement);
-  let contractType: HRContractNature = 'fixed_term';
-  let workArrangement: HRWorkArrangement = 'full_time';
-
-  if (workOk) {
-    workArrangement = wa as HRWorkArrangement;
-    contractType = NATURE_KEYS.includes(ct as HRContractNature) ? (ct as HRContractNature) : 'fixed_term';
-  } else if (ct === 'full_time') {
-    contractType = 'fixed_term';
-    workArrangement = 'full_time';
-  } else if (ct === 'part_time') {
-    contractType = 'fixed_term';
-    workArrangement = 'part_time';
-  } else if (ct === 'temporary') {
-    contractType = 'temporary';
-    workArrangement = 'full_time';
-  } else if (NATURE_KEYS.includes(ct as HRContractNature)) {
-    contractType = ct as HRContractNature;
-    workArrangement = 'full_time';
-  }
-
-  return { ...r, contractType, workArrangement } as HRContractRecord;
+function mapApiContract(c: ApiEmployeeContract): HRContractRecord {
+  return {
+    id: c.id,
+    employeeId: c.employeeId,
+    contractNumber: c.contractNumber,
+    contractType: c.contractNature as HRContractNature,
+    workArrangement: c.workArrangement as HRWorkArrangement,
+    startDate: c.startDate,
+    endDate: c.endDate ?? '',
+    probationDays: c.probationDays ?? null,
+    baseSalary: Number(c.baseSalary) || 0,
+    currency: c.currency,
+    status: c.status as HRContractLifecycleStatus,
+    templateId: c.contractTemplateId ?? null,
+    allowanceLines: (c.allowanceLines ?? []).map(l => ({
+      allowanceTypeId: l.allowanceTypeId,
+      amount: Number(l.amount) || 0,
+    })),
+    allowancesNote: c.allowancesNote ?? '',
+    deductionsNote: c.deductionsNote ?? '',
+    amendsContractId: c.amendsContractId ?? null,
+    supersededByContractId: c.supersededByContractId ?? null,
+    earlyTerminationReason: c.earlyTerminationReason ?? null,
+    articleIds: (c.articles ?? []).map(a => a.contractArticleId),
+    annualLeaveDays: c.annualLeaveDays ?? null,
+    updatedAt: c.updatedAt,
+  };
 }
 
-/** Fixed timestamps so SSR and client sort order match (avoid `nowIso()` in seed). */
-const SEED_UPDATED_AT = [
-  '2026-04-01T12:00:12.000Z', '2026-04-01T12:00:11.000Z', '2026-04-01T12:00:10.000Z',
-  '2026-04-01T12:00:09.000Z', '2026-04-01T12:00:08.000Z', '2026-04-01T12:00:07.000Z',
-  '2026-04-01T12:00:06.000Z', '2026-04-01T12:00:05.000Z', '2026-04-01T12:00:04.000Z',
-  '2026-04-01T12:00:03.000Z', '2026-04-01T12:00:02.000Z', '2026-04-01T12:00:01.000Z',
-] as const;
-
-const SEED: HRContractRecord[] = [
-  // e1 — عبدالرحمن المالكي — 6 contracts (2021–2026)
-  {
-    id: 'ctr-e1-1', employeeId: 'e1', contractNumber: 'CL-2021-001',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2021-01-01', endDate: '2021-12-31',
-    probationDays: 90, baseSalary: 7500, currency: 'SAR', status: 'archived',
-    templateId: null,
-    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 500 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-2',
-    earlyTerminationReason: null, articleIds: ['art-seed-1'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[0],
-  },
-  {
-    id: 'ctr-e1-2', employeeId: 'e1', contractNumber: 'CL-2022-001',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2022-01-01', endDate: '2022-12-31',
-    probationDays: null, baseSalary: 8500, currency: 'SAR', status: 'archived',
-    templateId: null,
-    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 600 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-3',
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[0],
-  },
-  {
-    id: 'ctr-e1-3', employeeId: 'e1', contractNumber: 'CL-2023-001',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2023-01-01', endDate: '2023-12-31',
-    probationDays: null, baseSalary: 9500, currency: 'SAR', status: 'expired',
-    templateId: 'hct-standard',
-    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 2000 }, { allowanceTypeId: 'halt-transport', amount: 700 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-4',
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[0],
-  },
-  {
-    id: 'ctr-e1-4', employeeId: 'e1', contractNumber: 'CL-2024-001',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2024-01-01', endDate: '2024-12-31',
-    probationDays: null, baseSalary: 10500, currency: 'SAR', status: 'expired',
-    templateId: 'hct-exec',
-    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 2500 }, { allowanceTypeId: 'halt-transport', amount: 800 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-5',
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 30,
-    updatedAt: SEED_UPDATED_AT[0],
-  },
-  {
-    id: 'ctr-e1-5', employeeId: 'e1', contractNumber: 'CL-2025-001',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2025-01-01', endDate: '2025-12-31',
-    probationDays: null, baseSalary: 11500, currency: 'SAR', status: 'expired',
-    templateId: 'hct-exec',
-    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 2800 }, { allowanceTypeId: 'halt-transport', amount: 800 }, { allowanceTypeId: 'halt-phone', amount: 300 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-e1-6',
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 30,
-    updatedAt: SEED_UPDATED_AT[0],
-  },
-  {
-    id: 'ctr-e1-6', employeeId: 'e1', contractNumber: 'CL-2026-001',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2026-01-01', endDate: '2026-12-31',
-    probationDays: null, baseSalary: 12000, currency: 'SAR', status: 'active',
-    templateId: 'hct-exec',
-    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 3000 }, { allowanceTypeId: 'halt-transport', amount: 800 }, { allowanceTypeId: 'halt-phone', amount: 300 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 30,
-    updatedAt: SEED_UPDATED_AT[0],
-  },
-  {
-    id: 'ctr-seed-1', employeeId: 'e1-old', contractNumber: 'CL-2024-OLD',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2024-01-01', endDate: '2026-12-31',
-    probationDays: 90, baseSalary: 12000, currency: 'SAR', status: 'archived',
-    templateId: 'hct-exec',
-    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 3000 }, { allowanceTypeId: 'halt-transport', amount: 800 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 30,
-    updatedAt: SEED_UPDATED_AT[0],
-  },
-  {
-    id: 'ctr-seed-2', employeeId: 'e2', contractNumber: 'CL-2024-002',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2024-03-01', endDate: '2026-02-28',
-    probationDays: 60, baseSalary: 9000, currency: 'SAR', status: 'active',
-    templateId: 'hct-standard',
-    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 800 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[1],
-  },
-  {
-    id: 'ctr-seed-3', employeeId: 'e3', contractNumber: 'CL-2024-003',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2024-06-01', endDate: '2026-05-31',
-    probationDays: 60, baseSalary: 7500, currency: 'SAR', status: 'active',
-    templateId: 'hct-field',
-    allowanceLines: [{ allowanceTypeId: 'halt-field', amount: 1200 }, { allowanceTypeId: 'halt-transport', amount: 600 }, { allowanceTypeId: 'halt-gas', amount: 400 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-4'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[2],
-  },
-  {
-    id: 'ctr-seed-4', employeeId: 'e4', contractNumber: 'CL-2025-DRAFT-01',
-    contractType: 'fixed_term', workArrangement: 'part_time', startDate: '2025-06-01', endDate: '2025-12-31',
-    probationDays: 30, baseSalary: 5000, currency: 'SAR', status: 'draft',
-    templateId: 'hct-part',
-    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 500 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-4'], annualLeaveDays: 15,
-    updatedAt: SEED_UPDATED_AT[3],
-  },
-  {
-    id: 'ctr-seed-5', employeeId: 'e5', contractNumber: 'CL-2025-DRAFT-02',
-    contractType: 'temporary', workArrangement: 'full_time', startDate: '2025-05-01', endDate: '2025-10-31',
-    probationDays: null, baseSalary: 4000, currency: 'SAR', status: 'draft',
-    templateId: 'hct-temp',
-    allowanceLines: [{ allowanceTypeId: 'halt-food', amount: 500 }, { allowanceTypeId: 'halt-transport', amount: 400 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1'], annualLeaveDays: 14,
-    updatedAt: SEED_UPDATED_AT[4],
-  },
-  {
-    id: 'ctr-seed-6', employeeId: 'e3', contractNumber: 'CL-2022-LEG',
-    contractType: 'temporary', workArrangement: 'full_time', startDate: '2022-01-01', endDate: '2023-12-31',
-    probationDays: null, baseSalary: 3500, currency: 'SAR', status: 'archived',
-    templateId: null, allowanceLines: [], allowancesNote: '', deductionsNote: '',
-    amendsContractId: null, supersededByContractId: 'ctr-seed-3', earlyTerminationReason: null,
-    articleIds: [], annualLeaveDays: null,
-    updatedAt: SEED_UPDATED_AT[5],
-  },
-  {
-    id: 'ctr-seed-7', employeeId: 'e2', contractNumber: 'CL-2023-EXP',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2023-01-01', endDate: '2024-01-31',
-    probationDays: 60, baseSalary: 8000, currency: 'SAR', status: 'expired',
-    templateId: 'hct-standard', allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 700 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: 'ctr-seed-2',
-    earlyTerminationReason: 'انتهاء تلقائي', articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[6],
-  },
-  {
-    id: 'ctr-seed-8', employeeId: 'e4', contractNumber: 'CL-2025-004',
-    contractType: 'fixed_term', workArrangement: 'part_time', startDate: '2025-01-01', endDate: '2026-12-31',
-    probationDays: 30, baseSalary: 5500, currency: 'SAR', status: 'active',
-    templateId: 'hct-part',
-    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 600 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-4'], annualLeaveDays: 15,
-    updatedAt: SEED_UPDATED_AT[7],
-  },
-  {
-    id: 'ctr-seed-9', employeeId: 'e5', contractNumber: 'CL-2025-005',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2025-01-01', endDate: '2026-12-31',
-    probationDays: null, baseSalary: 6500, currency: 'SAR', status: 'active',
-    templateId: 'hct-standard',
-    allowanceLines: [{ allowanceTypeId: 'halt-food', amount: 600 }, { allowanceTypeId: 'halt-transport', amount: 500 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[8],
-  },
-  {
-    id: 'ctr-seed-10', employeeId: 'e6', contractNumber: 'CL-2025-006',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2025-02-01', endDate: '2027-01-31',
-    probationDays: 60, baseSalary: 8500, currency: 'SAR', status: 'active',
-    templateId: 'hct-standard',
-    allowanceLines: [{ allowanceTypeId: 'halt-housing', amount: 2000 }, { allowanceTypeId: 'halt-transport', amount: 800 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[9],
-  },
-  {
-    id: 'ctr-seed-11', employeeId: 'e7', contractNumber: 'CL-2025-007',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2025-03-01', endDate: '2027-02-28',
-    probationDays: 60, baseSalary: 7200, currency: 'SAR', status: 'active',
-    templateId: 'hct-standard',
-    allowanceLines: [{ allowanceTypeId: 'halt-transport', amount: 700 }, { allowanceTypeId: 'halt-phone', amount: 200 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[10],
-  },
-  {
-    id: 'ctr-seed-12', employeeId: 'e8', contractNumber: 'CL-2025-008',
-    contractType: 'fixed_term', workArrangement: 'full_time', startDate: '2025-01-15', endDate: '2027-01-14',
-    probationDays: 60, baseSalary: 6800, currency: 'SAR', status: 'active',
-    templateId: 'hct-field',
-    allowanceLines: [{ allowanceTypeId: 'halt-field', amount: 1000 }, { allowanceTypeId: 'halt-transport', amount: 600 }, { allowanceTypeId: 'halt-risk', amount: 400 }],
-    allowancesNote: '', deductionsNote: '', amendsContractId: null, supersededByContractId: null,
-    earlyTerminationReason: null, articleIds: ['art-seed-1', 'art-seed-2', 'art-seed-3', 'art-seed-4'], annualLeaveDays: 21,
-    updatedAt: SEED_UPDATED_AT[11],
-  },
-];
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 interface HRContractsState {
   contracts: HRContractRecord[];
-  add: (data: HRContractDraft) => string;
-  update: (id: string, patch: Partial<HRContractDraft>) => boolean;
-  remove: (id: string) => boolean;
-  activate: (id: string) => ActivateResult;
-  terminate: (id: string, reason: string) => ActivateResult;
-  archive: (id: string) => ActivateResult;
-  createAmendmentDraft: (activeContractId: string) => { ok: true; id: string } | { ok: false; message: string };
+  isLoading: boolean;
+  error: string | null;
+  fetch: (params?: { employeeId?: string }) => Promise<void>;
+  add: (data: HRContractDraft) => Promise<string>;
+  update: (id: string, patch: Partial<HRContractDraft>) => Promise<boolean>;
+  remove: (id: string) => Promise<boolean>;
+  activate: (id: string) => Promise<ActivateResult>;
+  terminate: (id: string, reason: string) => Promise<ActivateResult>;
+  archive: (id: string) => Promise<ActivateResult>;
+  createAmendmentDraft: (activeContractId: string) => Promise<{ ok: true; id: string } | { ok: false; message: string }>;
   syncExpiredByEndDate: () => void;
 }
 
-export const useHRContractsStore = create<HRContractsState>()(
-  persist(
-    (set, get) => ({
-      contracts: SEED.map(c => ({ ...c })),
+export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
+  contracts: [],
+  isLoading: false,
+  error: null,
 
-      add: (data) => {
-        const id = newId();
-        set(s => ({ contracts: [{ ...data, id, updatedAt: nowIso() }, ...s.contracts] }));
-        return id;
-      },
+  fetch: async (params) => {
+    const companyId = useAuthStore.getState().activeCompanyId;
+    if (!companyId) return;
+    set({ isLoading: true, error: null });
+    try {
+      const result = await employeeContractsApi.list({ companyId, limit: 500, ...params });
+      set({ contracts: result.items.map(mapApiContract), isLoading: false });
+    } catch (e) {
+      set({ error: (e as Error).message, isLoading: false });
+    }
+  },
 
-      update: (id, patch) => {
-        const row = get().contracts.find(c => c.id === id);
-        if (!row || row.status !== 'draft') return false;
-        set(s => ({ contracts: s.contracts.map(c => c.id === id ? { ...c, ...patch, updatedAt: nowIso() } : c) }));
-        return true;
-      },
+  add: async (data) => {
+    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const created = await employeeContractsApi.create({
+      companyId,
+      employeeId: data.employeeId,
+      contractNumber: data.contractNumber,
+      contractNature: data.contractType,
+      workArrangement: data.workArrangement,
+      startDate: data.startDate,
+      endDate: data.endDate || undefined,
+      probationDays: data.probationDays ?? undefined,
+      annualLeaveDays: data.annualLeaveDays ?? undefined,
+      baseSalary: data.baseSalary,
+      currency: data.currency,
+      status: data.status,
+      allowancesNote: data.allowancesNote || undefined,
+      deductionsNote: data.deductionsNote || undefined,
+      amendsContractId: data.amendsContractId ?? undefined,
+      contractTemplateId: data.templateId ?? undefined,
+      articleIds: data.articleIds.length > 0 ? data.articleIds : undefined,
+      allowanceLines: data.allowanceLines
+        .filter(l => l.allowanceTypeId)
+        .map((l, i) => ({ allowanceTypeId: l.allowanceTypeId, amount: l.amount, sortOrder: i })),
+    });
+    const row = mapApiContract(created);
+    set(s => ({ contracts: [row, ...s.contracts] }));
+    return created.id;
+  },
 
-      remove: (id) => {
-        const row = get().contracts.find(c => c.id === id);
-        if (!row || row.status !== 'draft') return false;
-        set(s => ({ contracts: s.contracts.filter(c => c.id !== id) }));
-        return true;
-      },
+  update: async (id, patch) => {
+    const current = get().contracts.find(c => c.id === id);
+    if (!current || current.status !== 'draft') return false;
+    try {
+      const updated = await employeeContractsApi.update(id, {
+        contractNature: patch.contractType,
+        workArrangement: patch.workArrangement,
+        startDate: patch.startDate,
+        endDate: patch.endDate,
+        probationDays: patch.probationDays ?? undefined,
+        annualLeaveDays: patch.annualLeaveDays ?? undefined,
+        baseSalary: patch.baseSalary,
+        currency: patch.currency,
+        allowancesNote: patch.allowancesNote,
+        deductionsNote: patch.deductionsNote,
+        articleIds: patch.articleIds,
+        allowanceLines: patch.allowanceLines
+          ?.filter(l => l.allowanceTypeId)
+          .map((l, i) => ({ allowanceTypeId: l.allowanceTypeId, amount: l.amount, sortOrder: i })),
+      });
+      const row = mapApiContract(updated);
+      set(s => ({ contracts: s.contracts.map(c => c.id === id ? row : c) }));
+      return true;
+    } catch {
+      return false;
+    }
+  },
 
-      activate: (id) => {
-        const c = get().contracts.find(x => x.id === id);
-        if (!c || c.status !== 'draft') return { ok: false, message: 'يمكن تفعيل المسودات فقط.' };
-        const blocking = get().contracts.filter(x =>
-          x.employeeId === c.employeeId && x.status === 'active' &&
-          !(c.amendsContractId && x.id === c.amendsContractId)
-        );
-        if (blocking.length > 0) return { ok: false, message: 'يوجد عقد نشط آخر لنفس الموظف.' };
-        set(s => ({
-          contracts: s.contracts.map(row => {
-            if (row.id === c.amendsContractId) return { ...row, status: 'expired' as const, supersededByContractId: id, updatedAt: nowIso() };
-            if (row.id === id) return { ...row, status: 'active' as const, updatedAt: nowIso() };
-            return row;
-          }),
-        }));
-        return { ok: true };
-      },
+  remove: async (id) => {
+    try {
+      await employeeContractsApi.delete(id);
+      set(s => ({ contracts: s.contracts.filter(c => c.id !== id) }));
+      return true;
+    } catch {
+      return false;
+    }
+  },
 
-      terminate: (id, reason) => {
-        const c = get().contracts.find(x => x.id === id);
-        if (!c || c.status !== 'active') return { ok: false, message: 'يمكن إنهاء العقود النشطة فقط.' };
-        set(s => ({ contracts: s.contracts.map(row => row.id === id ? { ...row, status: 'terminated' as const, earlyTerminationReason: reason.trim() || 'إنهاء مبكر', updatedAt: nowIso() } : row) }));
-        return { ok: true };
-      },
+  activate: async (id) => {
+    const c = get().contracts.find(x => x.id === id);
+    if (!c || c.status !== 'draft') return { ok: false, message: 'يمكن تفعيل المسودات فقط.' };
+    try {
+      const updated = await employeeContractsApi.update(id, { status: 'active' });
+      const row = mapApiContract(updated);
+      set(s => ({ contracts: s.contracts.map(x => x.id === id ? row : x) }));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
+    }
+  },
 
-      archive: (id) => {
-        const c = get().contracts.find(x => x.id === id);
-        if (!c || (c.status !== 'expired' && c.status !== 'terminated')) return { ok: false, message: 'يمكن أرشفة العقود المنتهية أو المُنهية فقط.' };
-        set(s => ({ contracts: s.contracts.map(row => row.id === id ? { ...row, status: 'archived' as const, updatedAt: nowIso() } : row) }));
-        return { ok: true };
-      },
+  terminate: async (id, reason) => {
+    const c = get().contracts.find(x => x.id === id);
+    if (!c || c.status !== 'active') return { ok: false, message: 'يمكن إنهاء العقود النشطة فقط.' };
+    try {
+      const updated = await employeeContractsApi.update(id, {
+        status: 'terminated',
+        earlyTerminationReason: reason.trim() || 'إنهاء مبكر',
+      });
+      const row = mapApiContract(updated);
+      set(s => ({ contracts: s.contracts.map(x => x.id === id ? row : x) }));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
+    }
+  },
 
-      createAmendmentDraft: (activeContractId) => {
-        const parent = get().contracts.find(x => x.id === activeContractId);
-        if (!parent || parent.status !== 'active') return { ok: false, message: 'اختر عقداً نشطاً.' };
-        const id = newId();
-        const draft: HRContractRecord = {
-          ...parent, id,
-          contractNumber: `${parent.contractNumber}-AMD-${Date.now().toString(36).toUpperCase()}`,
-          status: 'draft', amendsContractId: parent.id, supersededByContractId: null,
-          earlyTerminationReason: null, updatedAt: nowIso(),
-        };
-        set(s => ({ contracts: [draft, ...s.contracts] }));
-        return { ok: true, id };
-      },
+  archive: async (id) => {
+    const c = get().contracts.find(x => x.id === id);
+    if (!c || (c.status !== 'expired' && c.status !== 'terminated'))
+      return { ok: false, message: 'يمكن أرشفة العقود المنتهية أو المُنهية فقط.' };
+    try {
+      const updated = await employeeContractsApi.update(id, { status: 'archived' });
+      const row = mapApiContract(updated);
+      set(s => ({ contracts: s.contracts.map(x => x.id === id ? row : x) }));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
+    }
+  },
 
-      syncExpiredByEndDate: () => {
-        const today = new Date().toISOString().slice(0, 10);
-        set(s => ({
-          contracts: s.contracts.map(row =>
-            row.status === 'active' && row.endDate && row.endDate < today
-              ? { ...row, status: 'expired' as const, earlyTerminationReason: row.earlyTerminationReason ?? 'انتهاء تلقائي', updatedAt: nowIso() }
-              : row,
-          ),
-        }));
-      },
-    }),
-    {
-      name: 'hr_contracts_v1',
-      version: 6,
-      skipHydration: true,
-      partialize: s => ({ contracts: s.contracts }),
-      migrate: (_p: unknown, _fromVersion: number) => {
-        const ps = _p as { contracts?: Record<string, unknown>[] };
-        const raw = Array.isArray(ps?.contracts) ? ps.contracts : SEED.map(c => ({ ...c } as unknown as Record<string, unknown>));
-        return { contracts: raw.map(row => normalizeContractRow(row)) };
-      },
-    },
-  ),
-);
+  createAmendmentDraft: async (activeContractId) => {
+    const parent = get().contracts.find(x => x.id === activeContractId);
+    if (!parent || parent.status !== 'active') return { ok: false, message: 'اختر عقداً نشطاً.' };
+    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    try {
+      const created = await employeeContractsApi.create({
+        companyId,
+        employeeId: parent.employeeId,
+        contractNumber: `${parent.contractNumber}-AMD-${Date.now().toString(36).toUpperCase()}`,
+        contractNature: parent.contractType,
+        workArrangement: parent.workArrangement,
+        startDate: parent.startDate,
+        endDate: parent.endDate || undefined,
+        probationDays: parent.probationDays ?? undefined,
+        annualLeaveDays: parent.annualLeaveDays ?? undefined,
+        baseSalary: parent.baseSalary,
+        currency: parent.currency,
+        status: 'draft',
+        amendsContractId: parent.id,
+        contractTemplateId: parent.templateId ?? undefined,
+        articleIds: parent.articleIds.length > 0 ? parent.articleIds : undefined,
+        allowanceLines: parent.allowanceLines
+          .filter(l => l.allowanceTypeId)
+          .map((l, i) => ({ allowanceTypeId: l.allowanceTypeId, amount: l.amount, sortOrder: i })),
+        allowancesNote: parent.allowancesNote || undefined,
+        deductionsNote: parent.deductionsNote || undefined,
+      });
+      const row = mapApiContract(created);
+      set(s => ({ contracts: [row, ...s.contracts] }));
+      return { ok: true, id: created.id };
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
+    }
+  },
+
+  syncExpiredByEndDate: () => {
+    // Status expiration is managed server-side; this is a no-op client hint.
+  },
+}));
+
+// ─── Labels & colors ──────────────────────────────────────────────────────────
 
 export const CONTRACT_NATURE_LABELS: Record<HRContractNature, string> = {
   fixed_term: 'محدد المدة',
@@ -409,3 +293,7 @@ export const CONTRACT_STATUS_COLORS: Record<HRContractLifecycleStatus, string> =
   terminated: 'text-red-700 border-red-200 bg-red-50 dark:text-red-400 dark:border-red-800 dark:bg-red-950/30',
   archived: 'text-muted-foreground border-border bg-muted/30',
 };
+
+export function normalizeContractRow(raw: Record<string, unknown>): HRContractRecord {
+  return raw as HRContractRecord;
+}

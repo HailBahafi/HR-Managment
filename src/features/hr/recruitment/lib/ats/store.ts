@@ -4,8 +4,6 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AtsTenant, AtsUser, AtsJob, AtsForm, AtsApplicant, AtsPipelineStage, AtsApplicantScore } from './types';
 import { uid, scoreApplicant } from './utils';
-import atsData from '@/data/ats.json';
-
 interface AtsState {
   currentTenantId: string;
   tenants: AtsTenant[];
@@ -41,23 +39,15 @@ interface AtsState {
   getFormByJobId: (jobId: string) => AtsForm | undefined;
 }
 
-const seed = atsData as {
-  tenants: AtsTenant[];
-  users: AtsUser[];
-  jobs: AtsJob[];
-  forms: AtsForm[];
-  applicants: AtsApplicant[];
-};
-
 export const useAtsStore = create<AtsState>()(
   persist(
     (set, get) => ({
-      currentTenantId: seed.tenants[0]?.id ?? 'tenant-1',
-      tenants: seed.tenants,
-      users: seed.users,
-      jobs: seed.jobs,
-      forms: seed.forms,
-      applicants: seed.applicants,
+      currentTenantId: 'tenant-1',
+      tenants: [],
+      users: [],
+      jobs: [],
+      forms: [],
+      applicants: [],
 
       setCurrentTenant: (id) => set({ currentTenantId: id }),
 
@@ -155,19 +145,14 @@ export const useAtsStore = create<AtsState>()(
       name: 'ats-storage',
       storage: createJSONStorage(() => localStorage),
       version: 1,
-      migrate: (persisted: unknown) => {
-        if (!persisted || typeof persisted !== 'object') {
-          return {
-            currentTenantId: seed.tenants[0]?.id ?? 'tenant-1',
-            tenants: seed.tenants,
-            users: seed.users,
-            jobs: seed.jobs,
-            forms: seed.forms,
-            applicants: seed.applicants,
-          };
-        }
-        return persisted as Record<string, unknown>;
-      },
+      migrate: () => ({
+        currentTenantId: 'tenant-1',
+        tenants: [],
+        users: [],
+        jobs: [],
+        forms: [],
+        applicants: [],
+      }),
     }
   )
 );

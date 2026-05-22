@@ -1,31 +1,73 @@
 import { create } from 'zustand';
+import { contractTemplatesApi, type ApiContractTemplate } from './contracts-api';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import type { HRContractNature, HRWorkArrangement } from './contracts-store';
 
 export type HRContractTemplateRecord = {
   id: string;
+  code: string;
   nameAr: string;
   nameEn: string;
   descriptionAr: string;
   defaultContractNature: HRContractNature;
   defaultWorkArrangement: HRWorkArrangement;
   defaultProbationDays: number | null;
+  defaultAnnualLeaveDays: number;
   suggestedBaseSalary: number;
   currency: string;
   durationMonths: number | null;
-  allowanceTypeIds: string[];
+  allowanceLines: { allowanceTypeId: string; amount: number; sortOrder: number }[];
   allowancesHint: string;
   sortOrder: number;
   isActive: boolean;
 };
 
-const SEED: HRContractTemplateRecord[] = [
-  { id: 'hct-exec', nameAr: 'تنفيذي — دوام كامل', nameEn: 'Executive full-time', descriptionAr: 'راتب أساسي مرتفع، بدل سكن وانتقال.', defaultContractNature: 'fixed_term', defaultWorkArrangement: 'full_time', defaultProbationDays: 90, suggestedBaseSalary: 18000, currency: 'SAR', durationMonths: 24, allowanceTypeIds: ['halt-housing', 'halt-transport', 'halt-phone'], allowancesHint: '', sortOrder: 10, isActive: true },
-  { id: 'hct-standard', nameAr: 'موظف إداري قياسي', nameEn: 'Standard office', descriptionAr: 'دوام كامل، فترة تجربة ٦٠ يوماً.', defaultContractNature: 'fixed_term', defaultWorkArrangement: 'full_time', defaultProbationDays: 60, suggestedBaseSalary: 7000, currency: 'SAR', durationMonths: 12, allowanceTypeIds: ['halt-transport', 'halt-phone'], allowancesHint: '', sortOrder: 20, isActive: true },
-  { id: 'hct-part', nameAr: 'دوام جزئي', nameEn: 'Part-time', descriptionAr: 'ساعات محدّدة، بدل مواصلات أخف.', defaultContractNature: 'fixed_term', defaultWorkArrangement: 'part_time', defaultProbationDays: 30, suggestedBaseSalary: 3500, currency: 'SAR', durationMonths: 6, allowanceTypeIds: ['halt-transport'], allowancesHint: '', sortOrder: 30, isActive: true },
-  { id: 'hct-field', nameAr: 'مبيعات / ميداني', nameEn: 'Sales / field', descriptionAr: 'بدل ميداني ووقود.', defaultContractNature: 'fixed_term', defaultWorkArrangement: 'full_time', defaultProbationDays: 60, suggestedBaseSalary: 5500, currency: 'SAR', durationMonths: 12, allowanceTypeIds: ['halt-field', 'halt-transport', 'halt-gas'], allowancesHint: '', sortOrder: 40, isActive: true },
-  { id: 'hct-temp', nameAr: 'عقد مؤقت / موسمي', nameEn: 'Temporary / seasonal', descriptionAr: 'مدة قصيرة.', defaultContractNature: 'temporary', defaultWorkArrangement: 'full_time', defaultProbationDays: null, suggestedBaseSalary: 4000, currency: 'SAR', durationMonths: 3, allowanceTypeIds: ['halt-food', 'halt-transport'], allowancesHint: '', sortOrder: 50, isActive: true },
-  { id: 'hct-intern', nameAr: 'متدرب', nameEn: 'Intern / trainee', descriptionAr: 'راتب رمزي، حد أدنى من البدلات.', defaultContractNature: 'temporary', defaultWorkArrangement: 'full_time', defaultProbationDays: 14, suggestedBaseSalary: 2500, currency: 'SAR', durationMonths: 6, allowanceTypeIds: ['halt-transport'], allowancesHint: '', sortOrder: 60, isActive: true },
-];
+function mapApiTemplate(t: ApiContractTemplate): HRContractTemplateRecord {
+  return {
+    id: t.id,
+    code: t.code,
+    nameAr: t.nameAr,
+    nameEn: t.nameEn,
+    descriptionAr: t.descriptionAr,
+    defaultContractNature: t.defaultContractNature as HRContractNature,
+    defaultWorkArrangement: t.defaultWorkArrangement as HRWorkArrangement,
+    defaultProbationDays: t.defaultProbationDays ?? null,
+    defaultAnnualLeaveDays: t.defaultAnnualLeaveDays ?? 21,
+    suggestedBaseSalary: Number(t.suggestedBaseSalary) || 0,
+    currency: t.currency,
+    durationMonths: t.durationMonths ?? null,
+    allowanceLines: (t.allowanceLines ?? []).map(l => ({
+      allowanceTypeId: l.allowanceTypeId,
+      amount: Number(l.amount) || 0,
+      sortOrder: l.sortOrder,
+    })),
+    allowancesHint: t.allowancesHint ?? '',
+    sortOrder: t.sortOrder,
+    isActive: t.isActive,
+  };
+}
 
-interface State { templates: HRContractTemplateRecord[]; }
-export const useHRContractTemplatesStore = create<State>()(() => ({ templates: SEED }));
+interface State {
+  templates: HRContractTemplateRecord[];
+  isLoading: boolean;
+  error: string | null;
+  fetch: () => Promise<void>;
+}
+
+export const useHRContractTemplatesStore = create<State>()((set) => ({
+  templates: [],
+  isLoading: false,
+  error: null,
+
+  fetch: async () => {
+    const companyId = useAuthStore.getState().activeCompanyId;
+    if (!companyId) return;
+    set({ isLoading: true, error: null });
+    try {
+      const result = await contractTemplatesApi.list({ companyId, limit: 200 });
+      set({ templates: result.items.map(mapApiTemplate), isLoading: false });
+    } catch (e) {
+      set({ error: (e as Error).message, isLoading: false });
+    }
+  },
+}));

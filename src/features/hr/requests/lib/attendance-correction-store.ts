@@ -1,113 +1,151 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import type {
-  AttendanceCorrectionRequest,
-  AttendanceCorrectionRequestStatus,
-} from '@/features/hr/requests/lib/attendance-correction-types';
+import { correctionRequestsApi, type ApiCorrectionRequest, type CorrectionRequestStatus } from './api/correction-requests';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 
-function uid() {
-  return `acr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+export type AttendanceCorrectionRequest = {
+  id: string;
+  employeeId: string;
+  employeeNameAr: string;
+  departmentId: string;
+  /** kept for UI compat — derived from requestTypeNameAr */
+  requestTypeId: string;
+  requestTypeNameAr: string;
+  workDate: string;
+  previousCheckIn: string;
+  previousCheckOut: string;
+  correctedCheckIn: string;
+  correctedCheckOut: string;
+  previousStatusAr: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reasonAr: string;
+  decisionNotesAr: string;
+  createdAt: string;
+  decidedAt: string | null;
+  decidedByEmployeeId: string | null;
+};
+
+function isoToTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toTimeString().slice(0, 5);
+  } catch {
+    return '';
+  }
 }
 
-function nowIso() {
-  return new Date().toISOString();
+function dateTimeIso(workDate: string, time: string): string | undefined {
+  if (!time) return undefined;
+  return `${workDate}T${time}:00`;
 }
 
-const SEED: AttendanceCorrectionRequest[] = [
-  {
-    id: 'acr-seed-1',
-    employeeId: 'e2',
-    employeeNameAr: 'ريم الشهراني',
-    departmentId: 'd2',
-    approverId: 'e1',
-    approverNameAr: 'عبدالرحمن المالكي',
-    workDate: '2026-04-28',
-    previousCheckIn: '09:42',
-    previousCheckOut: '17:58',
-    correctedCheckIn: '09:00',
-    correctedCheckOut: '18:00',
-    previousStatusAr: 'تأخر وصول',
-    status: 'pending',
-    reasonAr: 'نسيان بصمة الدخول — التواجد في الاجتماع مع الإدارة.',
-    createdAt: '2026-04-28T11:20:00.000Z',
-  },
-  {
-    id: 'acr-seed-2',
-    employeeId: 'e3',
-    employeeNameAr: 'فهد العنزي',
-    departmentId: 'd3',
-    approverId: 'e1',
-    approverNameAr: 'عبدالرحمن المالكي',
-    workDate: '2026-04-25',
-    previousCheckIn: '08:05',
-    previousCheckOut: '14:00',
-    correctedCheckIn: '08:05',
-    correctedCheckOut: '17:30',
-    previousStatusAr: 'انصراف مبكر',
-    status: 'approved',
-    reasonAr: 'الخروج للموقع الخارجي دون تسجيل خروج ثانٍ.',
-    createdAt: '2026-04-25T09:00:00.000Z',
-    decidedAt: '2026-04-25T14:10:00.000Z',
-  },
-];
+function mapApi(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
+  return {
+    id: r.id,
+    employeeId: r.employeeId,
+    employeeNameAr: r.employeeNameAr,
+    departmentId: r.departmentNameAr ?? '',
+    requestTypeId: r.requestTypeId,
+    requestTypeNameAr: r.requestTypeNameAr,
+    workDate: r.workDate,
+    previousCheckIn: isoToTime(r.previousCheckInAt),
+    previousCheckOut: isoToTime(r.previousCheckOutAt),
+    correctedCheckIn: isoToTime(r.correctedCheckInAt),
+    correctedCheckOut: isoToTime(r.correctedCheckOutAt),
+    previousStatusAr: r.previousStatus ?? '',
+    status: r.status as AttendanceCorrectionRequest['status'],
+    reasonAr: r.reasonAr ?? '',
+    decisionNotesAr: r.decisionNotesAr ?? '',
+    createdAt: r.createdAt,
+    decidedAt: r.decidedAt,
+    decidedByEmployeeId: r.decidedByEmployeeId,
+  };
+}
 
 interface State {
   items: AttendanceCorrectionRequest[];
-  submit: (input: Omit<AttendanceCorrectionRequest, 'id' | 'status' | 'createdAt' | 'decidedAt'>) => { ok: true } | { ok: false; error: string };
-  approve: (id: string) => void;
-  reject: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  fetch: (params?: { employeeId?: string; status?: string; workDateFrom?: string; workDateTo?: string }) => Promise<void>;
+  submit: (input: {
+    employeeId: string;
+    requestTypeId: string;
+    workDate: string;
+    correctedCheckIn?: string;
+    correctedCheckOut?: string;
+    previousStatusAr?: string;
+    reasonAr?: string;
+  }) => Promise<{ ok: true } | { ok: false; error: string }>;
+  approve: (id: string) => Promise<void>;
+  reject: (id: string) => Promise<void>;
+  cancel: (id: string, notes?: string) => Promise<void>;
 }
 
-export const useAttendanceCorrectionRequestsStore = create<State>()(
-  persist(
-    (set, get) => ({
-      items: SEED,
+export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
+  items: [],
+  isLoading: false,
+  error: null,
 
-      submit: (input) => {
-        if (!input.employeeId.trim()) return { ok: false, error: 'اختر الموظف.' };
-        if (!input.approverId.trim()) return { ok: false, error: 'اختر المعتمد.' };
-        if (!input.workDate.trim()) return { ok: false, error: 'أدخل تاريخ اليوم.' };
-        const rec: AttendanceCorrectionRequest = {
-          ...input,
-          id: uid(),
-          status: 'pending',
-          createdAt: nowIso(),
-        };
-        set((s) => ({ items: [rec, ...s.items] }));
-        return { ok: true };
-      },
+  fetch: async (params) => {
+    const companyId = useAuthStore.getState().activeCompanyId;
+    if (!companyId) return;
+    set({ isLoading: true, error: null });
+    try {
+      const result = await correctionRequestsApi.list({ companyId, limit: 200, ...params });
+      set({ items: result.items.map(mapApi), isLoading: false });
+    } catch (e) {
+      set({ error: (e as Error).message, isLoading: false });
+    }
+  },
 
-      approve: (id) => {
-        set((s) => ({
-          items: s.items.map((r) =>
-            r.id === id && r.status === 'pending'
-              ? { ...r, status: 'approved' as const, decidedAt: nowIso() }
-              : r,
-          ),
-        }));
-      },
+  submit: async (input) => {
+    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    if (!input.employeeId.trim()) return { ok: false, error: 'اختر الموظف.' };
+    if (!input.requestTypeId.trim()) return { ok: false, error: 'اختر نوع الطلب.' };
+    if (!input.workDate.trim()) return { ok: false, error: 'أدخل تاريخ اليوم.' };
+    try {
+      const created = await correctionRequestsApi.create({
+        companyId,
+        employeeId: input.employeeId,
+        requestTypeId: input.requestTypeId,
+        workDate: input.workDate,
+        correctedCheckInAt: dateTimeIso(input.workDate, input.correctedCheckIn ?? ''),
+        correctedCheckOutAt: dateTimeIso(input.workDate, input.correctedCheckOut ?? ''),
+        reasonAr: input.reasonAr,
+      });
+      set(s => ({ items: [mapApi(created), ...s.items] }));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  },
 
-      reject: (id) => {
-        set((s) => ({
-          items: s.items.map((r) =>
-            r.id === id && r.status === 'pending'
-              ? { ...r, status: 'rejected' as const, decidedAt: nowIso() }
-              : r,
-          ),
-        }));
-      },
-    }),
-    {
-      name: 'hr_attendance_correction_requests_v1',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ items: s.items }),
-      version: 1,
-    },
-  ),
-);
+  approve: async (id) => {
+    const userId = useAuthStore.getState().user?.id ?? '';
+    const updated = await correctionRequestsApi.decide(id, {
+      decision: 'approve',
+      decidedByEmployeeId: userId,
+    });
+    set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
+  },
 
-export function attendanceCorrectionStatusLabelAr(s: AttendanceCorrectionRequestStatus): string {
+  reject: async (id) => {
+    const userId = useAuthStore.getState().user?.id ?? '';
+    const updated = await correctionRequestsApi.decide(id, {
+      decision: 'reject',
+      decidedByEmployeeId: userId,
+    });
+    set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
+  },
+
+  cancel: async (id, notes) => {
+    const updated = await correctionRequestsApi.cancel(id, { decisionNotesAr: notes });
+    set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
+  },
+}));
+
+export function attendanceCorrectionStatusLabelAr(s: AttendanceCorrectionRequest['status']): string {
   if (s === 'pending') return 'قيد الموافقة';
   if (s === 'approved') return 'معتمد';
+  if (s === 'cancelled') return 'ملغى';
   return 'مرفوض';
 }

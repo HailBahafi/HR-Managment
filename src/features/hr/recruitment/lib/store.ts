@@ -1,11 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { RecruitmentForm, RecruitmentApplicant } from './types';
-import recruitmentData from '../../../../../data/recruitment.json';
 import { uid } from './utils';
-
-const SEED_FORMS = recruitmentData.forms as RecruitmentForm[];
-const SEED_APPLICANTS = recruitmentData.applicants as RecruitmentApplicant[];
 
 interface RecruitmentState {
   forms: RecruitmentForm[];
@@ -20,8 +16,8 @@ interface RecruitmentState {
 export const useRecruitmentStore = create<RecruitmentState>()(
   persist(
     (set) => ({
-      forms: SEED_FORMS,
-      applicants: SEED_APPLICANTS,
+      forms: [],
+      applicants: [],
       addForm: (data) => {
         const form: RecruitmentForm = {
           ...data,
@@ -57,12 +53,7 @@ export const useRecruitmentStore = create<RecruitmentState>()(
       name: 'recruitment-storage',
       storage: createJSONStorage(() => localStorage),
       version: 1,
-      migrate: (persisted: unknown, version: number) => {
-        if (version < 1) {
-          return { forms: SEED_FORMS, applicants: SEED_APPLICANTS };
-        }
-        return persisted as { forms: RecruitmentForm[]; applicants: RecruitmentApplicant[] };
-      },
+      migrate: () => ({ forms: [], applicants: [] }),
     },
   ),
 );

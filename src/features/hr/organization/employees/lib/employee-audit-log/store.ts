@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { genId } from '@/features/hr/attendance/lib/utils';
-import { getEmployee } from '@/features/hr/lib/data';
 import { useEmployeeAuditActorStore } from '@/features/hr/organization/employees/lib/employee-audit-log/actor-store';
 import type { EmployeeAuditEntry, EmployeeAuditRowInput } from '@/features/hr/organization/employees/lib/employee-audit-log/types';
 
@@ -15,8 +14,7 @@ function nowIso() {
 function resolveActor(): { actorEmployeeId: string | null; actorNameAr: string } {
   const raw = useEmployeeAuditActorStore.getState().actorEmployeeId;
   if (!raw || raw === 'system') return { actorEmployeeId: null, actorNameAr: 'النظام' };
-  const e = getEmployee(raw);
-  return { actorEmployeeId: raw, actorNameAr: e?.name ?? raw };
+  return { actorEmployeeId: raw, actorNameAr: raw };
 }
 
 /** مرجع ثابت لمشترك Zustand (لا تُنشئ مصفوفة جديدة عند غياب سجلات). */

@@ -1,147 +1,85 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import { MOCK_APP_SESSION } from '@/shared/app-session';
-import type { HRDisciplineInvestigationRecord } from './types';
-import { INVESTIGATION_RESULT_LABELS } from './types';
-import { summarizeInvestigation } from './discipline-audit-log';
-import { appendDisciplineAuditLog } from './discipline-audit-log-store';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { disciplineInvestigationsApi } from './api/discipline-investigations';
+import type { DisciplineInvestigationResponseDto } from './api/discipline-investigations';
+import type { HRDisciplineInvestigationRecord, HRInvestigationRecommendation } from './types';
 
-const SEED: HRDisciplineInvestigationRecord[] = [
-  {
-    id:'inv-1', caseId:'case-3', caseNumber:'VIO-2026-0003',
-    employeeId:'e3', employeeNameAr:'فهد العنزي',
-    investigatorName:'محمد الزهراني', date:'2026-03-05',
-    employeeStatement:'أنكر المخالفة وقال إن النقاش كان في سياق مهني معتاد.',
-    witnessStatement:'شهد ثلاثة زملاء بوقوع الحادثة وأكدوا مضمون الشتائم وحدة.',
-    result:'proven', recommendation:'توجيه إنذار رسمي أول مع خصم يوم من الراتب.', recommendationType: 'warning',
-    createdAt:'2026-03-05T10:00:00Z', updatedAt:'2026-03-07T12:00:00Z',
-  },
-  {
-    id:'inv-2', caseId:'case-5', caseNumber:'VIO-2026-0005',
-    employeeId:'e4', employeeNameAr:'لينا الحربي',
-    investigatorName:'سارة القحطاني', date:'2026-03-12',
-    employeeStatement:'أقرت باستخدام الهاتف لكنها نفت إفشاء معلومات سرية وقالت إن الحديث كان عامًا.',
-    witnessStatement:'مدير قسم IT أكد سماعه لتفاصيل سرية خلال الاجتماع.',
-    result:'proven', recommendation:'خصم 500 ريال وإنذار خطي مع تقييد صلاحية الوصول.', recommendationType: 'deduction',
-    createdAt:'2026-03-12T11:00:00Z', updatedAt:'2026-03-14T09:00:00Z',
-  },
-  {
-    id:'inv-3', caseId:'case-6', caseNumber:'VIO-2026-0006',
-    employeeId:'e5', employeeNameAr:'سلطان الدوسري',
-    investigatorName:'خالد العتيبي', date:'2026-03-17',
-    employeeStatement:'ادعى أن البيانات كانت صحيحة وقت الكتابة لكن أجري تعديلات بعد ذلك.',
-    witnessStatement:'التدقيق المحاسبي أكد وجود فجوة بين البيانات المقدمة والواقع.',
-    result:'proven', recommendation:'خصم يومين من الراتب وتحذير خطي رسمي.', recommendationType: 'deduction',
-    createdAt:'2026-03-17T09:00:00Z', updatedAt:'2026-03-19T11:00:00Z',
-  },
-  {
-    id:'inv-4', caseId:'case-9', caseNumber:'VIO-2026-0009',
-    employeeId:'e3', employeeNameAr:'فهد العنزي',
-    investigatorName:'محمد الزهراني', date:'2026-03-25',
-    employeeStatement:'أكد رفضه للتعليمات قائلاً إنها كانت غير مختصة بمهامه الوظيفية.',
-    witnessStatement:'شهدتان تأكدان صدور التعليمات بشكل صريح ورفضها علناً.',
-    result:'proven', recommendation:'إنذار نهائي مع توصية بخصم ثلاثة أيام.', recommendationType: 'warning',
-    createdAt:'2026-03-25T08:00:00Z', updatedAt:'2026-03-27T10:00:00Z',
-  },
-  {
-    id:'inv-5', caseId:'case-10', caseNumber:'VIO-2026-0010',
-    employeeId:'e5', employeeNameAr:'سلطان الدوسري',
-    investigatorName:'خالد العتيبي', date:'2026-03-27',
-    employeeStatement:'ادعى أن استخدام الوسائل كان ضمن نطاق العمل المسموح به.',
-    witnessStatement:'سجلات الشبكة تثبت تصفحًا مستمرًا لمواقع غير متعلقة بالعمل.',
-    result:'proven', recommendation:'غرامة 1000 ريال وتقييد وصول الإنترنت.', recommendationType: 'deduction',
-    createdAt:'2026-03-27T09:00:00Z', updatedAt:'2026-03-29T11:00:00Z',
-  },
-  {
-    id:'inv-6', caseId:'case-18', caseNumber:'VIO-2026-0018',
-    employeeId:'e6', employeeNameAr:'هدى العمري',
-    investigatorName:'سارة القحطاني', date:'2026-04-11',
-    employeeStatement:'أقرت بحدوث نقاش لكنها نفت استخدام ألفاظ غير لائقة.',
-    witnessStatement:'شهد مدير المشاريع تصاعد النقاش وسمع ألفاظًا غير لائقة أمام عملاء.',
-    result:'proven', recommendation:'توجيه إنذار رسمي مع خصم 300 ريال.', recommendationType: 'warning',
-    createdAt:'2026-04-11T10:00:00Z', updatedAt:'2026-04-13T09:00:00Z',
-  },
-  {
-    id:'inv-7', caseId:'case-19', caseNumber:'VIO-2026-0019',
-    employeeId:'e1', employeeNameAr:'عبدالرحمن المالكي',
-    investigatorName:'محمد الزهراني', date:'2026-04-12',
-    employeeStatement:'أكد أن التواصل مع المورد كان لاستيضاح بعض التفاصيل التقنية فقط.',
-    witnessStatement:'رسائل البريد الإلكتروني تثبت تفاوضًا صريحًا حول الأسعار والشروط.',
-    result:'proven', recommendation:'خصم 1500 ريال وإنذار نهائي.', recommendationType: 'deduction',
-    createdAt:'2026-04-12T08:00:00Z', updatedAt:'2026-04-14T10:00:00Z',
-  },
-  {
-    id:'inv-8', caseId:'case-21', caseNumber:'VIO-2026-0021',
-    employeeId:'e3', employeeNameAr:'فهد العنزي',
-    investigatorName:'خالد العتيبي', date:'2026-04-06',
-    employeeStatement:'أنكر التعمد وقال إن الدخول كان بسبب خطأ في بيانات التسجيل وليس قصدًا.',
-    witnessStatement:'سجل الدخول يبين طلبات متعددة لملفات موظفين آخرين بشكل مقصود.',
-    result:'proven', recommendation:'خصم 700 ريال وتقييد صلاحيات النظام.', recommendationType: 'deduction',
-    createdAt:'2026-04-06T11:00:00Z', updatedAt:'2026-04-08T13:00:00Z',
-  },
-];
-
-function uid() { return `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`; }
-function now() { return new Date().toISOString(); }
+function mapApi(r: DisciplineInvestigationResponseDto): HRDisciplineInvestigationRecord {
+  const recommendationType = (r.recommendation ?? null) as HRInvestigationRecommendation | null;
+  return {
+    id: r.id,
+    caseId: r.violationRecordId,
+    caseNumber: r.linkedViolationRecordNumber,
+    employeeId: r.subjectEmployeeId,
+    employeeNameAr: '',
+    investigatorName: r.investigatorEmployeeId,
+    date: r.investigationDate,
+    employeeStatement: r.employeeStatement ?? '',
+    witnessStatement: r.witnessStatement ?? '',
+    result: r.result,
+    recommendation: r.recommendation ?? '',
+    recommendationType,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
+}
 
 interface InvestigationsState {
   investigations: HRDisciplineInvestigationRecord[];
-  add: (d: Omit<HRDisciplineInvestigationRecord,'id'|'createdAt'|'updatedAt'>) => void;
-  update: (id: string, patch: Partial<HRDisciplineInvestigationRecord>) => void;
-  remove: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  fetch: () => Promise<void>;
+  add: (d: Omit<HRDisciplineInvestigationRecord, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  update: (id: string, patch: Partial<HRDisciplineInvestigationRecord>) => Promise<void>;
+  remove: (id: string) => Promise<void>;
 }
 
-export const useHRDisciplineInvestigationsStore = create<InvestigationsState>()(
-  persist(
-    (set, get) => ({
-      investigations: SEED,
-      add: (d) => {
-        const rec: HRDisciplineInvestigationRecord = { ...d, id: uid(), createdAt: now(), updatedAt: now() };
-        set(s => ({ investigations: [...s.investigations, rec] }));
-        appendDisciplineAuditLog({
-          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
-          category: 'investigation',
-          actionType: 'create',
-          recordId: rec.id,
-          recordRefAr: rec.caseNumber,
-          recordStatusAfterAr: INVESTIGATION_RESULT_LABELS[rec.result],
-          previousSnapshotAr: '—',
-          currentSnapshotAr: summarizeInvestigation(rec),
-        });
-      },
-      update: (id, patch) => {
-        const prev = get().investigations.find(i => i.id === id);
-        if (!prev) return;
-        const merged: HRDisciplineInvestigationRecord = { ...prev, ...patch, updatedAt: now() };
-        set(s => ({ investigations: s.investigations.map(i => i.id === id ? merged : i) }));
-        appendDisciplineAuditLog({
-          actorNameAr: MOCK_APP_SESSION.employeeNameAr,
-          category: 'investigation',
-          actionType: 'update',
-          recordId: id,
-          recordRefAr: merged.caseNumber,
-          recordStatusAfterAr: INVESTIGATION_RESULT_LABELS[merged.result],
-          previousSnapshotAr: summarizeInvestigation(prev),
-          currentSnapshotAr: summarizeInvestigation(merged),
-        });
-      },
-      remove: (id) => {
-        const prev = get().investigations.find(i => i.id === id);
-        set(s => ({ investigations: s.investigations.filter(i => i.id !== id) }));
-        if (prev) {
-          appendDisciplineAuditLog({
-            actorNameAr: MOCK_APP_SESSION.employeeNameAr,
-            category: 'investigation',
-            actionType: 'delete',
-            recordId: id,
-            recordRefAr: prev.caseNumber,
-            recordStatusAfterAr: 'محذوف',
-            previousSnapshotAr: summarizeInvestigation(prev),
-            currentSnapshotAr: '—',
-          });
-        }
-      },
-    }),
-    { name:'hr_discipline_investigations_v1', storage: createJSONStorage(() => localStorage), version:2, migrate: () => ({ investigations: SEED }) },
-  ),
-);
+export const useHRDisciplineInvestigationsStore = create<InvestigationsState>()((set) => ({
+  investigations: [],
+  isLoading: false,
+  error: null,
+
+  fetch: async () => {
+    const companyId = useAuthStore.getState().activeCompanyId;
+    if (!companyId) return;
+    set({ isLoading: true, error: null });
+    try {
+      const result = await disciplineInvestigationsApi.getAll({ companyId, limit: 200 });
+      set({ investigations: result.items.map(mapApi), isLoading: false });
+    } catch (e) {
+      set({ error: (e as Error).message, isLoading: false });
+    }
+  },
+
+  add: async (d) => {
+    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const created = await disciplineInvestigationsApi.create({
+      companyId,
+      violationRecordId: d.caseId || undefined,
+      investigatorEmployeeId: d.investigatorName,
+      investigationDate: d.date,
+      employeeStatement: d.employeeStatement || null,
+      witnessStatement: d.witnessStatement || null,
+      result: d.result,
+      recommendation: d.recommendationType ?? null,
+    });
+    set((s) => ({ investigations: [...s.investigations, mapApi(created)] }));
+  },
+
+  update: async (id, patch) => {
+    const updated = await disciplineInvestigationsApi.update(id, {
+      ...(patch.investigatorName != null ? { investigatorEmployeeId: patch.investigatorName } : {}),
+      ...(patch.date != null ? { investigationDate: patch.date } : {}),
+      ...(patch.employeeStatement != null ? { employeeStatement: patch.employeeStatement } : {}),
+      ...(patch.witnessStatement != null ? { witnessStatement: patch.witnessStatement } : {}),
+      ...(patch.result != null ? { result: patch.result } : {}),
+      ...(patch.recommendationType !== undefined ? { recommendation: patch.recommendationType } : {}),
+    });
+    set((s) => ({ investigations: s.investigations.map((i) => (i.id === id ? mapApi(updated) : i)) }));
+  },
+
+  remove: async (id) => {
+    await disciplineInvestigationsApi.remove(id);
+    set((s) => ({ investigations: s.investigations.filter((i) => i.id !== id) }));
+  },
+}));

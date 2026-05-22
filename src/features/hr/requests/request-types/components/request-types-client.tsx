@@ -84,8 +84,10 @@ const CATEGORY_FILTER_OPTIONS = [
 ];
 
 export function RequestTypesClient() {
-  const { departments, requestTypes, addRequestType, updateRequestType, deleteRequestType } = useHRConfigurationStore();
+  const { departments, requestTypes, addRequestType, updateRequestType, deleteRequestType, fetchRequestTypes } = useHRConfigurationStore();
   const approvalAssignmentTemplates = useHRApprovalAssignmentTemplatesStore(s => s.templates);
+
+  React.useEffect(() => { fetchRequestTypes(); }, []);
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
   const filterDepts: string[] = [];
@@ -146,7 +148,7 @@ export function RequestTypesClient() {
     setDrawerOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft.nameAr.trim()) { setError('اسم نوع الطلب مطلوب'); return; }
     const base = {
       departmentId: HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
@@ -156,18 +158,22 @@ export function RequestTypesClient() {
       isActive: draft.isActive,
       requestCategory: draft.requestCategory,
     };
-    if (editId) {
-      const existing = requestTypes.find(r => r.id === editId);
-      updateRequestType(editId, { ...base, subtypes: existing?.subtypes ?? [] });
-    } else {
-      addRequestType({
-        ...base,
-        subtypes: [],
-        approvalAssignmentTemplateId: null,
-        approvalStages: [],
-      });
+    try {
+      if (editId) {
+        const existing = requestTypes.find(r => r.id === editId);
+        await updateRequestType(editId, { ...base, subtypes: existing?.subtypes ?? [] });
+      } else {
+        await addRequestType({
+          ...base,
+          subtypes: [],
+          approvalAssignmentTemplateId: null,
+          approvalStages: [],
+        });
+      }
+      setDrawerOpen(false);
+    } catch (e) {
+      setError((e as Error).message);
     }
-    setDrawerOpen(false);
   };
 
   const patch = <K extends keyof DraftForm>(k: K, v: DraftForm[K]) => setDraft(d => ({ ...d, [k]: v }));
@@ -363,7 +369,7 @@ export function RequestTypesClient() {
         </div>
       </HRSettingsFormDrawer>
 
-      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} title="حذف نوع الطلب" onConfirm={() => { if (deleteId) deleteRequestType(deleteId); setDeleteId(null); }} />
+      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} title="حذف نوع الطلب" onConfirm={async () => { if (deleteId) { await deleteRequestType(deleteId); setDeleteId(null); } }} />
     </div>
   );
 }

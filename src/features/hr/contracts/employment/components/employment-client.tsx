@@ -74,14 +74,18 @@ export function EmploymentContractsClient() {
   const searchParams = useSearchParams();
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
-  const { contracts, add, update, remove, activate, terminate, archive, createAmendmentDraft, syncExpiredByEndDate } = useHRContractsStore();
-  const { templates } = useHRContractTemplatesStore();
+  const { contracts, add, update, remove, activate, terminate, archive, createAmendmentDraft, fetch: fetchContracts } = useHRContractsStore();
+  const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { items: allowanceTypes } = useHRAllowanceTypesStore();
-  const { articles } = useHRContractArticlesStore();
+  const { articles, fetch: fetchArticles } = useHRContractArticlesStore();
   const allEmployees = useHREmployeeDirectoryStore(s => s.employees);
   const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
 
-  React.useEffect(() => { syncExpiredByEndDate(); }, [syncExpiredByEndDate]);
+  React.useEffect(() => {
+    fetchContracts();
+    fetchTemplates();
+    fetchArticles();
+  }, []);
 
   const essentialArticleIds = React.useMemo(
     () => articles.filter(a => a.isActive && a.isBasic).map(a => a.id),
@@ -289,15 +293,15 @@ export function EmploymentContractsClient() {
     setSelected(c); setForm(recordToForm(c)); setPanelMode('edit'); setError(null); setDrawerOpen(true);
   };
 
-  const openAmendment = (c: HRContractRecord) => {
-    const res = createAmendmentDraft(c.id);
+  const openAmendment = async (c: HRContractRecord) => {
+    const res = await createAmendmentDraft(c.id);
     if (!res.ok) { toast.error(res.message); return; }
-    const draft = contracts.find(x => x.id === res.id);
+    const draft = useHRContractsStore.getState().contracts.find(x => x.id === res.id);
     if (draft) { setSelected(draft); setForm(recordToForm(draft)); setPanelMode('edit'); setError(null); setDrawerOpen(true); }
     toast.success('تم إنشاء مسودة التعديل الرسمي.');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.employeeId) { setError('اختر الموظف'); return; }
     if (!form.contractNumber.trim()) { setError('رقم العقد مطلوب'); return; }
     if (!form.startDate || !form.endDate) { setError('تواريخ العقد مطلوبة'); return; }
@@ -307,30 +311,34 @@ export function EmploymentContractsClient() {
       setError('أدخل عدداً صحيحاً للإجازات السنوية (0–366 يوماً).');
       return;
     }
-    if (panelMode === 'create') {
-      add(formToDraft(form, 'draft'));
-      toast.success('تم إنشاء العقد كمسودة.');
-    } else if (panelMode === 'edit' && selected) {
-      const ok = update(selected.id, formToDraft(form, selected.status));
-      if (!ok) { setError('لا يمكن تعديل عقد غير مسودة'); return; }
+    try {
+      if (panelMode === 'create') {
+        await add(formToDraft(form, 'draft'));
+        toast.success('تم إنشاء العقد كمسودة.');
+      } else if (panelMode === 'edit' && selected) {
+        const ok = await update(selected.id, formToDraft(form, selected.status));
+        if (!ok) { setError('لا يمكن تعديل عقد غير مسودة'); return; }
+      }
+      closeDrawer();
+    } catch (e) {
+      setError((e as Error).message);
     }
-    closeDrawer();
   };
 
-  const handleActivate = (id: string) => {
-    const res = activate(id);
+  const handleActivate = async (id: string) => {
+    const res = await activate(id);
     if (!res.ok) toast.error(res.message); else toast.success('تم تفعيل العقد.');
   };
 
-  const handleTerminate = () => {
+  const handleTerminate = async () => {
     if (!terminateId) return;
-    const res = terminate(terminateId, terminateReason);
+    const res = await terminate(terminateId, terminateReason);
     if (!res.ok) toast.error(res.message); else toast.success('تم إنهاء العقد.');
     setTerminateId(null); setTerminateReason('');
   };
 
-  const handleArchive = (id: string) => {
-    const res = archive(id);
+  const handleArchive = async (id: string) => {
+    const res = await archive(id);
     if (!res.ok) toast.error(res.message); else toast.success('تم أرشفة العقد.');
   };
 
@@ -345,8 +353,8 @@ export function EmploymentContractsClient() {
       workArrangement: t.defaultWorkArrangement,
       probationDays: t.defaultProbationDays != null ? String(t.defaultProbationDays) : '',
       baseSalary: String(t.suggestedBaseSalary), currency: t.currency,
-      allowanceLines: t.allowanceTypeIds.length > 0
-        ? t.allowanceTypeIds.map(id => ({ allowanceTypeId: id, amount: String(allowanceTypes.find(a => a.id === id)?.typicalAmount ?? 0) }))
+      allowanceLines: t.allowanceLines.length > 0
+        ? t.allowanceLines.map(l => ({ allowanceTypeId: l.allowanceTypeId, amount: String(l.amount) }))
         : [{ allowanceTypeId: '', amount: '' }],
     });
   };
@@ -785,7 +793,7 @@ export function EmploymentContractsClient() {
         title="حذف العقد"
         description="هل أنت متأكد من حذف هذا العقد؟ لا يمكن التراجع."
         confirmLabel="حذف" variant="destructive"
-        onConfirm={() => { if (confirmDelete) { remove(confirmDelete); setConfirmDelete(null); } }}
+        onConfirm={async () => { if (confirmDelete) { await remove(confirmDelete); setConfirmDelete(null); } }}
       />
 
       {/* Terminate */}

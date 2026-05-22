@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import { data } from '@/features/hr/lib/data';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { employeesApi, type EmployeeResponseDto } from './api/employees';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,42 +28,29 @@ export interface HREmployeeDirectoryRow {
 // kept for backward compatibility with existing imports
 export type HREmployeeDirectoryEntry = HREmployeeDirectoryRow;
 
-// ─── Seed ─────────────────────────────────────────────────────────────────────
+// ─── Mapper ───────────────────────────────────────────────────────────────────
 
-const ROLE_MAP: Record<string, HREmployeeHierarchyRole> = {
-  'hr-manager': 'dept_head', 'it-manager': 'dept_head', 'finance-manager': 'dept_head',
-  'marketing-manager': 'dept_head', 'sales-manager': 'dept_head',
-  'operations-manager': 'dept_head', 'admin': 'gm',
-};
-
-function toStatus(s: string): HREmployeeStatus {
-  return (s === 'active' || s === 'probation' || s === 'suspended') ? s : 'active';
+function mapApi(e: EmployeeResponseDto): HREmployeeDirectoryRow {
+  const status: HREmployeeStatus =
+    e.contractStatus === 'active' ? 'active' :
+    e.contractStatus === 'suspended' ? 'suspended' : 'active';
+  return {
+    id: e.id,
+    bridgeId: e.employeeCode,
+    nameAr: e.nameAr,
+    nameEn: e.nameEn ?? e.nameAr,
+    nationalId: e.nationalId ?? '',
+    departmentId: '', // not in base employee response
+    jobTitleAr: e.position ?? '',
+    jobTitleEn: e.position ?? '',
+    hireDate: e.startDate ?? '',
+    status,
+    email: e.email ?? undefined,
+    mobile: e.phone ?? undefined,
+    reportsToId: e.managerId ?? null,
+    hierarchyRole: 'staff',
+  };
 }
-
-function guessRole(position: string, idx: number): HREmployeeHierarchyRole {
-  if (idx === 0) return 'ceo';
-  if (position.includes('مدير') && idx < 4) return 'gm';
-  if (position.includes('مدير')) return 'dept_head';
-  if (position.includes('مشرف') || position.includes('رئيس')) return 'supervisor';
-  return 'staff';
-}
-
-const SEED: HREmployeeDirectoryRow[] = data.employees.map((e, i) => ({
-  id: e.id,
-  bridgeId: e.employeeCode ?? `NW-${1000 + i}`,
-  nameAr: e.name,
-  nameEn: e.nameEn ?? e.name,
-  nationalId: e.nationalId ?? '',
-  departmentId: e.departmentId,
-  jobTitleAr: e.position,
-  jobTitleEn: e.position,
-  hireDate: e.startDate,
-  status: toStatus(e.contractStatus),
-  email: e.email,
-  mobile: e.phone,
-  reportsToId: e.managerId ?? null,
-  hierarchyRole: ROLE_MAP[e.role ?? ''] ?? guessRole(e.position, i),
-}));
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -71,53 +58,56 @@ function uid() { return `emp_${Date.now().toString(36)}_${Math.random().toString
 
 interface DirectoryState {
   employees: HREmployeeDirectoryRow[];
-  addEmployee: (draft: Omit<HREmployeeDirectoryRow, 'id'>) => string;
-  updateEmployee: (id: string, patch: Partial<Omit<HREmployeeDirectoryRow, 'id'>>) => void;
-  deleteEmployee: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  fetch: () => Promise<void>;
+  addEmployee: (draft: Omit<HREmployeeDirectoryRow, 'id'>) => string; // local-only (optimistic)
+  updateEmployee: (id: string, patch: Partial<Omit<HREmployeeDirectoryRow, 'id'>>) => void; // local-only
+  deleteEmployee: (id: string) => void; // local-only
   getById: (id: string) => HREmployeeDirectoryRow | undefined;
-  resetToSeed: () => void;
+  resetToSeed: () => void; // now calls fetch()
   // computed helpers
   activeEmployees: HREmployeeDirectoryRow[];
 }
 
-export const useHREmployeeDirectoryStore = create<DirectoryState>()(
-  persist(
-    (set, get) => ({
-      employees: SEED,
+export const useHREmployeeDirectoryStore = create<DirectoryState>()((set, get) => ({
+  employees: [],
+  isLoading: false,
+  error: null,
 
-      addEmployee: (draft) => {
-        const id = uid();
-        const row: HREmployeeDirectoryRow = { ...draft, id };
-        set(s => ({ employees: [...s.employees, row] }));
-        return id;
-      },
+  fetch: async () => {
+    const companyId = useAuthStore.getState().activeCompanyId;
+    if (!companyId) return;
+    set({ isLoading: true, error: null });
+    try {
+      const result = await employeesApi.list({ companyId, limit: 500 });
+      set({ employees: result.items.map(mapApi), isLoading: false });
+    } catch (e) {
+      set({ error: (e as Error).message, isLoading: false });
+    }
+  },
 
-      updateEmployee: (id, patch) => {
-        set(s => ({ employees: s.employees.map(e => e.id === id ? { ...e, ...patch } : e) }));
-      },
+  addEmployee: (draft) => {
+    const id = uid();
+    set(s => ({ employees: [...s.employees, { ...draft, id }] }));
+    return id;
+  },
 
-      deleteEmployee: (id) => {
-        set(s => ({
-          employees: s.employees
-            .filter(e => e.id !== id)
-            .map(e => e.reportsToId === id ? { ...e, reportsToId: null } : e),
-        }));
-      },
+  updateEmployee: (id, patch) => {
+    set(s => ({ employees: s.employees.map(e => e.id === id ? { ...e, ...patch } : e) }));
+  },
 
-      getById: (id) => get().employees.find(e => e.id === id),
+  deleteEmployee: (id) => {
+    set(s => ({
+      employees: s.employees
+        .filter(e => e.id !== id)
+        .map(e => e.reportsToId === id ? { ...e, reportsToId: null } : e),
+    }));
+  },
 
-      resetToSeed: () => set({ employees: SEED }),
+  getById: (id) => get().employees.find(e => e.id === id),
 
-      get activeEmployees() { return get().employees.filter(e => e.status === 'active'); },
-    }),
-    {
-      name: 'hr-employee-directory-storage',
-      storage: createJSONStorage(() => localStorage),
-      version: 4,
-      migrate: (_: unknown, version: number) => {
-        if (version < 4) return { employees: SEED };
-        return _ as DirectoryState;
-      },
-    },
-  ),
-);
+  resetToSeed: () => { get().fetch(); },
+
+  get activeEmployees() { return get().employees.filter(e => e.status === 'active'); },
+}));
