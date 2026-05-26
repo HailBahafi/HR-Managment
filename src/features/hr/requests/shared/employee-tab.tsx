@@ -124,7 +124,9 @@ interface Props { openEmployeeId?: string | null; onClearDeepLink: () => void; }
 
 export function EmployeeTab({ openEmployeeId, onClearDeepLink }: Props) {
   const { employees, addEmployee, updateEmployee, deleteEmployee } = useHREmployeeDirectoryStore();
-  const { departments } = useHRConfigurationStore();
+  const { departments, fetchDepartments } = useHRConfigurationStore();
+
+  React.useEffect(() => { fetchDepartments(); }, []);
 
   const [view, setView]           = React.useState<'list' | 'chart'>(() => (typeof window !== 'undefined' ? localStorage.getItem(LS_VIEW) as 'list' | 'chart' : null) ?? 'list');
   const [filterDept, setFilterDept]     = React.useState('all');

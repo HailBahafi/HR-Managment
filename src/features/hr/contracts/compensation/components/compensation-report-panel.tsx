@@ -124,10 +124,29 @@ export function CompensationReportPanel({
   employeeIdsFilter?: string[] | undefined;
 }) {
   const periods               = useHRPayrollPeriodsStore(s => s.periods);
+  const fetchPeriods          = useHRPayrollPeriodsStore(s => s.fetch);
+  const materialize           = useHRPayrollPeriodsStore(s => s.materializeFromContracts);
   const setCompensationStatus = useHRPayrollPeriodsStore(s => s.setCompensationStatus);
   const setMonthlyInputs      = useHRPayrollPeriodsStore(s => s.setMonthlyInputs);
   const contracts             = useHRContractsStore(s => s.contracts);
+  const fetchContracts        = useHRContractsStore(s => s.fetch);
   const allowanceTypes        = useHRAllowanceTypesStore(s => s.items);
+  const fetchAllowanceTypes   = useHRAllowanceTypesStore(s => s.fetch);
+
+  // Load all data on mount if not already loaded
+  React.useEffect(() => {
+    if (periods.length === 0) fetchPeriods();
+    if (contracts.length === 0) fetchContracts({});
+    if (allowanceTypes.length === 0) fetchAllowanceTypes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Derive employment lines from contracts whenever both are available
+  React.useEffect(() => {
+    if (contracts.length > 0 && periods.length > 0) {
+      materialize(contracts);
+    }
+  }, [contracts, periods.length, materialize]);
 
   const [cols, setCols] = React.useState<CompensationColumnVisibility>({
     colOvertime: true, colBonus: true,

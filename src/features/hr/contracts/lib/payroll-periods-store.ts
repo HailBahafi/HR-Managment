@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { payrollPeriodsApi, type PayrollPeriodResponseDto } from './api/payroll-periods';
+import {
+  monthlyInputsApi,
+  type MonthlyInputResponseDto,
+  type MonthlyInputKindDto,
+  type MonthlyInputDirectionDto,
+} from './api/monthly-inputs';
 import type { HRContractRecord } from './contracts-store';
 
 export type HRPayrollPeriodStatus = 'draft' | 'open' | 'closed';
@@ -88,17 +94,41 @@ function mapApi(r: PayrollPeriodResponseDto): HRPayrollPeriodRecord {
   };
 }
 
+// Map a backend MonthlyInputResponseDto to a frontend HRPayrollMonthlyInput.
+// baseSalarySnapshot is required to convert absence SAR → days correctly.
+function fromBackendInput(dto: MonthlyInputResponseDto, baseSalarySnapshot = 0): HRPayrollMonthlyInput {
+  switch (dto.inputKind) {
+    case 'overtime':
+      return { kind: 'overtime_hours', value: dto.amount, note: dto.note ?? '' };
+    case 'allowance_extra':
+    case 'bonus':
+      return { kind: 'allowance_amount', value: dto.amount, note: dto.note ?? '' };
+    case 'absence_deduction': {
+      // Backend stores SAR; frontend stores days. Convert back.
+      const dailyRate = baseSalarySnapshot > 0 ? baseSalarySnapshot / 30 : 1;
+      const days = Math.round((dto.amount / dailyRate) * 1000) / 1000;
+      return { kind: 'absence_days', value: days, note: dto.note ?? '' };
+    }
+    case 'lateness_deduction':
+      return { kind: 'late_minutes', value: dto.amount, note: dto.note ?? '' };
+    case 'advance_installment':
+    case 'loan_installment':
+      return { kind: 'advance_recovery', value: dto.amount, note: dto.note ?? '' };
+    case 'discipline_deduction':
+    case 'other_deduction':
+      return { kind: 'deduction_amount', value: dto.amount, note: dto.note ?? '' };
+    default:
+      return { kind: 'other', value: dto.amount, note: dto.note ?? '' };
+  }
+}
+
 interface State {
   periods: HRPayrollPeriodRecord[];
   isLoading: boolean;
   error: string | null;
+  /** Raw backend inputs keyed by periodId → employeeId → list. Used to populate lines after materialize. */
+  _rawInputs: Record<string, Record<string, MonthlyInputResponseDto[]>>;
   fetch: () => Promise<void>;
-  /**
-   * Derives `employmentLines` for every period from the supplied active
-   * contracts, matching contracts whose date window overlaps the period.
-   * Used by pages (reports, payroll-salary-approvals) that need lines
-   * without the user manually saving them on the period detail page.
-   */
   materializeFromContracts: (contracts: HRContractRecord[]) => void;
   add: (data: HRPayrollPeriodDraft) => Promise<string>;
   update: (id: string, patch: Partial<HRPayrollPeriodDraft>) => Promise<boolean>;
@@ -106,21 +136,38 @@ interface State {
   open: (id: string) => Promise<boolean>;
   close: (id: string) => Promise<boolean>;
   setCompensationStatus: (id: string, s: HRPayrollCompensationReviewStatus) => boolean;
-  setMonthlyInputs: (periodId: string, lineId: string, inputs: HRPayrollMonthlyInput[]) => void;
+  setMonthlyInputs: (periodId: string, lineId: string, inputs: HRPayrollMonthlyInput[]) => Promise<void>;
 }
 
 export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
   periods: [],
   isLoading: false,
   error: null,
+  _rawInputs: {},
 
   fetch: async () => {
     const companyId = useAuthStore.getState().activeCompanyId;
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
-      const result = await payrollPeriodsApi.list({ companyId, limit: 200 });
-      set({ periods: result.items.map(mapApi), isLoading: false });
+      const [periodsResult, inputsResult] = await Promise.all([
+        payrollPeriodsApi.list({ companyId, limit: 200 }),
+        monthlyInputsApi.list({ companyId, limit: 2000 }),
+      ]);
+
+      // Group backend inputs by periodId → employeeId
+      const rawInputs: Record<string, Record<string, MonthlyInputResponseDto[]>> = {};
+      for (const dto of inputsResult.items) {
+        if (!rawInputs[dto.payrollPeriodId]) rawInputs[dto.payrollPeriodId] = {};
+        if (!rawInputs[dto.payrollPeriodId][dto.employeeId]) rawInputs[dto.payrollPeriodId][dto.employeeId] = [];
+        rawInputs[dto.payrollPeriodId][dto.employeeId].push(dto);
+      }
+
+      set({
+        periods: periodsResult.items.map(mapApi),
+        _rawInputs: rawInputs,
+        isLoading: false,
+      });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
     }
@@ -156,11 +203,24 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
           capturedAt,
         }));
 
+        // Populate monthly inputs from backend raw cache
+        const periodRaw = s._rawInputs[period.id] ?? {};
+        const employmentLineMonthlyInputs: Record<string, HRPayrollMonthlyInput[]> = {};
+        for (const line of lines) {
+          const dtos = periodRaw[line.employeeId] ?? [];
+          if (dtos.length > 0) {
+            employmentLineMonthlyInputs[line.id] = dtos.map(d =>
+              fromBackendInput(d, line.baseSalarySnapshot),
+            );
+          }
+        }
+
         return {
           ...period,
           employmentLines: lines,
           snapshotContractIds: active.map((c) => c.id),
           linesMaterializedAt: capturedAt,
+          employmentLineMonthlyInputs,
         };
       }),
     }));
@@ -168,7 +228,6 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
 
   add: async (data) => {
     const companyId = useAuthStore.getState().activeCompanyId ?? '';
-    // Extract year/month from periodStart (format: YYYY-MM-DD)
     const [yearStr, monthStr] = data.periodStart.split('-');
     const periodYear = parseInt(yearStr ?? '0', 10);
     const periodMonth = parseInt(monthStr ?? '0', 10);
@@ -201,7 +260,6 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
         periods: s.periods.map(p => {
           if (p.id !== id) return p;
           const base = mapApi(updated);
-          // Preserve local-only fields from current state
           return {
             ...base,
             compensationReviewStatus: patch.compensationReviewStatus ?? p.compensationReviewStatus,
@@ -261,7 +319,8 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     return true;
   },
 
-  setMonthlyInputs: (periodId, lineId, inputs) => {
+  setMonthlyInputs: async (periodId, lineId, inputs) => {
+    // Optimistic local update
     set(s => ({
       periods: s.periods.map(p => {
         if (p.id !== periodId) return p;
@@ -271,6 +330,74 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
         };
       }),
     }));
+
+    const companyId = useAuthStore.getState().activeCompanyId;
+    if (!companyId) return;
+
+    const state = get();
+    const period = state.periods.find(p => p.id === periodId);
+    const line = period?.employmentLines.find(l => l.id === lineId);
+    if (!line) return;
+
+    try {
+      // Delete all existing backend inputs for this (period, employee) pair that came from the compensation panel
+      const existing = await monthlyInputsApi.list({
+        companyId,
+        payrollPeriodId: periodId,
+        employeeId: line.employeeId,
+        limit: 500,
+      });
+      const toDelete = existing.items.filter(
+        d => d.sourceTable === 'frontend_compensation_panel',
+      );
+      await Promise.all(toDelete.map(d => monthlyInputsApi.delete(d.id)));
+
+      // Create new inputs
+      const baseSalary = line.baseSalarySnapshot;
+      const creates = inputs
+        .filter(i => i.value > 0)
+        .map(i => {
+          let inputKind: MonthlyInputKindDto;
+          let direction: MonthlyInputDirectionDto;
+          let amount: number;
+
+          switch (i.kind) {
+            case 'overtime_hours':
+              inputKind = 'overtime'; direction = 'addition'; amount = i.value; break;
+            case 'allowance_amount':
+              inputKind = 'allowance_extra'; direction = 'addition'; amount = i.value; break;
+            case 'absence_days':
+              inputKind = 'absence_deduction'; direction = 'deduction';
+              amount = Math.round(i.value * (baseSalary / 30) * 100) / 100; break;
+            case 'late_minutes':
+              inputKind = 'lateness_deduction'; direction = 'deduction'; amount = i.value; break;
+            case 'deduction_amount':
+              inputKind = 'other_deduction'; direction = 'deduction'; amount = i.value; break;
+            case 'advance_recovery':
+              inputKind = 'advance_installment'; direction = 'deduction'; amount = i.value; break;
+            case 'other':
+            default:
+              inputKind = 'other_deduction'; direction = 'deduction'; amount = i.value; break;
+          }
+
+          return monthlyInputsApi.create({
+            companyId,
+            payrollPeriodId: periodId,
+            employeeId: line.employeeId,
+            inputKind,
+            direction,
+            amount,
+            note: i.note || undefined,
+            sourceKind: 'manual',
+            sourceTable: 'frontend_compensation_panel',
+            sourceId: line.employeeId,
+          });
+        });
+
+      await Promise.all(creates);
+    } catch {
+      // Keep optimistic state on error; user sees data but it didn't persist
+    }
   },
 }));
 

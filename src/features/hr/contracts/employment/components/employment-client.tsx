@@ -81,13 +81,14 @@ export function EmploymentContractsClient() {
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { items: allowanceTypes } = useHRAllowanceTypesStore();
   const { articles, fetch: fetchArticles } = useHRContractArticlesStore();
-  const allEmployees = useHREmployeeDirectoryStore(s => s.employees);
+  const { employees: allEmployees, fetch: fetchEmployees } = useHREmployeeDirectoryStore();
   const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
 
   React.useEffect(() => {
     fetchContracts();
     fetchTemplates();
     fetchArticles();
+    fetchEmployees();
   }, []);
 
   const essentialArticleIds = React.useMemo(

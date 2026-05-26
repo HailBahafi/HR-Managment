@@ -12,7 +12,7 @@ export const AUDIT_ACTOR_SYSTEM = 'system';
 export const useEmployeeAuditActorStore = create<ActorState>()(
   persist(
     (set) => ({
-      actorEmployeeId: 'e1',
+      actorEmployeeId: AUDIT_ACTOR_SYSTEM,
       setActorEmployeeId: (id) => set({ actorEmployeeId: id }),
     }),
     {

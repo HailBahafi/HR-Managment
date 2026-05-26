@@ -36,35 +36,6 @@ function now() {
   return new Date().toISOString();
 }
 
-const SEED: ExternalPartyRecord[] = [
-  {
-    id: 'xp-seed-1',
-    kind: 'customer',
-    nameAr: 'فهد العتيبي',
-    phone: '+966 50 900 1122',
-    email: 'fahad.client@example.com',
-    organizationAr: 'شركة النور للتجارة',
-    notes: 'عميل فرع الرياض — مهتم بتوسعة الاشتراك',
-    updatedAt: '2026-04-01T10:00:00Z',
-  },
-  {
-    id: 'xp-seed-2',
-    kind: 'visitor',
-    nameAr: 'نورة السبيعي',
-    phone: '+966 55 200 3344',
-    organizationAr: 'زيارة تعريفية — قسم المبيعات',
-    updatedAt: '2026-04-10T14:30:00Z',
-  },
-  {
-    id: 'xp-seed-3',
-    kind: 'sales_lead',
-    nameAr: 'مؤسسة حدائق الخليج',
-    phone: '+966 11 445 6677',
-    email: 'procurement@hadaiq.example',
-    organizationAr: 'طلب عرض سعر — ٥٠ مقعد',
-    updatedAt: '2026-04-18T09:15:00Z',
-  },
-];
 
 interface State {
   parties: ExternalPartyRecord[];
@@ -76,7 +47,7 @@ interface State {
 export const useExternalContactsStore = create<State>()(
   persist(
     (set, get) => ({
-      parties: SEED,
+      parties: [],
       add: (d) => {
         if (!d.nameAr.trim()) return { ok: false, error: 'الاسم مطلوب' };
         const row: ExternalPartyRecord = {

@@ -11,7 +11,7 @@ import type { Employee } from '@/features/hr/organization/employees/types';
 import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 import { payslipsApi } from '@/features/hr/payroll/lib/api/payslips';
 import type { Payslip } from '@/features/hr/payroll/types';
-import { PAYSLIP_MONTHS_AR } from '@/features/hr/payroll/lib/employee-payslip-series';
+const PAYSLIP_MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'] as const;
 
 export type { ViolationRecordResponseDto, LeaveRequestResponseDto };
 

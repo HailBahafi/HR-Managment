@@ -6,6 +6,7 @@ import type {
 } from './types';
 import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, slugify, type HRRequestTypeCategory } from './types';
 import { requestTypesApi, type ApiRequestType } from './api/request-types';
+import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 
 function uid() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -16,44 +17,17 @@ function getDescendantIds(depts: HRDepartmentEntity[], id: string): string[] {
   return [...children, ...children.flatMap(cid => getDescendantIds(depts, cid))];
 }
 
-// ─── Local-only seeds (departments & templates — no backend yet) ──────────────
-
-const DEPT_SEED: HRDepartmentEntity[] = [
-  { id: 'd1', nameAr: 'الموارد البشرية', nameEn: 'Human Resources', slug: 'human-resources', sortOrder: 1, isActive: true },
-  { id: 'd2', nameAr: 'تقنية المعلومات', nameEn: 'Information Technology', slug: 'information-technology', sortOrder: 2, isActive: true },
-  { id: 'd3', nameAr: 'المالية والمحاسبة', nameEn: 'Finance & Accounting', slug: 'finance-accounting', sortOrder: 3, isActive: true },
-  { id: 'd4', nameAr: 'التسويق', nameEn: 'Marketing', slug: 'marketing', sortOrder: 4, isActive: true },
-  { id: 'd5', nameAr: 'المبيعات', nameEn: 'Sales', slug: 'sales', sortOrder: 5, isActive: true },
-  { id: 'd6', nameAr: 'العمليات', nameEn: 'Operations', slug: 'operations', sortOrder: 6, isActive: true },
-  { id: 'd7', nameAr: 'خدمة العملاء', nameEn: 'Customer Service', slug: 'customer-service', sortOrder: 7, isActive: true },
-  { id: 'd8', nameAr: 'الجودة', nameEn: 'Quality', slug: 'quality', sortOrder: 8, isActive: true },
-  { id: 'd9', nameAr: 'اللوجستيات', nameEn: 'Logistics', slug: 'logistics', sortOrder: 9, isActive: true },
-  { id: 'd10', nameAr: 'الاستثمار', nameEn: 'Investment', slug: 'investment', sortOrder: 10, isActive: true },
-];
-
-const FIELDS_SEED: HRRequestFieldDefinition[] = [
-  { id: 'f-reason', labelAr: 'سبب الطلب', labelEn: 'Reason', kind: 'textarea', required: true, sortOrder: 1 },
-  { id: 'f-start', labelAr: 'تاريخ البداية', labelEn: 'Start Date', kind: 'date', required: true, sortOrder: 2 },
-  { id: 'f-end', labelAr: 'تاريخ النهاية', labelEn: 'End Date', kind: 'date', required: false, sortOrder: 3 },
-  { id: 'f-urgent', labelAr: 'هل الطلب عاجل؟', labelEn: 'Urgent?', kind: 'checkbox', required: false, sortOrder: 4 },
-];
-
-const TEMPLATE_SEED: HRRequestTemplateEntity[] = [
-  {
-    id: 'tpl-general', nameAr: 'القالب العام', nameEn: 'General Template',
-    slug: 'general-template', sortOrder: 1, isActive: true, isUniversalDefault: true,
-    formFields: FIELDS_SEED,
-  },
-  {
-    id: 'tpl-it', nameAr: 'طلب دعم تقني', nameEn: 'IT Support Request',
-    slug: 'it-support-request', sortOrder: 2, isActive: true,
-    formFields: [
-      { id: 'f-issue', labelAr: 'وصف المشكلة', labelEn: 'Issue Description', kind: 'textarea', required: true, sortOrder: 1 },
-      { id: 'f-priority', labelAr: 'الأولوية', kind: 'radio_group', required: true, sortOrder: 2, options: [{ id: 'high', labelAr: 'عالية' }, { id: 'medium', labelAr: 'متوسطة' }, { id: 'low', labelAr: 'منخفضة' }] },
-      { id: 'f-device', labelAr: 'اسم الجهاز / الرقم التسلسلي', kind: 'text', required: false, sortOrder: 3 },
-    ],
-  },
-];
+function mapDepartment(r: DepartmentResponseDto): HRDepartmentEntity {
+  return {
+    id: r.id,
+    nameAr: r.nameAr,
+    nameEn: r.nameEn ?? '',
+    slug: r.code.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    sortOrder: r.levelNo ?? 0,
+    isActive: r.isActive,
+    parentId: r.parentDepartmentId ?? undefined,
+  };
+}
 
 // ─── Mapping API → frontend type ─────────────────────────────────────────────
 
@@ -84,10 +58,14 @@ function mapApiRequestType(r: ApiRequestType): HRRequestTypeEntity {
 
 interface HRConfigState {
   departments: HRDepartmentEntity[];
+  departmentsLoading: boolean;
   templates: HRRequestTemplateEntity[];
   requestTypes: HRRequestTypeEntity[];
   requestTypesLoading: boolean;
   requestTypesError: string | null;
+
+  // Departments — async (backed by API)
+  fetchDepartments: () => Promise<void>;
 
   // Request types — async (backed by API)
   fetchRequestTypes: () => Promise<void>;
@@ -111,11 +89,26 @@ interface HRConfigState {
 export const useHRConfigurationStore = create<HRConfigState>()(
   persist(
     (set, get) => ({
-      departments: DEPT_SEED,
-      templates: TEMPLATE_SEED,
+      departments: [],
+      departmentsLoading: false,
+      templates: [],
       requestTypes: [],
       requestTypesLoading: false,
       requestTypesError: null,
+
+      // ── Departments (API-backed) ────────────────────────────────────────────
+
+      fetchDepartments: async () => {
+        const companyId = useAuthStore.getState().activeCompanyId;
+        if (!companyId) return;
+        set({ departmentsLoading: true });
+        try {
+          const result = await departmentsApi.getAll({ companyId, limit: 500 });
+          set({ departments: result.items.map(mapDepartment), departmentsLoading: false });
+        } catch {
+          set({ departmentsLoading: false });
+        }
+      },
 
       // ── Request types (API-backed) ──────────────────────────────────────────
 
@@ -271,9 +264,8 @@ export const useHRConfigurationStore = create<HRConfigState>()(
       storage: createJSONStorage(() => localStorage),
       version: 5,
       partialize: (s) => ({
-        departments: s.departments,
         templates: s.templates,
-        // requestTypes intentionally not persisted — always fetched from API
+        // departments and requestTypes intentionally not persisted — always fetched from API
       }),
       migrate: () => ({}),
     },

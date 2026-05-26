@@ -62,7 +62,7 @@ function statusBadgeClass(s: AttendanceCorrectionRequest['status']) {
 
 export function AttendanceCorrectionRequestsClient() {
   const departments = useHRConfigurationStore((s) => s.departments);
-  const { requestTypes, fetchRequestTypes } = useHRConfigurationStore();
+  const { requestTypes, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
   const employees = useHREmployeeDirectoryStore((s) => s.employees);
   const activeEmployees = React.useMemo(() => employees.filter((e) => e.status === 'active'), [employees]);
 
@@ -71,6 +71,7 @@ export function AttendanceCorrectionRequestsClient() {
   React.useEffect(() => {
     fetchItems();
     fetchRequestTypes();
+    fetchDepartments();
   }, []);
 
   const attendanceRequestTypes = React.useMemo(

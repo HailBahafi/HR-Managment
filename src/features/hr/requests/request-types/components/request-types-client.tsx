@@ -50,10 +50,10 @@ const CATEGORY_FILTER_OPTIONS = [
 ];
 
 export function RequestTypesClient() {
-  const { departments, requestTypes, addRequestType, updateRequestType, deleteRequestType, fetchRequestTypes } = useHRConfigurationStore();
+  const { departments, requestTypes, addRequestType, updateRequestType, deleteRequestType, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
   const approvalAssignmentTemplates = useHRApprovalAssignmentTemplatesStore(s => s.templates);
 
-  React.useEffect(() => { fetchRequestTypes(); }, []);
+  React.useEffect(() => { fetchRequestTypes(); fetchDepartments(); }, []);
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
   const filterDepts: string[] = [];

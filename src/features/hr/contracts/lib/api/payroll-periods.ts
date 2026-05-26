@@ -33,13 +33,13 @@ export type UpdatePayrollPeriodDto = Partial<Omit<CreatePayrollPeriodDto, 'compa
 
 export const payrollPeriodsApi = {
   list: (params?: { companyId?: string; status?: string; periodYear?: number; periodMonth?: number; page?: number; limit?: number }) =>
-    apiRequest<PaginatedResult<PayrollPeriodResponseDto>>('/payroll/payroll-periods', { query: params }),
+    apiRequest<PaginatedResult<PayrollPeriodResponseDto>>('/payroll/periods', { query: params }),
   get: (id: string) =>
-    apiRequest<PayrollPeriodResponseDto>(`/payroll/payroll-periods/${id}`),
+    apiRequest<PayrollPeriodResponseDto>(`/payroll/periods/${id}`),
   create: (body: CreatePayrollPeriodDto) =>
-    apiRequest<PayrollPeriodResponseDto>('/payroll/payroll-periods', { method: 'POST', body }),
+    apiRequest<PayrollPeriodResponseDto>('/payroll/periods', { method: 'POST', body }),
   update: (id: string, body: UpdatePayrollPeriodDto) =>
-    apiRequest<PayrollPeriodResponseDto>(`/payroll/payroll-periods/${id}`, { method: 'PATCH', body }),
+    apiRequest<PayrollPeriodResponseDto>(`/payroll/periods/${id}`, { method: 'PATCH', body }),
   delete: (id: string) =>
-    apiRequest<void>(`/payroll/payroll-periods/${id}`, { method: 'DELETE' }),
+    apiRequest<void>(`/payroll/periods/${id}`, { method: 'DELETE' }),
 };

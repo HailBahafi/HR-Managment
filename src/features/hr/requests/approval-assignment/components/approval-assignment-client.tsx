@@ -158,9 +158,14 @@ function StageEditor({ stage, index, onChange, onRemove, showRemove = true }: {
 
 export function ApprovalAssignmentClient() {
   const { templates, add, update, remove } = useHRApprovalAssignmentTemplatesStore();
-  const requestTypes = useHRConfigurationStore((s) => s.requestTypes);
-  const departments = useHRConfigurationStore((s) => s.departments);
+  const { requestTypes, departments, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
   const employees = useHREmployeeDirectoryStore((s) => s.employees);
+
+  React.useEffect(() => {
+    fetchRequestTypes();
+    fetchDepartments();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const activeEmployees = React.useMemo(
     () => employees.filter((e) => e.status === 'active'),
     [employees],
