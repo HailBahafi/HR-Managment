@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { payrollPeriodsApi, type PayrollPeriodResponseDto } from './api/payroll-periods';
+import type { HRContractRecord } from './contracts-store';
 
 export type HRPayrollPeriodStatus = 'draft' | 'open' | 'closed';
 export type HRPayrollCompensationReviewStatus = 'draft' | 'first_review' | 'second_review' | 'approved';
@@ -92,6 +93,13 @@ interface State {
   isLoading: boolean;
   error: string | null;
   fetch: () => Promise<void>;
+  /**
+   * Derives `employmentLines` for every period from the supplied active
+   * contracts, matching contracts whose date window overlaps the period.
+   * Used by pages (reports, payroll-salary-approvals) that need lines
+   * without the user manually saving them on the period detail page.
+   */
+  materializeFromContracts: (contracts: HRContractRecord[]) => void;
   add: (data: HRPayrollPeriodDraft) => Promise<string>;
   update: (id: string, patch: Partial<HRPayrollPeriodDraft>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
@@ -116,6 +124,46 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
     }
+  },
+
+  materializeFromContracts: (contracts) => {
+    set((s) => ({
+      periods: s.periods.map((period) => {
+        if ((period.employmentLines?.length ?? 0) > 0) {
+          return period;
+        }
+        const active = contracts.filter((c) => {
+          if (c.status !== 'active') return false;
+          if (!c.startDate) return false;
+          if (c.startDate > period.periodEnd) return false;
+          if (c.endDate && c.endDate < period.periodStart) return false;
+          return true;
+        });
+        if (active.length === 0) return period;
+
+        const capturedAt = new Date().toISOString();
+        const lines: HRPayrollEmploymentLine[] = active.map((c, idx) => ({
+          id: `${period.id}-${c.id}`,
+          sortOrder: idx,
+          employeeId: c.employeeId,
+          employeeNameAr: c.employeeNameAr || '—',
+          departmentSnapshot: c.branchNameAr || '—',
+          jobTitleArSnapshot: '—',
+          baseSalarySnapshot: c.baseSalary,
+          contractCurrency: c.currency,
+          contractId: c.id,
+          contractNumber: c.contractNumber,
+          capturedAt,
+        }));
+
+        return {
+          ...period,
+          employmentLines: lines,
+          snapshotContractIds: active.map((c) => c.id),
+          linesMaterializedAt: capturedAt,
+        };
+      }),
+    }));
   },
 
   add: async (data) => {

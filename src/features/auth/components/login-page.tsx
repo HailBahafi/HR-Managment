@@ -53,8 +53,9 @@ export function LoginPage() {
         password: values.password,
       });
       useAuthStore.getState().setUser(result.user);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('access_token', result.access_token);
+      if (typeof document !== 'undefined') {
+        const maxAge = 7 * 24 * 60 * 60; // 7 days in seconds
+        document.cookie = `access_token=${result.access_token}; path=/; max-age=${maxAge}; SameSite=Lax`;
       }
       router.push('/hr/dashboard');
     } catch (err) {

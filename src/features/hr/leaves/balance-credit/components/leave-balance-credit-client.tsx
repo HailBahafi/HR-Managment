@@ -14,6 +14,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { cn, toWesternDigits } from '@/shared/utils';
 import { useLeaveBalanceCreditModel } from '@/features/hr/leaves/balance-credit/hooks/useLeaveBalanceCreditModel';
@@ -40,6 +42,26 @@ function statusLabelAr(status: LeaveBalanceCreditRequest['status']) {
 export function LeaveBalanceCreditClient() {
   const m = useLeaveBalanceCreditModel();
 
+  const activeFilterCount = (m.branchId !== 'all' ? 1 : 0) + (m.departmentId !== 'all' ? 1 : 0) + (m.statusFilter !== 'all' ? 1 : 0) + (m.selectedEmpIds.size > 0 ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button
+          variant="luxe"
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { m.resetAddForm(); m.setAddOpen(true); }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          طلب إضافة رصيد
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, m.resetAddForm, m.setAddOpen],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -56,17 +78,7 @@ export function LeaveBalanceCreditClient() {
         statusLabels={CREDIT_STATUS_LABELS}
         statusCounts={m.statusCounts}
         onDateBoundsChange={m.setDateBounds}
-        trailingActions={(
-          <Button
-            variant="luxe"
-            size="sm"
-            className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0"
-            onClick={() => { m.resetAddForm(); m.setAddOpen(true); }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            طلب إضافة رصيد
-          </Button>
-        )}
+        trailingActions={undefined}
       />
     ),
     [

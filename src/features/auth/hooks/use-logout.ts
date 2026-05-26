@@ -26,8 +26,8 @@ export function useLogout() {
       queryClient.removeQueries({ queryKey: ACCESS_PROFILE_KEY });
       queryClient.removeQueries({ queryKey: AUTH_ME_KEY });
       useAuthStore.getState().clear();
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('access_token');
+      if (typeof document !== 'undefined') {
+        document.cookie = 'access_token=; path=/; max-age=0; SameSite=Lax';
       }
       setLoading(false);
       router.push('/login');

@@ -46,18 +46,22 @@ export function usePageHeaderActions(render: () => React.ReactNode, deps: React.
   const renderRef = React.useRef(render);
   renderRef.current = render;
 
-  // Update slot whenever deps change
+  const setSlotRef = React.useRef(setSlot);
+  setSlotRef.current = setSlot;
+  const setFilterPanelOpenRef = React.useRef(setFilterPanelOpen);
+  setFilterPanelOpenRef.current = setFilterPanelOpen;
+
+  // Update slot whenever deps change (setSlot kept in ref to avoid infinite loop)
   React.useEffect(() => {
-    setSlot(renderRef.current());
+    setSlotRef.current(renderRef.current());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setSlot, ...deps]);
+  }, deps);
 
   // Clean up only on unmount (page navigation)
   React.useEffect(() => {
     return () => {
-      setSlot(null);
-      setFilterPanelOpen(false);
+      setSlotRef.current(null);
+      setFilterPanelOpenRef.current(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

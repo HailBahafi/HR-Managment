@@ -13,14 +13,14 @@ import { useEmployeeProfilePermissions } from '@/features/hr/organization/employ
 
 const SECTIONS = EMPLOYEE_PROFILE_SECTIONS;
 
-export function useEmployeeProfileModel(employee: Employee) {
+export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated: Employee) => void) {
   const [activeSection, setActiveSection] = React.useState<EmployeeProfileSectionId>('personal');
   const contentRef = React.useRef<HTMLElement | null>(null);
 
   const data = useEmployeeProfileData(employee);
   const payslip = useEmployeeProfilePayslipFilter(data.employeePayslipSeries);
   const leave = useEmployeeProfileLeave(employee);
-  const personal = useEmployeeProfilePersonal(employee, activeSection);
+  const personal = useEmployeeProfilePersonal(employee, activeSection, onUpdated);
   const rose = useEmployeeProfileRosePdf(personal.draft);
   const permissions = useEmployeeProfilePermissions(employee);
 

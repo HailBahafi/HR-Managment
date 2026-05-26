@@ -1,11 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, Megaphone, Send, FileDown } from 'lucide-react';
+import { Trash2, CalendarDays, Megaphone, Send, FileDown, Search, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePageFilters } from '@/components/layouts/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
@@ -132,8 +134,7 @@ export function CircularsClient() {
   const m = useDisciplineCircularsDirectoryModel();
   const { circulars } = m;
 
-  const { values } = usePageFilters([{ key: 'q', label: 'بحث', type: 'text', placeholder: 'بحث في العنوان أو النص أو النطاق…' }]);
-  const q = ((values.q as string) ?? '').trim();
+  const [q, setQ] = React.useState('');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [audienceFilter, setAudienceFilter] = React.useState<AudienceFilter>('all');
@@ -231,6 +232,61 @@ export function CircularsClient() {
 
   const dateRangeActive = dateMeta.hasRestriction;
 
+  const activeFilterCount = (q.trim() ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0) + (audienceFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { setDraft({ ...EMPTY, date: new Date().toISOString().slice(0, 10), executeSend: false }); setFormError(null); setDrawerOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          تعميم جديد
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
+
+  useEntityFilterSlot(
+    () => (
+      <DisciplineFilterToolbar
+        ref={filterToolbarRef}
+        showPrimaryAction={false}
+        primaryActionLabel="تعميم جديد"
+        onPrimaryAction={() => {
+          setDraft({ ...EMPTY, date: new Date().toISOString().slice(0, 10), executeSend: false });
+          setFormError(null);
+          setDrawerOpen(true);
+        }}
+        beforeEmployeePicker={(
+          <div className="relative shrink-0">
+            <Search className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="بحث في العنوان أو النص أو النطاق…"
+              className="h-8 pr-8 text-xs w-56"
+            />
+          </div>
+        )}
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={audienceFilter}
+        onStatusFilterChange={(v) => setAudienceFilter(v as AudienceFilter)}
+        statusOrder={CIRCULAR_AUDIENCE_FILTER_ORDER}
+        statusLabels={CIRCULAR_AUDIENCE_LABELS as unknown as Record<string, string>}
+        statusCounts={statusCounts}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
+      />
+    ),
+    [q, empPickerList, selectedEmpIds, audienceFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
+  );
+
   const set = (patch: Partial<DraftForm>) => setDraft((d) => ({ ...d, ...patch }));
 
   const handleSave = async () => {
@@ -279,28 +335,6 @@ export function CircularsClient() {
 
   return (
     <div className="space-y-4">
-      <DisciplineFilterToolbar
-        ref={filterToolbarRef}
-        primaryActionLabel="تعميم جديد"
-        onPrimaryAction={() => {
-          setDraft({ ...EMPTY, date: new Date().toISOString().slice(0, 10), executeSend: false });
-          setFormError(null);
-          setDrawerOpen(true);
-        }}
-        empPickerEmployees={empPickerList}
-        selectedEmpIds={selectedEmpIds}
-        onSelectedEmpIdsChange={setSelectedEmpIds}
-        statusFilter={audienceFilter}
-        onStatusFilterChange={(v) => setAudienceFilter(v as AudienceFilter)}
-        statusOrder={CIRCULAR_AUDIENCE_FILTER_ORDER}
-        statusLabels={CIRCULAR_AUDIENCE_LABELS as unknown as Record<string, string>}
-        statusCounts={statusCounts}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onDateBoundsChange={onDateBoundsChange}
-        onDateFilterMetaChange={onDateFilterMetaChange}
-      />
-
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">
           {m.listError}

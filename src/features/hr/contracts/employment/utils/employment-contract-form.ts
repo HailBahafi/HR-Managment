@@ -111,6 +111,8 @@ export function employmentFormToDraft(
         })();
   return {
     employeeId: v.employeeId,
+    employeeNameAr: '',
+    branchNameAr: '',
     contractNumber: v.contractNumber.trim(),
     contractType: v.contractType,
     workArrangement: v.workArrangement,

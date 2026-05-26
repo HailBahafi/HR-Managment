@@ -2,8 +2,7 @@
 
 import * as React from 'react';
 import { toast } from 'sonner';
-import { withIds } from '@/shared/with-ids';
-import { data } from '@/features/hr/lib/data';
+import { useRoles } from '@/features/hr/permissions/hooks/useRoles';
 import {
   effectiveAssignedRoleId,
   inferAssignedRoleId,
@@ -14,7 +13,11 @@ import { appendEmployeeAudit } from '@/features/hr/organization/employees/lib/em
 import type { Employee } from '@/features/hr/organization/employees/types';
 
 export function useEmployeeProfilePermissions(employee: Employee) {
-  const systemRoles = React.useMemo(() => withIds(data.roles as SystemRoleRecord[]), []);
+  const { data: rolesResult } = useRoles();
+  const systemRoles = React.useMemo(
+    () => (rolesResult?.items ?? []) as unknown as SystemRoleRecord[],
+    [rolesResult],
+  );
   const [permissionRoleDraft, setPermissionRoleDraft] = React.useState<string>(() =>
     effectiveAssignedRoleId(employee),
   );
@@ -38,8 +41,6 @@ export function useEmployeeProfilePermissions(employee: Employee) {
     const prevSaved = employee.assignedRoleId ?? inferAssignedRoleId(employee.role);
     const oldId = prevSaved;
     const newId = permissionRoleDraft;
-    const persisted = data.employees.find((e) => e.id === employee.id) as Employee | undefined;
-    if (persisted) persisted.assignedRoleId = permissionRoleDraft;
     const oldName = systemRoles.find((r) => r.id === oldId)?.name ?? oldId;
     const newName = systemRoles.find((r) => r.id === newId)?.name ?? newId;
     if (oldId !== newId) {

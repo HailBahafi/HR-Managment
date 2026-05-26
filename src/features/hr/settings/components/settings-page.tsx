@@ -4,7 +4,7 @@ import { Shield, Users, Building2, Clock, Plus, Edit, Trash2, Check } from 'luci
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { data } from '@/features/hr/lib/data';
+import { useRoles } from '@/features/hr/permissions/hooks/useRoles';
 import { cn } from '@/shared/utils';
 import {
   coercePermissionRoleColorToken,
@@ -26,6 +26,9 @@ const actionLabels: Record<string, string> = { view: 'عرض', create: 'إنشا
 export function SettingsPage() {
   useSetPageTitle({ titleAr: 'إعدادات النظام', descriptionAr: 'الأدوار والصلاحيات', iconName: 'Settings' });
 
+  const { data: rolesResult } = useRoles();
+  const roles = rolesResult?.items ?? [];
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -35,7 +38,7 @@ export function SettingsPage() {
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          <span className="number-ar font-semibold text-foreground">{data.roles.length}</span> أدوار مُعرّفة
+          <span className="number-ar font-semibold text-foreground">{roles.length}</span> أدوار مُعرّفة
         </p>
         <Button variant="luxe" className="gap-2">
           <Plus className="h-4 w-4" />
@@ -44,8 +47,8 @@ export function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {data.roles.map((role) => {
-          const colorToken = coercePermissionRoleColorToken(String(role.color));
+        {roles.map((role) => {
+          const colorToken = coercePermissionRoleColorToken('primary');
           const accent = permissionRoleCssColor(colorToken);
           const accentGlow = permissionRoleSurface(colorToken, 0.18);
           const accentIconBg = permissionRoleSurface(colorToken, 0.14);
@@ -61,17 +64,14 @@ export function SettingsPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-md" style={{ background: accentIconBg, color: accent }}>
                   <Shield className="h-5 w-5" />
                 </div>
-                <Badge variant="subtle" className="text-[10px] number-ar">{role.usersCount} مستخدم</Badge>
+                <Badge variant="subtle" className="text-[10px] number-ar">دور</Badge>
               </div>
               <h3 className="mt-4 font-display text-lg font-bold">{role.name}</h3>
               <p className="mt-1 min-h-[40px] text-xs leading-relaxed text-muted-foreground">{role.description}</p>
               <div className="mt-4 flex flex-wrap gap-1">
-                {role.permissions.slice(0, 3).map((p) => (
-                  <Badge key={p} variant="subtle" className="text-[10px]">{p}</Badge>
-                ))}
-                {role.permissions.length > 3 && (
-                  <Badge variant="subtle" className="text-[10px]">+{role.permissions.length - 3}</Badge>
-                )}
+                {role.description ? (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{role.description}</p>
+                ) : null}
               </div>
               <div className="mt-4 flex gap-2 border-t border-border pt-3">
                 <Button variant="outline" size="sm" className="flex-1 gap-1">
@@ -97,12 +97,12 @@ export function SettingsPage() {
             <thead>
               <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <th className="px-6 py-3 text-right">المورد</th>
-                {data.roles.map((r) => (
+                {roles.map((r) => (
                   <th key={r.id} className="px-4 py-3 text-center">
                     <div className="flex flex-col items-center gap-1">
                       <div
                         className="h-2 w-2 rounded-full"
-                        style={{ background: permissionRoleCssColor(coercePermissionRoleColorToken(String(r.color))) }}
+                        style={{ background: permissionRoleCssColor(coercePermissionRoleColorToken('primary')) }}
                       />
                       <span>{r.name}</span>
                     </div>
@@ -119,9 +119,9 @@ export function SettingsPage() {
                       <span className="font-semibold">{res.label}</span>
                     </div>
                   </td>
-                  {data.roles.map((role, roleIdx) => {
+                  {roles.map((role, roleIdx) => {
                     const intensity = Math.max(0, 5 - Math.abs(resIdx - roleIdx)) / 5;
-                    const hasAll = role.permissions.includes('all');
+                    const hasAll = false;
                     return (
                       <td key={role.id} className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-0.5">

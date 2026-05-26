@@ -3,30 +3,31 @@
 import * as React from 'react';
 import {
   Plus, ChevronLeft, ChevronRight,
-  CheckCircle2, XCircle, Clock, SlidersHorizontal,
+  CheckCircle2, XCircle, Clock,
 } from 'lucide-react';
 import { format, addMonths, subMonths, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, getDay, isValid } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
-import { usePageHeaderActions, usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  MOCK_UNIFIED_EMPLOYEES, MOCK_UNIFIED_LEAVES, MOCK_BALANCES, MOCK_BRANCHES, MOCK_DEPARTMENTS,
   applyStepDecision, canActOnLeave, getApprovalStage, defaultPendingApprovalChain,
   LEAVE_TYPE_LABELS, STATUS_LABELS,
-} from '@/features/hr/leaves/unified-management/lib/mock';
+} from '@/features/hr/leaves/unified-management/lib/leaves-utils';
+import type { EmployeeLeaveBalanceRow } from '@/features/hr/leaves/unified-management/types';
+import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
 import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/features/hr/leaves/unified-management/types';
 import { cn, toWesternDigits } from '@/shared/utils';
 
@@ -73,20 +74,21 @@ const LEAVE_STATUS_LABELS_FOR_TOOLBAR: Record<string, string> = {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function UnifiedManagementClient() {
-  const [leaves, setLeaves] = React.useState<UnifiedLeaveRecord[]>(() =>
-    MOCK_UNIFIED_LEAVES.map((l) => ({ ...l })),
-  );
+  const { data: employeesResult } = useEmployees();
+  const employeesList = employeesResult?.items ?? [];
+
+  const [leaves, setLeaves] = React.useState<UnifiedLeaveRecord[]>([]);
   const [branchId, setBranchId] = React.useState('all');
   const [departmentId, setDepartmentId] = React.useState('all');
   const [leaveType, setLeaveType] = React.useState<string>('all');
   const [approvalStageFilter, setApprovalStageFilter] = React.useState<string>('all');
 
   const branchInlineOptions = React.useMemo(
-    () => [{ value: 'all', label: 'جميع الفروع' }, ...MOCK_BRANCHES.map((b) => ({ value: b.id, label: b.nameAr }))],
+    () => [{ value: 'all', label: 'جميع الفروع' }],
     [],
   );
   const deptInlineOptions = React.useMemo(
-    () => [{ value: 'all', label: 'جميع الأقسام' }, ...MOCK_DEPARTMENTS.map((d) => ({ value: d.id, label: d.nameAr }))],
+    () => [{ value: 'all', label: 'جميع الأقسام' }],
     [],
   );
   const typeInlineOptions = React.useMemo(
@@ -116,8 +118,8 @@ export function UnifiedManagementClient() {
   const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
 
   const empPickerList = React.useMemo(() =>
-    MOCK_UNIFIED_EMPLOYEES.map(e => ({ id: e.id, name: e.nameAr })),
-    [],
+    employeesList.map(e => ({ id: e.id, name: e.nameAr })),
+    [employeesList],
   );
 
   const filters: UnifiedFilterState = {
@@ -138,10 +140,6 @@ export function UnifiedManagementClient() {
   const statusCounts = React.useMemo(() => {
     const empPick = [...selectedEmpIds];
     const base = leaves.filter((l) => {
-      const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
-      if (!emp) return false;
-      if (filters.branchId !== 'all' && emp.homeBranchId !== filters.branchId) return false;
-      if (filters.departmentId !== 'all' && emp.departmentId !== filters.departmentId) return false;
       if (empPick.length > 0 && !empPick.includes(l.employeeId)) return false;
       if (filters.type !== 'all' && l.type !== filters.type) return false;
       if (filters.approvalStage !== 'all') {
@@ -164,10 +162,6 @@ export function UnifiedManagementClient() {
   const filtered = React.useMemo(() => {
     const empPick = [...selectedEmpIds];
     return leaves.filter((l) => {
-      const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
-      if (!emp) return false;
-      if (filters.branchId !== 'all' && emp.homeBranchId !== filters.branchId) return false;
-      if (filters.departmentId !== 'all' && emp.departmentId !== filters.departmentId) return false;
       if (empPick.length > 0 && !empPick.includes(l.employeeId)) return false;
       if (filters.status !== 'all' && l.status !== filters.status) return false;
       if (filters.type !== 'all' && l.type !== filters.type) return false;
@@ -207,9 +201,20 @@ export function UnifiedManagementClient() {
 
   usePageHeaderActions(
     () => (
-      <LeaveHeaderActions activeFilterCount={activeFilterCount} onAdd={onAddClick} />
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button
+          variant="luxe"
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-xs shadow-sm"
+          onClick={onAddClick}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          إضافة إجازة
+        </Button>
+      </div>
     ),
-    [activeFilterCount, onAddClick],
+    [activeFilterCount],
   );
 
   useEntityFilterSlot(
@@ -257,14 +262,15 @@ export function UnifiedManagementClient() {
 
       {/* Content */}
       {view === 'table'
-        ? <LeaveTable leaves={filtered} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
-        : <LeaveCalendar leaves={filtered} month={calMonth} onMonthChange={setCalMonth} onDetail={setDetailLeave} />
+        ? <LeaveTable leaves={filtered} employees={employeesList} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
+        : <LeaveCalendar leaves={filtered} employees={employeesList} month={calMonth} onMonthChange={setCalMonth} onDetail={setDetailLeave} />
       }
 
       {/* Detail dialog */}
       {detailLeave && (
         <LeaveDetailDialog
           leave={detailLeave}
+          employees={employeesList}
           open={!!detailLeave}
           onClose={() => setDetailLeave(null)}
           onApprove={() => handleApprove(detailLeave)}
@@ -277,6 +283,7 @@ export function UnifiedManagementClient() {
       <AddLeaveDialog
         open={addOpen}
         editLeave={editLeave}
+        employees={employeesList}
         onClose={() => { setAddOpen(false); setEditLeave(null); }}
         onSave={(l) => {
           if (editLeave) updateLeave(l);
@@ -289,50 +296,11 @@ export function UnifiedManagementClient() {
   );
 }
 
-// ─── Header actions (filter toggle + add button) ─────────────────────────────
-
-function LeaveHeaderActions({ activeFilterCount, onAdd }: {
-  activeFilterCount: number;
-  onAdd: () => void;
-}) {
-  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderActionsRegion();
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => setFilterPanelOpen((v) => !v)}
-        className={cn(
-          'flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors',
-          filterPanelOpen
-            ? 'border-primary/50 bg-primary/8 text-primary'
-            : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-        )}
-      >
-        <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
-        فلترة
-        {activeFilterCount > 0 && (
-          <Badge className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] text-primary-foreground">
-            {activeFilterCount}
-          </Badge>
-        )}
-      </button>
-      <Button
-        variant="luxe"
-        size="sm"
-        className="h-8 gap-1.5 px-3 text-xs shadow-sm"
-        onClick={onAdd}
-      >
-        <Plus className="h-3.5 w-3.5" />
-        إضافة إجازة
-      </Button>
-    </div>
-  );
-}
-
 // ─── Leave table ──────────────────────────────────────────────────────────────
 
-function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
+function LeaveTable({ leaves, employees, onDetail, onApprove, onReject }: {
   leaves: UnifiedLeaveRecord[];
+  employees: { id: string; nameAr: string }[];
   onDetail: (l: UnifiedLeaveRecord) => void;
   onApprove: (l: UnifiedLeaveRecord) => void;
   onReject: (l: UnifiedLeaveRecord) => void;
@@ -342,7 +310,7 @@ function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
       key: 'employee',
       title: 'الموظف',
       render: (l) => {
-        const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
+        const emp = employees.find((e) => e.id === l.employeeId);
         return (
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
@@ -350,7 +318,6 @@ function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
             </div>
             <div>
               <p className="font-medium">{emp?.nameAr ?? l.employeeId}</p>
-              <p className="text-[10px] text-muted-foreground">{MOCK_DEPARTMENTS.find(d => d.id === emp?.departmentId)?.nameAr}</p>
             </div>
           </div>
         );
@@ -401,10 +368,7 @@ function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
       key: 'branch',
       title: 'الفرع',
       hideOnMobile: true,
-      render: (l) => {
-        const branch = MOCK_BRANCHES.find((b) => b.id === l.requestBranchId);
-        return <span className="text-xs text-muted-foreground">{branch?.nameAr}</span>;
-      },
+      render: (l) => <span className="text-xs text-muted-foreground">{l.requestBranchId}</span>,
     },
     {
       key: 'actions',
@@ -436,8 +400,7 @@ function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
       emptyText="لا توجد إجازات بهذه الفلاتر"
       onRowClick={onDetail}
       mobileCard={(l) => {
-        const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
-        const dept = MOCK_DEPARTMENTS.find(d => d.id === emp?.departmentId);
+        const emp = employees.find((e) => e.id === l.employeeId);
         const typeCfg = TYPE_STYLE[l.type];
         const statusCfg = STATUS_STYLE[l.status];
         const canAct = canActOnLeave(l);
@@ -450,7 +413,6 @@ function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-sm truncate">{emp?.nameAr ?? l.employeeId}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{dept?.nameAr}</p>
                 </div>
               </div>
               <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', statusCfg.color)}>
@@ -485,8 +447,9 @@ function LeaveTable({ leaves, onDetail, onApprove, onReject }: {
 
 // ─── Calendar view ─────────────────────────────────────────────────────────────
 
-function LeaveCalendar({ leaves, month, onMonthChange, onDetail }: {
+function LeaveCalendar({ leaves, employees, month, onMonthChange, onDetail }: {
   leaves: UnifiedLeaveRecord[];
+  employees: { id: string; nameAr: string }[];
   month: Date;
   onMonthChange: (d: Date) => void;
   onDetail: (l: UnifiedLeaveRecord) => void;
@@ -545,7 +508,7 @@ function LeaveCalendar({ leaves, month, onMonthChange, onDetail }: {
               </span>
               {dayLeaves.slice(0, 2).map((l) => {
                 const typeCfg = TYPE_STYLE[l.type];
-                const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === l.employeeId);
+                const emp = employees.find((e) => e.id === l.employeeId);
                 return (
                   <button key={l.id} type="button" onClick={() => onDetail(l)}
                     className={cn('mb-0.5 flex w-full cursor-pointer items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] text-right hover:opacity-80 transition-opacity', typeCfg.color)}
@@ -568,19 +531,16 @@ function LeaveCalendar({ leaves, month, onMonthChange, onDetail }: {
 
 // ─── Leave detail dialog ───────────────────────────────────────────────────────
 
-function LeaveDetailDialog({ leave, open, onClose, onApprove, onReject, onEdit }: {
+function LeaveDetailDialog({ leave, employees, open, onClose, onApprove, onReject, onEdit }: {
   leave: UnifiedLeaveRecord;
+  employees: { id: string; nameAr: string }[];
   open: boolean;
   onClose: () => void;
   onApprove: () => void;
   onReject: () => void;
   onEdit: () => void;
 }) {
-  const emp = MOCK_UNIFIED_EMPLOYEES.find((e) => e.id === leave.employeeId);
-  const dept = MOCK_DEPARTMENTS.find((d) => d.id === emp?.departmentId);
-  const branch = MOCK_BRANCHES.find((b) => b.id === leave.requestBranchId);
-  const balance = MOCK_BALANCES[leave.employeeId];
-  const bal = balance?.[leave.type];
+  const emp = employees.find((e) => e.id === leave.employeeId);
   const typeCfg = TYPE_STYLE[leave.type];
   const statusCfg = STATUS_STYLE[leave.status];
   const canAct = canActOnLeave(leave);
@@ -603,8 +563,7 @@ function LeaveDetailDialog({ leave, open, onClose, onApprove, onReject, onEdit }
             </div>
             <div className="flex-1">
               <p className="font-semibold">{emp?.nameAr}</p>
-              <p className="text-xs text-muted-foreground">{dept?.nameAr}</p>
-            </div>
+              </div>
             <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium', typeCfg.color)}>
               <span className={cn('h-1.5 w-1.5 rounded-full', typeCfg.dot)} />
               {LEAVE_TYPE_LABELS[leave.type]}
@@ -614,19 +573,6 @@ function LeaveDetailDialog({ leave, open, onClose, onApprove, onReject, onEdit }
               {statusCfg.label}
             </span>
           </div>
-
-          {/* Balance */}
-          {bal && (
-            <div className="rounded-xl border border-border bg-muted/20 px-4 py-3">
-              <p className="text-xs text-muted-foreground">رصيد {LEAVE_TYPE_LABELS[leave.type]}</p>
-              <p className="mt-1 font-display text-xl font-bold number-ar">
-                {bal.used} <span className="text-sm font-normal text-muted-foreground">/ {bal.total} يوم</span>
-              </p>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border">
-                <div className="h-full rounded-full bg-primary" style={{ width: `${bal.total > 0 ? (bal.used / bal.total) * 100 : 0}%` }} />
-              </div>
-            </div>
-          )}
 
           {/* Dates */}
           <div className="grid grid-cols-3 gap-3">
@@ -706,9 +652,10 @@ function LeaveDetailDialog({ leave, open, onClose, onApprove, onReject, onEdit }
 
 // ─── Add/Edit leave dialog ────────────────────────────────────────────────────
 
-function AddLeaveDialog({ open, editLeave, onClose, onSave }: {
+function AddLeaveDialog({ open, editLeave, employees, onClose, onSave }: {
   open: boolean;
   editLeave: UnifiedLeaveRecord | null;
+  employees: { id: string; nameAr: string }[];
   onClose: () => void;
   onSave: (l: UnifiedLeaveRecord) => void;
 }) {
@@ -747,7 +694,7 @@ function AddLeaveDialog({ open, editLeave, onClose, onSave }: {
           status: 'pending',
           start,
           end,
-          requestBranchId: branchId || MOCK_UNIFIED_EMPLOYEES.find(e => e.id === empId)?.homeBranchId || '',
+          requestBranchId: branchId || '',
           workingDays: wDays(start, end),
           noteAr: 'طلب إجازة جديد', noteEn: 'New leave request',
           approvalChain: defaultPendingApprovalChain(),
@@ -755,8 +702,7 @@ function AddLeaveDialog({ open, editLeave, onClose, onSave }: {
     onSave(record);
   };
 
-  const empOptions = MOCK_UNIFIED_EMPLOYEES.map((e) => ({ value: e.id, label: e.nameAr }));
-  const selEmp = MOCK_UNIFIED_EMPLOYEES.find(e => e.id === empId);
+  const empOptions = employees.map((e) => ({ value: e.id, label: e.nameAr }));
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -780,10 +726,9 @@ function AddLeaveDialog({ open, editLeave, onClose, onSave }: {
 
           <div className="space-y-2">
             <Label>فرع الطلب</Label>
-            <Select value={branchId || (selEmp?.homeBranchId ?? '')} onValueChange={setBranchId}>
+            <Select value={branchId} onValueChange={setBranchId}>
               <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
               <SelectContent>
-                {MOCK_BRANCHES.map((b) => <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

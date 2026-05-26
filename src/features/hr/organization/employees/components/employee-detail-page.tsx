@@ -82,5 +82,5 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  return <EmployeeProfileBody employee={employee} />;
+  return <EmployeeProfileBody employee={employee} onUpdated={setEmployee} />;
 }

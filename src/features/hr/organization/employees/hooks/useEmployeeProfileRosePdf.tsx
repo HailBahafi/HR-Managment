@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { getBranch, getDepartment } from '@/features/hr/lib/data';
-import { data } from '@/features/hr/lib/data';
+import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import {
   buildRoseTradingHrPdfProps,
@@ -26,13 +25,12 @@ export type EmployeeProfileHrPdfPayload = {
 };
 
 export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
+  const { data: activeCompany } = useActiveCompany();
   const pdfCtx = React.useMemo(() => {
-    const b = getBranch(draft.branchId);
-    const d = getDepartment(draft.departmentId);
     return {
       employee: draft,
-      branchNameAr: b?.name ?? '—',
-      departmentNameAr: d?.name ?? '—',
+      branchNameAr: '—',
+      departmentNameAr: '—',
     };
   }, [draft]);
 
@@ -89,17 +87,16 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
       const code = draft.employeeCode;
 
       if (previewTarget === 'cash-receipt' && receipt) {
-        const branch = getBranch(draft.branchId);
         const company = {
-          nameAr: data.company.name as string,
-          nameEn: ((data.company as { nameEn?: string }).nameEn ?? 'rose'),
+          nameAr: activeCompany?.nameAr ?? '',
+          nameEn: activeCompany?.nameEn ?? '',
         };
         setPreview({
           printable: (
             <CashReceiptPrintHtml
               company={company}
               employeeNameAr={draft.name}
-              branchNameAr={branch?.name ?? '—'}
+              branchNameAr={'—'}
               amountNumeric={receipt.amount}
               amountWritten={receipt.amountWritten}
               reason={receipt.reason}
@@ -140,7 +137,7 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
         });
       }
     },
-    [draft.branchId, draft.employeeCode, draft.name, pdfCtx, rosePdfLogo],
+    [draft.employeeCode, draft.name, pdfCtx, rosePdfLogo, activeCompany],
   );
 
   /** توافق مع المكوّنات القديمة */

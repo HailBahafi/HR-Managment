@@ -34,8 +34,10 @@ export function formatNumber(value: number): string {
   }).format(value);
 }
 
-export function formatDate(date: string | Date): string {
+export function formatDate(date: string | Date | null | undefined): string {
+  if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
   const s = new Intl.DateTimeFormat('ar-SA', {
     ...LATN,
     year: 'numeric',
@@ -45,8 +47,10 @@ export function formatDate(date: string | Date): string {
   return toWesternDigits(s);
 }
 
-export function formatDateShort(date: string | Date): string {
+export function formatDateShort(date: string | Date | null | undefined): string {
+  if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
   const s = new Intl.DateTimeFormat('ar-SA', {
     ...LATN,
     month: 'short',
@@ -55,8 +59,10 @@ export function formatDateShort(date: string | Date): string {
   return toWesternDigits(s);
 }
 
-export function formatTime(date: string | Date): string {
+export function formatTime(date: string | Date | null | undefined): string {
+  if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '—';
   const s = new Intl.DateTimeFormat('ar-SA', {
     ...LATN,
     hour: '2-digit',

@@ -9,7 +9,10 @@ import { CashReceiptPrintHtml, type CashReceiptPrintHtmlProps } from './pdf-cash
 import { Button } from '@/components/ui/button';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
-import { data, getBranch } from '@/features/hr/lib/data';
+import { useHRPayrollPeriodsStore } from '@/features/hr/contracts/lib/payroll-periods-store';
+import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
+import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
+import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { exportDomToPdf } from '@/components/pdf/lib/exportDomToPdf';
 import type { CashReceiptReason } from './pdf-cash-receipt-print-html';
 
@@ -20,8 +23,26 @@ function amountWords(n: number): string {
 type DocTab = 'payroll' | 'receipt' | 'clearance';
 
 export function ReportsClient() {
-  const { contracts } = useHRContractsStore();
-  const employees = data.employees;
+  const { contracts, fetch: fetchContracts } = useHRContractsStore();
+  const periods = useHRPayrollPeriodsStore((s) => s.periods);
+  const fetchPeriods = useHRPayrollPeriodsStore((s) => s.fetch);
+  const materializePeriodLines = useHRPayrollPeriodsStore((s) => s.materializeFromContracts);
+  const fetchAllowanceTypes = useHRAllowanceTypesStore((s) => s.fetch);
+  const { data: employeesResult } = useEmployees();
+  const { data: activeCompany } = useActiveCompany();
+  const employees = employeesResult?.items ?? [];
+
+  React.useEffect(() => {
+    fetchContracts();
+    fetchPeriods();
+    fetchAllowanceTypes();
+  }, [fetchContracts, fetchPeriods, fetchAllowanceTypes]);
+
+  React.useEffect(() => {
+    if (periods.length > 0 && contracts.length > 0) {
+      materializePeriodLines(contracts);
+    }
+  }, [periods.length, contracts, materializePeriodLines]);
 
   const [tab, setTab] = React.useState<DocTab>('payroll');
   const [clearanceExporting, setClearanceExporting] = React.useState(false);
@@ -29,21 +50,21 @@ export function ReportsClient() {
   const clearancePrintRef = React.useRef<HTMLDivElement>(null);
   const receiptPrintRef = React.useRef<HTMLDivElement>(null);
 
-  const [rcptEmpId, setRcptEmpId]       = React.useState(employees[0]?.id ?? '');
+  const [rcptEmpId, setRcptEmpId]       = React.useState('');
   const [rcptAmount, setRcptAmount]     = React.useState('');
   const [rcptWritten, setRcptWritten]   = React.useState('');
   const [rcptReason, setRcptReason]     = React.useState<CashReceiptReason>('salary');
   const [rcptDetail, setRcptDetail]     = React.useState('');
   const [rcptDate, setRcptDate]         = React.useState(new Date().toISOString().slice(0, 10));
 
-  const [clrEmpId, setClrEmpId]     = React.useState(employees[0]?.id ?? '');
+  const [clrEmpId, setClrEmpId]     = React.useState('');
   const [clrEndDate, setClrEndDate] = React.useState(new Date().toISOString().slice(0, 10));
   const [clrDate, setClrDate]       = React.useState(new Date().toISOString().slice(0, 10));
 
   const company = React.useMemo(() => ({
-    nameAr: data.company.name,
-    nameEn: data.company.nameEn,
-  }), []);
+    nameAr: activeCompany?.nameAr ?? '',
+    nameEn: activeCompany?.nameEn ?? '',
+  }), [activeCompany]);
 
   const clearancePrint = React.useMemo((): { props: ClearancePrintProps; fileName: string } | null => {
     const emp = employees.find(e => e.id === clrEmpId);
@@ -53,10 +74,10 @@ export function ReportsClient() {
     return {
       props: {
         company,
-        employeeNameAr: emp.name,
-        nationalId: emp.nationalId,
-        nationality: emp.nationality,
-        startDate: contract?.startDate ?? emp.startDate,
+        employeeNameAr: emp.nameAr,
+        nationalId: emp.nationalId ?? '',
+        nationality: emp.nationality ?? '',
+        startDate: (contract?.startDate ?? emp.startDate) ?? '',
         endDate: clrEndDate,
         date: clrDate,
       },
@@ -67,12 +88,11 @@ export function ReportsClient() {
   const receiptPrint = React.useMemo((): { props: CashReceiptPrintHtmlProps; fileName: string } | null => {
     const emp = employees.find(e => e.id === rcptEmpId);
     if (!emp) return null;
-    const branch = getBranch(emp.branchId);
     return {
       props: {
         company,
-        employeeNameAr: emp.name,
-        branchNameAr: branch?.name ?? 'المقر الرئيسي',
+        employeeNameAr: emp.nameAr,
+        branchNameAr: 'المقر الرئيسي',
         amountNumeric: Number(rcptAmount) || 0,
         amountWritten: rcptWritten || amountWords(Number(rcptAmount) || 0),
         reason: rcptReason,
@@ -173,7 +193,7 @@ export function ReportsClient() {
                 <label className="text-sm font-medium">الموظف</label>
                 <select value={rcptEmpId} onChange={e => setRcptEmpId(e.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} — {e.employeeCode}</option>)}
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.nameAr} — {e.employeeCode}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -217,7 +237,7 @@ export function ReportsClient() {
                 <label className="text-sm font-medium">الموظف</label>
                 <select value={clrEmpId} onChange={e => setClrEmpId(e.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name} — {e.employeeCode}</option>)}
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.nameAr} — {e.employeeCode}</option>)}
                 </select>
               </div>
               {clrEmpId && (() => {

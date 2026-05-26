@@ -97,7 +97,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
   }
-  const token = typeof window !== 'undefined' ? window.localStorage.getItem('access_token') : null;
+  const token = typeof document !== 'undefined'
+    ? document.cookie.split('; ').find(r => r.startsWith('access_token='))?.split('=')[1] ?? null
+    : null;
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }

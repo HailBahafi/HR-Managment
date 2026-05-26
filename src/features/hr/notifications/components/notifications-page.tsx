@@ -12,12 +12,13 @@ import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { NotificationsRegisterPrintHtml } from '@/components/pdf/print/notifications-register-print-html';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
-import { MOCK_APP_SESSION } from '@/shared/app-session';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
+import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import {
   useHRNotificationsStore,
   type HRNotificationRecord,
 } from '@/features/hr/notifications/lib/notifications-store';
-import { data } from '@/features/hr/lib/data';
 import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { cn, formatDate } from '@/shared/utils';
@@ -57,15 +58,19 @@ function employeePickerShowsAll(
 }
 
 export function NotificationsPage() {
+  const { data: currentEmployee } = useCurrentEmployee();
+  const { data: activeCompany } = useActiveCompany();
+  const accessProfile = useAuthStore((s) => s.accessProfile);
+  const isSystemOwner = (accessProfile?.companies?.length ?? 0) > 0;
+  const session = { employeeId: currentEmployee?.id ?? '', isSystemOwner };
+
   useSetPageTitle({
     titleAr: 'التنبيهات',
-    descriptionAr: MOCK_APP_SESSION.isSystemOwner
+    descriptionAr: session.isSystemOwner
       ? 'جميع تنبيهات النظام مع الفلترة'
       : 'تنبيهاتك',
     iconName: 'Bell',
   });
-
-  const session = MOCK_APP_SESSION;
   const { items, markRead, markUnread, dismissFromInbox } = useHRNotificationsStore();
   const { activeEmployees } = useHREmployeeDirectoryStore();
 
@@ -146,8 +151,8 @@ export function NotificationsPage() {
     }));
     return (
       <NotificationsRegisterPrintHtml
-        companyNameAr={data.company.name}
-        companyNameEn={data.company.nameEn ?? 'Rose HR'}
+        companyNameAr={activeCompany?.nameAr ?? ''}
+        companyNameEn={activeCompany?.nameEn ?? ''}
         titleAr="تقرير التنبيهات"
         filterSummary={filterSummaryPdf}
         rows={pdfRows}

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { data } from '@/features/hr/lib/data';
 
 export interface JobTitleTemplateRecord {
   id: string;
@@ -19,27 +18,6 @@ function now() {
   return new Date().toISOString();
 }
 
-function seedFromEmployees(): JobTitleTemplateRecord[] {
-  const seen = new Set<string>();
-  const out: JobTitleTemplateRecord[] = [];
-  let order = 0;
-  for (const e of data.employees) {
-    const t = (e.position ?? '').trim();
-    if (!t || seen.has(t)) continue;
-    seen.add(t);
-    out.push({
-      id: `jt-seed-${order}`,
-      titleAr: t,
-      descriptionAr: '',
-      defaultDepartmentId: e.departmentId ?? null,
-      sortOrder: order++,
-      updatedAt: '2026-01-01T00:00:00Z',
-    });
-  }
-  return out.sort((a, b) => a.titleAr.localeCompare(b.titleAr, 'ar'));
-}
-
-const SEED = seedFromEmployees();
 
 export type JobTitleTemplateDraft = Pick<JobTitleTemplateRecord, 'titleAr'> &
   Partial<Pick<JobTitleTemplateRecord, 'descriptionAr' | 'defaultDepartmentId'>>;
@@ -54,7 +32,7 @@ interface State {
 export const useJobTitleTemplatesStore = create<State>()(
   persist(
     (set, get) => ({
-      templates: SEED,
+      templates: [],
       add: (d) => {
         const titleAr = d.titleAr.trim();
         if (!titleAr) return { ok: false, error: 'المسمى بالعربية مطلوب' };

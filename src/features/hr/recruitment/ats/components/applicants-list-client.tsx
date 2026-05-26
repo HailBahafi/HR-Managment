@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
 import { formatDate } from '@/shared/utils';
@@ -82,56 +85,66 @@ export function ApplicantsListClient() {
   }), [applicants, forms, search, stageTab, jobFilter, minScore]);
 
   const stageLabel = STAGES.find((s) => s.key === stageTab)?.label ?? '';
+  const hasActiveFilter = stageTab !== 'all' || jobFilter !== 'all' || !!minScore || !!search;
+
+  const activeFilterCount = (stageTab !== 'all' ? 1 : 0) + (jobFilter !== 'all' ? 1 : 0) + (!!minScore ? 1 : 0) + (!!search ? 1 : 0);
+
+  usePageHeaderActions(
+    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
+    [activeFilterCount],
+  );
+
+  useEntityFilterSlot(
+    () => (
+      <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:px-4 space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {STAGES.map(({ key, label, pill, dot }) => {
+            const count = stageCounts[key] ?? 0;
+            const active = stageTab === key;
+            return (
+              <button
+                key={key}
+                data-active={active}
+                onClick={() => setStageTab(key)}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-all duration-100 border-transparent ${pill} ${active ? 'font-semibold ring-2 ring-offset-1 ring-offset-background' : 'hover:opacity-80'}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${dot} ${active ? '' : 'opacity-60'}`} />
+                {label}
+                <span className="rounded bg-white/60 px-1.5 py-px font-mono text-[10px] tabular-nums">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="بحث بالاسم…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pr-8 text-xs" />
+          </div>
+          <Select value={jobFilter} onValueChange={setJobFilter}>
+            <SelectTrigger className="h-8 w-full text-xs sm:w-44"><SelectValue placeholder="الوظيفة" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع الوظائف</SelectItem>
+              {jobs.map((j) => (<SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          <div className="relative w-full sm:w-24">
+            <Star className="absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-amber-500" />
+            <Input type="number" min={0} max={100} placeholder="نقاط ≥" value={minScore} onChange={(e) => setMinScore(e.target.value)} className="h-8 pr-7 text-xs" />
+          </div>
+          {hasActiveFilter && (
+            <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground shrink-0"
+              onClick={() => { setStageTab('all'); setJobFilter('all'); setMinScore(''); setSearch(''); }}>
+              <X className="h-3.5 w-3.5" /> مسح
+            </Button>
+          )}
+        </div>
+      </div>
+    ),
+    [search, stageTab, jobFilter, minScore, stageCounts, jobs, hasActiveFilter],
+  );
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Stage tabs */}
-      <div className="flex flex-wrap gap-1.5">
-        {STAGES.map(({ key, label, pill, dot }) => {
-          const count = stageCounts[key] ?? 0;
-          const active = stageTab === key;
-          return (
-            <button
-              key={key}
-              data-active={active}
-              onClick={() => setStageTab(key)}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-all duration-100
-                border-transparent ${pill}
-                ${active ? 'font-semibold ring-2 ring-offset-1 ring-offset-background' : 'hover:opacity-80'}`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${dot} ${active ? '' : 'opacity-60'}`} />
-              {label}
-              <span className="rounded bg-white/60 px-1.5 py-px font-mono text-[10px] tabular-nums">{count}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search + filters row */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="بحث بالاسم…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pr-8 text-xs" />
-        </div>
-        <Select value={jobFilter} onValueChange={setJobFilter}>
-          <SelectTrigger className="h-8 w-full text-xs sm:w-44"><SelectValue placeholder="الوظيفة" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">جميع الوظائف</SelectItem>
-            {jobs.map((j) => (<SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>))}
-          </SelectContent>
-        </Select>
-        <div className="relative w-full sm:w-24">
-          <Star className="absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-amber-500" />
-          <Input type="number" min={0} max={100} placeholder="نقاط ≥" value={minScore} onChange={(e) => setMinScore(e.target.value)} className="h-8 pr-7 text-xs" />
-        </div>
-        {(stageTab !== 'all' || jobFilter !== 'all' || !!minScore || !!search) && (
-          <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground shrink-0"
-            onClick={() => { setStageTab('all'); setJobFilter('all'); setMinScore(''); setSearch(''); }}>
-            <X className="h-3.5 w-3.5" /> مسح
-          </Button>
-        )}
-      </div>
-
       {/* Cards grid */}
       {filtered.length === 0 ? (
         <Card>

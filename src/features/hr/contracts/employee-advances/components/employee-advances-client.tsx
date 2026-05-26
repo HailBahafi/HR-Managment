@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import { Plus, Banknote, Download } from 'lucide-react';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Input } from '@/components/ui/input';
@@ -68,9 +70,13 @@ function repaymentLine(x: HREmployeeAdvance): string {
 }
 
 export function EmployeeAdvancesClient() {
-  const { items, add, update, remove } = useHREmployeeAdvancesStore();
+  const { items, add, update, remove, fetch: fetchAdvances } = useHREmployeeAdvancesStore();
   const allEmployees = useHREmployeeDirectoryStore(s => s.employees);
   const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
+
+  React.useEffect(() => {
+    fetchAdvances();
+  }, [fetchAdvances]);
 
   const empOptions = React.useMemo(() =>
     employees.map(e => ({ value: e.id, label: e.nameAr })),
@@ -204,6 +210,21 @@ export function EmployeeAdvancesClient() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openCreate}>
+          <Plus className="h-3.5 w-3.5" />
+          سلفة جديدة
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -221,18 +242,11 @@ export function EmployeeAdvancesClient() {
         }}
         statusCounts={advanceStatusCounts}
         onDateBoundsChange={() => {}}
-        trailingActions={(
-          <>
-            {filtered.length > 0 && (
-              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
-                <Download className="h-3.5 w-3.5" />تصدير
-              </Button>
-            )}
-            <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
-              <Plus className="h-4 w-4" />سلفة جديدة
-            </Button>
-          </>
-        )}
+        trailingActions={filtered.length > 0 ? (
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
+            <Download className="h-3.5 w-3.5" />تصدير
+          </Button>
+        ) : undefined}
       />
     ),
     [

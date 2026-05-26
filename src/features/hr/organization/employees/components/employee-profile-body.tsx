@@ -19,8 +19,8 @@ import { EmployeeSalarySection } from '@/features/hr/organization/employees/comp
 import type { Employee } from '@/features/hr/organization/employees/types';
 import { EmployeeHrPdfPrepDialog } from '@/features/hr/organization/employees/components/dialogs/employee-hr-pdf-prep-dialog';
 
-export function EmployeeProfileBody({ employee }: { employee: Employee }) {
-  const model = useEmployeeProfileModel(employee);
+export function EmployeeProfileBody({ employee, onUpdated }: { employee: Employee; onUpdated?: (updated: Employee) => void }) {
+  const model = useEmployeeProfileModel(employee, onUpdated);
 
   return (
     <>

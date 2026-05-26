@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { CheckCircle2, Plus, XCircle, SlidersHorizontal } from 'lucide-react';
+import { CheckCircle2, Plus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,8 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
-import { usePageHeaderActions, usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -49,42 +50,6 @@ function timeCell(a: string, b: string, labelA: string, labelB: string) {
         <span className="text-muted-foreground">{labelB}:</span>{' '}
         <span className="font-mono tabular-nums" dir="ltr">{b || '—'}</span>
       </p>
-    </div>
-  );
-}
-
-function AttendanceCorrectionHeaderActions({
-  activeFilterCount,
-  onNew,
-}: {
-  activeFilterCount: number;
-  onNew: () => void;
-}) {
-  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderActionsRegion();
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => setFilterPanelOpen((v) => !v)}
-        className={cn(
-          'flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors',
-          filterPanelOpen
-            ? 'border-primary/50 bg-primary/8 text-primary'
-            : 'border-border bg-muted/40 text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground',
-        )}
-      >
-        <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
-        فلترة
-        {activeFilterCount > 0 && (
-          <Badge variant="secondary" className="ms-0.5 h-4 min-w-4 rounded-full px-1 py-0 text-[10px] leading-none">
-            {activeFilterCount}
-          </Badge>
-        )}
-      </button>
-      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={onNew}>
-        <Plus className="h-3.5 w-3.5" />
-        طلب تصحيح حضور
-      </Button>
     </div>
   );
 }
@@ -223,8 +188,16 @@ export function AttendanceCorrectionRequestsClient() {
   useSetPageTitle({ titleAr: 'تصحيح الحضور', descriptionAr: 'طلبات تصحيح أوقات الحضور والانصراف', iconName: 'CalendarClock' });
 
   usePageHeaderActions(
-    () => <AttendanceCorrectionHeaderActions activeFilterCount={activeFilterCount} onNew={openNew} />,
-    [activeFilterCount, openNew],
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openNew}>
+          <Plus className="h-3.5 w-3.5" />
+          طلب تصحيح حضور
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
   );
 
   useEntityFilterSlot(

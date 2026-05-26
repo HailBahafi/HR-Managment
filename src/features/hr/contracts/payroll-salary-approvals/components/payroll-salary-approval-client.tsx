@@ -60,8 +60,24 @@ export function PayrollSalaryApprovalClient() {
   const requestedPeriodId = searchParams.get('period') ?? '';
 
   const periods = useHRPayrollPeriodsStore((s) => s.periods);
+  const fetchPeriods = useHRPayrollPeriodsStore((s) => s.fetch);
+  const materializePeriodLines = useHRPayrollPeriodsStore((s) => s.materializeFromContracts);
   const contracts = useHRContractsStore((s) => s.contracts);
+  const fetchContracts = useHRContractsStore((s) => s.fetch);
   const allowanceTypes = useHRAllowanceTypesStore((s) => s.items);
+  const fetchAllowanceTypes = useHRAllowanceTypesStore((s) => s.fetch);
+
+  React.useEffect(() => {
+    fetchPeriods();
+    fetchContracts();
+    fetchAllowanceTypes();
+  }, [fetchPeriods, fetchContracts, fetchAllowanceTypes]);
+
+  React.useEffect(() => {
+    if (periods.length > 0 && contracts.length > 0) {
+      materializePeriodLines(contracts);
+    }
+  }, [periods.length, contracts, materializePeriodLines]);
 
   const circularEntries = usePayrollSalaryCircularStore((s) => s.entries);
   const setSendStatus = usePayrollSalaryCircularStore((s) => s.setSendStatus);

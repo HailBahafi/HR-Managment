@@ -34,6 +34,7 @@ export function EmployeePersonalSection({ model }: { model: EmployeeProfileModel
     draft,
     editingPersonal,
     setEditingPersonal,
+    saving,
     handleSavePersonal,
     handleCancelPersonal,
     updateField,
@@ -104,9 +105,9 @@ export function EmployeePersonalSection({ model }: { model: EmployeeProfileModel
                 <X className="h-3.5 w-3.5" />
                 إلغاء
               </Button>
-              <Button size="sm" className="h-9 gap-1.5 text-xs" onClick={handleSavePersonal}>
+              <Button size="sm" className="h-9 gap-1.5 text-xs" disabled={saving} onClick={() => void handleSavePersonal()}>
                 <Check className="h-3.5 w-3.5" />
-                حفظ التغييرات
+                {saving ? 'جارٍ الحفظ…' : 'حفظ التغييرات'}
               </Button>
             </>
           ) : (

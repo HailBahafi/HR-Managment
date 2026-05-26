@@ -12,6 +12,8 @@ import { Switch } from '@/components/ui/switch';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
@@ -57,7 +59,7 @@ import { EmploymentContractTerminateModal as TerminateModal } from '@/features/h
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
 import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
-import { data } from '@/features/hr/lib/data';
+import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 
 type FormValues = EmploymentContractFormValues;
 const emptyForm = emptyEmploymentContractForm;
@@ -74,6 +76,7 @@ export function EmploymentContractsClient() {
   const searchParams = useSearchParams();
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
+  const { data: activeCompany } = useActiveCompany();
   const { contracts, add, update, remove, activate, terminate, archive, createAmendmentDraft, fetch: fetchContracts } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { items: allowanceTypes } = useHRAllowanceTypesStore();
@@ -190,8 +193,8 @@ export function EmploymentContractsClient() {
     }));
 
     const company = {
-      nameAr: data.company.name as string,
-      nameEn: ((data.company as { nameEn?: string }).nameEn ?? 'rose'),
+      nameAr: activeCompany?.nameAr ?? '',
+      nameEn: activeCompany?.nameEn ?? '',
     };
 
     const printable = (
@@ -277,6 +280,21 @@ export function EmploymentContractsClient() {
   const openCreate = () => {
     router.push(`${hrContractsRoutes.employment}?${HR_CONTRACTS_MODE_PARAM}=createContract`);
   };
+
+  const activeFilterCount = (kindFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openCreate}>
+          <Plus className="h-3.5 w-3.5" />
+          عقد جديد
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
 
   const openView = (c: HRContractRecord) => {
     if (modeParam) router.replace(hrContractsRoutes.employment, { scroll: false });
@@ -431,11 +449,7 @@ export function EmploymentContractsClient() {
             placeholder: 'نوع العقد',
           },
         ]}
-        trailingActions={(
-          <Button onClick={openCreate} className="h-8 gap-1.5 px-3 text-xs shadow-sm">
-            <Plus className="h-4 w-4" />عقد جديد
-          </Button>
-        )}
+        trailingActions={undefined}
       />
     ),
     [

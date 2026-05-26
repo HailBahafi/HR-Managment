@@ -5,17 +5,25 @@ import { FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
-import {
-  MOCK_ANALYTICS_EMPLOYEES,
-  MOCK_BRANCHES,
-  MOCK_UNIFIED_LEAVES,
-  STATUS_LABELS,
-} from '@/features/hr/leaves/unified-management/lib/mock';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import type { EmployeeLeaveAnalyticsRow } from '@/features/hr/leaves/analytics/types';
+import type { UnifiedLeaveRecord } from '@/features/hr/leaves/unified-management/types';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { LeavesAnalyticsPrintHtml } from '@/components/pdf/print/leaves-analytics-print-html';
-import { data } from '@/features/hr/lib/data';
+import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'معلق',
+  approved: 'مقبول',
+  rejected: 'مرفوض',
+  cancelled: 'ملغى',
+};
+
+const ANALYTICS_EMPLOYEES: EmployeeLeaveAnalyticsRow[] = [];
+const BRANCHES: { id: string; nameAr: string }[] = [];
+const LEAVES: UnifiedLeaveRecord[] = [];
 import { hasDateRangeFilter, intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { downloadXlsxMultiSheet, type XlsxCell } from '@/shared/export/download-xlsx';
 
@@ -28,7 +36,7 @@ const TYPE_LABEL: Record<string, string> = {
 function EmployeeCard({ row }: { row: EmployeeLeaveAnalyticsRow }) {
   const annualPct = row.annualTotal > 0 ? Math.round((row.annualConsumed / row.annualTotal) * 100) : 0;
   const sickPct = row.sickCap > 0 ? Math.round((row.sickUsed / row.sickCap) * 100) : 0;
-  const branch = MOCK_BRANCHES.find((b) => b.id === row.branchId);
+  const branch = BRANCHES.find((b) => b.id === row.branchId);
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-soft space-y-3">
@@ -74,6 +82,7 @@ function EmployeeCard({ row }: { row: EmployeeLeaveAnalyticsRow }) {
 const ANALYTICS_LEAVE_STATUS_ORDER = ['pending', 'approved', 'rejected', 'cancelled'] as const;
 
 export function AnalyticsClient() {
+  const { data: activeCompany } = useActiveCompany();
   const [branchFilter, setBranchFilter] = React.useState('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [leaveStatusFilter, setLeaveStatusFilter] = React.useState<string>('all');
@@ -81,12 +90,12 @@ export function AnalyticsClient() {
   const [pdfOpen, setPdfOpen] = React.useState(false);
 
   const empPickerList = React.useMemo(
-    () => MOCK_ANALYTICS_EMPLOYEES.map((e) => ({ id: e.id, name: e.nameAr })),
+    () => ANALYTICS_EMPLOYEES.map((e) => ({ id: e.id, name: e.nameAr })),
     [],
   );
 
   const leavesInRange = React.useMemo(
-    () => MOCK_UNIFIED_LEAVES.filter((l) => intervalOverlapsYmdRange(l.start, l.end, dateBounds.from, dateBounds.to)),
+    () => LEAVES.filter((l) => intervalOverlapsYmdRange(l.start, l.end, dateBounds.from, dateBounds.to)),
     [dateBounds.from, dateBounds.to],
   );
 
@@ -118,7 +127,7 @@ export function AnalyticsClient() {
   }, [leavesMatchingToolbar, dateBounds.from, dateBounds.to, leaveStatusFilter]);
 
   const filteredEmployees = React.useMemo(() => {
-    return MOCK_ANALYTICS_EMPLOYEES
+    return ANALYTICS_EMPLOYEES
       .filter((e) => branchFilter === 'all' || e.branchId === branchFilter)
       .filter((e) => selectedEmpIds.size === 0 || selectedEmpIds.has(e.id))
       .filter((e) => {
@@ -136,7 +145,7 @@ export function AnalyticsClient() {
 
   const empNameById = React.useMemo(() => {
     const m = new Map<string, string>();
-    for (const e of MOCK_ANALYTICS_EMPLOYEES) m.set(e.id, e.nameAr);
+    for (const e of ANALYTICS_EMPLOYEES) m.set(e.id, e.nameAr);
     return m;
   }, []);
 
@@ -156,7 +165,7 @@ export function AnalyticsClient() {
   const employeePdfRows = React.useMemo(
     () =>
       filteredEmployees.map((row) => {
-        const branch = MOCK_BRANCHES.find((b) => b.id === row.branchId);
+        const branch = BRANCHES.find((b) => b.id === row.branchId);
         return {
           nameAr: row.nameAr,
           annual: `${row.annualConsumed}/${row.annualTotal}`,
@@ -173,9 +182,9 @@ export function AnalyticsClient() {
     if (!hasLeaves && !hasEmps) return null;
     return (
       <LeavesAnalyticsPrintHtml
-        companyNameAr={data.company.name}
-        companyNameEn={data.company.nameEn}
-        filterSummary={`الفرع: ${branchFilter === 'all' ? 'الكل' : (MOCK_BRANCHES.find((b) => b.id === branchFilter)?.nameAr ?? branchFilter)} · الموظفون: ${selectedEmpIds.size === 0 ? 'الكل' : `${selectedEmpIds.size} محدد`} · حالة الإجازة: ${leaveStatusFilter === 'all' ? 'الكل' : (statusLabelsForToolbar[leaveStatusFilter] ?? leaveStatusFilter)} · التاريخ: ${hasDateRangeFilter(dateBounds.from, dateBounds.to) ? `${dateBounds.from} — ${dateBounds.to}` : 'غير محدد (كل الفترات في العينة)'}`}
+        companyNameAr={activeCompany?.nameAr ?? ''}
+        companyNameEn={activeCompany?.nameEn ?? ''}
+        filterSummary={`الفرع: ${branchFilter === 'all' ? 'الكل' : (BRANCHES.find((b) => b.id === branchFilter)?.nameAr ?? branchFilter)} · الموظفون: ${selectedEmpIds.size === 0 ? 'الكل' : `${selectedEmpIds.size} محدد`} · حالة الإجازة: ${leaveStatusFilter === 'all' ? 'الكل' : (statusLabelsForToolbar[leaveStatusFilter] ?? leaveStatusFilter)} · التاريخ: ${hasDateRangeFilter(dateBounds.from, dateBounds.to) ? `${dateBounds.from} — ${dateBounds.to}` : 'غير محدد (كل الفترات في العينة)'}`}
         kpi={{ total: totalLeaves, approved, pending, workDays: totalDays }}
         leaveRows={leavePdfRows}
         employeeRows={employeePdfRows}
@@ -214,7 +223,7 @@ export function AnalyticsClient() {
     const empRows: XlsxCell[][] = [
       empHeader,
       ...filteredEmployees.map((row) => {
-        const branch = MOCK_BRANCHES.find((b) => b.id === row.branchId);
+        const branch = BRANCHES.find((b) => b.id === row.branchId);
         return [
           row.nameAr,
           `${row.annualConsumed}/${row.annualTotal}`,
@@ -235,11 +244,18 @@ export function AnalyticsClient() {
   }, [leavesMatchingToolbar, filteredEmployees, empNameById]);
 
   const branchSelectOptions = React.useMemo(
-    () => [{ value: 'all', label: 'جميع الفروع' }, ...MOCK_BRANCHES.map((b) => ({ value: b.id, label: b.nameAr }))],
+    () => [{ value: 'all', label: 'جميع الفروع' }, ...BRANCHES.map((b) => ({ value: b.id, label: b.nameAr }))],
     [],
   );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  const activeFilterCount = (branchFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0) + (leaveStatusFilter !== 'all' ? 1 : 0) + (hasDateRangeFilter(dateBounds.from, dateBounds.to) ? 1 : 0);
+
+  usePageHeaderActions(
+    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
+    [activeFilterCount],
+  );
 
   useEntityFilterSlot(
     () => (

@@ -30,6 +30,10 @@ export type EmployeeResponseDto = {
   role: string | null;
   assignedRoleId: string | null;
   userId: string | null;
+  branchId: string | null;
+  branchNameAr: string | null;
+  departmentId: string | null;
+  departmentNameAr: string | null;
   meta: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
@@ -66,6 +70,11 @@ export type EmployeeListQuery = {
   page?: number;
   limit?: number;
   companyId?: string;
+  userId?: string;
+  branchId?: string;
+  departmentId?: string;
+  search?: string;
+  contractStatus?: string;
 };
 
 export const employeesApi = {

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, Eye, CheckCircle2, XCircle, Edit3, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Trash2, CalendarDays, Eye, CheckCircle2, XCircle, Edit3, FileDown, FileSpreadsheet, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,8 @@ import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dial
 import { ViolationCasesRegisterPrintHtml } from '@/components/pdf/print/violation-cases-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 
 const STATUS_LABELS: Record<ViolationRecordStatus, string> = {
   pending:    'قيد الانتظار',
@@ -130,6 +132,22 @@ export function ViolationCasesClient() {
   }, [filtered]);
 
   const dateRangeActive = dateMeta.hasRestriction;
+
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { setDraft(CREATE_EMPTY); setFormError(null); setCreateOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          مخالفة جديدة
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
 
   const violationPdfRows = React.useMemo(
     () => listFiltered.map((c) => ({
@@ -246,6 +264,7 @@ export function ViolationCasesClient() {
     () => (
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
+        showPrimaryAction={false}
         primaryActionLabel="مخالفة جديدة"
         onPrimaryAction={() => { setDraft(CREATE_EMPTY); setFormError(null); setCreateOpen(true); }}
         toolbarExtraTrailing={(

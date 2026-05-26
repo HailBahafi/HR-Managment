@@ -1,15 +1,22 @@
 'use client';
 
 import * as React from 'react';
+import { toast } from 'sonner';
 import { appendEmployeeAudit } from '@/features/hr/organization/employees/lib/employee-audit-log/append';
 import { diffEmployeeShallowAudit } from '@/features/hr/organization/employees/lib/employee-audit-log/diff-employee';
+import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import type { EmployeeProfileSectionId } from '@/features/hr/organization/employees/constants/EmployeeProfileSections';
 import type { EmployeeProfileDraft } from '@/features/hr/organization/employees/components/employee-profile-field';
 
-export function useEmployeeProfilePersonal(employee: Employee, activeSection: EmployeeProfileSectionId) {
+export function useEmployeeProfilePersonal(
+  employee: Employee,
+  activeSection: EmployeeProfileSectionId,
+  onUpdated?: (updated: Employee) => void,
+) {
   type Draft = EmployeeProfileDraft;
   const [editingPersonal, setEditingPersonal] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
   const [draft, setDraft] = React.useState<Draft>(() => ({ ...employee }));
 
   React.useEffect(() => {
@@ -21,13 +28,51 @@ export function useEmployeeProfilePersonal(employee: Employee, activeSection: Em
     setDraft((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const handleSavePersonal = React.useCallback(() => {
-    const before = { ...employee };
-    const rows = diffEmployeeShallowAudit(before, draft, 'personal');
-    Object.assign(employee, draft);
-    if (rows.length) appendEmployeeAudit(employee.id, rows);
-    setEditingPersonal(false);
-  }, [employee, draft]);
+  const handleSavePersonal = React.useCallback(async () => {
+    setSaving(true);
+    try {
+      const updated = await employeesApi.update(employee.id, {
+        nameEn: draft.nameEn || null,
+        email: draft.email || null,
+        phone: draft.phone || null,
+        nationalId: draft.nationalId || null,
+        nationality: draft.nationality || null,
+        position: draft.position || null,
+        managerId: draft.managerId ?? null,
+        contractType: draft.contractType || null,
+        startDate: draft.startDate || null,
+        baseSalary: String(draft.baseSalary),
+        housingAllowance: String(draft.housingAllowance),
+        transportAllowance: String(draft.transportAllowance),
+        otherAllowances: String(draft.otherAllowances),
+        bankAccount: draft.bankAccount || null,
+        iban: draft.iban || null,
+        address: draft.address || null,
+        gender: draft.gender || null,
+        birthDate: draft.birthDate || null,
+        maritalStatus: draft.maritalStatus || null,
+        role: draft.role || null,
+      });
+      const before = { ...employee };
+      const rows = diffEmployeeShallowAudit(before, draft, 'personal');
+      if (rows.length) appendEmployeeAudit(employee.id, rows);
+      if (onUpdated) {
+        onUpdated({
+          ...employee,
+          ...draft,
+          nameEn: updated.nameEn ?? '',
+          email: updated.email ?? '',
+          phone: updated.phone ?? '',
+        });
+      }
+      toast.success('تم حفظ البيانات بنجاح');
+      setEditingPersonal(false);
+    } catch {
+      toast.error('فشل حفظ البيانات، حاول مرة أخرى');
+    } finally {
+      setSaving(false);
+    }
+  }, [employee, draft, onUpdated]);
 
   const handleCancelPersonal = React.useCallback(() => {
     setDraft({ ...employee });
@@ -57,6 +102,7 @@ export function useEmployeeProfilePersonal(employee: Employee, activeSection: Em
     setDraft,
     editingPersonal,
     setEditingPersonal,
+    saving,
     updateField,
     handleSavePersonal,
     handleCancelPersonal,

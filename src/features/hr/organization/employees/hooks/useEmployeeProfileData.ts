@@ -65,6 +65,8 @@ export function useEmployeeProfileData(employee: Employee) {
         setEmployeeContracts(cRes.items.map(c => ({
           id: c.id,
           employeeId: c.employeeId,
+          employeeNameAr: c.employeeNameAr ?? '',
+          branchNameAr: c.branchNameAr ?? '',
           contractNumber: c.contractNumber,
           contractType: c.contractNature as HRContractRecord['contractType'],
           workArrangement: c.workArrangement as HRContractRecord['workArrangement'],

@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useRecruitmentStore } from '@/features/hr/recruitment/lib/store';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { ApplicantDetailDialog } from './applicant-detail-dialog';
 import type { RecruitmentApplicant, RecruitmentForm } from '@/features/hr/recruitment/lib/types';
 import { formatDate } from '@/shared/utils';
@@ -46,6 +49,37 @@ export function ApplicantManagementClient() {
     [forms],
   );
 
+  const activeFilterCount = (search.trim() ? 1 : 0) + (selectedFormId ? 1 : 0);
+
+  usePageHeaderActions(
+    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
+    [activeFilterCount],
+  );
+
+  useEntityFilterSlot(
+    () => (
+      <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:px-4">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث في المتقدمين…" className="h-8 pr-9 text-xs" />
+          </div>
+          <select
+            value={selectedFormId}
+            onChange={(e) => setSelectedFormId(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background px-3 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+          >
+            <option value="">جميع النماذج</option>
+            {forms.map((f) => (
+              <option key={f.id} value={f.id}>{f.title}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    ),
+    [search, selectedFormId, forms],
+  );
+
   const handleDelete = (id: string) => {
     deleteApplicant(id);
     setDeleteId(null);
@@ -69,26 +103,8 @@ export function ApplicantManagementClient() {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث في المتقدمين…" className="pr-9" />
-          </div>
-          <select
-            value={selectedFormId}
-            onChange={(e) => setSelectedFormId(e.target.value)}
-            className="h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-          >
-            <option value="">جميع النماذج</option>
-            {forms.map((f) => (
-              <option key={f.id} value={f.id}>{f.title}</option>
-            ))}
-          </select>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          عدد المتقدمين: {filtered.length}
-        </div>
+      <div className="text-sm text-muted-foreground">
+        عدد المتقدمين: {filtered.length}
       </div>
 
       {selectedForm && (

@@ -9,7 +9,7 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { formatCurrency } from '@/shared/utils';
-import { matchesDateRange, hasDateRangeFilter } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { hasDateRangeFilter } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeesRegisterPrintHtml } from '@/components/pdf/print/employees-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import {
@@ -20,7 +20,7 @@ import {
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
-import { companiesApi } from '@/features/hr/organization/lib/api/companies';
+import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 function empStartYmd(e: EmployeeResponseDto): string {
@@ -33,15 +33,19 @@ function empStartYmd(e: EmployeeResponseDto): string {
 export function useEmployeesListModel() {
   useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
   const router = useRouter();
+  const { data: activeCompany } = useActiveCompany();
+  const companyId = activeCompany?.id;
 
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [totalCount, setTotalCount] = React.useState(0);
 
   const [branchFilter, setBranchFilter] = React.useState('all');
   const [deptFilter, setDeptFilter] = React.useState('all');
+  const [search, setSearch] = React.useState('');
   const [view, setView] = React.useState<'table' | 'grid'>('table');
   const [newEmpOpen, setNewEmpOpen] = React.useState(false);
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
@@ -49,29 +53,42 @@ export function useEmployeesListModel() {
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [pdfOpen, setPdfOpen] = React.useState(false);
 
-  const loadData = React.useCallback(async () => {
+  // Load branches and departments once (they don't change with employee filters)
+  React.useEffect(() => {
+    if (!companyId) return;
+    void Promise.all([
+      branchesApi.getAll({ limit: 200, companyId }),
+      departmentsApi.getAll({ limit: 200, companyId }),
+    ]).then(([branchesRes, deptsRes]) => {
+      setBranches(branchesRes.items);
+      setDepartments(deptsRes.items);
+    });
+  }, [companyId]);
+
+  const loadEmployees = React.useCallback(async () => {
+    if (!companyId) return;
     setLoading(true);
     setListError(null);
     try {
-      const companies = await companiesApi.getAll({ limit: 1 });
-      const companyId = companies.items[0]?.id;
-      const [empsRes, branchesRes, deptsRes] = await Promise.all([
-        employeesApi.getAll({ limit: 500, ...(companyId ? { companyId } : {}) }),
-        branchesApi.getAll({ limit: 200, ...(companyId ? { companyId } : {}) }),
-        departmentsApi.getAll({ limit: 200, ...(companyId ? { companyId } : {}) }),
-      ]);
-      setEmployees(empsRes.items);
-      setBranches(branchesRes.items);
-      setDepartments(deptsRes.items);
+      const res = await employeesApi.getAll({
+        limit: 500,
+        companyId,
+        ...(branchFilter !== 'all' ? { branchId: branchFilter } : {}),
+        ...(deptFilter !== 'all' ? { departmentId: deptFilter } : {}),
+        ...(search.trim() ? { search: search.trim() } : {}),
+        ...(toolbarStatus !== 'all' ? { contractStatus: toolbarStatus } : {}),
+      });
+      setEmployees(res.items);
+      setTotalCount(res.pagination.total);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'employees.load');
       setListError(displayMessage);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyId, branchFilter, deptFilter, search, toolbarStatus]);
 
-  React.useEffect(() => { void loadData(); }, [loadData]);
+  React.useEffect(() => { void loadEmployees(); }, [loadEmployees]);
 
   const getBranch = React.useCallback(
     (id: string | null | undefined) => branches.find((b) => b.id === id),
@@ -87,37 +104,28 @@ export function useEmployeesListModel() {
     [employees],
   );
 
-  const narrowedForToolbar = React.useMemo(
-    () =>
-      employees.filter((e) => {
-        if (branchFilter !== 'all') {
-          const assignment = null; // TODO: filter by branch via assignments
-          void assignment;
-        }
-        if (deptFilter !== 'all') {
-          // filter by dept not easily available without assignments
-        }
-        if (selectedEmpIds.size > 0 && !selectedEmpIds.has(e.id)) return false;
-        if (!matchesDateRange(empStartYmd(e), dateBounds.from, dateBounds.to)) return false;
-        return true;
-      }),
-    [employees, branchFilter, deptFilter, selectedEmpIds, dateBounds.from, dateBounds.to],
-  );
+  // Client-side: only date range and employee picker (server handles the rest)
+  const filtered = React.useMemo(() => {
+    return employees.filter((e) => {
+      if (selectedEmpIds.size > 0 && !selectedEmpIds.has(e.id)) return false;
+      if (dateBounds.from || dateBounds.to) {
+        const ymd = empStartYmd(e);
+        if (dateBounds.from && ymd < dateBounds.from) return false;
+        if (dateBounds.to && ymd > dateBounds.to) return false;
+      }
+      return true;
+    });
+  }, [employees, selectedEmpIds, dateBounds.from, dateBounds.to]);
 
   const contractStatusCounts = React.useMemo(
     () => ({
-      all: narrowedForToolbar.length,
-      active: narrowedForToolbar.filter((e) => e.contractStatus === 'active').length,
-      suspended: narrowedForToolbar.filter((e) => e.contractStatus === 'suspended').length,
-      ended: narrowedForToolbar.filter((e) => e.contractStatus === 'ended').length,
+      all: totalCount,
+      active: employees.filter((e) => e.contractStatus === 'active').length,
+      suspended: employees.filter((e) => e.contractStatus === 'suspended').length,
+      ended: employees.filter((e) => e.contractStatus === 'ended').length,
     }),
-    [narrowedForToolbar],
+    [employees, totalCount],
   );
-
-  const filtered = React.useMemo(() => {
-    if (toolbarStatus === 'all') return narrowedForToolbar;
-    return narrowedForToolbar.filter((e) => e.contractStatus === toolbarStatus);
-  }, [narrowedForToolbar, toolbarStatus]);
 
   const employeesPdfRows = React.useMemo(
     () =>
@@ -125,8 +133,8 @@ export function useEmployeesListModel() {
         name: emp.nameAr,
         employeeCode: emp.employeeCode,
         position: emp.position ?? '—',
-        department: '—',
-        branchCity: '—',
+        department: emp.departmentNameAr ?? '—',
+        branchCity: emp.branchNameAr ?? '—',
         contractType: CONTRACT_TYPE_AR[emp.contractType ?? ''] ?? emp.contractType ?? '—',
         startDate: empStartYmd(emp),
         baseSalary: formatCurrency(parseFloat(emp.baseSalary ?? '0') || 0),
@@ -139,13 +147,14 @@ export function useEmployeesListModel() {
     const parts: string[] = [];
     if (branchFilter !== 'all') parts.push(`فرع: ${branches.find((b) => b.id === branchFilter)?.nameAr ?? branchFilter}`);
     if (deptFilter !== 'all') parts.push(`قسم: ${departments.find((d) => d.id === deptFilter)?.nameAr ?? deptFilter}`);
+    if (search.trim()) parts.push(`بحث: ${search.trim()}`);
     parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل (ضمن الفلاتر)' : `الموظفون: ${selectedEmpIds.size} محدد من القائمة`);
     if (hasDateRangeFilter(dateBounds.from, dateBounds.to)) {
       parts.push(`تاريخ الالتحاق: ${dateBounds.from} — ${dateBounds.to}`);
     }
     parts.push(`حالة العقد: ${toolbarStatus === 'all' ? 'الكل' : (EMP_CONTRACT_STATUS_LABELS[toolbarStatus] ?? toolbarStatus)}`);
     return parts.join(' · ');
-  }, [branchFilter, deptFilter, selectedEmpIds.size, dateBounds.from, dateBounds.to, toolbarStatus, branches, departments]);
+  }, [branchFilter, deptFilter, search, selectedEmpIds.size, dateBounds.from, dateBounds.to, toolbarStatus, branches, departments]);
 
   const handleExportExcel = React.useCallback(async () => {
     if (filtered.length === 0) {
@@ -161,8 +170,8 @@ export function useEmployeesListModel() {
         emp.nameAr,
         emp.employeeCode,
         emp.position ?? '—',
-        '—',
-        '—',
+        emp.departmentNameAr ?? '—',
+        emp.branchNameAr ?? '—',
         CONTRACT_TYPE_AR[emp.contractType ?? ''] ?? emp.contractType ?? '—',
         empStartYmd(emp),
         formatCurrency(parseFloat(emp.baseSalary ?? '0') || 0),
@@ -177,14 +186,14 @@ export function useEmployeesListModel() {
     () =>
       employeesPdfRows.length === 0 ? null : (
         <EmployeesRegisterPrintHtml
-          companyNameAr="الشركة"
-          companyNameEn=""
+          companyNameAr={activeCompany?.nameAr ?? 'الشركة'}
+          companyNameEn={activeCompany?.nameEn ?? ''}
           titleAr="سجل الموظفين"
           filterSummary={employeesFilterSummary}
           rows={employeesPdfRows}
         />
       ),
-    [employeesPdfRows, employeesFilterSummary],
+    [employeesPdfRows, employeesFilterSummary, activeCompany],
   );
 
   const branchSelectOptions = React.useMemo(
@@ -288,7 +297,7 @@ export function useEmployeesListModel() {
     employeesPrintable,
     getBranch,
     getDepartment,
-    reloadEmployees: loadData,
+    reloadEmployees: loadEmployees,
   };
 }
 

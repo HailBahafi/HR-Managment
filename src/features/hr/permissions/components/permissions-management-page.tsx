@@ -15,7 +15,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { data } from '@/features/hr/lib/data';
+import { useRoles } from '@/features/hr/permissions/hooks/useRoles';
 import { cn } from '@/shared/utils';
 import { PERMISSION_RESOURCES, PERMISSION_ACTIONS, PERMISSION_MATRIX_TOTAL } from '@/features/hr/permissions/constants/permission-matrix';
 import {
@@ -42,12 +42,20 @@ const BLANK: Omit<PermissionRole, 'id'> = {
 export function PermissionsManagementPage() {
   useSetPageTitle({ titleAr: 'إدارة الصلاحيات', descriptionAr: 'الأدوار والصلاحيات', iconName: 'Shield' });
 
-  const [roles, setRoles] = React.useState<PermissionRole[]>(() =>
-    (data.roles as unknown as PermissionRole[]).map((r) => ({
-      ...r,
-      color: coercePermissionRoleColorToken(String(r.color)),
-    })),
-  );
+  const { data: rolesResult } = useRoles();
+  const [roles, setRoles] = React.useState<PermissionRole[]>([]);
+  React.useEffect(() => {
+    if (rolesResult?.items?.length) {
+      setRoles(rolesResult.items.map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description ?? '',
+        usersCount: 0,
+        permissions: [],
+        color: coercePermissionRoleColorToken('primary'),
+      })));
+    }
+  }, [rolesResult]);
   const [panelOpen, setPanelOpen] = React.useState(false);
   const [editingRole, setEditingRole] = React.useState<PermissionRole | null>(null);
   const [form, setForm] = React.useState<Omit<PermissionRole, 'id'>>(BLANK);

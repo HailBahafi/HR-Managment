@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,8 @@ import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dial
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 
 const CHANNEL_OPTIONS = (Object.entries(APPEAL_CHANNEL_LABELS) as [HRAppealChannel, string][]).map(([v, l]) => ({ value: v, label: l }));
 const STATUS_OPTIONS = (Object.entries(APPEAL_STATUS_LABELS) as [HRAppealStatus, string][]).map(([v, l]) => ({ value: v, label: l }));
@@ -110,6 +112,22 @@ export function AppealsClient() {
 
   const dateRangeActive = dateMeta.hasRestriction;
 
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => setDrawerOpen(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          إضافة تظلم
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
+
   const appealsFilterSummary = React.useMemo(() => {
     const parts: string[] = [];
     parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل' : `الموظفون: ${selectedEmpIds.size} محدد`);
@@ -188,6 +206,7 @@ export function AppealsClient() {
     () => (
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
+        showPrimaryAction={false}
         primaryActionLabel="إضافة تظلم"
         onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
         toolbarExtraTrailing={(

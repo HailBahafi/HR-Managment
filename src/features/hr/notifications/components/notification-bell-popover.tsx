@@ -6,19 +6,20 @@ import { Bell, Check, CheckCheck, ListX, CheckCircle2, Circle, X } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn, formatDate } from '@/shared/utils';
-import { MOCK_APP_SESSION } from '@/shared/app-session';
 import {
   useHRNotificationsStore,
   selectInboxForRecipient,
   countUnreadInbox,
 } from '@/features/hr/notifications/lib/notifications-store';
+import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
 
 export function NotificationBellPopover() {
   const { items, markRead, markUnread, markAllReadForRecipient, dismissFromInbox, dismissAllVisibleForRecipient } =
     useHRNotificationsStore();
   const [open, setOpen] = React.useState(false);
 
-  const uid = MOCK_APP_SESSION.employeeId;
+  const { data: currentEmployee } = useCurrentEmployee();
+  const uid = currentEmployee?.id ?? '';
   const inbox = React.useMemo(() => selectInboxForRecipient(items, uid), [items, uid]);
   const unread = countUnreadInbox(items, uid);
 

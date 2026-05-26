@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatDate, formatTime } from '@/shared/utils';
-import { data } from '@/features/hr/lib/data';
+import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
 import { useEmployeeAuditLogStore, EMPTY_EMPLOYEE_AUDIT_LOG } from '@/features/hr/organization/employees/lib/employee-audit-log/store';
 import { useEmployeeAuditActorStore, AUDIT_ACTOR_SYSTEM } from '@/features/hr/organization/employees/lib/employee-audit-log/actor-store';
 import {
@@ -40,6 +40,8 @@ function actionBadgeVariant(a: EmployeeAuditAction): 'default' | 'secondary' | '
 }
 
 export function EmployeeAuditLogPanel({ targetEmployeeId }: Props) {
+  const { data: employeesResult } = useEmployees();
+  const employees = employeesResult?.items ?? [];
   const entries = useEmployeeAuditLogStore((s) => s.byEmployee[targetEmployeeId] ?? EMPTY_EMPLOYEE_AUDIT_LOG);
   const actorId = useEmployeeAuditActorStore((s) => s.actorEmployeeId);
   const setActorId = useEmployeeAuditActorStore((s) => s.setActorEmployeeId);
@@ -108,9 +110,9 @@ export function EmployeeAuditLogPanel({ targetEmployeeId }: Props) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={AUDIT_ACTOR_SYSTEM}>النظام (بدون مستخدم محدد)</SelectItem>
-              {data.employees.map((emp) => (
+              {employees.map((emp) => (
                 <SelectItem key={emp.id} value={emp.id}>
-                  {emp.name} <span className="text-muted-foreground font-mono text-xs">({emp.employeeCode})</span>
+                  {emp.nameAr} <span className="text-muted-foreground font-mono text-xs">({emp.employeeCode})</span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -165,7 +167,7 @@ export function EmployeeAuditLogPanel({ targetEmployeeId }: Props) {
                 <SelectItem value="all">الكل</SelectItem>
                 {actorOptions.map((id) => (
                   <SelectItem key={id} value={id}>
-                    {id === AUDIT_ACTOR_SYSTEM ? 'النظام' : data.employees.find((e) => e.id === id)?.name ?? id}
+                    {id === AUDIT_ACTOR_SYSTEM ? 'النظام' : employees.find((e) => e.id === id)?.nameAr ?? id}
                   </SelectItem>
                 ))}
               </SelectContent>

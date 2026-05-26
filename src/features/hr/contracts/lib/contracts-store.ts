@@ -23,6 +23,8 @@ export type HRContractAllowanceLine = {
 export type HRContractRecord = {
   id: string;
   employeeId: string;
+  employeeNameAr: string;
+  branchNameAr: string;
   contractNumber: string;
   contractType: HRContractNature;
   workArrangement: HRWorkArrangement;
@@ -53,6 +55,8 @@ function mapApiContract(c: ApiEmployeeContract): HRContractRecord {
   return {
     id: c.id,
     employeeId: c.employeeId,
+    employeeNameAr: c.employeeNameAr ?? '',
+    branchNameAr: c.branchNameAr ?? '',
     contractNumber: c.contractNumber,
     contractType: c.contractNature as HRContractNature,
     workArrangement: c.workArrangement as HRWorkArrangement,
