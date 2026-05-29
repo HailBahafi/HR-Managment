@@ -11,18 +11,39 @@ const EXCLUDED_FILTER_PATHS = new Set(['/hr/dashboard', HR_PERMISSIONS_BASE]);
 
 export function AppEntityFilterRegion({ className }: { className?: string }) {
   const pathname = usePathname();
-  const { slot, setSlot } = useEntityFilterSlotRegion();
-  const { filterPanelOpen } = usePageHeaderActionsRegion();
+  const { renderFnRef, reRenderSlotRef } = useEntityFilterSlotRegion();
+  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderActionsRegion();
   const excluded = EXCLUDED_FILTER_PATHS.has(pathname);
 
-  React.useEffect(() => {
-    if (excluded) setSlot(null);
-  }, [excluded, setSlot]);
+  // forceUpdate lets useEntityFilterSlot trigger our re-render without any
+  // context state change — the caller component never sees this re-render.
+  const [, forceUpdate] = React.useReducer((n: number) => n + 1, 0);
 
-  if (excluded || !slot || !filterPanelOpen) return null;
+  // Register our forceUpdate before any useEffect in child components fire
+  // (useLayoutEffect runs before useEffect across the whole commit).
+  React.useLayoutEffect(() => {
+    reRenderSlotRef.current = forceUpdate;
+    return () => { reRenderSlotRef.current = null; };
+  }, [reRenderSlotRef]);
+
+  // Clear slot when navigating to an excluded path.
+  React.useEffect(() => {
+    if (excluded) renderFnRef.current = null;
+  }, [excluded, renderFnRef]);
+
+  // Render the slot content fresh on every render (renderFnRef.current is always current).
+  const content = excluded ? null : (renderFnRef.current?.() ?? null);
+
+  // Auto-open the filter panel the first time a slot is registered.
+  const hasContent = content !== null;
+  React.useEffect(() => {
+    if (hasContent && !excluded) setFilterPanelOpen(true);
+  }, [hasContent, excluded, setFilterPanelOpen]);
+
+  if (excluded || !content || !filterPanelOpen) return null;
   return (
     <div className={cn('mb-5 animate-fade-in', className)}>
-      {slot}
+      {content}
     </div>
   );
 }

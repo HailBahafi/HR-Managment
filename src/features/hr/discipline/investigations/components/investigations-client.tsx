@@ -5,6 +5,7 @@ import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus } from 'lucide-re
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
@@ -451,7 +452,7 @@ export function InvestigationsClient() {
           />
         </FormField>
         <FormField label="تاريخ التحقيق" required>
-          <Input type="date" value={draft.date} onChange={e => set({ date: e.target.value })} />
+          <DatePickerInput value={draft.date} onChange={(ymd) => set({ date: ymd })} />
         </FormField>
         <FormField label="أقوال الموظف">
           <textarea value={draft.employeeStatement} onChange={e => set({ employeeStatement: e.target.value })} placeholder="ما قاله الموظف في التحقيق…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />

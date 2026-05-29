@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, Megaphone, Send, FileDown, Search, Plus } from 'lucide-react';
+import { Trash2, CalendarDays, Megaphone, Send, Search, Plus, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -30,10 +31,8 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { DisciplineCircularPrintHtml } from '@/components/pdf/print/discipline-circular-print-html';
-import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import { tryBuildCircularAudienceSnapshot } from '@/features/hr/discipline/circulars/utils/build-circular-audience-summary';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const AUDIENCE_OPTIONS = (Object.entries(CIRCULAR_AUDIENCE_LABELS) as [HRDisciplineCircularAudience, string][]).map(
   ([v, l]) => ({ value: v, label: l }),
@@ -168,40 +167,7 @@ export function CircularsClient() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  const [circularPdfOpen, setCircularPdfOpen] = React.useState(false);
-  const [circularPrintable, setCircularPrintable] = React.useState<React.ReactElement | null>(null);
-
-  const openCircularPdfPreview = React.useCallback(() => {
-    if (!draft.bodyAr.trim()) {
-      toast.error('أدخل نص التعميم قبل التصدير');
-      return;
-    }
-    const built = tryBuildCircularAudienceSnapshot(draft, { branchNameById, departmentNameById });
-    if (!built.ok) {
-      toast.error(built.error);
-      return;
-    }
-    const logo = getPdfLogoSrc();
-    const company = m.company
-      ? { nameAr: m.company.nameAr, nameEn: m.company.nameEn ?? m.company.nameAr }
-      : { nameAr: '—', nameEn: '—' };
-    setCircularPrintable(
-      <DisciplineCircularPrintHtml
-        logoSrc={logo}
-        company={company}
-        titleAr={draft.titleAr.trim() || 'تعميم'}
-        issuedDate={draft.date}
-        audienceSummaryAr={built.data.audienceSummaryAr}
-        bodyAr={draft.bodyAr.trim()}
-        sendFooterAr={draft.executeSend ? `حالة الطباعة: مخطط للإرسال فور الحفظ — ${new Date().toISOString().slice(0, 10)}` : 'مسودة — لم يُرسل بعد'}
-      />,
-    );
-    setCircularPdfOpen(true);
-  }, [branchNameById, departmentNameById, draft, m.company]);
-
-  React.useEffect(() => {
-    if (!circularPdfOpen) setCircularPrintable(null);
-  }, [circularPdfOpen]);
+  const [detailCircular, setDetailCircular] = React.useState<HRDisciplineCircularRecord | null>(null);
 
   const searchFiltered = React.useMemo(
     () =>
@@ -335,6 +301,40 @@ export function CircularsClient() {
 
   return (
     <div className="space-y-4">
+
+      {/* Detail dialog */}
+      <Dialog open={!!detailCircular} onOpenChange={(v) => !v && setDetailCircular(null)}>
+        <DialogContent className="max-w-lg border-border" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-display">
+              <Megaphone className="h-4 w-4 text-primary shrink-0" />
+              {detailCircular?.titleAr || 'تعميم'}
+            </DialogTitle>
+          </DialogHeader>
+          {detailCircular && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  <span dir="ltr">{detailCircular.date}</span>
+                </span>
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
+                  {detailCircular.audienceSummaryAr}
+                </span>
+                <span className={detailCircular.sentAt
+                  ? 'text-muted-foreground'
+                  : 'rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-800 dark:text-amber-200'}>
+                  {detailCircular.sentAt ? 'مُرسل' : 'لم يُرسل'}
+                </span>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/10 px-4 py-4">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">{detailCircular.bodyAr}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">
           {m.listError}
@@ -377,34 +377,39 @@ export function CircularsClient() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {listFiltered.map((c) => (
             <div key={c.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 truncate font-semibold">
-                    <Megaphone className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                    {c.titleAr || 'تعميم'}
-                  </p>
-                  <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground" dir="ltr">
-                    <CalendarDays className="h-3 w-3 shrink-0" />
-                    {c.date}
-                  </p>
+              <button
+                type="button"
+                className="text-right"
+                onClick={() => setDetailCircular(c)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-1.5 truncate font-semibold hover:text-primary transition-colors">
+                      <Megaphone className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      {c.titleAr || 'تعميم'}
+                    </p>
+                    <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground" dir="ltr">
+                      <CalendarDays className="h-3 w-3 shrink-0" />
+                      {c.date}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="inline-flex max-w-[10rem] items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-medium leading-tight text-primary">
+                      {c.audienceSummaryAr}
+                    </span>
+                    <span className={c.sentAt
+                      ? 'text-[10px] text-muted-foreground'
+                      : 'rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200'}>
+                      {c.sentAt ? 'مُرسل' : 'لم يُرسل'}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="inline-flex max-w-[10rem] items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-medium leading-tight text-primary">
-                    {c.audienceSummaryAr}
-                  </span>
-                  <span
-                    className={
-                      c.sentAt
-                        ? 'text-[10px] text-muted-foreground'
-                        : 'rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200'
-                    }
-                  >
-                    {c.sentAt ? 'مُرسل' : 'لم يُرسل'}
-                  </span>
-                </div>
-              </div>
-              <p className="line-clamp-4 text-xs text-muted-foreground">{c.bodyAr}</p>
+                <p className="mt-2 line-clamp-3 text-xs text-muted-foreground text-right">{c.bodyAr}</p>
+              </button>
               <div className="mt-auto flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+                <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => setDetailCircular(c)}>
+                  <Eye className="h-3.5 w-3.5" /> 
+                </Button>
                 {!c.sentAt ? (
                   <Button
                     variant="secondary"
@@ -427,7 +432,7 @@ export function CircularsClient() {
                   </Button>
                 ) : null}
                 <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}>
-                  <Trash2 className="h-3.5 w-3.5" /> حذف
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
@@ -448,11 +453,11 @@ export function CircularsClient() {
             </thead>
             <tbody>
               {listFiltered.map((c) => (
-                <tr key={c.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
+                <tr key={c.id} className="border-b border-border/70 transition-colors hover:bg-muted/25 cursor-pointer" onClick={() => setDetailCircular(c)}>
                   <td className="max-w-[12rem] truncate p-3 font-medium">{c.titleAr || '—'}</td>
                   <td className="max-w-[14rem] whitespace-normal p-3 text-xs">{c.audienceSummaryAr}</td>
                   <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{c.date}</td>
-                  <td className="whitespace-nowrap p-3">
+                  <td className="whitespace-nowrap p-3" onClick={(e) => e.stopPropagation()}>
                     {c.sentAt ? (
                       <span className="text-xs text-muted-foreground">مُرسل</span>
                     ) : (
@@ -479,7 +484,7 @@ export function CircularsClient() {
                     )}
                   </td>
                   <td className="max-w-[24rem] truncate p-3 text-xs text-muted-foreground">{c.bodyAr}</td>
-                  <td className="p-2">
+                  <td className="p-2" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(c.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -498,12 +503,6 @@ export function CircularsClient() {
         size="lg"
         onSave={() => void handleSave()}
         error={formError}
-        footerExtra={(
-          <Button type="button" variant="secondary" size="sm" className="gap-1.5 text-xs h-9" onClick={openCircularPdfPreview}>
-            <FileDown className="h-3.5 w-3.5 shrink-0" />
-            معاينة / تنزيل PDF
-          </Button>
-        )}
       >
         <FormField label="عنوان التعميم (اختياري)">
           <Input value={draft.titleAr} onChange={(e) => set({ titleAr: e.target.value })} placeholder="مثال: تعميم بخصوص سياسة الحضور…" />
@@ -517,7 +516,7 @@ export function CircularsClient() {
           />
         </FormField>
         <FormField label="تاريخ الإصدار" required>
-          <Input type="date" value={draft.date} onChange={(e) => set({ date: e.target.value })} />
+          <DatePickerInput value={draft.date} onChange={(ymd) => set({ date: ymd })} />
         </FormField>
         <FormField label="المستلمون" required>
           <MinimalDropdown
@@ -577,15 +576,6 @@ export function CircularsClient() {
           </label>
         </FormField>
       </HRSettingsFormDrawer>
-
-      <PdfPreviewExportDialog
-        open={circularPdfOpen}
-        onOpenChange={setCircularPdfOpen}
-        title="معاينة — تعميم إداري"
-        fileName={`discipline-circular-${draft.date || 'draft'}.pdf`}
-        printable={circularPrintable}
-        emptyMessage="تعذر إنشاء المعاينة — تحقق من الحقول."
-      />
 
       <ConfirmationModal
         open={!!deleteId}

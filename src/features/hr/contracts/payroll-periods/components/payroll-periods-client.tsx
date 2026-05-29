@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
@@ -255,10 +256,18 @@ export function PayrollPeriodsClient() {
           <Input value={draft.nameEn} onChange={e => set({ nameEn: e.target.value })} placeholder="January 2025" />
         </FormField>
         <FormField label="بداية الفترة" required>
-          <Input type="date" value={draft.periodStart} onChange={e => set({ periodStart: e.target.value })} />
+          <DatePickerInput
+            value={draft.periodStart}
+            onChange={(ymd) => set({ periodStart: ymd })}
+            maxDate={draft.periodEnd || undefined}
+          />
         </FormField>
         <FormField label="نهاية الفترة" required>
-          <Input type="date" value={draft.periodEnd} onChange={e => set({ periodEnd: e.target.value })} />
+          <DatePickerInput
+            value={draft.periodEnd}
+            onChange={(ymd) => set({ periodEnd: ymd })}
+            minDate={draft.periodStart || undefined}
+          />
         </FormField>
         <FormField label="ملاحظات" span2>
           <Input value={draft.notes} onChange={e => set({ notes: e.target.value })} placeholder="ملاحظات اختيارية…" />

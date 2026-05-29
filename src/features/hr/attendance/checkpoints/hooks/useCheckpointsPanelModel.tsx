@@ -8,6 +8,7 @@ import { CHECKPOINT_GEO_DEBOUNCE_MS, CHECKPOINT_GEO_MIN_QUERY_LEN } from '@/feat
 import { validateCheckpointDraft } from '@/features/hr/attendance/checkpoints/utils/checkpoint-validate';
 import { publicConfig } from '@/shared/config';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import {
   createCheckInPoint,
   deleteCheckInPoint,
@@ -17,7 +18,8 @@ import {
 
 export function useCheckpointsPanelModel() {
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
-  const [companyId, setCompanyId] = React.useState<string | null>(null);
+  // companyId from auth store — never blocked by GET /companies 403
+  const companyId = useAuthStore((s) => s.activeCompanyId);
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
@@ -31,19 +33,19 @@ export function useCheckpointsPanelModel() {
   const [geoSuggestions, setGeoSuggestions] = React.useState<GeocodingResult[]>([]);
 
   const reload = React.useCallback(async () => {
+    if (!companyId) return;
     setLoading(true);
     setListError(null);
     try {
-      const data = await loadCheckInPoints();
+      const data = await loadCheckInPoints(companyId);
       setCheckpoints(data.items);
-      setCompanyId(data.companyId);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'check-in-points.load');
       setListError(displayMessage);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   React.useEffect(() => {
     void reload();

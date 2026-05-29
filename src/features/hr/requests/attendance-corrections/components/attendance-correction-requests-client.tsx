@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -64,6 +65,7 @@ export function AttendanceCorrectionRequestsClient() {
   const departments = useHRConfigurationStore((s) => s.departments);
   const { requestTypes, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
   const employees = useHREmployeeDirectoryStore((s) => s.employees);
+  const fetchEmployees = useHREmployeeDirectoryStore((s) => s.fetch);
   const activeEmployees = React.useMemo(() => employees.filter((e) => e.status === 'active'), [employees]);
 
   const { items, fetch: fetchItems, submit, approve, reject } = useAttendanceCorrectionRequestsStore();
@@ -72,6 +74,7 @@ export function AttendanceCorrectionRequestsClient() {
     fetchItems();
     fetchRequestTypes();
     fetchDepartments();
+    fetchEmployees();
   }, []);
 
   const attendanceRequestTypes = React.useMemo(
@@ -109,7 +112,7 @@ export function AttendanceCorrectionRequestsClient() {
   const baseFiltered = React.useMemo(() => {
     const picks = [...selectedEmpIds];
     return items.filter((r) => {
-      if (appliedDept !== 'all' && r.departmentId !== appliedDept) return false;
+      if (appliedDept !== 'all' && r.departmentNameAr !== appliedDept) return false;
       if (picks.length > 0 && !picks.includes(r.employeeId)) return false;
       if (!matchesDateRange(r.workDate, dateBounds.from, dateBounds.to)) return false;
       return true;
@@ -245,20 +248,17 @@ export function AttendanceCorrectionRequestsClient() {
       {
         key: 'emp',
         title: 'الموظف',
-        render: (r) => {
-          const d = departments.find((x) => x.id === r.departmentId);
-          return (
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                {r.employeeNameAr.charAt(0)}
-              </div>
-              <div>
-                <p className="font-medium text-sm">{r.employeeNameAr}</p>
-                <p className="text-[10px] text-muted-foreground">{d?.nameAr ?? r.departmentId}</p>
-              </div>
+        render: (r) => (
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+              {r.employeeNameAr.charAt(0)}
             </div>
-          );
-        },
+            <div>
+              <p className="font-medium text-sm">{r.employeeNameAr}</p>
+              <p className="text-[10px] text-muted-foreground">{r.departmentNameAr || '—'}</p>
+            </div>
+          </div>
+        ),
       },
       {
         key: 'workDate',
@@ -327,18 +327,12 @@ export function AttendanceCorrectionRequestsClient() {
         },
       },
     ],
-    [approve, departments, reject],
+    [approve, reject],
   );
 
   return (
     <div className="space-y-5">
-      <p className="rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-xs text-muted-foreground sm:text-sm">
-        يرفع الموظف طلب تصحيح لأوقات الحضور والانصراف مع <strong className="text-foreground">تحديد المعتمد</strong> و<strong className="text-foreground">الحالة السابقة</strong> في السجل،
-        ومقارنة الأوقات السابقة بالأوقات المطلوبة بعد التصحيح.
-      </p>
-
       <div className="space-y-2">
-        <h2 className="font-display text-lg font-semibold text-foreground px-0.5">طلبات تصحيح الحضور</h2>
         {sorted.length === 0 ? (
           <EmptyState title="لا توجد طلبات ضمن الفلاتر" />
         ) : (
@@ -407,7 +401,7 @@ export function AttendanceCorrectionRequestsClient() {
                 </Select>
               </FormField>
               <FormField label="تاريخ اليوم المعني">
-                <Input type="date" value={formWorkDate} onChange={(e) => setFormWorkDate(e.target.value)} className="font-mono" dir="ltr" required />
+                <DatePickerInput value={formWorkDate} onChange={setFormWorkDate} />
               </FormField>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">

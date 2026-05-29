@@ -1,22 +1,29 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Pencil, Trash2, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, Filter, ListChecks, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Badge } from '@/components/ui/badge';
 import {
-  MinimalDropdown, ConfirmationModal, HRSettingsFormDrawer,
-  FormField, ActiveBadge,
+  Dialog, DialogContent, DialogTitle,
+} from '@/components/ui/dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  ConfirmationModal,
+  ActiveBadge,
 } from '@/features/hr/requests/components/shared-ui';
 import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
-import { useHRApprovalAssignmentTemplatesStore } from '@/features/hr/requests/lib/approval-assignment-store';
 import type { HRRequestTypeEntity, HRRequestTypeCategory } from '@/features/hr/requests/lib/types';
 import {
   HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
@@ -51,7 +58,6 @@ const CATEGORY_FILTER_OPTIONS = [
 
 export function RequestTypesClient() {
   const { departments, requestTypes, addRequestType, updateRequestType, deleteRequestType, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
-  const approvalAssignmentTemplates = useHRApprovalAssignmentTemplatesStore(s => s.templates);
 
   React.useEffect(() => { fetchRequestTypes(); fetchDepartments(); }, []);
 
@@ -223,7 +229,6 @@ export function RequestTypesClient() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map(rt => {
-              const aaTpl = approvalAssignmentTemplates.find(t => t.id === rt.approvalAssignmentTemplateId);
               return (
                 <div
                   key={rt.id}
@@ -251,11 +256,6 @@ export function RequestTypesClient() {
                     <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                       {rt.approvalStages?.length ?? 0} مرحلة
                     </span>
-                    {aaTpl ? (
-                      <span className="inline-flex items-center rounded-full bg-warning/15 px-2.5 py-0.5 text-[11px] font-medium text-warning">
-                        موافقات: {aaTpl.nameAr}
-                      </span>
-                    ) : null}
                   </div>
                   <div className="mt-auto flex gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
                     <Button variant="ghost" size="sm" className="gap-1.5 flex-1" onClick={() => openEdit(rt)}>
@@ -314,33 +314,103 @@ export function RequestTypesClient() {
         </div>
       )}
 
-      {/* Drawer */}
-      <HRSettingsFormDrawer
-        open={drawerOpen} onOpenChange={v => setDrawerOpen(v)}
-        title={editId ? 'تعديل نوع الطلب' : 'إضافة نوع طلب'}
-        onSave={handleSave} error={error} size="lg"
-      >
-        <div className="flex items-center justify-end gap-2 border-b border-border pb-3 -mt-1 mb-1">
-          <span className="text-xs text-muted-foreground">نشط</span>
-          <div className="scale-90 origin-right">
-            <Switch checked={draft.isActive} onCheckedChange={(v) => patch('isActive', v)} />
+      {/* Create / Edit dialog */}
+      <Dialog open={drawerOpen} onOpenChange={(o) => { if (!o) setDrawerOpen(false); }}>
+        <DialogContent
+          className="flex w-full max-w-md flex-col gap-0 overflow-hidden border-border p-0"
+          hideClose
+        >
+          <VisuallyHidden.Root>
+            <DialogTitle>{editId ? 'تعديل نوع الطلب' : 'نوع طلب جديد'}</DialogTitle>
+          </VisuallyHidden.Root>
+
+          {/* Header */}
+          <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <ListChecks className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold leading-tight">
+                  {editId ? 'تعديل نوع الطلب' : 'نوع طلب جديد'}
+                </h2>
+                <p className="text-xs text-muted-foreground">ينطبق على جميع الأقسام</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+              onClick={() => setDrawerOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
-        <p className="text-[11px] text-muted-foreground mb-3">ينطبق نوع الطلب على جميع الأقسام.</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="يندرج تحت" required span2>
-            <MinimalDropdown
-              value={draft.requestCategory}
-              onChange={(v) => patch('requestCategory', v as HRRequestTypeCategory)}
-              options={CATEGORY_DROPDOWN_OPTIONS}
-              placeholder="اختر التصنيف"
-            />
-          </FormField>
-          <FormField label="الاسم" required span2>
-            <Input value={draft.nameAr} onChange={e => patch('nameAr', e.target.value)} placeholder="طلب إجازة" />
-          </FormField>
-        </div>
-      </HRSettingsFormDrawer>
+
+          {/* Body */}
+          <div className="flex flex-col gap-5 px-5 py-6">
+
+            {/* Name + Active toggle in one row */}
+            <div className="flex items-end gap-3">
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  الاسم <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={draft.nameAr}
+                  onChange={(e) => patch('nameAr', e.target.value)}
+                  placeholder="مثال: طلب إجازة سنوية"
+                  className="h-10"
+                  autoFocus
+                />
+              </div>
+                <Switch checked={draft.isActive} onCheckedChange={(v) => patch('isActive', v)} />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                التصنيف <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={draft.requestCategory}
+                onValueChange={(v) => patch('requestCategory', v as HRRequestTypeCategory)}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="اختر التصنيف…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_DROPDOWN_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {error && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="shrink-0 border-t border-border bg-card/80 px-5 py-4 backdrop-blur">
+            <div className="flex gap-2">
+              <Button variant="luxe" className="flex-1 gap-2" onClick={handleSave}>
+                <Save className="h-4 w-4" />
+                {editId ? 'حفظ التعديلات' : 'إضافة النوع'}
+              </Button>
+              <Button variant="outline" onClick={() => setDrawerOpen(false)}>
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} title="حذف نوع الطلب" onConfirm={async () => { if (deleteId) { await deleteRequestType(deleteId); setDeleteId(null); } }} />
     </div>

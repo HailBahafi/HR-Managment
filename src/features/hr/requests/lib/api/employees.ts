@@ -28,8 +28,8 @@ export type EmployeeResponseDto = {
 
 export const employeesApi = {
   list: (params?: { companyId?: string; page?: number; limit?: number }) =>
-    apiRequest<PaginatedResult<EmployeeResponseDto>>('/employees', { query: params }),
+    apiRequest<PaginatedResult<EmployeeResponseDto>>('/hr/employees', { query: params }),
 
   get: (id: string) =>
-    apiRequest<EmployeeResponseDto>(`/employees/${id}`),
+    apiRequest<EmployeeResponseDto>(`/hr/employees/${id}`),
 };

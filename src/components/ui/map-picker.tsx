@@ -19,6 +19,8 @@ export interface MapPickerProps {
   maxRadius?: number;
   /** When false: read-only map (no click-to-move, no radius overlay, marker not draggable). */
   interactive?: boolean;
+  /** When false: hides the acceptance-radius circle and slider. Default true. */
+  showRadius?: boolean;
 }
 
 const InnerMap = dynamic(() => import('./map-picker-inner'), {
@@ -38,6 +40,7 @@ export function MapPicker({
   minRadius = 10,
   maxRadius = 2000,
   interactive = true,
+  showRadius = true,
 }: MapPickerProps) {
   return (
     <div
@@ -51,6 +54,7 @@ export function MapPicker({
         maxRadius={maxRadius}
         height={height}
         interactive={interactive}
+        showRadius={showRadius}
       />
     </div>
   );

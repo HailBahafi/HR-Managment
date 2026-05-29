@@ -1,11 +1,15 @@
 'use client';
 
-import { Plus, Pencil, Trash2, RefreshCw, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, RefreshCw, Calendar as CalendarIcon } from 'lucide-react';
+import { format, parse, isValid } from 'date-fns';
+import { arSA } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -36,7 +40,7 @@ export function PublicHolidaysPanel() {
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
       ) : m.sorted.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
-          <Calendar className="mb-3 h-10 w-10 text-muted-foreground/30" />
+          <CalendarIcon className="mb-3 h-10 w-10 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">لا توجد عطل رسمية. ابدأ بإضافة عطلة جديدة.</p>
         </div>
       ) : (
@@ -120,8 +124,42 @@ export function PublicHolidaysPanel() {
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
-                <Label>التاريخ (MM-DD) <span className="text-destructive">*</span></Label>
-                <Input placeholder="09-23" dir="ltr" className="font-mono" value={m.draft.date} onChange={(e) => m.patch('date', e.target.value)} />
+                <Label>التاريخ <span className="text-destructive">*</span></Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn('w-full justify-start gap-2 font-mono text-sm', !m.draft.date && 'text-muted-foreground')}
+                    >
+                      <CalendarIcon className="h-4 w-4 shrink-0" />
+                      {m.draft.date
+                        ? (() => {
+                            const d = parse(`2000-${m.draft.date}`, 'yyyy-MM-dd', new Date());
+                            return isValid(d) ? format(d, 'dd MMMM', { locale: arSA }) : m.draft.date;
+                          })()
+                        : 'اختر التاريخ'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={(() => {
+                        const d = parse(`2000-${m.draft.date}`, 'yyyy-MM-dd', new Date());
+                        return isValid(d) ? d : undefined;
+                      })()}
+                      onSelect={(day) => {
+                        if (day) m.patch('date', format(day, 'MM-dd'));
+                      }}
+                      defaultMonth={(() => {
+                        const d = parse(`2000-${m.draft.date}`, 'yyyy-MM-dd', new Date());
+                        return isValid(d) ? d : new Date(2000, 0, 1);
+                      })()}
+                      fromYear={2000}
+                      toYear={2000}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>الاسم <span className="text-destructive">*</span></Label>

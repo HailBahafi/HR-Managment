@@ -114,23 +114,9 @@ export function LeaveTypesPanel() {
             </DialogHeader>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="lt-name-ar">الاسم <span className="text-destructive">*</span></Label>
-                <Input id="lt-name-ar" value={m.draft.nameAr} onChange={(e) => m.patch('nameAr', e.target.value)} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="lt-max">الحد الأقصى للأيام في طلب واحد (يوم) — اتركه فارغاً لعدم التحديد</Label>
-                <Input
-                  id="lt-max"
-                  type="number"
-                  min={0}
-                  dir="ltr"
-                  placeholder="لا يوجد حد"
-                  value={m.draft.maxDaysPerRequest ?? ''}
-                  onChange={(e) => m.patch('maxDaysPerRequest', e.target.value === '' ? null : Number(e.target.value))}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="lt-name-ar">الاسم <span className="text-destructive">*</span></Label>
+              <Input id="lt-name-ar" value={m.draft.nameAr} onChange={(e) => m.patch('nameAr', e.target.value)} />
             </div>
             <Separator />
             <div className="space-y-3">

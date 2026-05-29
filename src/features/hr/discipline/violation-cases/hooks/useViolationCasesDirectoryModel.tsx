@@ -30,7 +30,10 @@ export type ViolationCaseRecord = {
 };
 
 export type ViolationCaseEmployee = { id: string; nameAr: string };
-export type ViolationCaseType = { id: string; nameAr: string; code: string; isActive: boolean };
+export type ViolationCaseType = {
+  id: string; nameAr: string; code: string; isActive: boolean;
+  needsWarning: boolean; needsInvestigation: boolean;
+};
 
 function mapRecord(
   dto: ViolationRecordResponseDto,
@@ -81,7 +84,7 @@ export function useViolationCasesDirectoryModel() {
 
       setEmployees(employeesRes.items.map((e) => ({ id: e.id, nameAr: e.nameAr })));
       setViolationTypes(
-        typesRes.items.map((t) => ({ id: t.id, nameAr: t.nameAr, code: t.code, isActive: t.isActive })),
+        typesRes.items.map((t) => ({ id: t.id, nameAr: t.nameAr, code: t.code, isActive: t.isActive, needsWarning: t.needsWarning ?? false, needsInvestigation: t.needsInvestigation ?? false })),
       );
       setCases(recordsRes.items.map((r) => mapRecord(r, employeeMap, typeMap)));
     } catch (err) {

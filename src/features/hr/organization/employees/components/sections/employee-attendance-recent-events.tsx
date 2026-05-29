@@ -5,12 +5,15 @@ import { Calendar, CheckCircle2, CircleDot, Clock, ExternalLink } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { cn, formatDate } from '@/shared/utils';
 import { Empty } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
-import type { AttendanceEvent } from '@/features/hr/attendance/lib/types';
+import type { AttendanceEventResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
 
-type Props = { employeeEvents: AttendanceEvent[] };
+type Props = { employeeEvents: AttendanceEventResponseDto[] };
 
 export function EmployeeAttendanceRecentEvents({ employeeEvents }: Props) {
-  const srcLabel: Record<string, string> = { device: 'جهاز', manual: 'يدوي', gps: 'GPS' };
+  const srcLabel: Record<string, string> = {
+    mobile_app: 'تطبيق', web_portal: 'بوابة', kiosk: 'كشك',
+    manual_hr: 'يدوي', biometric: 'بصمة', system: 'نظام',
+  };
   const parseMins = (t: string) => {
     const [h, m] = t.split(':').map(Number);
     return h * 60 + m;
@@ -23,12 +26,12 @@ export function EmployeeAttendanceRecentEvents({ employeeEvents }: Props) {
     return h > 0 ? `${h}س${m > 0 ? ` ${m}د` : ''}` : `${m}د`;
   };
 
-  const grouped = new Map<string, { checkIn?: AttendanceEvent; checkOut?: AttendanceEvent }>();
-  for (const evt of [...employeeEvents].sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at))) {
-    if (!grouped.has(evt.date)) grouped.set(evt.date, {});
-    const g = grouped.get(evt.date)!;
-    if (evt.type === 'check_in' && !g.checkIn) g.checkIn = evt;
-    if (evt.type === 'check_out') g.checkOut = evt;
+  const grouped = new Map<string, { checkIn?: AttendanceEventResponseDto; checkOut?: AttendanceEventResponseDto }>();
+  for (const evt of [...employeeEvents].sort((a, b) => b.workDate.localeCompare(a.workDate) || b.occurredAt.localeCompare(a.occurredAt))) {
+    if (!grouped.has(evt.workDate)) grouped.set(evt.workDate, {});
+    const g = grouped.get(evt.workDate)!;
+    if (evt.eventType === 'check_in' && !g.checkIn) g.checkIn = evt;
+    if (evt.eventType === 'check_out') g.checkOut = evt;
   }
   const days = [...grouped.entries()];
 
@@ -44,7 +47,7 @@ export function EmployeeAttendanceRecentEvents({ employeeEvents }: Props) {
       {days.length > 0 ? (
         <div className="space-y-2">
           {days.map(([date, g]) => {
-            const dur = g.checkIn && g.checkOut ? durLabel(g.checkIn.at, g.checkOut.at) : null;
+            const dur = g.checkIn && g.checkOut ? durLabel(g.checkIn.occurredAt, g.checkOut.occurredAt) : null;
             const hasIn = !!g.checkIn;
             const hasOut = !!g.checkOut;
             return (
@@ -76,7 +79,7 @@ export function EmployeeAttendanceRecentEvents({ employeeEvents }: Props) {
                       <div>
                         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
                         <div className={cn('font-mono text-base font-bold tabular-nums leading-tight', event ? color : 'text-muted-foreground/30')}>
-                          {event?.at ?? '——:——'}
+                          {event?.occurredAt ?? '——:——'}
                         </div>
                         {event?.source && (
                           <div className="text-[10px] text-muted-foreground/50">{srcLabel[event.source] ?? event.source}</div>

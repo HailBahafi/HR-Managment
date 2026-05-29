@@ -1,25 +1,33 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 
-export type ApprovalTemplateApprover = {
-  employeeId: string;
-  mandatory: boolean;
+export type ApprovalMode = 'sequential' | 'parallel' | 'any_one' | 'optional';
+
+export type DisciplineApprovalAssignmentViolationType = {
+  id: string;
+  violationTypeId: string;
+  violationTypeNameAr: string;
+  violationTypeCode: string;
+  sortOrder: number;
 };
 
-export type ApprovalTemplateStage = {
+export type DisciplineApprovalAssignmentApprover = {
   id: string;
+  employeeId: string;
+  employeeNameAr: string;
+  employeeNameEn: string | null;
   sortOrder: number;
-  mode: 'sequential' | 'parallel' | 'optional' | 'any_one';
-  approvers: ApprovalTemplateApprover[];
 };
 
 export type DisciplineApprovalTemplateResponseDto = {
   id: string;
   companyId: string;
-  nameAr: string;
-  description: string | null;
+  nameAr: string | null;
+  approvalMode: ApprovalMode;
+  displayOrder: number;
   isActive: boolean;
-  stages: ApprovalTemplateStage[];
-  linkedViolationTypeIds: string[];
+  notes: string | null;
+  violationTypes: DisciplineApprovalAssignmentViolationType[];
+  approvers: DisciplineApprovalAssignmentApprover[];
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;
@@ -28,20 +36,24 @@ export type DisciplineApprovalTemplateResponseDto = {
 
 export type CreateDisciplineApprovalTemplateDto = {
   companyId: string;
-  nameAr: string;
-  description?: string | null;
+  nameAr?: string | null;
+  approvalMode: ApprovalMode;
+  displayOrder?: number;
   isActive?: boolean;
-  stages?: ApprovalTemplateStage[];
-  linkedViolationTypeIds?: string[];
+  notes?: string | null;
+  violationTypes: { violationTypeId: string; sortOrder?: number }[];
+  approvers: { employeeId: string; sortOrder?: number }[];
   createdBy?: string | null;
 };
 
 export type UpdateDisciplineApprovalTemplateDto = {
-  nameAr?: string;
-  description?: string | null;
+  nameAr?: string | null;
+  approvalMode?: ApprovalMode;
+  displayOrder?: number;
   isActive?: boolean;
-  stages?: ApprovalTemplateStage[];
-  linkedViolationTypeIds?: string[];
+  notes?: string | null;
+  violationTypes?: { violationTypeId: string; sortOrder?: number }[];
+  approvers?: { employeeId: string; sortOrder?: number }[];
   updatedBy?: string | null;
 };
 
@@ -52,29 +64,32 @@ export type DisciplineApprovalTemplateListQuery = {
   isActive?: boolean;
 };
 
+// keep old alias so hooks/components don't need rename
+export type ApprovalTemplateStage = never;
+
 export const disciplineApprovalTemplatesApi = {
   getAll(query?: DisciplineApprovalTemplateListQuery) {
     return apiRequest<PaginatedResult<DisciplineApprovalTemplateResponseDto>>(
-      '/discipline/approval-templates',
+      '/discipline/approval-assignments',
       { query },
     );
   },
   getById(id: string) {
-    return apiRequest<DisciplineApprovalTemplateResponseDto>(`/discipline/approval-templates/${id}`);
+    return apiRequest<DisciplineApprovalTemplateResponseDto>(`/discipline/approval-assignments/${id}`);
   },
   create(payload: CreateDisciplineApprovalTemplateDto) {
-    return apiRequest<DisciplineApprovalTemplateResponseDto>('/discipline/approval-templates', {
+    return apiRequest<DisciplineApprovalTemplateResponseDto>('/discipline/approval-assignments', {
       method: 'POST',
       body: payload,
     });
   },
   update(id: string, payload: UpdateDisciplineApprovalTemplateDto) {
-    return apiRequest<DisciplineApprovalTemplateResponseDto>(`/discipline/approval-templates/${id}`, {
+    return apiRequest<DisciplineApprovalTemplateResponseDto>(`/discipline/approval-assignments/${id}`, {
       method: 'PATCH',
       body: payload,
     });
   },
   remove(id: string) {
-    return apiRequest<void>(`/discipline/approval-templates/${id}`, { method: 'DELETE' });
+    return apiRequest<void>(`/discipline/approval-assignments/${id}`, { method: 'DELETE' });
   },
 };

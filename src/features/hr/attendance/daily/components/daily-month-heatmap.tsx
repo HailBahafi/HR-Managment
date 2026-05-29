@@ -6,10 +6,30 @@ import type { AttendanceDaySummary } from '@/features/hr/attendance/lib/types';
 import { todayIso } from '@/features/hr/attendance/lib/utils';
 import { cfgFor, resolveVisualKey } from '@/features/hr/attendance/daily/utils/daily-attendance-status-resolve';
 import { STATUS } from '@/features/hr/attendance/daily/constants/daily-attendance-status';
-import { fmtDay, fmtDayShort, fmtDecimalHours, minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
+import { fmtDay, fmtFull, minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { Clock3, TrendingUp } from 'lucide-react';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { DAILY_ATTENDANCE_NO_RECORDS } from '@/features/hr/attendance/daily/constants/daily-attendance-empty';
+import { DailyDayDetailDialog } from '@/features/hr/attendance/daily/components/daily-day-detail-dialog';
+import type { AttendanceViewMode } from '@/features/hr/attendance/daily/hooks/useDailyAttendanceModel';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+
+// ─── Full Arabic day names (Sun=0 … Sat=6) ────────────────────────────────────
+
+const DAY_NAMES_FULL: Record<number, string> = {
+  0: 'الأحد',
+  1: 'الاثنين',
+  2: 'الثلاثاء',
+  3: 'الأربعاء',
+  4: 'الخميس',
+  5: 'الجمعة',
+  6: 'السبت',
+};
+
+function getDayOfWeek(iso: string) {
+  const d = new Date(`${iso}T12:00:00`);
+  return d.getDay();
+}
 
 // ─── per-employee summary row ─────────────────────────────────────────────────
 
@@ -21,6 +41,8 @@ type EmpRow = {
   lateDays: number;
   absentDays: number;
   earlyDays: number;
+  restDays: number;
+  leaveDays: number;
   workedMinutes: number;
   lateMinutes: number;
   attendanceRate: number;
@@ -35,7 +57,7 @@ function buildRows(summaries: AttendanceDaySummary[], dates: string[]): EmpRow[]
         id: s.employeeId,
         name: s.employeeName,
         byDate: new Map(),
-        presentDays: 0, lateDays: 0, absentDays: 0, earlyDays: 0,
+        presentDays: 0, lateDays: 0, absentDays: 0, earlyDays: 0, restDays: 0, leaveDays: 0,
         workedMinutes: 0, lateMinutes: 0, attendanceRate: 0,
       });
     }
@@ -46,13 +68,16 @@ function buildRows(summaries: AttendanceDaySummary[], dates: string[]): EmpRow[]
     else if (vk === 'late') { row.lateDays++; row.lateMinutes += s.lateMinutes; }
     else if (vk === 'absent') row.absentDays++;
     else if (vk === 'early_leave') row.earlyDays++;
+    else if (vk === 'rest_day' || vk === 'holiday' || vk === 'unscheduled') row.restDays++;
+    else if (vk === 'on_leave') row.leaveDays++;
     row.workedMinutes += s.workedMinutes;
   }
 
   const workingDays = dates.length;
   for (const row of m.values()) {
-    const total = row.presentDays + row.lateDays + row.earlyDays;
-    row.attendanceRate = workingDays > 0 ? Math.round((total / workingDays) * 100) : 0;
+    const attended = row.presentDays + row.lateDays + row.earlyDays;
+    const denominator = workingDays - row.restDays - row.leaveDays;
+    row.attendanceRate = denominator > 0 ? Math.round((attended / denominator) * 100) : 100;
   }
 
   return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
@@ -68,8 +93,7 @@ function RateRing({ rate }: { rate: number }) {
 
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" className="shrink-0 -rotate-90">
-      <circle cx="18" cy="18" r={r} fill="none" stroke="currentColor" strokeWidth="3"
-        className="text-border" />
+      <circle cx="18" cy="18" r={r} fill="none" stroke="currentColor" strokeWidth="3" className="text-border" />
       <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3"
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
       <text x="18" y="18" dominantBaseline="middle" textAnchor="middle"
@@ -94,59 +118,92 @@ function Chip({ label, value, color }: { label: string; value: number; color: st
 
 // ─── day cell ─────────────────────────────────────────────────────────────────
 
-function DayCell({ date, summary }: { date: string; summary: AttendanceDaySummary | undefined }) {
+function DayCell({
+  date,
+  summary,
+  onDayClick,
+}: {
+  date: string;
+  summary: AttendanceDaySummary | undefined;
+  onDayClick?: (s: AttendanceDaySummary, date: string) => void;
+}) {
   const today = date === todayIso();
+  const dayNum = fmtDay(date);
+
   if (!summary) {
     return (
-      <div title={date} className={cn(
-        'flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-medium transition-colors',
-        today ? 'ring-2 ring-primary ring-offset-1' : '',
-        'bg-muted/20 text-muted-foreground/30',
-      )}>
-        {fmtDay(date)}
+      <div
+        title={date}
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded-lg text-[11px] font-medium transition-colors',
+          today ? 'ring-2 ring-primary ring-offset-1' : '',
+          'bg-muted/20 text-muted-foreground/30',
+        )}
+      >
+        {dayNum}
       </div>
     );
   }
+
   const cfg = cfgFor(summary.status);
   const tip = [
-    fmtDayShort(date),
+    fmtFull(date),
     cfg.label,
     summary.lateMinutes > 0 ? `تأخير ${minutesToHHMM(summary.lateMinutes)}` : null,
     summary.workedMinutes > 0 ? `عمل ${minutesToHHMM(summary.workedMinutes)}` : null,
   ].filter(Boolean).join(' · ');
 
   return (
-    <div
+    <button
+      type="button"
       title={tip}
+      onClick={() => onDayClick?.(summary, date)}
       className={cn(
-        'relative flex h-7 w-7 items-center justify-center rounded-lg border text-[10px] font-semibold transition-all hover:scale-110 cursor-default',
+        'relative flex h-8 w-8 items-center justify-center rounded-lg border text-[11px] font-semibold transition-all hover:scale-110 hover:shadow-md cursor-pointer',
         cfg.color,
         today ? 'ring-2 ring-primary ring-offset-1' : '',
       )}
     >
-      {fmtDay(date)}
+      {dayNum}
       {summary.lateMinutes > 0 && (
         <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-warning" />
       )}
-    </div>
+    </button>
   );
 }
 
 // ─── employee card ────────────────────────────────────────────────────────────
 
-function EmployeeCard({ row, dates }: { row: EmpRow; dates: string[] }) {
+function EmployeeCard({
+  row,
+  dates,
+  onDayClick,
+}: {
+  row: EmpRow;
+  dates: string[];
+  onDayClick: (s: AttendanceDaySummary, date: string) => void;
+}) {
   const [expanded, setExpanded] = React.useState(false);
 
-  // group dates into weeks (rows of 7)
-  const weeks = React.useMemo(() => {
-    const chunks: string[][] = [];
-    for (let i = 0; i < dates.length; i += 7) chunks.push(dates.slice(i, i + 7));
-    return chunks;
+  // Build calendar: group dates by week (7 columns), preserving day-of-week alignment for first week
+  const calendarWeeks = React.useMemo(() => {
+    if (dates.length === 0) return [];
+    const firstDow = getDayOfWeek(dates[0]);
+    const weeks: (string | null)[][] = [];
+    let current: (string | null)[] = Array.from({ length: firstDow }, () => null);
+    for (const d of dates) {
+      current.push(d);
+      if (current.length === 7) { weeks.push(current); current = []; }
+    }
+    if (current.length > 0) {
+      while (current.length < 7) current.push(null);
+      weeks.push(current);
+    }
+    return weeks;
   }, [dates]);
 
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden transition-all hover:shadow-elevated">
-      {/* Card header — always visible */}
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden transition-all hover:shadow-md">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -164,10 +221,12 @@ function EmployeeCard({ row, dates }: { row: EmpRow; dates: string[] }) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-tight">{row.name}</p>
           <div className="mt-1 flex flex-wrap items-center gap-1">
-            <Chip label="حاضر"  value={row.presentDays} color={STATUS.present.color} />
-            <Chip label="متأخر" value={row.lateDays}    color={STATUS.late.color} />
-            <Chip label="غائب"  value={row.absentDays}  color={STATUS.absent.color} />
-            <Chip label="مبكر"  value={row.earlyDays}   color={STATUS.early_leave.color} />
+            <Chip label="حاضر"   value={row.presentDays} color={STATUS.present.color} />
+            <Chip label="متأخر"  value={row.lateDays}    color={STATUS.late.color} />
+            <Chip label="غائب"   value={row.absentDays}  color={STATUS.absent.color} />
+            <Chip label="مبكر"   value={row.earlyDays}   color={STATUS.early_leave.color} />
+            <Chip label="إجازة"  value={row.leaveDays}   color={STATUS.on_leave.color} />
+            <Chip label="راحة"   value={row.restDays}    color={STATUS.rest_day.color} />
           </div>
         </div>
 
@@ -177,7 +236,7 @@ function EmployeeCard({ row, dates }: { row: EmpRow; dates: string[] }) {
         {/* Hours */}
         <div className="hidden sm:flex flex-col items-end shrink-0 min-w-[56px]">
           <span className="text-xs font-bold tabular-nums text-foreground">
-            {fmtDecimalHours(row.workedMinutes / 60)}
+            {minutesToHHMM(row.workedMinutes)}
             <span className="text-[10px] font-normal text-muted-foreground ms-0.5">س</span>
           </span>
           {row.lateMinutes > 0 && (
@@ -187,31 +246,34 @@ function EmployeeCard({ row, dates }: { row: EmpRow; dates: string[] }) {
           )}
         </div>
 
-        {/* Expand chevron */}
-        <span className={cn('ms-1 text-muted-foreground/40 transition-transform text-xs shrink-0', expanded ? 'rotate-180' : '')}>
-          ▼
-        </span>
+        <span className={cn('ms-1 text-muted-foreground/40 transition-transform text-xs shrink-0', expanded ? 'rotate-180' : '')}>▼</span>
       </button>
 
       {/* Calendar grid — expanded */}
       {expanded && (
-        <div className="border-t border-border/60 bg-muted/10 px-4 py-4 space-y-3">
-          {/* Day-of-week header */}
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {['ن', 'ث', 'ر', 'خ', 'ج', 'س', 'ح'].map((d, i) => (
-              <div key={i} className="flex h-5 items-center justify-center text-[9px] font-semibold text-muted-foreground">
-                {d}
+        <div className="border-t border-border/60 bg-muted/10 px-4 py-4 space-y-2">
+          {/* Day-of-week header with full Arabic names */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {[0, 1, 2, 3, 4, 5, 6].map((dow) => (
+              <div key={dow} className="flex h-6 items-start justify-start text-[9px] font-semibold text-muted-foreground truncate px-0.5">
+                {DAY_NAMES_FULL[dow]}
               </div>
             ))}
           </div>
 
           {/* Weeks */}
-          {weeks.map((week, wi) => (
+          {calendarWeeks.map((week, wi) => (
             <div key={wi} className="grid grid-cols-7 gap-1">
-              {Array.from({ length: 7 }).map((_, di) => {
-                const date = week[di];
-                if (!date) return <div key={di} className="h-7 w-7" />;
-                return <DayCell key={date} date={date} summary={row.byDate.get(date)} />;
+              {week.map((date, di) => {
+                if (!date) return <div key={di} className="h-8 w-8" />;
+                return (
+                  <DayCell
+                    key={date}
+                    date={date}
+                    summary={row.byDate.get(date)}
+                    onDayClick={onDayClick}
+                  />
+                );
               })}
             </div>
           ))}
@@ -233,6 +295,87 @@ function EmployeeCard({ row, dates }: { row: EmpRow; dates: string[] }) {
   );
 }
 
+// ─── Table view ───────────────────────────────────────────────────────────────
+
+function TableView({
+  rows,
+  onDayClick,
+}: {
+  rows: EmpRow[];
+  onDayClick: (s: AttendanceDaySummary, date: string) => void;
+}) {
+  // Flatten all summaries sorted by date then employee
+  const allRecords = React.useMemo(() => {
+    const flat: { row: EmpRow; date: string; summary: AttendanceDaySummary }[] = [];
+    for (const row of rows) {
+      for (const [date, summary] of row.byDate.entries()) {
+        flat.push({ row, date, summary });
+      }
+    }
+    return flat.sort((a, b) => b.date.localeCompare(a.date) || a.row.name.localeCompare(b.row.name, 'ar'));
+  }, [rows]);
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border bg-muted/50 text-right">
+            <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">الموظف</th>
+            <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">التاريخ</th>
+            <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">اليوم</th>
+            <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">الحالة</th>
+            <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">وقت الحضور</th>
+            <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">وقت الانصراف</th>
+            <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">مدة العمل</th>
+            <th className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">التأخير</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allRecords.map(({ row, date, summary }) => {
+            const vk = resolveVisualKey(summary.status);
+            const cfg = STATUS[vk];
+            const checkIn = summary.actualCheckInAt ? (() => {
+              try { return new Date(summary.actualCheckInAt!).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch { return null; }
+            })() : null;
+            const checkOut = summary.actualCheckOutAt ? (() => {
+              try { return new Date(summary.actualCheckOutAt!).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch { return null; }
+            })() : null;
+            const dow = DAY_NAMES_FULL[getDayOfWeek(date)];
+            return (
+              <tr
+                key={`${row.id}|${date}`}
+                className="border-b border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
+                onClick={() => onDayClick(summary, date)}
+              >
+                <td className="px-4 py-2.5 font-medium">{row.name}</td>
+                <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{date}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{dow}</td>
+                <td className="px-4 py-2.5">
+                  <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold', cfg.color)}>
+                    <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dot)} />
+                    {cfg.label}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5 tabular-nums text-success">{checkIn ?? '—'}</td>
+                <td className="px-4 py-2.5 tabular-nums text-blue-600 dark:text-blue-400">{checkOut ?? '—'}</td>
+                <td className="px-4 py-2.5 tabular-nums">{summary.workedMinutes > 0 ? minutesToHHMM(summary.workedMinutes) : '—'}</td>
+                <td className="px-4 py-2.5 tabular-nums">
+                  {summary.lateMinutes > 0 ? (
+                    <span className="text-warning font-semibold">{minutesToHHMM(summary.lateMinutes)}</span>
+                  ) : '—'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {allRecords.length === 0 && (
+        <div className="px-4 py-8 text-center text-sm text-muted-foreground">لا توجد سجلات</div>
+      )}
+    </div>
+  );
+}
+
 // ─── Legend ───────────────────────────────────────────────────────────────────
 
 function Legend() {
@@ -244,12 +387,6 @@ function Legend() {
           {cfg.label}
         </span>
       ))}
-      <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <span className="relative h-2.5 w-2.5 rounded-full bg-warning">
-          <span className="absolute -top-px -right-px h-1.5 w-1.5 rounded-full bg-warning" />
-        </span>
-        تأخير
-      </span>
     </div>
   );
 }
@@ -259,54 +396,59 @@ function Legend() {
 export function DailyMonthHeatmap({
   summaries,
   dates,
+  viewMode,
 }: {
   summaries: AttendanceDaySummary[];
   dates: string[];
+  viewMode: AttendanceViewMode;
 }) {
   const rows = React.useMemo(() => buildRows(summaries, dates), [summaries, dates]);
+  const [detailSummary, setDetailSummary] = React.useState<AttendanceDaySummary | null>(null);
+  const [detailOpen, setDetailOpen] = React.useState(false);
+  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+
+  const handleDayClick = React.useCallback((s: AttendanceDaySummary, _date: string) => {
+    setDetailSummary(s);
+    setDetailOpen(true);
+  }, []);
 
   if (rows.length === 0) {
     return <EmptyStateCard icon={Clock3} {...DAILY_ATTENDANCE_NO_RECORDS} />;
   }
 
-  // summary stats across all employees
-  const totalPresent = rows.reduce((a, r) => a + r.presentDays, 0);
-  const totalLate    = rows.reduce((a, r) => a + r.lateDays, 0);
-  const totalAbsent  = rows.reduce((a, r) => a + r.absentDays, 0);
-  const avgRate      = Math.round(rows.reduce((a, r) => a + r.attendanceRate, 0) / rows.length);
-
   return (
     <div className="space-y-4">
-      {/* ── Top summary strip ── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: 'إجمالي الحضور', value: totalPresent, color: 'text-success', bg: 'bg-success/10 border-success/20' },
-          { label: 'أيام التأخير',  value: totalLate,    color: 'text-warning', bg: 'bg-warning/10 border-warning/20' },
-          { label: 'أيام الغياب',   value: totalAbsent,  color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
-          { label: 'متوسط الالتزام', value: `${avgRate}%`, color: avgRate >= 90 ? 'text-success' : avgRate >= 70 ? 'text-warning' : 'text-destructive', bg: 'bg-muted border-border' },
-        ].map((s) => (
-          <div key={s.label} className={cn('rounded-xl border px-4 py-3', s.bg)}>
-            <p className="text-[11px] text-muted-foreground">{s.label}</p>
-            <p className={cn('mt-0.5 text-xl font-bold tabular-nums', s.color)}>{s.value}</p>
-          </div>
-        ))}
-      </div>
+      {/* Day detail dialog */}
+      <DailyDayDetailDialog
+        summary={detailSummary}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        companyId={companyId}
+      />
 
-      {/* ── Legend ── */}
+      {/* Legend + count */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-foreground">
           <span className="font-semibold text-foreground tabular-nums">{rows.length}</span> موظف ·{' '}
-          <span className="tabular-nums">{dates.length}</span> يوم · انقر على بطاقة لعرض التفاصيل
+          <span className="tabular-nums">{dates.length}</span> يوم
+          {viewMode === 'card' && ' · انقر على يوم لعرض التفاصيل'}
         </p>
         <Legend />
       </div>
 
-      {/* ── Employee cards ── */}
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <EmployeeCard key={row.id} row={row} dates={dates} />
-        ))}
-      </div>
+      {/* Card view */}
+      {viewMode === 'card' && (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <EmployeeCard key={row.id} row={row} dates={dates} onDayClick={handleDayClick} />
+          ))}
+        </div>
+      )}
+
+      {/* Table view */}
+      {viewMode === 'table' && (
+        <TableView rows={rows} onDayClick={handleDayClick} />
+      )}
     </div>
   );
 }

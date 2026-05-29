@@ -1,13 +1,22 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, Eye, CheckCircle2, XCircle, Edit3, FileDown, FileSpreadsheet, Plus } from 'lucide-react';
+import {
+  Trash2, CalendarDays, Eye, CheckCircle2, XCircle, Edit3,
+  FileDown, FileSpreadsheet, Plus, AlertTriangle, Scale, Search,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, SearchableDropdown,
 } from '@/features/hr/requests/components/shared-ui';
@@ -21,7 +30,6 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { cn } from '@/shared/utils';
 import { companiesApi } from '@/features/hr/lib/api/companies';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { ViolationCasesRegisterPrintHtml } from '@/components/pdf/print/violation-cases-register-print-html';
@@ -29,6 +37,12 @@ import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xls
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { disciplineNoticesApi } from '@/features/hr/discipline/lib/api/discipline-notices';
+import { disciplineInvestigationsApi } from '@/features/hr/discipline/lib/api/discipline-investigations';
+import { disciplineAppealsApi } from '@/features/hr/discipline/lib/api/discipline-appeals';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+
+// ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<ViolationRecordStatus, string> = {
   pending:    'قيد الانتظار',
@@ -38,32 +52,320 @@ const STATUS_LABELS: Record<ViolationRecordStatus, string> = {
 };
 
 const STATUS_COLORS: Record<ViolationRecordStatus, string> = {
-  pending:    'text-primary border-primary/25 bg-primary/5 dark:border-primary/40 dark:bg-primary/15',
-  approved:   'text-success border-success/30 bg-success/10 dark:border-success/40 dark:bg-success/10',
-  rejected:   'text-destructive border-destructive/30 bg-destructive/10 dark:border-destructive/40 dark:bg-destructive/10',
-  needs_edit: 'text-warning border-warning/30 bg-warning/10 dark:border-warning/40 dark:bg-warning/10',
+  pending:    'text-primary border-primary/25 bg-primary/5',
+  approved:   'text-success border-success/30 bg-success/10',
+  rejected:   'text-destructive border-destructive/30 bg-destructive/10',
+  needs_edit: 'text-warning border-warning/30 bg-warning/10',
 };
 
 const STATUS_ORDER: readonly ViolationRecordStatus[] = ['pending', 'approved', 'rejected', 'needs_edit'];
-
 type StatusFilter = 'all' | ViolationRecordStatus;
+
+// ─── Notice dialog (إنذار) ────────────────────────────────────────────────────
+
+type NoticeKind = 'verbal' | 'first' | 'second' | 'final';
+const NOTICE_KIND_LABELS: Record<NoticeKind, string> = {
+  verbal: 'شفهي', first: 'إنذار أول', second: 'إنذار ثاني', final: 'إنذار نهائي',
+};
+
+function NoticeDialog({
+  open, onClose, violationCase, companyId,
+}: {
+  open: boolean; onClose: () => void;
+  violationCase: ViolationCaseRecord | null;
+  companyId: string;
+}) {
+  const [kind, setKind] = React.useState<NoticeKind>('first');
+  const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [reason, setReason] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      setKind('first');
+      setDate(new Date().toISOString().slice(0, 10));
+      setReason(violationCase ? `مخالفة: ${violationCase.typeNameAr} — ${violationCase.caseNumber}` : '');
+    }
+  }, [open, violationCase]);
+
+  const handleSave = async () => {
+    if (!violationCase || !companyId) return;
+    setSaving(true);
+    try {
+      await disciplineNoticesApi.create({
+        companyId,
+        employeeId: violationCase.employeeId,
+        noticeKind: kind,
+        reasonAr: reason.trim() || `مخالفة: ${violationCase.typeNameAr}`,
+        noticeDate: date,
+        violationRecordId: violationCase.id,
+      });
+      toast.success('تم إنشاء الإنذار');
+      onClose();
+    } catch { toast.error('فشل إنشاء الإنذار'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-right text-base">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            إصدار إنذار
+          </DialogTitle>
+          <DialogDescription className="text-right text-xs text-muted-foreground">
+            {violationCase?.caseNumber} · {violationCase?.employeeNameAr}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-1">
+          <FormField label="نوع الإنذار" required>
+            <Select value={kind} onValueChange={(v) => setKind(v as NoticeKind)}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {(Object.entries(NOTICE_KIND_LABELS) as [NoticeKind, string][]).map(([k, l]) => (
+                  <SelectItem key={k} value={k}>{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField label="تاريخ الإنذار" required>
+            <DatePickerInput value={date} onChange={setDate} />
+          </FormField>
+          <FormField label="سبب الإنذار" required>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </FormField>
+        </div>
+        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
+          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-1.5">
+            {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+            إصدار الإنذار
+          </Button>
+          <Button variant="outline" onClick={onClose}>إلغاء</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Investigation dialog (تحقيق) ────────────────────────────────────────────
+
+function InvestigationDialog({
+  open, onClose, violationCase, companyId, employees,
+}: {
+  open: boolean; onClose: () => void;
+  violationCase: ViolationCaseRecord | null;
+  companyId: string;
+  employees: { id: string; nameAr: string }[];
+}) {
+  const [investigatorId, setInvestigatorId] = React.useState('');
+  const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [statement, setStatement] = React.useState('');
+  const [result, setResult] = React.useState<'proven' | 'not_proven'>('proven');
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) { setInvestigatorId(''); setDate(new Date().toISOString().slice(0, 10)); setStatement(''); setResult('proven'); }
+  }, [open]);
+
+  const empOptions = employees.map((e) => ({ value: e.id, label: e.nameAr }));
+
+  const handleSave = async () => {
+    if (!violationCase || !companyId || !investigatorId) {
+      toast.error('يرجى اختيار المحقق');
+      return;
+    }
+    setSaving(true);
+    try {
+      await disciplineInvestigationsApi.create({
+        companyId,
+        violationRecordId: violationCase.id,
+        investigatorEmployeeId: investigatorId,
+        investigationDate: date,
+        employeeStatement: statement.trim() || null,
+        result,
+      });
+      toast.success('تم إنشاء التحقيق');
+      onClose();
+    } catch { toast.error('فشل إنشاء التحقيق'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-right text-base">
+            <Search className="h-4 w-4 text-blue-500" />
+            فتح تحقيق
+          </DialogTitle>
+          <DialogDescription className="text-right text-xs text-muted-foreground">
+            {violationCase?.caseNumber} · {violationCase?.employeeNameAr}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-1">
+          <FormField label="المحقق" required>
+            <SearchableDropdown value={investigatorId} onChange={setInvestigatorId} options={empOptions} placeholder="اختر المحقق…" />
+          </FormField>
+          <FormField label="تاريخ التحقيق" required>
+            <DatePickerInput value={date} onChange={setDate} />
+          </FormField>
+          <FormField label="نتيجة التحقيق" required>
+            <Select value={result} onValueChange={(v) => setResult(v as 'proven' | 'not_proven')}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="proven">ثابتة</SelectItem>
+                <SelectItem value="not_proven">غير ثابتة</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField label="أقوال الموظف">
+            <textarea
+              value={statement}
+              onChange={(e) => setStatement(e.target.value)}
+              placeholder="اختياري…"
+              className="flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </FormField>
+        </div>
+        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
+          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-1.5">
+            {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+            فتح التحقيق
+          </Button>
+          <Button variant="outline" onClick={onClose}>إلغاء</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Appeal dialog (تظلم) ─────────────────────────────────────────────────────
+
+function AppealDialog({
+  open, onClose, violationCase, companyId,
+}: {
+  open: boolean; onClose: () => void;
+  violationCase: ViolationCaseRecord | null;
+  companyId: string;
+}) {
+  const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [grounds, setGrounds] = React.useState('');
+  const [channel, setChannel] = React.useState<string>('written');
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) { setDate(new Date().toISOString().slice(0, 10)); setGrounds(''); setChannel('written'); }
+  }, [open]);
+
+  const handleSave = async () => {
+    if (!violationCase || !companyId) return;
+    if (!grounds.trim()) { toast.error('أسباب التظلم مطلوبة'); return; }
+    setSaving(true);
+    try {
+      await disciplineAppealsApi.create({
+        companyId,
+        violationRecordId: violationCase.id,
+        appealDate: date,
+        groundsAr: grounds.trim(),
+        channel: channel as 'in_person' | 'written' | 'email' | 'phone' | 'system',
+        status: 'pending',
+      });
+      toast.success('تم تقديم التظلم');
+      onClose();
+    } catch { toast.error('فشل تقديم التظلم'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-right text-base">
+            <Scale className="h-4 w-4 text-violet-500" />
+            تقديم تظلم
+          </DialogTitle>
+          <DialogDescription className="text-right text-xs text-muted-foreground">
+            {violationCase?.caseNumber} · {violationCase?.employeeNameAr}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-1">
+          <FormField label="تاريخ التظلم" required>
+            <DatePickerInput value={date} onChange={setDate} />
+          </FormField>
+          <FormField label="قناة التظلم">
+            <Select value={channel} onValueChange={setChannel}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="written">خطي</SelectItem>
+                <SelectItem value="in_person">شخصي</SelectItem>
+                <SelectItem value="email">بريد إلكتروني</SelectItem>
+                <SelectItem value="phone">هاتف</SelectItem>
+                <SelectItem value="system">النظام</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField label="أسباب التظلم" required>
+            <textarea
+              value={grounds}
+              onChange={(e) => setGrounds(e.target.value)}
+              placeholder="اكتب أسباب التظلم…"
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </FormField>
+        </div>
+        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
+          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-1.5">
+            {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+            تقديم التظلم
+          </Button>
+          <Button variant="outline" onClick={onClose}>إلغاء</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Type requirement badges ──────────────────────────────────────────────────
+
+function TypeRequirementBadges({ needsWarning, needsInvestigation }: { needsWarning: boolean; needsInvestigation: boolean }) {
+  if (!needsWarning && !needsInvestigation) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {needsInvestigation && (
+        <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-400">
+          <Search className="h-3 w-3" />
+          يحتاج تحقيق
+        </span>
+      )}
+      {needsWarning && (
+        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="h-3 w-3" />
+          يحتاج إنذار
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 interface CreateForm {
   employeeId: string; date: string; violationTypeId: string;
   description: string; notes: string; attachmentsNote: string;
 }
-const CREATE_EMPTY: CreateForm = {
-  employeeId: '', date: '', violationTypeId: '',
-  description: '', notes: '', attachmentsNote: '',
-};
+const CREATE_EMPTY: CreateForm = { employeeId: '', date: '', violationTypeId: '', description: '', notes: '', attachmentsNote: '' };
 
-interface EditForm {
-  date: string; description: string; notes: string; attachmentsNote: string;
-}
+interface EditForm { date: string; description: string; notes: string; attachmentsNote: string; }
 
 export function ViolationCasesClient() {
   const hook = useViolationCasesDirectoryModel();
   const { cases, employees, violationTypes, loading, listError, createCase, updateCase, deleteCase } = hook;
+  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
 
   const [companyNameAr, setCompanyNameAr] = React.useState('');
   const [companyNameEn, setCompanyNameEn] = React.useState('');
@@ -100,8 +402,19 @@ export function ViolationCasesClient() {
   const [rejectNote, setRejectNote] = React.useState('');
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
+  // Post-create action dialogs
+  const [noticeCase, setNoticeCase] = React.useState<ViolationCaseRecord | null>(null);
+  const [investigationCase, setInvestigationCase] = React.useState<ViolationCaseRecord | null>(null);
+  const [appealCase, setAppealCase] = React.useState<ViolationCaseRecord | null>(null);
+
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => setDateBounds(b), []);
   const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => setDateMeta(m), []);
+
+  // Selected type flags for the create form
+  const selectedType = React.useMemo(
+    () => violationTypes.find((t) => t.id === draft.violationTypeId) ?? null,
+    [violationTypes, draft.violationTypeId],
+  );
 
   const empPickerList = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -113,17 +426,14 @@ export function ViolationCasesClient() {
     () => cases.filter((c) => selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId)),
     [cases, selectedEmpIds],
   );
-
   const filtered = React.useMemo(
     () => searchFiltered.filter((c) => matchesDateRange(c.date, dateBounds.from, dateBounds.to)),
     [searchFiltered, dateBounds.from, dateBounds.to],
   );
-
   const listFiltered = React.useMemo(
     () => (statusFilter === 'all' ? filtered : filtered.filter((c) => c.status === statusFilter)),
     [filtered, statusFilter],
   );
-
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = { all: filtered.length };
     for (const s of STATUS_ORDER) counts[s] = 0;
@@ -132,7 +442,6 @@ export function ViolationCasesClient() {
   }, [filtered]);
 
   const dateRangeActive = dateMeta.hasRestriction;
-
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
 
   usePageHeaderActions(
@@ -184,14 +493,14 @@ export function ViolationCasesClient() {
 
   const empOptions = employees.map(e => ({ value: e.id, label: e.nameAr }));
   const typeOptions = violationTypes.filter(t => t.isActive).map(t => ({ value: t.id, label: t.nameAr, sub: t.code }));
-
   const setD = (patch: Partial<CreateForm>) => setDraft(d => ({ ...d, ...patch }));
 
+  // After creating a violation, check if type needs notice/investigation and prompt
   const handleCreate = async () => {
     setFormError(null);
-    if (!draft.employeeId)      { setFormError('الموظف مطلوب'); return; }
-    if (!draft.violationTypeId) { setFormError('نوع المخالفة مطلوب'); return; }
-    if (!draft.date)            { setFormError('التاريخ مطلوب'); return; }
+    if (!draft.employeeId)         { setFormError('الموظف مطلوب'); return; }
+    if (!draft.violationTypeId)    { setFormError('نوع المخالفة مطلوب'); return; }
+    if (!draft.date)               { setFormError('التاريخ مطلوب'); return; }
     if (!draft.description.trim()) { setFormError('الوصف مطلوب'); return; }
     setSaving(true);
     try {
@@ -205,6 +514,20 @@ export function ViolationCasesClient() {
       });
       toast.success('تم حفظ المخالفة');
       setCreateOpen(false);
+
+      // After save, reload gives us the new case — find it from the updated list
+      // We use a small delay then open the contextual dialog
+      const type = violationTypes.find((t) => t.id === draft.violationTypeId);
+      if (type?.needsInvestigation || type?.needsWarning) {
+        toast.info(
+          type.needsInvestigation && type.needsWarning
+            ? 'هذا النوع يتطلب تحقيقاً وإنذاراً — يمكنك إضافتهما من البطاقة'
+            : type.needsInvestigation
+              ? 'هذا النوع يتطلب فتح تحقيق — يمكنك إضافته من البطاقة'
+              : 'هذا النوع يتطلب إصدار إنذار — يمكنك إضافته من البطاقة',
+          { duration: 5000 },
+        );
+      }
       setDraft(CREATE_EMPTY);
     } catch {
       setFormError('حدث خطأ أثناء الحفظ');
@@ -255,10 +578,8 @@ export function ViolationCasesClient() {
     setRejectNote('');
   };
 
-  const handleNeedsEdit = async (c: ViolationCaseRecord) => {
-    try { await updateCase(c.id, { status: 'needs_edit' }); toast.success('تم تحديث الحالة'); }
-    catch { toast.error('فشل التحديث'); }
-  };
+  // Get the type info for a given case (from violationTypes list)
+  const typeFor = (c: ViolationCaseRecord) => violationTypes.find((t) => t.id === c.violationTypeId);
 
   useEntityFilterSlot(
     () => (
@@ -299,7 +620,7 @@ export function ViolationCasesClient() {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" />
+          <div key={i} className="h-52 animate-pulse rounded-xl border border-border bg-muted/30" />
         ))}
       </div>
     );
@@ -318,86 +639,113 @@ export function ViolationCasesClient() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today'  ? 'لا توجد مخالفات بتاريخ اليوم ضمن النتائج الحالية.'
-              : dateMeta.tab === 'week'  ? 'لا توجد مخالفات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-              : dateMeta.tab === 'month' ? 'لا توجد مخالفات ضمن هذا الشهر ضمن النتائج الحالية.'
-              : dateMeta.tab === 'custom' && dateRangeActive ? 'لا توجد مخالفات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
+            {dateMeta.tab === 'today'  ? 'لا توجد مخالفات بتاريخ اليوم.'
+              : dateMeta.tab === 'week'  ? 'لا توجد مخالفات ضمن هذا الأسبوع.'
+              : dateMeta.tab === 'month' ? 'لا توجد مخالفات ضمن هذا الشهر.'
+              : dateRangeActive ? 'لا توجد مخالفات ضمن نطاق التاريخ المخصص.'
               : 'لا توجد مخالفات ضمن النتائج الحالية.'}
           </p>
-          {dateRangeActive ? (
+          {dateRangeActive && (
             <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>عرض كل الفترات</Button>
-          ) : null}
+          )}
         </div>
       ) : listFiltered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
-            لا توجد مخالفات بحالة «{STATUS_LABELS[statusFilter as ViolationRecordStatus]}» مع عوامل البحث الحالية.
+            لا توجد مخالفات بحالة «{STATUS_LABELS[statusFilter as ViolationRecordStatus]}».
           </p>
           <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>عرض الكل</Button>
         </div>
       ) : viewMode === 'cards' ? (
-        /* ── Cards — identical outer shell to appeals ── */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {listFiltered.map((c) => (
-            <div key={c.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-              {/* Row 1: case number + name | status badge */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-mono text-[10px] font-bold text-muted-foreground" dir="ltr">{c.caseNumber}</p>
-                  <p className="mt-0.5 truncate font-semibold">{c.employeeNameAr}</p>
+          {listFiltered.map((c) => {
+            const type = typeFor(c);
+            return (
+              <div key={c.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-mono text-[10px] font-bold text-muted-foreground" dir="ltr">{c.caseNumber}</p>
+                    <p className="mt-0.5 truncate font-semibold">{c.employeeNameAr}</p>
+                  </div>
+                  <span className={cn('inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[c.status])}>
+                    {STATUS_LABELS[c.status]}
+                  </span>
                 </div>
-                <span className={cn('inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[c.status])}>
-                  {STATUS_LABELS[c.status]}
-                </span>
-              </div>
 
-              {/* Row 2: type chip + date chip */}
-              <div className="flex flex-wrap gap-1.5">
-                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground truncate max-w-[10rem]">
-                  {c.typeNameAr}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground tabular-nums" dir="ltr">
-                  <CalendarDays className="h-3 w-3 shrink-0" />{c.date}
-                </span>
-              </div>
+                {/* Type chip + date + requirement badges */}
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground truncate max-w-[10rem]">
+                      {c.typeNameAr}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground tabular-nums" dir="ltr">
+                      <CalendarDays className="h-3 w-3 shrink-0" />{c.date}
+                    </span>
+                  </div>
+                  {type && (
+                    <TypeRequirementBadges needsWarning={type.needsWarning} needsInvestigation={type.needsInvestigation} />
+                  )}
+                </div>
 
-              {/* Row 3: action buttons */}
-              <div className="grid grid-cols-2 gap-1 rounded-lg border border-border/60 bg-muted/20 p-1">
-                <Button variant="ghost" size="sm" type="button"
-                  className="h-8 gap-1 px-2 text-xs"
-                  onClick={() => setViewCase(c)}>
-                  <Eye className="h-3.5 w-3.5" /> عرض
-                </Button>
-                <Button variant="ghost" size="sm" type="button"
-                  className="h-8 gap-1 px-2 text-xs text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
-                  onClick={() => void handleApprove(c)}>
-                  <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                </Button>
-                <Button variant="ghost" size="sm" type="button"
-                  className="h-8 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10"
-                  onClick={() => { setRejectNote(''); setRejectCase(c); }}>
-                  <XCircle className="h-3.5 w-3.5" /> رفض
-                </Button>
-                <Button variant="ghost" size="sm" type="button"
-                  className="h-8 gap-1 px-2 text-xs text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400"
-                  onClick={() => openEdit(c)}>
-                  <Edit3 className="h-3.5 w-3.5" /> تعديل
-                </Button>
-              </div>
+                {/* Action buttons */}
+                <div className="grid grid-cols-2 gap-1 rounded-lg border border-border/60 bg-muted/20 p-1">
+                  <Button variant="ghost" size="sm" type="button" className="h-8 gap-1 px-2 text-xs" onClick={() => setViewCase(c)}>
+                    <Eye className="h-3.5 w-3.5" /> عرض
+                  </Button>
+                  <Button variant="ghost" size="sm" type="button"
+                    className="h-8 gap-1 px-2 text-xs text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
+                    onClick={() => void handleApprove(c)}>
+                    <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
+                  </Button>
+                  <Button variant="ghost" size="sm" type="button"
+                    className="h-8 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10"
+                    onClick={() => { setRejectNote(''); setRejectCase(c); }}>
+                    <XCircle className="h-3.5 w-3.5" /> رفض
+                  </Button>
+                  <Button variant="ghost" size="sm" type="button"
+                    className="h-8 gap-1 px-2 text-xs text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400"
+                    onClick={() => openEdit(c)}>
+                    <Edit3 className="h-3.5 w-3.5" /> تعديل
+                  </Button>
+                </div>
 
-              {/* Footer: delete */}
-              <div className="mt-auto flex justify-end border-t border-border pt-3">
-                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}>
-                  <Trash2 className="h-3.5 w-3.5" /> حذف
-                </Button>
+                {/* Contextual action row: إنذار / تحقيق / تظلم */}
+                <div className="flex flex-wrap gap-1">
+                  {type?.needsWarning && (
+                    <Button variant="outline" size="sm" type="button"
+                      className="h-7 gap-1 border-amber-500/30 px-2 text-[11px] text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
+                      onClick={() => setNoticeCase(c)}>
+                      <AlertTriangle className="h-3 w-3" /> إنذار
+                    </Button>
+                  )}
+                  {type?.needsInvestigation && (
+                    <Button variant="outline" size="sm" type="button"
+                      className="h-7 gap-1 border-blue-500/30 px-2 text-[11px] text-blue-700 hover:bg-blue-500/10 dark:text-blue-400"
+                      onClick={() => setInvestigationCase(c)}>
+                      <Search className="h-3 w-3" /> تحقيق
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" type="button"
+                    className="h-7 gap-1 border-violet-500/30 px-2 text-[11px] text-violet-700 hover:bg-violet-500/10 dark:text-violet-400"
+                    onClick={() => setAppealCase(c)}>
+                    <Scale className="h-3 w-3" /> تظلم
+                  </Button>
+                </div>
+
+                {/* Footer: delete */}
+                <div className="mt-auto flex justify-end border-t border-border pt-3">
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}>
+                    <Trash2 className="h-3.5 w-3.5" /> حذف
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
-        /* ── Table ── */
         <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
-          <table className="w-full min-w-[800px] border-collapse text-sm">
+          <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/50 text-right">
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الرقم</th>
@@ -405,42 +753,69 @@ export function ViolationCasesClient() {
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">نوع المخالفة</th>
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الحالة</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">المتطلبات</th>
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              {listFiltered.map((c) => (
-                <tr key={c.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
-                  <td className="p-3 font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{c.caseNumber}</td>
-                  <td className="max-w-[10rem] truncate p-3 font-medium">{c.employeeNameAr}</td>
-                  <td className="max-w-[9rem] truncate p-3 text-xs text-muted-foreground">{c.typeNameAr}</td>
-                  <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{c.date}</td>
-                  <td className="p-3">
-                    <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium', STATUS_COLORS[c.status])}>
-                      {STATUS_LABELS[c.status]}
-                    </span>
-                  </td>
-                  <td className="p-2">
-                    <div className="flex flex-wrap items-center gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs" type="button" onClick={() => setViewCase(c)}>
-                        <Eye className="h-3.5 w-3.5" /> عرض
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs text-emerald-700 hover:bg-emerald-500/10" type="button" onClick={() => void handleApprove(c)}>
-                        <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10" type="button" onClick={() => { setRejectNote(''); setRejectCase(c); }}>
-                        <XCircle className="h-3.5 w-3.5" /> رفض
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs text-amber-700 hover:bg-amber-500/10" type="button" onClick={() => openEdit(c)}>
-                        <Edit3 className="h-3.5 w-3.5" /> تعديل
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 px-2 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(c.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {listFiltered.map((c) => {
+                const type = typeFor(c);
+                return (
+                  <tr key={c.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
+                    <td className="p-3 font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{c.caseNumber}</td>
+                    <td className="max-w-[10rem] truncate p-3 font-medium">{c.employeeNameAr}</td>
+                    <td className="max-w-[9rem] truncate p-3 text-xs text-muted-foreground">{c.typeNameAr}</td>
+                    <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{c.date}</td>
+                    <td className="p-3">
+                      <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium', STATUS_COLORS[c.status])}>
+                        {STATUS_LABELS[c.status]}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex flex-wrap gap-1">
+                        {type?.needsInvestigation && (
+                          <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-[9px] text-blue-700 dark:text-blue-400">تحقيق</Badge>
+                        )}
+                        {type?.needsWarning && (
+                          <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[9px] text-amber-700 dark:text-amber-400">إنذار</Badge>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-2">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" type="button" onClick={() => setViewCase(c)}>
+                          <Eye className="h-3.5 w-3.5" /> عرض
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-emerald-700 hover:bg-emerald-500/10" type="button" onClick={() => void handleApprove(c)}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10" type="button" onClick={() => { setRejectNote(''); setRejectCase(c); }}>
+                          <XCircle className="h-3.5 w-3.5" /> رفض
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-amber-700 hover:bg-amber-500/10" type="button" onClick={() => openEdit(c)}>
+                          <Edit3 className="h-3.5 w-3.5" /> تعديل
+                        </Button>
+                        {type?.needsWarning && (
+                          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px] text-amber-700 hover:bg-amber-500/10" type="button" onClick={() => setNoticeCase(c)}>
+                            <AlertTriangle className="h-3 w-3" /> إنذار
+                          </Button>
+                        )}
+                        {type?.needsInvestigation && (
+                          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px] text-blue-700 hover:bg-blue-500/10" type="button" onClick={() => setInvestigationCase(c)}>
+                            <Search className="h-3 w-3" /> تحقيق
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px] text-violet-700 hover:bg-violet-500/10" type="button" onClick={() => setAppealCase(c)}>
+                          <Scale className="h-3 w-3" /> تظلم
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(c.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -455,8 +830,18 @@ export function ViolationCasesClient() {
         <FormField label="نوع المخالفة" required>
           <SearchableDropdown value={draft.violationTypeId} onChange={v => setD({ violationTypeId: v })} options={typeOptions} placeholder="اختر نوع المخالفة…" />
         </FormField>
+
+        {/* Live type requirement indicators */}
+        {selectedType && (selectedType.needsWarning || selectedType.needsInvestigation) && (
+          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">هذا النوع يتطلب:</p>
+            <TypeRequirementBadges needsWarning={selectedType.needsWarning} needsInvestigation={selectedType.needsInvestigation} />
+            <p className="text-[11px] text-muted-foreground">سيمكنك إضافتها بعد حفظ المخالفة من البطاقة.</p>
+          </div>
+        )}
+
         <FormField label="تاريخ المخالفة" required>
-          <Input type="date" value={draft.date} onChange={e => setD({ date: e.target.value })} />
+          <DatePickerInput value={draft.date} onChange={(ymd) => setD({ date: ymd })} />
         </FormField>
         <FormField label="الوصف" required>
           <textarea value={draft.description} onChange={e => setD({ description: e.target.value })} placeholder="اكتب وصف المخالفة…"
@@ -476,7 +861,7 @@ export function ViolationCasesClient() {
         title={`تعديل: ${editCase?.caseNumber ?? ''}`} size="lg"
         onSave={() => void handleEdit()} saveDisabled={editSaving} error={editError}>
         <FormField label="تاريخ المخالفة" required>
-          <Input type="date" value={editForm.date} onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))} />
+          <DatePickerInput value={editForm.date} onChange={(ymd) => setEditForm(f => ({ ...f, date: ymd }))} />
         </FormField>
         <FormField label="الوصف" required>
           <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} placeholder="وصف المخالفة…"
@@ -509,9 +894,28 @@ export function ViolationCasesClient() {
                   <p><span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', STATUS_COLORS[viewCase.status])}>{STATUS_LABELS[viewCase.status]}</span></p>
                 </div>
               </div>
+              {(() => { const t = typeFor(viewCase); return t && (t.needsWarning || t.needsInvestigation) ? <TypeRequirementBadges needsWarning={t.needsWarning} needsInvestigation={t.needsInvestigation} /> : null; })()}
               <div><span className="text-muted-foreground text-xs">الوصف</span><p className="mt-1">{viewCase.description}</p></div>
               {viewCase.notes && <div><span className="text-muted-foreground text-xs">ملاحظات</span><p className="mt-1">{viewCase.notes}</p></div>}
               {viewCase.attachmentsNote && <div><span className="text-muted-foreground text-xs">المرفقات</span><p className="mt-1">{viewCase.attachmentsNote}</p></div>}
+              <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
+                {typeFor(viewCase)?.needsWarning && (
+                  <Button size="sm" variant="outline" className="gap-1.5 border-amber-500/30 text-amber-700 hover:bg-amber-500/10"
+                    onClick={() => { setViewCase(null); setNoticeCase(viewCase); }}>
+                    <AlertTriangle className="h-3.5 w-3.5" /> إصدار إنذار
+                  </Button>
+                )}
+                {typeFor(viewCase)?.needsInvestigation && (
+                  <Button size="sm" variant="outline" className="gap-1.5 border-blue-500/30 text-blue-700 hover:bg-blue-500/10"
+                    onClick={() => { setViewCase(null); setInvestigationCase(viewCase); }}>
+                    <Search className="h-3.5 w-3.5" /> فتح تحقيق
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="gap-1.5 border-violet-500/30 text-violet-700 hover:bg-violet-500/10"
+                  onClick={() => { setViewCase(null); setAppealCase(viewCase); }}>
+                  <Scale className="h-3.5 w-3.5" /> تقديم تظلم
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
@@ -543,6 +947,27 @@ export function ViolationCasesClient() {
           }
         }}
         title="حذف المخالفة"
+      />
+
+      {/* ── Contextual dialogs ── */}
+      <NoticeDialog
+        open={!!noticeCase}
+        onClose={() => setNoticeCase(null)}
+        violationCase={noticeCase}
+        companyId={companyId}
+      />
+      <InvestigationDialog
+        open={!!investigationCase}
+        onClose={() => setInvestigationCase(null)}
+        violationCase={investigationCase}
+        companyId={companyId}
+        employees={employees}
+      />
+      <AppealDialog
+        open={!!appealCase}
+        onClose={() => setAppealCase(null)}
+        violationCase={appealCase}
+        companyId={companyId}
       />
     </div>
   );

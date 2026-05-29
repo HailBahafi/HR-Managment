@@ -4,7 +4,6 @@ import {
   type CreateCheckInPointDto,
   type UpdateCheckInPointDto,
 } from '@/features/hr/attendance/lib/api/check-in-points';
-import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
 import { parseCoord } from '@/features/hr/lib/map-dto';
 
@@ -20,15 +19,9 @@ export function mapCheckInPointResponse(dto: CheckInPointResponseDto): Attendanc
   };
 }
 
-export async function loadCheckInPoints() {
-  const scope = await resolveOrganizationScope();
-  const res = await checkInPointsApi.getAll(
-    scope.companyId ? { companyId: scope.companyId, limit: 200 } : { limit: 200 },
-  );
-  return {
-    items: res.items.map(mapCheckInPointResponse),
-    companyId: scope.companyId ?? res.items[0]?.companyId ?? null,
-  };
+export async function loadCheckInPoints(companyId: string) {
+  const res = await checkInPointsApi.getAll({ companyId, limit: 200 });
+  return { items: res.items.map(mapCheckInPointResponse) };
 }
 
 export async function createCheckInPoint(payload: CreateCheckInPointDto) {

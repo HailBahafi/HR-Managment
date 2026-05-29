@@ -1,7 +1,71 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 
+export type DailyBreakdownPeriod = {
+  expected: {
+    periodId: string;
+    sortOrder: number;
+    startTime: string;
+    endTime: string;
+    startAt: string;
+    endAt: string;
+    durationMinutes: number;
+    flexibilityEnabled: boolean;
+    flexibilityMinutes: number;
+    breakEnabled: boolean;
+    breakStart: string | null;
+    breakEnd: string | null;
+  };
+  actual: {
+    checkInAt: string | null;
+    checkOutAt: string | null;
+    checkInEventId: string | null;
+    checkOutEventId: string | null;
+    breakMinutes: number;
+    workedMinutes: number;
+  };
+  analysis: {
+    hasCheckIn: boolean;
+    hasCheckOut: boolean;
+    lateMinutes: number;
+    earlyLeaveMinutes: number;
+    overtimeMinutes: number;
+    shortageMinutes: number;
+    isLate: boolean;
+    isEarlyLeave: boolean;
+    isAbsent: boolean;
+    isComplete: boolean;
+    status: string;
+  };
+  events: AttendanceEventResponseDto[];
+};
+
+export type DailyBreakdownResponseDto = {
+  employeeId: string;
+  employeeNameAr: string;
+  workDate: string;
+  weekDay: number;
+  status: string;
+  isRestDay: boolean;
+  isUnscheduled: boolean;
+  shiftTemplate: { id: string; nameAr: string; colorHex: string } | null;
+  totals: {
+    expectedMinutes: number;
+    workedMinutes: number;
+    breakMinutes: number;
+    lateMinutes: number;
+    earlyLeaveMinutes: number;
+    overtimeMinutes: number;
+    shortageMinutes: number;
+    periodsTotal: number;
+    periodsAttended: number;
+    periodsMissed: number;
+  };
+  periods: DailyBreakdownPeriod[];
+  unmatchedEvents: AttendanceEventResponseDto[];
+};
+
 export type AttendanceEventType = 'check_in' | 'check_out' | 'break_start' | 'break_end';
-export type AttendanceEventSource = 'manual' | 'qr' | 'biometric' | 'mobile_app' | 'api';
+export type AttendanceEventSource = 'mobile_app' | 'web_portal' | 'kiosk' | 'manual_hr' | 'biometric' | 'system';
 
 export type AttendanceEventResponseDto = {
   id: string;
@@ -65,6 +129,9 @@ export const attendanceEventsApi = {
   },
   getById(id: string) {
     return apiRequest<AttendanceEventResponseDto>(`/attendance/events/${id}`);
+  },
+  getDailyBreakdown(params: { employeeId: string; workDate: string; companyId?: string; timezoneOffsetMinutes?: number }) {
+    return apiRequest<DailyBreakdownResponseDto>('/attendance/events/daily-breakdown', { query: params });
   },
   create(payload: CreateAttendanceEventDto) {
     return apiRequest<AttendanceEventResponseDto>('/attendance/events', { method: 'POST', body: payload });

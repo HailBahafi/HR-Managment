@@ -16,5 +16,5 @@ export interface Permission {
   id: string;
   name: string;
   resource: string;
-  actions: ('view' | 'create' | 'edit' | 'delete' | 'approve')[];
+  actions: ('read' | 'create' | 'update' | 'delete' | 'approve')[];
 }

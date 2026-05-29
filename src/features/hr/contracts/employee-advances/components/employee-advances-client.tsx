@@ -7,6 +7,7 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
@@ -375,7 +376,7 @@ export function EmployeeAdvancesClient() {
           />
         </FormField>
         <FormField label="تاريخ السلفة" required>
-          <Input type="date" value={form.advanceDate} onChange={e => patch({ advanceDate: e.target.value })} />
+          <DatePickerInput value={form.advanceDate} onChange={(ymd) => patch({ advanceDate: ymd })} />
         </FormField>
         <FormField label="الحالة">
           <MinimalDropdown

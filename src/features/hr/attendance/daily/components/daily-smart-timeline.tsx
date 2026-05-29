@@ -3,18 +3,22 @@
 import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { Clock3 } from 'lucide-react';
+import { DailyOneDayView } from '@/features/hr/attendance/daily/components/daily-one-day-view';
 import { DailyGanttTimeline } from '@/features/hr/attendance/daily/components/daily-gantt-timeline';
 import { DailyWeekGrid } from '@/features/hr/attendance/daily/components/daily-week-grid';
 import { DailyMonthHeatmap } from '@/features/hr/attendance/daily/components/daily-month-heatmap';
+import type { AttendanceViewMode } from '@/features/hr/attendance/daily/hooks/useDailyAttendanceModel';
 
 export function DailySmartTimeline({
   summaries,
   events,
   dates,
+  viewMode,
 }: {
   summaries: AttendanceDaySummary[];
   events: AttendanceEvent[];
   dates: string[];
+  viewMode: AttendanceViewMode;
 }) {
   const days = dates.length;
   if (days === 0) {
@@ -23,7 +27,17 @@ export function DailySmartTimeline({
     );
   }
 
+  if (days === 1) {
+    return (
+      <DailyOneDayView
+        summaries={summaries}
+        initialEvents={events}
+        workDate={dates[0]!}
+      />
+    );
+  }
+
   if (days <= 3) return <DailyGanttTimeline summaries={summaries} events={events} dates={dates} />;
   if (days <= 14) return <DailyWeekGrid summaries={summaries} dates={dates} />;
-  return <DailyMonthHeatmap summaries={summaries} dates={dates} />;
+  return <DailyMonthHeatmap summaries={summaries} dates={dates} viewMode={viewMode} />;
 }

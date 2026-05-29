@@ -1,7 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   CalendarRange,
-  Banknote,
   FileSignature,
   BookOpen,
   FileSpreadsheet,
@@ -25,7 +24,6 @@ export const hrContractsNavGroups: HRContractsNavGroup[] = [
     labelAr: 'الراتب',
     items: [
       { slug: 'payroll-periods', labelAr: 'فترات الراتب', icon: CalendarRange },
-      { slug: 'employee-advances', labelAr: 'سلف الموظفين', icon: Banknote },
     ],
   },
   {

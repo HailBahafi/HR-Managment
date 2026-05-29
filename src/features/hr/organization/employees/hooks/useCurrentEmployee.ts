@@ -10,10 +10,11 @@ export function useCurrentEmployee() {
   return useQuery({
     queryKey: ['current-employee', userId, companyId],
     queryFn: async () => {
-      const result = await employeesApi.getAll({ userId, companyId: companyId ?? undefined, limit: 1 });
-      return result.items[0] ?? null;
+      // Backend only supports page/limit/companyId — filter by userId client-side
+      const result = await employeesApi.getAll({ companyId: companyId ?? undefined, limit: 500 });
+      return result.items.find((e) => e.userId === userId) ?? null;
     },
-    enabled: !!userId,
+    enabled: !!userId && !!companyId,
     staleTime: 10 * 60 * 1000,
   });
 }

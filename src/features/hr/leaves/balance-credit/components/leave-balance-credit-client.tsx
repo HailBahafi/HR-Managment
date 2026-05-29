@@ -222,16 +222,8 @@ export function LeaveBalanceCreditClient() {
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
       ) : null}
-      <p className="rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-xs text-muted-foreground shadow-sm sm:text-sm">
-        تُضاف الأيام إلى <strong className="text-foreground">سقف الرصيد السنوي</strong> بعد الموافقة. الطلبات الجديدة بحالة{' '}
-        <strong className="text-foreground">في الانتظار</strong> حتى تصبح <strong className="text-foreground">تمت الموافقة</strong> أو تُرفض من الجدول.
-      </p>
 
       <div className="space-y-3">
-        <div className="flex flex-col gap-1 px-0.5 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="font-display text-lg font-semibold text-foreground">تقرير طلبات إضافة الرصيد</h2>
-          <p className="text-xs text-muted-foreground">من الأحدث؛ الموافقة تحدّث الرصيد السنوي فوراً.</p>
-        </div>
 
         {m.sortedRequests.length === 0 ? (
           <EmptyState title="لا توجد طلبات ضمن الفلاتر" />

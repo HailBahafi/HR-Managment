@@ -5,6 +5,8 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { CreateDepartmentDto, UpdateDepartmentDto } from '@/features/hr/organization/lib/api/departments';
@@ -169,6 +171,18 @@ export function useDepartmentsDirectoryModel() {
         .map((d) => ({ value: d.id, label: `${'　'.repeat(d.parentId ? 1 : 0)}${d.nameAr}` })),
     ],
     [departments, excludeIds],
+  );
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton />
+        <Button variant="luxe" size="sm" className="h-8 shrink-0 gap-2" onClick={openCreate}>
+          <Plus className="h-4 w-4" /> قسم جديد
+        </Button>
+      </div>
+    ),
+    [openCreate],
   );
 
   useEntityFilterSlot(

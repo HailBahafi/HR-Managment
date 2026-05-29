@@ -6,6 +6,8 @@ import { Plus, FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { formatCurrency } from '@/shared/utils';
@@ -21,6 +23,7 @@ import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organizati
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 function empStartYmd(e: EmployeeResponseDto): string {
@@ -33,8 +36,10 @@ function empStartYmd(e: EmployeeResponseDto): string {
 export function useEmployeesListModel() {
   useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
   const router = useRouter();
+  // companyId comes directly from the auth store — never blocks on GET /companies
+  const companyId = useAuthStore((s) => s.activeCompanyId);
+  // company details are optional (used only for PDF header); 403 is silently ignored
   const { data: activeCompany } = useActiveCompany();
-  const companyId = activeCompany?.id;
 
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
@@ -52,16 +57,17 @@ export function useEmployeesListModel() {
   const [toolbarStatus, setToolbarStatus] = React.useState<string>('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [pdfOpen, setPdfOpen] = React.useState(false);
+  const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  // Load branches and departments once (they don't change with employee filters)
+  // Load branches and departments — 403 is silently ignored (user lacks that permission)
   React.useEffect(() => {
     if (!companyId) return;
-    void Promise.all([
+    void Promise.allSettled([
       branchesApi.getAll({ limit: 200, companyId }),
       departmentsApi.getAll({ limit: 200, companyId }),
     ]).then(([branchesRes, deptsRes]) => {
-      setBranches(branchesRes.items);
-      setDepartments(deptsRes.items);
+      if (branchesRes.status === 'fulfilled') setBranches(branchesRes.value.items);
+      if (deptsRes.status === 'fulfilled') setDepartments(deptsRes.value.items);
     });
   }, [companyId]);
 
@@ -70,14 +76,8 @@ export function useEmployeesListModel() {
     setLoading(true);
     setListError(null);
     try {
-      const res = await employeesApi.getAll({
-        limit: 500,
-        companyId,
-        ...(branchFilter !== 'all' ? { branchId: branchFilter } : {}),
-        ...(deptFilter !== 'all' ? { departmentId: deptFilter } : {}),
-        ...(search.trim() ? { search: search.trim() } : {}),
-        ...(toolbarStatus !== 'all' ? { contractStatus: toolbarStatus } : {}),
-      });
+      // Backend only supports page/limit/companyId — all other filters are client-side
+      const res = await employeesApi.getAll({ limit: 500, companyId });
       setEmployees(res.items);
       setTotalCount(res.pagination.total);
     } catch (err) {
@@ -86,7 +86,7 @@ export function useEmployeesListModel() {
     } finally {
       setLoading(false);
     }
-  }, [companyId, branchFilter, deptFilter, search, toolbarStatus]);
+  }, [companyId]);
 
   React.useEffect(() => { void loadEmployees(); }, [loadEmployees]);
 
@@ -104,9 +104,20 @@ export function useEmployeesListModel() {
     [employees],
   );
 
-  // Client-side: only date range and employee picker (server handles the rest)
+  // All filtering is client-side (backend only accepts page/limit/companyId)
   const filtered = React.useMemo(() => {
     return employees.filter((e) => {
+      if (branchFilter !== 'all' && e.branchId !== branchFilter) return false;
+      if (deptFilter !== 'all' && e.departmentId !== deptFilter) return false;
+      if (toolbarStatus !== 'all' && e.contractStatus !== toolbarStatus) return false;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        if (
+          !e.nameAr.toLowerCase().includes(q) &&
+          !(e.nameEn ?? '').toLowerCase().includes(q) &&
+          !e.employeeCode.toLowerCase().includes(q)
+        ) return false;
+      }
       if (selectedEmpIds.size > 0 && !selectedEmpIds.has(e.id)) return false;
       if (dateBounds.from || dateBounds.to) {
         const ymd = empStartYmd(e);
@@ -115,7 +126,7 @@ export function useEmployeesListModel() {
       }
       return true;
     });
-  }, [employees, selectedEmpIds, dateBounds.from, dateBounds.to]);
+  }, [employees, branchFilter, deptFilter, toolbarStatus, search, selectedEmpIds, dateBounds.from, dateBounds.to]);
 
   const contractStatusCounts = React.useMemo(
     () => ({
@@ -155,6 +166,19 @@ export function useEmployeesListModel() {
     parts.push(`حالة العقد: ${toolbarStatus === 'all' ? 'الكل' : (EMP_CONTRACT_STATUS_LABELS[toolbarStatus] ?? toolbarStatus)}`);
     return parts.join(' · ');
   }, [branchFilter, deptFilter, search, selectedEmpIds.size, dateBounds.from, dateBounds.to, toolbarStatus, branches, departments]);
+
+  const handleDelete = React.useCallback(async () => {
+    if (!deleteId) return;
+    try {
+      await employeesApi.remove(deleteId);
+      setDeleteId(null);
+      await loadEmployees();
+      toast.success('تم حذف الموظف');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'employees.delete');
+      toast.error(displayMessage);
+    }
+  }, [deleteId, loadEmployees]);
 
   const handleExportExcel = React.useCallback(async () => {
     if (filtered.length === 0) {
@@ -206,6 +230,19 @@ export function useEmployeesListModel() {
   );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton />
+        <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={() => setNewEmpOpen(true)}>
+          <Plus className="h-4 w-4" />
+          موظف جديد
+        </Button>
+      </div>
+    ),
+    [newEmpOpen],
+  );
 
   useEntityFilterSlot(
     () => (
@@ -265,10 +302,6 @@ export function useEmployeesListModel() {
               <FileSpreadsheet className="h-4 w-4" />
               Excel
             </Button>
-            <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={() => setNewEmpOpen(true)}>
-              <Plus className="h-4 w-4" />
-              موظف جديد
-            </Button>
           </>
         )}
       />
@@ -298,6 +331,9 @@ export function useEmployeesListModel() {
     getBranch,
     getDepartment,
     reloadEmployees: loadEmployees,
+    deleteId,
+    setDeleteId,
+    handleDelete,
   };
 }
 

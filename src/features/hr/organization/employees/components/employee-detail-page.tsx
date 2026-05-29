@@ -38,6 +38,7 @@ function dtoToEmployee(dto: EmployeeResponseDto): Employee {
     maritalStatus: (dto.maritalStatus === 'married' ? 'married' : 'single') as Employee['maritalStatus'],
     role: dto.role ?? 'employee',
     assignedRoleId: dto.assignedRoleId ?? null,
+    userId: dto.userId ?? null,
   };
 }
 

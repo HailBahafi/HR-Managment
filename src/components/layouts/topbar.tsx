@@ -94,7 +94,7 @@ export const navConfig: NavItem[] = [
     key: 'leaves', label: 'الإجازات', icon: CalendarDays,
     groups: [
       { labelAr: 'المتابعة', items: [
-        { label: 'التحليلات',     href: '/hr/leaves/analytics',         icon: BarChart3 },
+        { label: 'ارصدة الموظفين',     href: '/hr/leaves/analytics',         icon: BarChart3 },
         { label: 'إضافة رصيد إجازات', href: '/hr/leaves/balance-credit', icon: CirclePlus },
       ]},
       { labelAr: 'الإعداد', items: [
@@ -107,8 +107,9 @@ export const navConfig: NavItem[] = [
     key: 'requests', label: 'الطلبات', icon: ClipboardList,
     groups: [
       { labelAr: 'الطلبات', items: [
-        { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
+        { label: 'إدارة طلبات الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
         { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList },
+        { label: 'إدارة سلف الموظفين', href: '/hr/requests/employee-advances', icon: Banknote },
       ] },
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الطلبات', href: '/hr/requests/request-types',   icon: ListChecks },

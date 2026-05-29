@@ -6,9 +6,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/ui/employee-picker';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -16,7 +15,6 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FormField } from '@/features/hr/requests/components/shared-ui';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -26,7 +24,6 @@ import {
   effectiveDateRange,
   dateFilterHasRestriction,
   hasDateRangeFilter,
-  parseMDYToYMD,
   todayYMD,
   thisWeekSunSatYMD,
   thisCalendarMonthYMD,
@@ -315,8 +312,10 @@ export const EntityFilterToolbar = React.forwardRef<
   const [appliedCustomFrom, setAppliedCustomFrom] = React.useState('');
   const [appliedCustomTo, setAppliedCustomTo] = React.useState('');
   const [customDialogOpen, setCustomDialogOpen] = React.useState(false);
-  const [dialogFromMDY, setDialogFromMDY] = React.useState('');
-  const [dialogToMDY, setDialogToMDY] = React.useState('');
+  const [dialogFromDate, setDialogFromDate] = React.useState<Date | undefined>(undefined);
+  const [dialogToDate, setDialogToDate] = React.useState<Date | undefined>(undefined);
+  const [fromCalOpen, setFromCalOpen] = React.useState(false);
+  const [toCalOpen, setToCalOpen] = React.useState(false);
 
   const effectiveBounds = React.useMemo(
     () => (showDateSection ? effectiveDateRange(dateFilterTab, appliedCustomFrom, appliedCustomTo) : { from: '', to: '' }),
@@ -355,40 +354,49 @@ export const EntityFilterToolbar = React.forwardRef<
     });
   }, [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo]);
 
+  const ymdToDate = (ymd: string): Date | undefined => {
+    if (!ymd) return undefined;
+    const [y, m, d] = ymd.split('-').map(Number);
+    if (!y || !m || !d) return undefined;
+    return new Date(y, m - 1, d);
+  };
+
+  const dateToYmd = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
   const openCustomDateDialog = React.useCallback(() => {
-    setDialogFromMDY(appliedCustomFrom ? ymdToMDYDisplay(appliedCustomFrom) : '');
-    setDialogToMDY(appliedCustomTo ? ymdToMDYDisplay(appliedCustomTo) : '');
+    setDialogFromDate(ymdToDate(appliedCustomFrom));
+    setDialogToDate(ymdToDate(appliedCustomTo));
     setCustomDialogOpen(true);
   }, [appliedCustomFrom, appliedCustomTo]);
 
   const applyCustomDialog = React.useCallback(() => {
-    const parsedFrom = parseMDYToYMD(dialogFromMDY);
-    const parsedTo = parseMDYToYMD(dialogToMDY);
-    if (parsedFrom === null || parsedTo === null) {
-      toast.error('صيغة التاريخ غير صحيحة. استخدم mm/dd/yyyy');
-      return;
-    }
-    setAppliedCustomFrom(parsedFrom);
-    setAppliedCustomTo(parsedTo);
+    if (!dialogFromDate || !dialogToDate) return;
+    setAppliedCustomFrom(dateToYmd(dialogFromDate));
+    setAppliedCustomTo(dateToYmd(dialogToDate));
     setCustomDialogOpen(false);
-  }, [dialogFromMDY, dialogToMDY]);
+  }, [dialogFromDate, dialogToDate]);
 
   const fillDialogToday = React.useCallback(() => {
-    const t = todayYMD();
-    setDialogFromMDY(ymdToMDYDisplay(t));
-    setDialogToMDY(ymdToMDYDisplay(t));
+    const t = ymdToDate(todayYMD());
+    setDialogFromDate(t);
+    setDialogToDate(t);
   }, []);
 
   const fillDialogThisWeek = React.useCallback(() => {
     const { from, to } = thisWeekSunSatYMD();
-    setDialogFromMDY(ymdToMDYDisplay(from));
-    setDialogToMDY(ymdToMDYDisplay(to));
+    setDialogFromDate(ymdToDate(from));
+    setDialogToDate(ymdToDate(to));
   }, []);
 
   const fillDialogThisMonth = React.useCallback(() => {
     const { from, to } = thisCalendarMonthYMD();
-    setDialogFromMDY(ymdToMDYDisplay(from));
-    setDialogToMDY(ymdToMDYDisplay(to));
+    setDialogFromDate(ymdToDate(from));
+    setDialogToDate(ymdToDate(to));
   }, []);
 
   const resetDateFilter = React.useCallback(() => {
@@ -675,39 +683,65 @@ export const EntityFilterToolbar = React.forwardRef<
               <DialogTitle>نطاق تاريخ مخصص</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
-              <FormField label="من">
-                <Input
-                  dir="ltr"
-                  placeholder="mm/dd/yyyy"
-                  autoComplete="off"
-                  value={dialogFromMDY}
-                  onChange={(e) => setDialogFromMDY(e.target.value)}
-                  className="font-mono text-sm"
-                />
-              </FormField>
-              <FormField label="إلى">
-                <Input
-                  dir="ltr"
-                  placeholder="mm/dd/yyyy"
-                  autoComplete="off"
-                  value={dialogToMDY}
-                  onChange={(e) => setDialogToMDY(e.target.value)}
-                  className="font-mono text-sm"
-                />
-              </FormField>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={fillDialogToday}>
-                  <CalendarDays className="h-3 w-3 opacity-70" />
-                  اليوم
-                </Button>
-                <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={fillDialogThisWeek}>
-                  <CalendarDays className="h-3 w-3 opacity-70" />
-                  هذا الأسبوع
-                </Button>
-                <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={fillDialogThisMonth}>
-                  <CalendarDays className="h-3 w-3 opacity-70" />
-                  هذا الشهر
-                </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-muted-foreground">من</label>
+                  <Popover open={fromCalOpen} onOpenChange={setFromCalOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start gap-2 text-sm font-normal',
+                          !dialogFromDate && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarDays className="h-4 w-4 shrink-0 opacity-60" />
+                        {dialogFromDate
+                          ? dialogFromDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })
+                          : 'اختر تاريخاً'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dialogFromDate}
+                        onSelect={(d) => { setDialogFromDate(d); setFromCalOpen(false); }}
+                        disabled={(d) => dialogToDate ? d > dialogToDate : false}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-muted-foreground">إلى</label>
+                  <Popover open={toCalOpen} onOpenChange={setToCalOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start gap-2 text-sm font-normal',
+                          !dialogToDate && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarDays className="h-4 w-4 shrink-0 opacity-60" />
+                        {dialogToDate
+                          ? dialogToDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })
+                          : 'اختر تاريخاً'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dialogToDate}
+                        onSelect={(d) => { setDialogToDate(d); setToCalOpen(false); }}
+                        disabled={(d) => dialogFromDate ? d < dialogFromDate : false}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
             <DialogFooter className="gap-2 sm:justify-end">
@@ -723,7 +757,7 @@ export const EntityFilterToolbar = React.forwardRef<
               >
                 إلغاء
               </Button>
-              <Button type="button" onClick={applyCustomDialog}>
+              <Button type="button" onClick={applyCustomDialog} disabled={!dialogFromDate || !dialogToDate}>
                 تأكيد
               </Button>
             </DialogFooter>

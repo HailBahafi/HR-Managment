@@ -17,7 +17,7 @@ export const authApi = {
   },
 
   me() {
-    return apiRequest<AuthUser>('/auth/me');
+    return apiRequest<AuthUser>('/auth/me', { method: 'GET' });
   },
 
   logout() {

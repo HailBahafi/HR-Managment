@@ -17,19 +17,21 @@ export async function resolveOrganizationScope(
     return { companyId, branchId };
   }
 
-  const companies = await companiesApi.getAll({ limit: 50 });
-  const resolvedCompanyId = companyId ?? companies.items[0]?.id ?? null;
+  let resolvedCompanyId = companyId;
   if (!resolvedCompanyId) {
-    return { companyId: null, branchId: null };
+    try {
+      const companies = await companiesApi.getAll({ limit: 50 });
+      resolvedCompanyId = companies.items[0]?.id ?? null;
+    } catch { /* 403 or other — proceed with null */ }
   }
+  if (!resolvedCompanyId) return { companyId: null, branchId: null };
 
-  if (branchId) {
-    return { companyId: resolvedCompanyId, branchId };
+  if (branchId) return { companyId: resolvedCompanyId, branchId };
+
+  try {
+    const branches = await branchesApi.getAll({ companyId: resolvedCompanyId, limit: 50 });
+    return { companyId: resolvedCompanyId, branchId: branches.items[0]?.id ?? null };
+  } catch {
+    return { companyId: resolvedCompanyId, branchId: null };
   }
-
-  const branches = await branchesApi.getAll({ companyId: resolvedCompanyId, limit: 50 });
-  return {
-    companyId: resolvedCompanyId,
-    branchId: branches.items[0]?.id ?? null,
-  };
 }

@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Building2, Mail } from 'lucide-react';
+import { Building2, Eye, Mail, Trash2 } from 'lucide-react';
+import { RowActions } from '@/components/ui/row-actions';
 import { NewEmployeeDrawer } from '@/features/hr/organization/employees/components/new-employee-drawer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge, ContractTypeLabel } from '@/components/shared/status-badge';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
+import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
 import { formatCurrency, formatDateShort, getInitials } from '@/shared/utils';
 import type { EmployeesListModel } from '@/features/hr/organization/employees/hooks/useEmployeesListModel';
 import { hrOrganizationRoutes } from '@/features/hr/organization/constants/routes';
@@ -17,6 +19,7 @@ export function EmployeesListViews({ model }: Props) {
     router, employees, filtered, loading, listError,
     view, newEmpOpen, setNewEmpOpen, pdfOpen, setPdfOpen,
     employeesPrintable, reloadEmployees,
+    deleteId, setDeleteId, handleDelete,
   } = model;
 
   if (loading) {
@@ -48,10 +51,20 @@ export function EmployeesListViews({ model }: Props) {
       />
       <NewEmployeeDrawer open={newEmpOpen} onOpenChange={setNewEmpOpen} onCreated={reloadEmployees} />
 
+      <ConfirmationModal
+        open={!!deleteId}
+        onOpenChange={(v) => { if (!v) setDeleteId(null); }}
+        title="حذف الموظف"
+        description="هل أنت متأكد من حذف هذا الموظف؟ لا يمكن التراجع عن هذا الإجراء."
+        confirmLabel="حذف"
+        variant="destructive"
+        onConfirm={handleDelete}
+      />
+
       {view === 'table' ? (
-        <EmployeesListTable filtered={filtered} router={router} total={employees.length} />
+        <EmployeesListTable filtered={filtered} router={router} total={employees.length} onDelete={setDeleteId} />
       ) : (
-        <EmployeesListGrid filtered={filtered} />
+        <EmployeesListGrid filtered={filtered} onDelete={setDeleteId} />
       )}
     </div>
   );
@@ -63,10 +76,12 @@ function EmployeesListTable({
   filtered,
   router,
   total,
+  onDelete,
 }: {
   filtered: FilteredRow[];
   router: { push: (href: string) => void };
   total: number;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
@@ -112,9 +127,22 @@ function EmployeesListTable({
                 </td>
                 <td className="px-6 py-4"><StatusBadge status={emp.contractStatus ?? ''} /></td>
                 <td className="px-6 py-4">
-                  <Link href={hrOrganizationRoutes.employee(emp.id)} className="text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
-                    عرض →
-                  </Link>
+                  <RowActions
+                    menuItems={[
+                      {
+                        label: 'عرض',
+                        href: hrOrganizationRoutes.employee(emp.id),
+                        icon: <Eye className="h-3.5 w-3.5" />,
+                      },
+                      {
+                        label: 'حذف',
+                        onClick: (e) => { e.stopPropagation(); onDelete(emp.id); },
+                        icon: <Trash2 className="h-3.5 w-3.5" />,
+                        destructive: true,
+                        separator: true,
+                      },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}
@@ -138,7 +166,7 @@ function EmployeesListTable({
   );
 }
 
-function EmployeesListGrid({ filtered }: { filtered: FilteredRow[] }) {
+function EmployeesListGrid({ filtered, onDelete }: { filtered: FilteredRow[]; onDelete: (id: string) => void }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {filtered.map((emp) => (
@@ -152,7 +180,17 @@ function EmployeesListGrid({ filtered }: { filtered: FilteredRow[] }) {
               <AvatarImage src={emp.avatar ?? undefined} />
               <AvatarFallback>{getInitials(emp.nameAr)}</AvatarFallback>
             </Avatar>
-            <StatusBadge status={emp.contractStatus ?? ''} />
+            <div className="flex items-center gap-2">
+              <StatusBadge status={emp.contractStatus ?? ''} />
+              <button
+                type="button"
+                className="rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                onClick={(e) => { e.preventDefault(); onDelete(emp.id); }}
+                aria-label="حذف الموظف"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="relative mt-4">
             <h3 className="font-display text-lg font-bold group-hover:text-primary transition-colors">{emp.nameAr}</h3>

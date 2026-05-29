@@ -1,11 +1,12 @@
 'use client';
 
-import { Link2, Plus, Search, Trash2, Users, MapPin, CalendarDays, AlertTriangle, Check } from 'lucide-react';
+import { Link2, Plus, Search, Trash2, Pencil, Users, MapPin, CalendarDays, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -135,15 +136,26 @@ export function CheckpointLinksPanel() {
                       <CalendarDays className="h-3.5 w-3.5" />
                       <span className="font-mono tabular-nums" dir="ltr">{efd ?? '—'}</span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => m.setDeleteTarget(batchId)}
-                    >
-                      <Trash2 className="h-3 w-3" /> حذف
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        className="h-7 gap-1 px-2 text-xs"
+                        onClick={() => m.openEditDialog(batchId)}
+                      >
+                        <Pencil className="h-3 w-3" /> تعديل
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => m.setDeleteTarget(batchId)}
+                      >
+                        <Trash2 className="h-3 w-3" /> حذف
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -391,6 +403,46 @@ export function CheckpointLinksPanel() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit batch dialog ── */}
+      <Dialog open={m.editOpen} onOpenChange={m.setEditOpen}>
+        <DialogContent className="max-w-sm border-border">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Link2 className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="font-display text-lg">تعديل الدفعة</DialogTitle>
+                <DialogDescription className="text-xs">تعديل تاريخ السريان وحالة تفعيل الروابط</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 text-sm">
+                <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                ساري من
+              </Label>
+              <SingleDatePicker value={m.editEff} onChange={m.setEditEff} />
+            </div>
+
+            <label className="flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all border-border hover:bg-muted/20">
+              <span className="text-sm font-medium">الروابط مفعّلة</span>
+              <Checkbox
+                checked={m.editLinkActive}
+                onCheckedChange={(v) => m.setEditLinkActive(v === true)}
+              />
+            </label>
+          </div>
+
+          <DialogFooter className="gap-2 border-t border-border bg-muted/20 pt-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
+            <Button variant="outline" type="button" onClick={() => m.setEditOpen(false)}>إلغاء</Button>
+            <Button variant="luxe" type="button" onClick={() => void m.submitEdit()}>حفظ التعديلات</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

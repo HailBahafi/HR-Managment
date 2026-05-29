@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, CalendarDays, Clock, MapPin, Trash2, Users } from 'lucide-react';
+import { Building2, CalendarDays, Clock, MapPin, Pencil, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ShiftAssignment } from '@/features/hr/attendance/lib/types';
 import type { ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
@@ -16,10 +16,12 @@ export function AssignmentsBatchCard({
   batch,
   shiftTemplates,
   onRemoveBatch,
+  onEditBatch,
 }: {
   batch: Batch;
   shiftTemplates: ShiftTemplateResponseDto[];
   onRemoveBatch: (batchId: string) => void;
+  onEditBatch: (batchId: string) => void;
 }) {
   const { batchId, rows, templateId: tid, effectiveFrom: ef } = batch;
   const tpl = shiftTemplates.find((t) => t.id === tid);
@@ -69,7 +71,16 @@ export function AssignmentsBatchCard({
           )}
         </div>
 
-        <div className="flex items-center justify-end border-t border-border/60 pt-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-t border-border/60 pt-2" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            className="h-7 gap-1 px-2 text-xs"
+            onClick={() => onEditBatch(batchId)}
+          >
+            <Pencil className="h-3 w-3" /> تعديل
+          </Button>
           <Button
             variant="ghost"
             size="sm"

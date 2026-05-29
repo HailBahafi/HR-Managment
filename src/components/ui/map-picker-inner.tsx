@@ -18,9 +18,10 @@ interface Props {
   maxRadius: number;
   height: number;
   interactive: boolean;
+  showRadius?: boolean;
 }
 
-export default function MapPickerInner({ value, onChange, minRadius, maxRadius, interactive }: Props) {
+export default function MapPickerInner({ value, onChange, minRadius, maxRadius, interactive, showRadius = true }: Props) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef       = React.useRef<AnyH>(null);
   const markerRef    = React.useRef<AnyH>(null);
@@ -79,14 +80,16 @@ export default function MapPickerInner({ value, onChange, minRadius, maxRadius, 
     map.addObject(marker);
     markerRef.current = marker;
 
-    // Acceptance radius circle
-    const circle = new H.map.Circle(
-      { lat: value.latitude, lng: value.longitude },
-      value.radiusMeters,
-      { style: { fillColor: 'rgba(37,99,235,0.12)', strokeColor: '#2563eb', lineWidth: 2 } },
-    );
-    map.addObject(circle);
-    circleRef.current = circle;
+    // Acceptance radius circle (only when showRadius is enabled)
+    if (showRadius) {
+      const circle = new H.map.Circle(
+        { lat: value.latitude, lng: value.longitude },
+        value.radiusMeters,
+        { style: { fillColor: 'rgba(37,99,235,0.12)', strokeColor: '#2563eb', lineWidth: 2 } },
+      );
+      map.addObject(circle);
+      circleRef.current = circle;
+    }
 
     if (interactive) {
       // Marker drag
@@ -138,8 +141,8 @@ export default function MapPickerInner({ value, onChange, minRadius, maxRadius, 
 
     const pos = { lat: value.latitude, lng: value.longitude };
     marker.setGeometry(pos);
-    circle.setCenter(pos);
-    circle.setRadius(value.radiusMeters);
+    circle?.setCenter(pos);
+    circle?.setRadius(value.radiusMeters);
     map.setCenter(pos, true);
   }, [value.latitude, value.longitude, value.radiusMeters]);
 
@@ -217,38 +220,40 @@ export default function MapPickerInner({ value, onChange, minRadius, maxRadius, 
             انقر لتحديد الموقع · اسحب الدبوس
           </div>
 
-          {/* Radius slider — bottom end */}
-          <div className="absolute bottom-3 end-3 z-10 flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur-sm">
-            <Button
-              type="button" variant="ghost" size="icon"
-              className="h-7 w-7 rounded-full"
-              onClick={() => adjustRadius(-10)}
-              aria-label="تصغير النطاق"
-            >
-              <Minus className="h-3.5 w-3.5" />
-            </Button>
-            <div className="flex flex-col items-center">
-              <input
-                type="range"
-                min={minRadius}
-                max={maxRadius}
-                step={10}
-                value={value.radiusMeters}
-                onChange={(e) => onChange({ ...value, radiusMeters: Number(e.target.value) })}
-                className="h-1.5 w-28 cursor-pointer accent-primary"
-                aria-label="نطاق القبول"
-              />
-              <span className="mt-0.5 font-mono text-[10px] text-muted-foreground">{value.radiusMeters} م</span>
+          {/* Radius slider — bottom end (only when showRadius is enabled) */}
+          {showRadius && (
+            <div className="absolute bottom-3 end-3 z-10 flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+              <Button
+                type="button" variant="ghost" size="icon"
+                className="h-7 w-7 rounded-full"
+                onClick={() => adjustRadius(-10)}
+                aria-label="تصغير النطاق"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <div className="flex flex-col items-center">
+                <input
+                  type="range"
+                  min={minRadius}
+                  max={maxRadius}
+                  step={10}
+                  value={value.radiusMeters}
+                  onChange={(e) => onChange({ ...value, radiusMeters: Number(e.target.value) })}
+                  className="h-1.5 w-28 cursor-pointer accent-primary"
+                  aria-label="نطاق القبول"
+                />
+                <span className="mt-0.5 font-mono text-[10px] text-muted-foreground">{value.radiusMeters} م</span>
+              </div>
+              <Button
+                type="button" variant="ghost" size="icon"
+                className="h-7 w-7 rounded-full"
+                onClick={() => adjustRadius(10)}
+                aria-label="تكبير النطاق"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
             </div>
-            <Button
-              type="button" variant="ghost" size="icon"
-              className="h-7 w-7 rounded-full"
-              onClick={() => adjustRadius(10)}
-              aria-label="تكبير النطاق"
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          )}
         </>
       )}
     </div>

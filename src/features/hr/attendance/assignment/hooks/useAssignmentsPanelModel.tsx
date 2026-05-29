@@ -33,6 +33,12 @@ export function useAssignmentsPanelModel() {
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = React.useState(ASSIGNMENTS_ALL_DEPARTMENTS);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
+  // Edit state
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [editBatchId, setEditBatchId] = React.useState<string | null>(null);
+  const [editEffectiveFrom, setEditEffectiveFrom] = React.useState('');
+  const [editIsActive, setEditIsActive] = React.useState(true);
+
   const reloadAssignments = React.useCallback(async (cid: string) => {
     try {
       const res = await shiftAssignmentsApi.getAll({ limit: 500 });
@@ -113,6 +119,33 @@ export function useAssignmentsPanelModel() {
     setOpen(false);
   }, [templateId, selectedIds, companyId, effectiveFrom, reloadAssignments]);
 
+  const openEdit = React.useCallback((batchId: string) => {
+    const batch = batches.find((b) => b.batchId === batchId);
+    if (!batch) return;
+    setEditBatchId(batchId);
+    setEditEffectiveFrom(batch.effectiveFrom ?? new Date().toISOString().slice(0, 10));
+    setEditIsActive(true);
+    setEditOpen(true);
+  }, [batches]);
+
+  const submitEdit = React.useCallback(async () => {
+    if (!editBatchId) return;
+    const toUpdate = assignments.filter((a) => (a.batchId ?? a.id) === editBatchId);
+    try {
+      await Promise.all(
+        toUpdate.map((a) =>
+          shiftAssignmentsApi.update(a.id, {
+            effectiveFrom: editEffectiveFrom,
+            isActive: editIsActive,
+          }),
+        ),
+      );
+      await reloadAssignments(companyId);
+    } catch { /* ignore */ }
+    setEditOpen(false);
+    setEditBatchId(null);
+  }, [editBatchId, editEffectiveFrom, editIsActive, assignments, companyId, reloadAssignments]);
+
   const removeAssignmentBatch = React.useCallback(async (batchId: string) => {
     const toRemove = assignments.filter((a) => (a.batchId ?? a.id) === batchId);
     try {
@@ -152,6 +185,14 @@ export function useAssignmentsPanelModel() {
     batches,
     shiftTemplates,
     removeAssignmentBatch,
+    openEdit,
+    submitEdit,
+    editOpen,
+    setEditOpen,
+    editEffectiveFrom,
+    setEditEffectiveFrom,
+    editIsActive,
+    setEditIsActive,
     open,
     setOpen,
     dialogContentEl,

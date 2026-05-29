@@ -1,26 +1,29 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { disciplineApprovalTemplatesApi } from './api/discipline-approval-templates';
-import type { DisciplineApprovalTemplateResponseDto, ApprovalTemplateStage } from './api/discipline-approval-templates';
+import type { DisciplineApprovalTemplateResponseDto } from './api/discipline-approval-templates';
 import type { HRApprovalAssignmentTemplate } from '@/features/hr/requests/lib/types';
 
 function mapApi(r: DisciplineApprovalTemplateResponseDto): HRApprovalAssignmentTemplate {
+  const linkedIds = r.violationTypes.map((vt) => vt.violationTypeId);
   return {
     id: r.id,
-    nameAr: r.nameAr,
-    description: r.description ?? '',
+    nameAr: r.nameAr ?? '',
+    description: r.notes ?? '',
     assignmentLinkKind: 'violation',
-    assignmentLinkedIds: r.linkedViolationTypeIds,
-    violationTypeId: r.linkedViolationTypeIds[0] ?? null,
+    assignmentLinkedIds: linkedIds,
+    violationTypeId: linkedIds[0] ?? null,
     isActive: r.isActive,
-    createdAt: r.createdAt,
-    updatedAt: r.updatedAt,
-    stages: r.stages.map((s) => ({
-      id: s.id,
-      sortOrder: s.sortOrder,
-      mode: s.mode as 'sequential' | 'any_one',
-      approvers: s.approvers,
-    })),
+    createdAt: typeof r.createdAt === 'string' ? r.createdAt : new Date(r.createdAt).toISOString(),
+    updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt : new Date(r.updatedAt).toISOString(),
+    stages: [
+      {
+        id: r.id,
+        sortOrder: 1,
+        mode: r.approvalMode as 'sequential' | 'any_one',
+        approvers: r.approvers.map((a) => ({ employeeId: a.employeeId, mandatory: true })),
+      },
+    ],
   };
 }
 
@@ -62,13 +65,14 @@ export const useHRDisciplineApprovalAssignmentTemplatesStore = create<AAState>()
   add: async (draft) => {
     try {
       const companyId = useAuthStore.getState().activeCompanyId ?? '';
+      const stage = draft.stages[0];
       const created = await disciplineApprovalTemplatesApi.create({
         companyId,
         nameAr: draft.nameAr,
-        description: draft.description,
         isActive: draft.isActive,
-        stages: draft.stages as ApprovalTemplateStage[],
-        linkedViolationTypeIds: draft.assignmentLinkedIds ?? [],
+        approvalMode: (stage?.mode ?? 'sequential') as 'sequential' | 'parallel' | 'any_one' | 'optional',
+        violationTypes: (draft.assignmentLinkedIds ?? []).map((id, i) => ({ violationTypeId: id, sortOrder: i })),
+        approvers: (stage?.approvers ?? []).map((a, i) => ({ employeeId: a.employeeId, sortOrder: i })),
       });
       set((s) => ({ templates: [...s.templates, mapApi(created)] }));
       return { ok: true };
@@ -79,12 +83,13 @@ export const useHRDisciplineApprovalAssignmentTemplatesStore = create<AAState>()
 
   update: async (id, patch) => {
     try {
+      const stage = patch.stages?.[0];
       const updated = await disciplineApprovalTemplatesApi.update(id, {
         nameAr: patch.nameAr,
-        description: patch.description,
         isActive: patch.isActive,
-        stages: patch.stages as ApprovalTemplateStage[] | undefined,
-        linkedViolationTypeIds: patch.assignmentLinkedIds,
+        ...(stage ? { approvalMode: stage.mode as 'sequential' | 'parallel' | 'any_one' | 'optional' } : {}),
+        ...(patch.assignmentLinkedIds ? { violationTypes: patch.assignmentLinkedIds.map((vtId, i) => ({ violationTypeId: vtId, sortOrder: i })) } : {}),
+        ...(stage?.approvers ? { approvers: stage.approvers.map((a, i) => ({ employeeId: a.employeeId, sortOrder: i })) } : {}),
       });
       set((s) => ({ templates: s.templates.map((t) => (t.id === id ? mapApi(updated) : t)) }));
       return { ok: true };

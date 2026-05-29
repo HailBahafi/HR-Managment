@@ -38,4 +38,6 @@ export interface Employee {
   role: string;
   /** ربط بدور النظام في إعدادات الصلاحيات (mock). عند الغياب يُستنتج من `role`. */
   assignedRoleId?: string | null;
+  /** معرّف المستخدم المرتبط بالموظف — مطلوب لاستدعاء /users/:id/roles و /users/:id/permissions */
+  userId?: string | null;
 }

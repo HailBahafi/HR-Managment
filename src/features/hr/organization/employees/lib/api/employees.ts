@@ -70,11 +70,6 @@ export type EmployeeListQuery = {
   page?: number;
   limit?: number;
   companyId?: string;
-  userId?: string;
-  branchId?: string;
-  departmentId?: string;
-  search?: string;
-  contractStatus?: string;
 };
 
 export const employeesApi = {

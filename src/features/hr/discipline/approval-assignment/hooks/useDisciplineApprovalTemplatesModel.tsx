@@ -1,87 +1,81 @@
 'use client';
 
 import * as React from 'react';
-import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { violationTypesApi } from '@/features/hr/discipline/lib/api/violation-types';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
-import {
-  disciplineApprovalTemplatesApi,
-  type DisciplineApprovalTemplateResponseDto,
-  type CreateDisciplineApprovalTemplateDto,
-  type UpdateDisciplineApprovalTemplateDto,
-  type ApprovalTemplateStage,
+import { disciplineApprovalTemplatesApi } from '@/features/hr/discipline/lib/api/discipline-approval-templates';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import type {
+  DisciplineApprovalTemplateResponseDto,
+  CreateDisciplineApprovalTemplateDto,
+  UpdateDisciplineApprovalTemplateDto,
+  ApprovalMode,
 } from '@/features/hr/discipline/lib/api/discipline-approval-templates';
 
-export type { ApprovalTemplateStage };
 export type { DisciplineApprovalTemplateResponseDto as ApprovalTemplate };
+export type { ApprovalMode };
 
 export type ViolationTypeOption = { id: string; nameAr: string; code: string; isActive: boolean };
-export type EmployeeOption = { id: string; nameAr: string; jobTitleAr?: string; status?: string };
+export type EmployeeOption = { id: string; nameAr: string };
 
 export function useDisciplineApprovalTemplatesModel() {
   const [templates, setTemplates] = React.useState<DisciplineApprovalTemplateResponseDto[]>([]);
   const [violationTypes, setViolationTypes] = React.useState<ViolationTypeOption[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeOption[]>([]);
-  const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
+  const companyId = useAuthStore((s) => s.activeCompanyId);
+
   const reload = React.useCallback(async () => {
+    if (!companyId) { setLoading(false); return; }
     setLoading(true);
     setListError(null);
     try {
-      const scope = await resolveOrganizationScope();
-      const cid = scope.companyId ?? null;
-      setCompanyId(cid);
-
-      const [templatesRes, typesRes, employeesRes] = await Promise.all([
-        disciplineApprovalTemplatesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-        violationTypesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-        employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+      const [tplRes, typesRes, empRes] = await Promise.all([
+        disciplineApprovalTemplatesApi.getAll({ companyId, limit: 200 }),
+        violationTypesApi.getAll({ companyId, limit: 200 }),
+        employeesApi.getAll({ companyId, limit: 500 }),
       ]);
-
-      setTemplates(templatesRes.items);
+      setTemplates(tplRes.items);
       setViolationTypes(
         typesRes.items.map((t) => ({ id: t.id, nameAr: t.nameAr, code: t.code, isActive: t.isActive })),
       );
-      setEmployees(employeesRes.items.map((e) => ({ id: e.id, nameAr: e.nameAr })));
+      setEmployees(empRes.items.map((e) => ({ id: e.id, nameAr: e.nameAr })));
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-approval-templates.load');
+      const { displayMessage } = handleApiError(err, 'discipline-approval-assignments.load');
       setListError(displayMessage);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
-  React.useEffect(() => {
-    void reload();
-  }, [reload]);
+  React.useEffect(() => { void reload(); }, [reload]);
 
   const createTemplate = React.useCallback(
     async (payload: Omit<CreateDisciplineApprovalTemplateDto, 'companyId'>) => {
-      if (!companyId) throw new Error('تعذر تحديد الشركة');
-      await disciplineApprovalTemplatesApi.create({ ...payload, companyId });
-      await reload();
+      if (!companyId) throw new Error('no company');
+      const res = await disciplineApprovalTemplatesApi.create({ ...payload, companyId });
+      setTemplates((prev) => [...prev, res]);
+      return res;
     },
-    [companyId, reload],
+    [companyId],
   );
 
   const updateTemplate = React.useCallback(
     async (id: string, patch: UpdateDisciplineApprovalTemplateDto) => {
-      await disciplineApprovalTemplatesApi.update(id, patch);
-      await reload();
+      const res = await disciplineApprovalTemplatesApi.update(id, patch);
+      setTemplates((prev) => prev.map((t) => (t.id === id ? res : t)));
+      return res;
     },
-    [reload],
+    [],
   );
 
-  const deleteTemplate = React.useCallback(
-    async (id: string) => {
-      await disciplineApprovalTemplatesApi.remove(id);
-      await reload();
-    },
-    [reload],
-  );
+  const deleteTemplate = React.useCallback(async (id: string) => {
+    await disciplineApprovalTemplatesApi.remove(id);
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+  }, []);
 
   return {
     templates,

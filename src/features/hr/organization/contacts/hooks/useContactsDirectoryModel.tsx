@@ -5,6 +5,8 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -171,6 +173,18 @@ export function useContactsDirectoryModel() {
     }
   }, [confirmId, loadData]);
 
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton />
+        <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
+          <Plus className="h-4 w-4" /> مستخدم جديد
+        </Button>
+      </div>
+    ),
+    [openCreate],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -186,15 +200,9 @@ export function useContactsDirectoryModel() {
             { value: 'grid', label: 'شبكة', icon: 'layout-grid' },
           ],
         }}
-        trailingActions={(
-          <Button onClick={openCreate} size="sm" className="h-8 gap-1.5">
-            <Plus className="h-4 w-4" />
-            مستخدم جديد
-          </Button>
-        )}
       />
     ),
-    [layoutView, openCreate],
+    [layoutView],
   );
 
   return {

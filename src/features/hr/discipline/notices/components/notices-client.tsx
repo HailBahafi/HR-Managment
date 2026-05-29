@@ -5,6 +5,7 @@ import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus } from 'lucide-re
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
@@ -334,7 +335,7 @@ export function NoticesClient() {
           <textarea value={draft.reasonAr} onChange={e => set({ reasonAr: e.target.value })} placeholder="اكتب سبب الإنذار…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         </FormField>
         <FormField label="التاريخ" required>
-          <Input type="date" value={draft.date} onChange={e => set({ date: e.target.value })} />
+          <DatePickerInput value={draft.date} onChange={(ymd) => set({ date: ymd })} />
         </FormField>
         <FormField label="ربط بمخالفة">
           <SearchableDropdown value={draft.linkedCaseId} onChange={v => set({ linkedCaseId: v })} options={caseOptions} placeholder="اختر مخالفة (اختياري)…" allowClear />

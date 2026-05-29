@@ -40,6 +40,7 @@ export type CreateCorrectionRequestDto = {
   subtypeSlug?: string;
   attendanceDaySummaryId?: string;
   workDate: string;
+  previousStatus?: string;
   correctedCheckInAt?: string;
   correctedCheckOutAt?: string;
   reasonAr?: string;

@@ -148,20 +148,7 @@ export function useEmployeeProfileData(employee: Employee) {
     [attendance.daySummaries],
   );
 
-  // Map real AttendanceEventResponseDto → shape the UI expects
-  const allEmployeeEvents = React.useMemo(
-    () =>
-      attendance.events.map((e) => ({
-        id: e.id,
-        employeeId: e.employeeId,
-        employeeName: e.employeeNameAr,
-        date: e.workDate,
-        type: e.eventType as 'check_in' | 'check_out',
-        at: e.occurredAt,
-        source: (e.source ?? 'manual') as 'device' | 'manual' | 'gps',
-      })),
-    [attendance.events],
-  );
+  const allEmployeeEvents = attendance.events;
 
   const employeeViolations = React.useMemo(
     () =>
@@ -171,7 +158,7 @@ export function useEmployeeProfileData(employee: Employee) {
         typeNameAr: v.violationTypeId,
         date: v.violationDate,
         description: v.description,
-        status: v.status,
+        status: v.status ?? 'pending',
         notes: v.notes,
         typeHasDeduction: false,
         typeDeductionValue: 0,

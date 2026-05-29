@@ -1,8 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import {
   Dialog,
   DialogContent,
@@ -68,12 +68,10 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
           </div>
           <div className="space-y-2">
             <Label htmlFor="assignment-effective-from">تاريخ التطبيق</Label>
-            <Input
+            <DatePickerInput
               id="assignment-effective-from"
-              type="date"
               value={effectiveFrom}
-              onChange={(e) => setEffectiveFrom(e.target.value)}
-              className="font-mono"
+              onChange={setEffectiveFrom}
             />
           </div>
           <div className="space-y-2">
@@ -102,8 +100,8 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
               </Select>
             </div>
           ) : null}
-          <MultiSelect
-            label="الأهداف"
+          <MultiSelect 
+            label="الموظفين"
             options={multiOptions}
             value={[...selectedIds]}
             onChange={(ids) => setSelectedIds(new Set(ids))}

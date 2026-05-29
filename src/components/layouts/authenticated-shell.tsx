@@ -1,16 +1,21 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAccessProfile } from '@/features/auth/hooks/use-access-profile';
 import { useAuthSession } from '@/features/auth/hooks/use-auth-session';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 
 export function AuthenticatedShell({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   const user = useAuthStore((s) => s.user);
   const { isLoading: sessionLoading, isError: sessionError } = useAuthSession();
   const { isLoading: profileLoading } = useAccessProfile();
 
-  const bootstrapping = sessionLoading || (!!user && profileLoading);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const bootstrapping = mounted && (sessionLoading || (!!user && profileLoading));
 
   if (bootstrapping) {
     return (

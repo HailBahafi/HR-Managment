@@ -5,12 +5,14 @@ import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 import { CP_LINKS_ALL_DEPARTMENTS } from '@/features/hr/attendance/checkpoint-links/constants/checkpoint-links-panel';
-import { loadCheckInPoints } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
+import { mapCheckInPointResponse } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
+import { checkInPointsApi } from '@/features/hr/attendance/lib/api/check-in-points';
 import {
   createCheckInPointLinkBatch,
   deleteCheckInPointLinkBatch,
   loadCheckInPointLinks,
 } from '@/features/hr/attendance/checkpoint-links/services/check-in-point-links.service';
+import { checkInPointLinksApi } from '@/features/hr/attendance/lib/api/check-in-point-links';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 
 export function useCheckpointLinksPanelModel() {
@@ -29,19 +31,25 @@ export function useCheckpointLinksPanelModel() {
   const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = React.useState(CP_LINKS_ALL_DEPARTMENTS);
   const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null);
 
+  // Edit state
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [editBatchId, setEditBatchId] = React.useState<string | null>(null);
+  const [editEff, setEditEff] = React.useState('');
+  const [editLinkActive, setEditLinkActive] = React.useState(true);
+
   const reload = React.useCallback(async () => {
     setLoading(true);
     setListError(null);
     try {
       const [linksData, pointsData, empRes] = await Promise.all([
         loadCheckInPointLinks(),
-        loadCheckInPoints(),
+        checkInPointsApi.getAll({ limit: 200 }).then((r) => ({ items: r.items.map(mapCheckInPointResponse) })),
         employeesApi.getAll({ limit: 500 }),
       ]);
       setCheckpointLinks(linksData.items);
       setCheckpoints(pointsData.items);
       setEmployees(empRes.items);
-      setCompanyId(linksData.companyId ?? pointsData.companyId);
+      setCompanyId(linksData.companyId ?? null);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'check-in-point-links.load');
       setListError(displayMessage);
@@ -76,6 +84,37 @@ export function useCheckpointLinksPanelModel() {
       return n;
     });
   }, []);
+
+  const openEditDialog = React.useCallback((batchId: string) => {
+    const batch = batches.find((b) => b.batchId === batchId);
+    if (!batch) return;
+    setEditBatchId(batchId);
+    setEditEff(batch.eff ?? new Date().toISOString().slice(0, 10));
+    setEditLinkActive(batch.rows[0]?.linkActive ?? true);
+    setEditOpen(true);
+  }, [batches]);
+
+  const submitEdit = React.useCallback(async () => {
+    if (!editBatchId) return;
+    const rows = checkpointLinks.filter((l) => (l.batchId ?? l.id) === editBatchId);
+    try {
+      await Promise.all(
+        rows.map((l) =>
+          checkInPointLinksApi.update(l.id, {
+            effectiveFrom: editEff || null,
+            linkActive: editLinkActive,
+          }),
+        ),
+      );
+      toast.success('تم تحديث الدفعة');
+      setEditOpen(false);
+      setEditBatchId(null);
+      await reload();
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'check-in-point-links.update');
+      toast.error(displayMessage);
+    }
+  }, [editBatchId, editEff, editLinkActive, checkpointLinks, reload]);
 
   const openBatchDialog = React.useCallback(() => {
     setEff(new Date().toISOString().slice(0, 10));
@@ -167,6 +206,14 @@ export function useCheckpointLinksPanelModel() {
     loading,
     listError,
     removeCheckpointLinkBatch,
+    openEditDialog,
+    submitEdit,
+    editOpen,
+    setEditOpen,
+    editEff,
+    setEditEff,
+    editLinkActive,
+    setEditLinkActive,
     open,
     setOpen,
     eff,

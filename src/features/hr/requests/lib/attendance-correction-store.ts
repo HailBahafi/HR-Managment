@@ -6,7 +6,8 @@ export type AttendanceCorrectionRequest = {
   id: string;
   employeeId: string;
   employeeNameAr: string;
-  departmentId: string;
+  /** Department display name returned by the backend (not an ID). */
+  departmentNameAr: string;
   /** kept for UI compat — derived from requestTypeNameAr */
   requestTypeId: string;
   requestTypeNameAr: string;
@@ -43,7 +44,7 @@ function mapApi(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
     id: r.id,
     employeeId: r.employeeId,
     employeeNameAr: r.employeeNameAr,
-    departmentId: r.departmentNameAr ?? '',
+    departmentNameAr: r.departmentNameAr ?? '',
     requestTypeId: r.requestTypeId,
     requestTypeNameAr: r.requestTypeNameAr,
     workDate: r.workDate,
@@ -108,6 +109,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
         employeeId: input.employeeId,
         requestTypeId: input.requestTypeId,
         workDate: input.workDate,
+        previousStatus: input.previousStatusAr,
         correctedCheckInAt: dateTimeIso(input.workDate, input.correctedCheckIn ?? ''),
         correctedCheckOutAt: dateTimeIso(input.workDate, input.correctedCheckOut ?? ''),
         reasonAr: input.reasonAr,

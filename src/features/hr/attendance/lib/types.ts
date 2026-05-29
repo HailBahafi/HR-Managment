@@ -88,7 +88,7 @@ export interface ShiftAssignment {
 }
 
 export type AttendanceEventType = 'check_in' | 'check_out';
-export type AttendanceEventSource = 'device' | 'manual' | 'gps';
+export type AttendanceEventSource = 'mobile_app' | 'web_portal' | 'kiosk' | 'manual_hr' | 'biometric' | 'system';
 
 export interface AttendanceEvent {
   id: string;
@@ -106,6 +106,9 @@ export type DaySummaryStatus =
   | 'absent'
   | 'early_leave'
   | 'holiday'
+  | 'rest_day'
+  | 'unscheduled'
+  | 'on_leave'
   /** قيم قديمة — تُعرض في الواجهة كحاضر/غائب */
   | 'incomplete'
   | 'overtime';
@@ -122,6 +125,11 @@ export interface AttendanceDaySummary {
   overtimeMinutes: number;
   workedMinutes: number;
   notes?: string;
+  /** Check-in/out timestamps from the API (optional — shown in day detail dialog) */
+  actualCheckInAt?: string | null;
+  actualCheckOutAt?: string | null;
+  expectedStartAt?: string | null;
+  expectedEndAt?: string | null;
 }
 
 export interface DailyAttendanceSegment {

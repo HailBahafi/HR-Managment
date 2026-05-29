@@ -25,10 +25,28 @@ export const STATUS = {
     bar: 'bg-warning/70',
   },
   holiday: {
-    label: 'عطلة',
+    label: 'عطلة رسمية',
+    color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-800',
+    dot: 'bg-purple-500',
+    bar: 'bg-purple-400',
+  },
+  rest_day: {
+    label: 'يوم راحة',
     color: 'bg-muted/50 text-muted-foreground border-border',
     dot: 'bg-muted-foreground',
     bar: 'bg-muted-foreground/50',
+  },
+  unscheduled: {
+    label: 'غير مجدول',
+    color: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700',
+    dot: 'bg-slate-400',
+    bar: 'bg-slate-300',
+  },
+  on_leave: {
+    label: 'إجازة',
+    color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800',
+    dot: 'bg-blue-500',
+    bar: 'bg-blue-400',
   },
 } as const;
 
@@ -39,7 +57,10 @@ export const ATT_VISUAL_STATUS_ORDER: StatusVisualKey[] = [
   'late',
   'absent',
   'early_leave',
+  'on_leave',
   'holiday',
+  'rest_day',
+  'unscheduled',
 ];
 
 export const DEFAULT_ABSENT_DAY_HOURS = 8;

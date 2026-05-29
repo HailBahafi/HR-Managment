@@ -13,16 +13,15 @@ import { enumerateDates } from '@/features/hr/attendance/lib/utils';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import {
   ATT_VISUAL_STATUS_ORDER,
-  DEFAULT_ABSENT_DAY_HOURS,
   STATUS,
 } from '@/features/hr/attendance/daily/constants/daily-attendance-status';
-import { densifySummaries } from '@/features/hr/attendance/daily/utils/daily-attendance-densify';
 import { resolveVisualKey } from '@/features/hr/attendance/daily/utils/daily-attendance-status-resolve';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { attendanceEventsApi } from '@/features/hr/attendance/lib/api/attendance-events';
-import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { companiesApi } from '@/features/hr/lib/api/companies';
+
+export type AttendanceViewMode = 'card' | 'table';
 
 export function useDailyAttendanceModel() {
   const [daySummaries, setDaySummaries] = React.useState<AttendanceDaySummary[]>([]);
@@ -35,6 +34,7 @@ export function useDailyAttendanceModel() {
   const [dateBounds, setDateBounds] = React.useState(() => thisCalendarMonthYMD());
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [pdfOpen, setPdfOpen] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState<AttendanceViewMode>('card');
 
   const { from: filterFrom, to: filterTo } = dateBounds;
 
@@ -45,16 +45,6 @@ export function useDailyAttendanceModel() {
         const res = await companiesApi.getAll({ limit: 1 });
         const c = res.items[0];
         if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
-      } catch { /* ignore */ }
-    })();
-  }, []);
-
-  // Load employees once
-  React.useEffect(() => {
-    void (async () => {
-      try {
-        const res = await employeesApi.getAll({ limit: 500 });
-        setAllEmployees(res.items.map((e) => ({ id: e.id, name: e.nameAr })));
       } catch { /* ignore */ }
     })();
   }, []);
@@ -85,8 +75,16 @@ export function useDailyAttendanceModel() {
             overtimeMinutes: s.overtimeMinutes,
             workedMinutes: s.workedMinutes,
             notes: s.notes ?? undefined,
+            actualCheckInAt: (s as Record<string, unknown>).actualCheckInAt as string | null ?? null,
+            actualCheckOutAt: (s as Record<string, unknown>).actualCheckOutAt as string | null ?? null,
+            expectedStartAt: (s as Record<string, unknown>).expectedStartAt as string | null ?? null,
+            expectedEndAt: (s as Record<string, unknown>).expectedEndAt as string | null ?? null,
           })),
         );
+        // Derive unique employees from the API data
+        const empMap = new Map<string, string>();
+        for (const s of summRes.items) empMap.set(s.employeeId, s.employeeNameAr);
+        setAllEmployees([...empMap.entries()].map(([id, name]) => ({ id, name })));
         setEvents(
           evtRes.items.map((e) => ({
             id: e.id,
@@ -95,7 +93,7 @@ export function useDailyAttendanceModel() {
             date: e.workDate,
             type: e.eventType,
             at: e.occurredAt,
-            source: e.source ?? 'manual',
+            source: e.source ?? 'manual_hr',
           })) as AttendanceEvent[],
         );
       } catch { /* ignore */ }
@@ -119,12 +117,6 @@ export function useDailyAttendanceModel() {
   }, [dateBounds, spanFromData, filterFrom, filterTo]);
 
   const dates = React.useMemo(() => enumerateDates(from, to), [from, to]);
-
-  const roster = React.useMemo(() => {
-    let emps = allEmployees;
-    if (selectedEmpIds.size > 0) emps = emps.filter((e) => selectedEmpIds.has(e.id));
-    return emps;
-  }, [allEmployees, selectedEmpIds]);
 
   const filtered = React.useMemo(
     () =>
@@ -150,7 +142,7 @@ export function useDailyAttendanceModel() {
     [events, from, to, selectedEmpIds],
   );
 
-  const denseSummaries = React.useMemo(() => densifySummaries(filtered, dates, roster), [filtered, dates, roster]);
+  const denseSummaries = filtered;
 
   const attendanceStatusLabels = React.useMemo(
     () => Object.fromEntries(ATT_VISUAL_STATUS_ORDER.map((k) => [k, STATUS[k].label])) as Record<string, string>,
@@ -232,25 +224,13 @@ export function useDailyAttendanceModel() {
     toast.success('تم تنزيل ملف Excel.');
   }, [denseForView, from, to]);
 
-  const stats = React.useMemo(() => {
-    const workedM = denseForView.reduce((a, s) => a + s.workedMinutes, 0);
-    const lateM = denseForView.reduce((a, s) => a + s.lateMinutes, 0);
-    const absentDays = denseForView.filter((s) => resolveVisualKey(s.status) === 'absent').length;
-    const denom = denseForView.length || 1;
-    return {
-      workHours: workedM / 60,
-      lateHours: lateM / 60,
-      absentHours: absentDays * DEFAULT_ABSENT_DAY_HOURS,
-      avgWorkHours: workedM / 60 / denom,
-    };
-  }, [denseForView]);
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        defaultDateFilterTab="month"
+        defaultDateFilterTab="today"
         empPickerEmployees={allEmployees}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -305,10 +285,11 @@ export function useDailyAttendanceModel() {
       attendanceStatusCounts.absent,
       attendanceStatusCounts.early_leave,
       attendanceStatusCounts.holiday,
-      attendanceStatusLabels,
-      attendancePdfRows.length,
-      handleExportAttendanceExcel,
-      allEmployees,
+      attendanceStatusCounts.rest_day,
+      attendanceStatusCounts.unscheduled,
+      attendanceStatusCounts.on_leave,
+      // allEmployees, handleExportAttendanceExcel, attendancePdfRows.length omitted —
+      // renderRef.current() always captures the latest values without needing re-registration.
     ],
   );
 
@@ -318,10 +299,11 @@ export function useDailyAttendanceModel() {
     dates,
     denseForView,
     eventsForView,
-    stats,
     attendancePrintable,
     attendancePdfFileName,
     pdfOpen,
     setPdfOpen,
+    viewMode,
+    setViewMode,
   };
 }

@@ -28,6 +28,8 @@ import {
 } from '@/features/hr/leaves/unified-management/lib/leaves-utils';
 import type { EmployeeLeaveBalanceRow } from '@/features/hr/leaves/unified-management/types';
 import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
+import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
+import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/features/hr/leaves/unified-management/types';
 import { cn, toWesternDigits } from '@/shared/utils';
 
@@ -75,7 +77,20 @@ const LEAVE_STATUS_LABELS_FOR_TOOLBAR: Record<string, string> = {
 
 export function UnifiedManagementClient() {
   const { data: employeesResult } = useEmployees();
-  const employeesList = employeesResult?.items ?? [];
+  const employeesList = React.useMemo(() => employeesResult?.items ?? [], [employeesResult]);
+
+  const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const scope = await resolveOrganizationScope();
+        const res = await branchesApi.getAll(scope.companyId ? { companyId: scope.companyId, limit: 200 } : { limit: 200 });
+        setBranches(res.items.filter((b) => b.isActive));
+      } catch {
+        // silently ignore — branch filter stays empty
+      }
+    })();
+  }, []);
 
   const [leaves, setLeaves] = React.useState<UnifiedLeaveRecord[]>([]);
   const [branchId, setBranchId] = React.useState('all');
@@ -84,8 +99,8 @@ export function UnifiedManagementClient() {
   const [approvalStageFilter, setApprovalStageFilter] = React.useState<string>('all');
 
   const branchInlineOptions = React.useMemo(
-    () => [{ value: 'all', label: 'جميع الفروع' }],
-    [],
+    () => [{ value: 'all', label: 'جميع الفروع' }, ...branches.map((b) => ({ value: b.id, label: b.nameAr }))],
+    [branches],
   );
   const deptInlineOptions = React.useMemo(
     () => [{ value: 'all', label: 'جميع الأقسام' }],
@@ -163,6 +178,7 @@ export function UnifiedManagementClient() {
     const empPick = [...selectedEmpIds];
     return leaves.filter((l) => {
       if (empPick.length > 0 && !empPick.includes(l.employeeId)) return false;
+      if (filters.branchId !== 'all' && l.requestBranchId !== filters.branchId) return false;
       if (filters.status !== 'all' && l.status !== filters.status) return false;
       if (filters.type !== 'all' && l.type !== filters.type) return false;
       if (filters.approvalStage !== 'all') {
@@ -262,7 +278,7 @@ export function UnifiedManagementClient() {
 
       {/* Content */}
       {view === 'table'
-        ? <LeaveTable leaves={filtered} employees={employeesList} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
+        ? <LeaveTable leaves={filtered} employees={employeesList} branches={branches} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
         : <LeaveCalendar leaves={filtered} employees={employeesList} month={calMonth} onMonthChange={setCalMonth} onDetail={setDetailLeave} />
       }
 
@@ -284,6 +300,7 @@ export function UnifiedManagementClient() {
         open={addOpen}
         editLeave={editLeave}
         employees={employeesList}
+        branches={branches}
         onClose={() => { setAddOpen(false); setEditLeave(null); }}
         onSave={(l) => {
           if (editLeave) updateLeave(l);
@@ -298,9 +315,10 @@ export function UnifiedManagementClient() {
 
 // ─── Leave table ──────────────────────────────────────────────────────────────
 
-function LeaveTable({ leaves, employees, onDetail, onApprove, onReject }: {
+function LeaveTable({ leaves, employees, branches, onDetail, onApprove, onReject }: {
   leaves: UnifiedLeaveRecord[];
   employees: { id: string; nameAr: string }[];
+  branches: BranchResponseDto[];
   onDetail: (l: UnifiedLeaveRecord) => void;
   onApprove: (l: UnifiedLeaveRecord) => void;
   onReject: (l: UnifiedLeaveRecord) => void;
@@ -368,7 +386,7 @@ function LeaveTable({ leaves, employees, onDetail, onApprove, onReject }: {
       key: 'branch',
       title: 'الفرع',
       hideOnMobile: true,
-      render: (l) => <span className="text-xs text-muted-foreground">{l.requestBranchId}</span>,
+      render: (l) => <span className="text-xs text-muted-foreground">{branches.find((b) => b.id === l.requestBranchId)?.nameAr ?? l.requestBranchId ?? '—'}</span>,
     },
     {
       key: 'actions',
@@ -652,10 +670,11 @@ function LeaveDetailDialog({ leave, employees, open, onClose, onApprove, onRejec
 
 // ─── Add/Edit leave dialog ────────────────────────────────────────────────────
 
-function AddLeaveDialog({ open, editLeave, employees, onClose, onSave }: {
+function AddLeaveDialog({ open, editLeave, employees, branches, onClose, onSave }: {
   open: boolean;
   editLeave: UnifiedLeaveRecord | null;
   employees: { id: string; nameAr: string }[];
+  branches: BranchResponseDto[];
   onClose: () => void;
   onSave: (l: UnifiedLeaveRecord) => void;
 }) {
@@ -729,6 +748,13 @@ function AddLeaveDialog({ open, editLeave, employees, onClose, onSave }: {
             <Select value={branchId} onValueChange={setBranchId}>
               <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
               <SelectContent>
+                {branches.length === 0 ? (
+                  <SelectItem value="__none__" disabled>لا توجد فروع</SelectItem>
+                ) : (
+                  branches.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
