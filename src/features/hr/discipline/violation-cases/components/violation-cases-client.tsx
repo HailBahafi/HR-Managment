@@ -38,6 +38,8 @@ import {
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 
 type StatusFilter = 'all' | HRViolationCaseStatus;
 
@@ -299,10 +301,27 @@ export function ViolationCasesClient() {
     setDraft(EMPTY);
   };
 
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          مخالفة جديدة
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
+
   useEntityFilterSlot(
     () => (
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
+        showPrimaryAction={false}
         primaryActionLabel="مخالفة جديدة"
         onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
         toolbarExtraTrailing={(

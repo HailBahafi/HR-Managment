@@ -1,11 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, Megaphone, Send, FileDown } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Megaphone, Send, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { usePageFilters } from '@/components/filter-panel-context';
+import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown,
@@ -221,6 +224,60 @@ export function CircularsClient() {
 
   const dateRangeActive = dateMeta.hasRestriction;
 
+  const activeFilterCount = (q.trim() ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0) + (audienceFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { setDraft({ ...EMPTY, date: new Date().toISOString().slice(0, 10), executeSend: false }); setFormError(null); setDrawerOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          تعميم جديد
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
+
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  useEntityFilterSlot(
+    () => (
+      <DisciplineFilterToolbar
+        ref={filterToolbarRef}
+        showPrimaryAction={false}
+        primaryActionLabel="تعميم جديد"
+        onPrimaryAction={() => {
+          setDraft({ ...EMPTY, date: new Date().toISOString().slice(0, 10), executeSend: false });
+          setFormError(null);
+          setDrawerOpen(true);
+        }}
+        empPickerEmployees={empPickerList}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        statusFilter={audienceFilter}
+        onStatusFilterChange={(v) => setAudienceFilter(v as AudienceFilter)}
+        statusOrder={CIRCULAR_AUDIENCE_FILTER_ORDER}
+        statusLabels={CIRCULAR_AUDIENCE_LABELS as unknown as Record<string, string>}
+        statusCounts={statusCounts}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
+      />
+    ),
+    [
+      empPickerList,
+      selectedEmpKey,
+      audienceFilter,
+      statusCounts,
+      viewMode,
+      onDateBoundsChange,
+      onDateFilterMetaChange,
+    ],
+  );
+
   const set = (patch: Partial<DraftForm>) => setDraft((d) => ({ ...d, ...patch }));
 
   const handleSave = () => {
@@ -265,28 +322,6 @@ export function CircularsClient() {
 
   return (
     <div className="space-y-4">
-      <DisciplineFilterToolbar
-        ref={filterToolbarRef}
-        primaryActionLabel="تعميم جديد"
-        onPrimaryAction={() => {
-          setDraft({ ...EMPTY, date: new Date().toISOString().slice(0, 10), executeSend: false });
-          setFormError(null);
-          setDrawerOpen(true);
-        }}
-        empPickerEmployees={empPickerList}
-        selectedEmpIds={selectedEmpIds}
-        onSelectedEmpIdsChange={setSelectedEmpIds}
-        statusFilter={audienceFilter}
-        onStatusFilterChange={(v) => setAudienceFilter(v as AudienceFilter)}
-        statusOrder={CIRCULAR_AUDIENCE_FILTER_ORDER}
-        statusLabels={CIRCULAR_AUDIENCE_LABELS as unknown as Record<string, string>}
-        statusCounts={statusCounts}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onDateBoundsChange={onDateBoundsChange}
-        onDateFilterMetaChange={onDateFilterMetaChange}
-      />
-
       {searchFiltered.length === 0 ? (
         <EmptyState title="لا توجد تعميمات مطابقة للبحث أو للموظفين المحددين في شريط الفلاتر." />
       ) : filtered.length === 0 ? (

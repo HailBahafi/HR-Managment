@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Trash2, Eye, FileText, ArrowLeft } from 'lucide-react';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +53,13 @@ export function ApplicantManagementClient() {
     setDeleteId(null);
     toast.success('تم حذف المتقدم');
   };
+
+  const activeFilterCount = (search.trim() ? 1 : 0) + (selectedFormId ? 1 : 0);
+
+  usePageHeaderActions(
+    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
+    [activeFilterCount],
+  );
 
   const getPrimaryLabel = (applicant: RecruitmentApplicant): string => {
     const form = getApplicantForm(applicant);

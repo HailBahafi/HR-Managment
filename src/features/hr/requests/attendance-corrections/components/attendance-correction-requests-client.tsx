@@ -4,6 +4,8 @@ import * as React from 'react';
 import { CheckCircle2, Plus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -182,6 +184,21 @@ export function AttendanceCorrectionRequestsClient() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (appliedDept !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openNew}>
+          <Plus className="h-3.5 w-3.5" />
+          طلب تصحيح حضور
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, openNew],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -203,12 +220,6 @@ export function AttendanceCorrectionRequestsClient() {
         statusLabels={STATUS_LABELS}
         statusCounts={statusCounts}
         onDateBoundsChange={setDateBounds}
-        trailingActions={(
-          <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openNew}>
-            <Plus className="h-3.5 w-3.5" />
-            طلب تصحيح حضور
-          </Button>
-        )}
       />
     ),
     [

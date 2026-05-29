@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { Plus, Pencil, Trash2, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Input } from '@/components/ui/input';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Switch } from '@/components/ui/switch';
@@ -96,6 +98,20 @@ export function RequestTypesClient() {
     setDrawerOpen(true);
   };
 
+  const activeFilterCount = (categoryFilter !== 'all' ? 1 : 0) + (typeStatusFilter !== 'all' ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
+          <Plus className="h-4 w-4" /> نوع جديد
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, openCreate],
+  );
+
   const openEdit = (rt: HRRequestTypeEntity) => {
     setEditId(rt.id);
     setDraft({
@@ -168,11 +184,6 @@ export function RequestTypesClient() {
             { value: 'grid', label: 'شبكة', icon: 'layout-grid' },
           ],
         }}
-        trailingActions={(
-          <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> نوع جديد
-          </Button>
-        )}
       />
     ),
     [

@@ -5,6 +5,8 @@ import {
   Plus, ChevronLeft, ChevronRight,
   CheckCircle2, XCircle, Clock,
 } from 'lucide-react';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { format, addMonths, subMonths, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, getDay, isValid } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -196,6 +198,30 @@ export function UnifiedManagementClient() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
+  const activeFilterCount = React.useMemo(
+    () =>
+      (selectedEmpIds.size > 0 ? 1 : 0) +
+      (branchId !== 'all' ? 1 : 0) +
+      (departmentId !== 'all' ? 1 : 0) +
+      (leaveType !== 'all' ? 1 : 0) +
+      (approvalStageFilter !== 'all' ? 1 : 0) +
+      (statusFilter !== 'all' ? 1 : 0),
+    [selectedEmpIds.size, branchId, departmentId, leaveType, approvalStageFilter, statusFilter],
+  );
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          إضافة إجازة
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
+
   useEntityFilterSlot(
     () => (
       <LeavesManagementToolbar
@@ -222,12 +248,7 @@ export function UnifiedManagementClient() {
             { value: 'calendar', label: 'تقويم', icon: 'calendar-days' },
           ],
         }}
-        trailingActions={(
-          <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0" onClick={() => { setEditLeave(null); setAddOpen(true); }}>
-            <Plus className="h-3.5 w-3.5" />
-            إضافة إجازة
-          </Button>
-        )}
+        trailingActions={null}
       />
     ),
     [

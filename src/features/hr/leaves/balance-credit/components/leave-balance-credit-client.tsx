@@ -15,6 +15,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { LeavesManagementToolbar } from '@/features/hr/leaves/components/leaves-management-toolbar';
 import { intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
 import { cn, toWesternDigits } from '@/lib/utils';
@@ -149,6 +151,30 @@ export function LeaveBalanceCreditClient() {
     setAddOpen(false);
   };
 
+  const activeFilterCount = React.useMemo(
+    () =>
+      (selectedEmpIds.size > 0 ? 1 : 0) +
+      (branchId !== 'all' ? 1 : 0) +
+      (departmentId !== 'all' ? 1 : 0) +
+      (statusFilter !== 'all' ? 1 : 0) +
+      (dateBounds.from || dateBounds.to ? 1 : 0),
+    [selectedEmpIds.size, branchId, departmentId, statusFilter, dateBounds.from, dateBounds.to],
+  );
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { resetAddForm(); setAddOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          طلب إضافة رصيد
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, resetAddForm],
+  );
+
   useEntityFilterSlot(
     () => (
       <LeavesManagementToolbar
@@ -165,17 +191,7 @@ export function LeaveBalanceCreditClient() {
         statusLabels={CREDIT_STATUS_LABELS}
         statusCounts={statusCounts}
         onDateBoundsChange={setDateBounds}
-        trailingActions={(
-          <Button
-            variant="luxe"
-            size="sm"
-            className="h-8 gap-1 px-3 text-xs shadow-sm shrink-0"
-            onClick={() => { resetAddForm(); setAddOpen(true); }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            طلب إضافة رصيد
-          </Button>
-        )}
+        trailingActions={null}
       />
     ),
     [

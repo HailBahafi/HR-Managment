@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/set-page-title';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown, MinimalDropdown,
 } from '@/components/hr-requests/shared-ui';
@@ -204,6 +206,21 @@ export function EmployeeAdvancesClient() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openCreate}>
+          <Plus className="h-3.5 w-3.5" />
+          سلفة جديدة
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, openCreate],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -222,16 +239,11 @@ export function EmployeeAdvancesClient() {
         statusCounts={advanceStatusCounts}
         onDateBoundsChange={() => {}}
         trailingActions={(
-          <>
-            {filtered.length > 0 && (
-              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
-                <Download className="h-3.5 w-3.5" />تصدير
-              </Button>
-            )}
-            <Button size="sm" className="h-8 gap-1.5" onClick={openCreate}>
-              <Plus className="h-4 w-4" />سلفة جديدة
+          filtered.length > 0 ? (
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
+              <Download className="h-3.5 w-3.5" />تصدير
             </Button>
-          </>
+          ) : undefined
         )}
       />
     ),

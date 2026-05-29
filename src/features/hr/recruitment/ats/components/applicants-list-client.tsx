@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Users, Star, X, Calendar } from 'lucide-react';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +84,13 @@ export function ApplicantsListClient() {
   }), [applicants, forms, search, stageTab, jobFilter, minScore]);
 
   const stageLabel = STAGES.find((s) => s.key === stageTab)?.label ?? '';
+
+  const activeFilterCount = (stageTab !== 'all' ? 1 : 0) + (jobFilter !== 'all' ? 1 : 0) + (!!minScore ? 1 : 0) + (!!search ? 1 : 0);
+
+  usePageHeaderActions(
+    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
+    [activeFilterCount],
+  );
 
   return (
     <div className="space-y-4 animate-fade-in">

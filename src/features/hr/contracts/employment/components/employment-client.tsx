@@ -12,6 +12,8 @@ import { Switch } from '@/components/ui/switch';
 import { SetPageTitle } from '@/components/set-page-title';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageFilters } from '@/components/filter-panel-context';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
@@ -401,6 +403,21 @@ export function EmploymentContractsClient() {
   const total = filtered.length;
   const readOnly = panelMode === 'view';
 
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (kindFilter !== 'all' ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openCreate}>
+          <Plus className="h-3.5 w-3.5" />
+          عقد جديد
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, openCreate],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -423,11 +440,6 @@ export function EmploymentContractsClient() {
             placeholder: 'نوع العقد',
           },
         ]}
-        trailingActions={(
-          <Button onClick={openCreate} className="h-8 gap-1.5 px-3 text-xs shadow-sm">
-            <Plus className="h-4 w-4" />عقد جديد
-          </Button>
-        )}
       />
     ),
     [

@@ -13,6 +13,8 @@ import { SetPageTitle } from '@/components/set-page-title';
 import { usePageFilters } from '@/components/filter-panel-context';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { intervalOverlapsYmdRange } from '@/lib/hr-discipline/discipline-date-filter';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
@@ -126,6 +128,21 @@ export function PayrollPeriodsClient() {
 
   const set = (patch: Partial<HRPayrollPeriodDraft>) => setDraft(d => ({ ...d, ...patch }));
 
+  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (dateBounds.from || dateBounds.to ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openCreate}>
+          <Plus className="h-3.5 w-3.5" />
+          فترة جديدة
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, openCreate],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -140,11 +157,6 @@ export function PayrollPeriodsClient() {
         }}
         statusCounts={statusCounts}
         onDateBoundsChange={onDateBoundsChange}
-        trailingActions={(
-          <Button onClick={openCreate} className="h-8 gap-1.5 px-3 text-xs shadow-sm">
-            <Plus className="h-4 w-4" />فترة جديدة
-          </Button>
-        )}
       />
     ),
     [

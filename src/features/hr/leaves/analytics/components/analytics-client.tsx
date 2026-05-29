@@ -5,6 +5,8 @@ import { FileDown, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import {
   MOCK_ANALYTICS_EMPLOYEES,
   MOCK_BRANCHES,
@@ -240,6 +242,13 @@ export function AnalyticsClient() {
   );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (branchFilter !== 'all' ? 1 : 0) + (leaveStatusFilter !== 'all' ? 1 : 0) + (dateBounds.from || dateBounds.to ? 1 : 0);
+
+  usePageHeaderActions(
+    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
+    [activeFilterCount],
+  );
 
   useEntityFilterSlot(
     () => (

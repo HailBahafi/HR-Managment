@@ -25,6 +25,8 @@ import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dial
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/lib/export/download-xlsx';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 
 const RESULT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -172,10 +174,27 @@ export function InvestigationsClient() {
     setDraft(EMPTY);
   };
 
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (resultFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          إضافة تحقيق
+        </Button>
+      </div>
+    ),
+    [activeFilterCount],
+  );
+
   useEntityFilterSlot(
     () => (
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
+        showPrimaryAction={false}
         primaryActionLabel="إضافة تحقيق"
         onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
         toolbarExtraTrailing={(

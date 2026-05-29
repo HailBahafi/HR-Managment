@@ -24,6 +24,8 @@ import {
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 
 const DEDUCTION_STATUS_ORDER: readonly HRDeductionStatus[] = ['ready', 'posted', 'calculated', 'cancelled'];
 
@@ -110,6 +112,13 @@ export function DeductionsClient() {
   );
 
   const dateRangeActive = dateMeta.hasRestriction;
+
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (kindFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
+
+  usePageHeaderActions(
+    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
+    [activeFilterCount],
+  );
 
   const kindSelect = (
     <div className="flex min-w-0 items-center gap-2">
