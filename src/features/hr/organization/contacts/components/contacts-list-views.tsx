@@ -1,8 +1,8 @@
 'use client';
 
-import { UserCircle, Pencil, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { UserCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { RowActions } from '@/components/ui/row-actions';
 import {
   DirectoryGrid,
   DirectoryGridCard,
@@ -27,9 +27,7 @@ import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { USER_TYPE_LABELS } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 import type { UserRecord, ContactsDirectoryModel } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 
-type Props = {
-  model: ContactsDirectoryModel;
-};
+type Props = { model: ContactsDirectoryModel };
 
 function statusBadge(user: UserRecord) {
   if (!user.isActive) return <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">غير نشط</Badge>;
@@ -62,11 +60,7 @@ export function ContactsListViews({ model }: Props) {
       <DirectoryResultCount>{users.length} مستخدم</DirectoryResultCount>
 
       {users.length === 0 ? (
-        <EmptyState
-          icon={UserCircle}
-          title="لا توجد مستخدمون"
-          description="أضف حسابات مستخدمي النظام."
-        />
+        <EmptyState icon={UserCircle} title="لا توجد مستخدمون" description="أضف حسابات مستخدمي النظام." />
       ) : layoutView === 'grid' ? (
         <DirectoryGrid>
           {users.map((row) => (
@@ -88,7 +82,7 @@ export function ContactsListViews({ model }: Props) {
               <DirectoryTableHead>نوع المستخدم</DirectoryTableHead>
               <DirectoryTableHead>الحالة</DirectoryTableHead>
               <DirectoryTableHead>الجوال</DirectoryTableHead>
-              <DirectoryTableHead className="text-start w-28">إجراءات</DirectoryTableHead>
+              <DirectoryTableHead className="text-start w-16">إجراءات</DirectoryTableHead>
             </DirectoryTableHeaderRow>
             <DirectoryTableBody>
               {users.map((row) => (
@@ -103,18 +97,13 @@ export function ContactsListViews({ model }: Props) {
                   <DirectoryTableCell>{statusBadge(row)}</DirectoryTableCell>
                   <DirectoryTableCell className="text-muted-foreground" dir="ltr">{row.phone ?? '—'}</DirectoryTableCell>
                   <DirectoryTableActionsCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row)} aria-label="تعديل">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => setConfirmId(row.id)}
-                      aria-label="حذف"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <RowActions
+                      menuItems={[
+                        { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewRow(row); } },
+                        { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
+                        { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
+                      ]}
+                    />
                   </DirectoryTableActionsCell>
                 </DirectoryTableRow>
               ))}
@@ -126,17 +115,7 @@ export function ContactsListViews({ model }: Props) {
   );
 }
 
-function UserGridCard({
-  row,
-  onOpen,
-  onEdit,
-  onDelete,
-}: {
-  row: UserRecord;
-  onOpen: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
+function UserGridCard({ row, onOpen, onEdit, onDelete }: { row: UserRecord; onOpen: () => void; onEdit: () => void; onDelete: () => void }) {
   return (
     <DirectoryGridCard interactive onClick={onOpen}>
       <DirectoryGridCardHeader>
@@ -158,12 +137,13 @@ function UserGridCard({
         )}
       </DirectoryGridCardMeta>
       <DirectoryGridCardFooter>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit} aria-label="تعديل">
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={onDelete} aria-label="حذف">
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <RowActions
+          menuItems={[
+            { label: 'عرض', onClick: (e) => { e.stopPropagation(); onOpen(); } },
+            { label: 'تعديل', onClick: (e) => { e.stopPropagation(); onEdit(); } },
+            { label: 'حذف', onClick: (e) => { e.stopPropagation(); onDelete(); }, destructive: true, separator: true },
+          ]}
+        />
       </DirectoryGridCardFooter>
     </DirectoryGridCard>
   );

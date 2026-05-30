@@ -11,6 +11,7 @@ import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-
 import {
   disciplineInvestigationsApi,
   type CreateDisciplineInvestigationDto,
+  type InvestigationResultDto,
 } from '@/features/hr/discipline/lib/api/discipline-investigations';
 import {
   mapDisciplineInvestigationResponse,
@@ -39,6 +40,34 @@ export function useDisciplineInvestigationsDirectoryModel() {
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
+  const companyIdRef = React.useRef<string | null>(null);
+  const employeeNameByIdRef = React.useRef<Record<string, string>>({});
+
+  const reloadInvestigations = React.useCallback(
+    async (params?: { employeeId?: string; result?: InvestigationResultDto }) => {
+      const cid = companyIdRef.current;
+      if (!cid) return;
+      setLoading(true);
+      setListError(null);
+      try {
+        const investigationsRes = await disciplineInvestigationsApi.getAll({
+          companyId: cid,
+          limit: PAGE_LIMIT,
+          ...(params?.employeeId ? { subjectEmployeeId: params.employeeId } : {}),
+          ...(params?.result ? { result: params.result } : {}),
+        });
+        const items = ensurePaginatedResult(investigationsRes).items;
+        setInvestigations(items.map((inv) => mapDisciplineInvestigationResponse(inv, employeeNameByIdRef.current)));
+      } catch (err) {
+        const { displayMessage } = handleApiError(err, 'discipline-investigations.load');
+        setListError(displayMessage);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
   const reload = React.useCallback(async () => {
     setLoading(true);
     setListError(null);
@@ -46,6 +75,7 @@ export function useDisciplineInvestigationsDirectoryModel() {
       const scope = await resolveOrganizationScope();
       const resolvedCompanyId = scope.companyId ?? null;
       setCompanyId(resolvedCompanyId);
+      companyIdRef.current = resolvedCompanyId;
 
       const [companiesRes, employeesRes, casesRes, investigationsRes] = await Promise.all([
         companiesApi.getAll({ limit: 50 }),
@@ -73,6 +103,7 @@ export function useDisciplineInvestigationsDirectoryModel() {
       const employeeNameById = Object.fromEntries(
         employeesItems.map((emp) => [emp.id, emp.nameAr]),
       );
+      employeeNameByIdRef.current = employeeNameById;
       setEmployees(employeesItems.map((emp) => ({ id: emp.id, nameAr: emp.nameAr })));
 
       const caseItems = ensurePaginatedResult(casesRes).items;
@@ -128,5 +159,6 @@ export function useDisciplineInvestigationsDirectoryModel() {
     listError,
     add,
     remove,
+    reloadInvestigations,
   };
 }

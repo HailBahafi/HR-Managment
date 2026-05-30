@@ -42,9 +42,51 @@ export type CreateShiftAssignmentDto = {
 
 export type UpdateShiftAssignmentDto = Partial<Omit<CreateShiftAssignmentDto, 'companyId' | 'shiftTemplateId' | 'employeeId'>>;
 
+export type GroupedByTemplateEmployee = {
+  assignmentId: string;
+  employeeId: string;
+  employeeNameAr: string;
+  employeeNameEn: string | null;
+  employeeCode: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  openShiftHours: number | null;
+  batchId: string | null;
+  isActive: boolean;
+  notes: string | null;
+};
+
+export type GroupedByTemplateItem = {
+  shiftTemplate: {
+    id: string;
+    companyId: string;
+    nameAr: string;
+    nameEn: string | null;
+    colorHex: string;
+    effectiveFrom: string;
+    isActive: boolean;
+  };
+  totalAssignments: number;
+  activeAssignments: number;
+  employees: GroupedByTemplateEmployee[];
+};
+
+export type GroupedByTemplateQuery = {
+  page?: number;
+  limit?: number;
+  companyId?: string;
+  employeeId?: string;
+  shiftTemplateId?: string;
+  isActive?: boolean;
+  batchId?: string;
+};
+
 export const shiftAssignmentsApi = {
   getAll(query?: ShiftAssignmentListQuery) {
     return apiRequest<PaginatedResult<ShiftAssignmentResponseDto>>('/attendance/shift-assignments', { query });
+  },
+  getGroupedByTemplate(query?: GroupedByTemplateQuery) {
+    return apiRequest<PaginatedResult<GroupedByTemplateItem>>('/attendance/shift-assignments/grouped-by-template', { query });
   },
   getById(id: string) {
     return apiRequest<ShiftAssignmentResponseDto>(`/attendance/shift-assignments/${id}`);

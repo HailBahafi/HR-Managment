@@ -1,18 +1,39 @@
 'use client';
 
-import Link from 'next/link';
-import { Building2, Eye, Mail, Trash2 } from 'lucide-react';
-import { RowActions } from '@/components/ui/row-actions';
-import { NewEmployeeDrawer } from '@/features/hr/organization/employees/components/new-employee-drawer';
+import { Building2, Mail } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { StatusBadge, ContractTypeLabel } from '@/components/shared/status-badge';
+import { ContractTypeLabel } from '@/components/shared/status-badge';
+import { RowActions } from '@/components/ui/row-actions';
+import {
+  DirectoryGrid,
+  DirectoryGridCard,
+  DirectoryGridCardFooter,
+  DirectoryGridCardHeader,
+  DirectoryGridCardMeta,
+  DirectoryGridCardMetaRow,
+  DirectoryGridCardTitle,
+  DirectoryResultCount,
+} from '@/components/ui/directory-grid-card';
+import {
+  DirectoryTable,
+  DirectoryTableActionsCell,
+  DirectoryTableBody,
+  DirectoryTableCell,
+  DirectoryTableContainer,
+  DirectoryTableHead,
+  DirectoryTableHeaderRow,
+  DirectoryTableRow,
+} from '@/components/ui/directory-table';
+import { NewEmployeeDrawer } from '@/features/hr/organization/employees/components/new-employee-drawer';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
+import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { formatCurrency, formatDateShort, getInitials } from '@/shared/utils';
 import type { EmployeesListModel } from '@/features/hr/organization/employees/hooks/useEmployeesListModel';
 import { hrOrganizationRoutes } from '@/features/hr/organization/constants/routes';
 
 type Props = { model: EmployeesListModel };
+type FilteredRow = EmployeesListModel['filtered'][number];
 
 export function EmployeesListViews({ model }: Props) {
   const {
@@ -61,156 +82,142 @@ export function EmployeesListViews({ model }: Props) {
         onConfirm={handleDelete}
       />
 
-      {view === 'table' ? (
-        <EmployeesListTable filtered={filtered} router={router} total={employees.length} onDelete={setDeleteId} />
+      <DirectoryResultCount>
+        {filtered.length} من {employees.length} موظف
+      </DirectoryResultCount>
+
+      {filtered.length === 0 ? (
+        <EmptyState title="لا توجد نتائج — جرّب تعديل الفلاتر" />
+      ) : view === 'table' ? (
+        <DirectoryTableContainer>
+          <DirectoryTable>
+            <DirectoryTableHeaderRow>
+              <DirectoryTableHead>الموظف</DirectoryTableHead>
+              <DirectoryTableHead>القسم / الفرع</DirectoryTableHead>
+              <DirectoryTableHead>نوع العقد</DirectoryTableHead>
+              <DirectoryTableHead>تاريخ الالتحاق</DirectoryTableHead>
+              <DirectoryTableHead>الراتب الأساسي</DirectoryTableHead>
+              <DirectoryTableHead>الجنسية</DirectoryTableHead>
+              <DirectoryTableHead className="text-start w-16">إجراءات</DirectoryTableHead>
+            </DirectoryTableHeaderRow>
+            <DirectoryTableBody>
+              {filtered.map((emp) => (
+                <DirectoryTableRow
+                  key={emp.id}
+                  interactive
+                  onClick={() => router.push(hrOrganizationRoutes.employee(emp.id))}
+                >
+                  <DirectoryTableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8 ring-1 ring-border shrink-0">
+                        <AvatarImage src={emp.avatar ?? undefined} />
+                        <AvatarFallback className="text-xs">{getInitials(emp.nameAr)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">{emp.nameAr}</p>
+                        <p className="text-xs text-muted-foreground truncate">{emp.employeeCode} · {emp.position ?? '—'}</p>
+                      </div>
+                    </div>
+                  </DirectoryTableCell>
+                  <DirectoryTableCell className="text-muted-foreground">
+                    {emp.departmentNameAr ?? emp.branchNameAr ?? '—'}
+                  </DirectoryTableCell>
+                  <DirectoryTableCell>
+                    <ContractTypeLabel type={emp.contractType ?? ''} />
+                  </DirectoryTableCell>
+                  <DirectoryTableCell className="text-muted-foreground">
+                    {emp.startDate ? formatDateShort(emp.startDate) : '—'}
+                  </DirectoryTableCell>
+                  <DirectoryTableCell className="font-semibold number-ar">
+                    {emp.baseSalary ? formatCurrency(parseFloat(emp.baseSalary)) : '—'}
+                  </DirectoryTableCell>
+                  <DirectoryTableCell className="text-muted-foreground">
+                    {emp.nationality ?? '—'}
+                  </DirectoryTableCell>
+                  <DirectoryTableActionsCell>
+                    <RowActions
+                      menuItems={[
+                        { label: 'عرض', href: hrOrganizationRoutes.employee(emp.id) },
+                        { label: 'حذف', onClick: (e) => { e.stopPropagation(); setDeleteId(emp.id); }, destructive: true, separator: true },
+                      ]}
+                    />
+                  </DirectoryTableActionsCell>
+                </DirectoryTableRow>
+              ))}
+            </DirectoryTableBody>
+          </DirectoryTable>
+        </DirectoryTableContainer>
       ) : (
-        <EmployeesListGrid filtered={filtered} onDelete={setDeleteId} />
+        <DirectoryGrid>
+          {filtered.map((emp) => (
+            <EmployeeGridCard
+              key={emp.id}
+              emp={emp}
+              onOpen={() => router.push(hrOrganizationRoutes.employee(emp.id))}
+              onDelete={() => setDeleteId(emp.id)}
+            />
+          ))}
+        </DirectoryGrid>
       )}
     </div>
   );
 }
 
-type FilteredRow = EmployeesListModel['filtered'][number];
-
-function EmployeesListTable({
-  filtered,
-  router,
-  total,
+function EmployeeGridCard({
+  emp,
+  onOpen,
   onDelete,
 }: {
-  filtered: FilteredRow[];
-  router: { push: (href: string) => void };
-  total: number;
-  onDelete: (id: string) => void;
+  emp: FilteredRow;
+  onOpen: () => void;
+  onDelete: () => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <th className="px-6 py-4 text-right">الموظف</th>
-              <th className="px-6 py-4 text-right">القسم / الفرع</th>
-              <th className="px-6 py-4 text-right">نوع العقد</th>
-              <th className="px-6 py-4 text-right">تاريخ الالتحاق</th>
-              <th className="px-6 py-4 text-right">الراتب الأساسي</th>
-              <th className="px-6 py-4 text-right">الحالة</th>
-              <th className="px-6 py-4" />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((emp) => (
-              <tr
-                key={emp.id}
-                className="group border-b border-border/60 transition-colors hover:bg-muted/20 last:border-b-0 cursor-pointer"
-                onClick={() => router.push(hrOrganizationRoutes.employee(emp.id))}
-              >
-                <td className="px-6 py-4">
-                  <Link href={hrOrganizationRoutes.employee(emp.id)} className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                    <Avatar className="h-10 w-10 ring-2 ring-border">
-                      <AvatarImage src={emp.avatar ?? undefined} />
-                      <AvatarFallback>{getInitials(emp.nameAr)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold group-hover:text-primary transition-colors">{emp.nameAr}</p>
-                      <p className="text-xs text-muted-foreground">{emp.employeeCode} · {emp.position ?? '—'}</p>
-                    </div>
-                  </Link>
-                </td>
-                <td className="px-6 py-4 text-sm text-muted-foreground">—</td>
-                <td className="px-6 py-4 text-sm"><ContractTypeLabel type={emp.contractType ?? ''} /></td>
-                <td className="px-6 py-4 text-sm text-muted-foreground">
-                  {emp.startDate ? formatDateShort(emp.startDate) : '—'}
-                </td>
-                <td className="px-6 py-4 font-semibold number-ar">
-                  {emp.baseSalary ? formatCurrency(parseFloat(emp.baseSalary)) : '—'}
-                </td>
-                <td className="px-6 py-4"><StatusBadge status={emp.contractStatus ?? ''} /></td>
-                <td className="px-6 py-4">
-                  <RowActions
-                    menuItems={[
-                      {
-                        label: 'عرض',
-                        href: hrOrganizationRoutes.employee(emp.id),
-                        icon: <Eye className="h-3.5 w-3.5" />,
-                      },
-                      {
-                        label: 'حذف',
-                        onClick: (e) => { e.stopPropagation(); onDelete(emp.id); },
-                        icon: <Trash2 className="h-3.5 w-3.5" />,
-                        destructive: true,
-                        separator: true,
-                      },
-                    ]}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm text-muted-foreground">لا توجد نتائج — جرّب تعديل الفلاتر أعلاه</p>
+    <DirectoryGridCard interactive onClick={onOpen}>
+      <DirectoryGridCardHeader>
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar className="h-9 w-9 ring-1 ring-border shrink-0">
+            <AvatarImage src={emp.avatar ?? undefined} />
+            <AvatarFallback className="text-xs">{getInitials(emp.nameAr)}</AvatarFallback>
+          </Avatar>
+          <DirectoryGridCardTitle className="truncate">{emp.nameAr}</DirectoryGridCardTitle>
         </div>
-      )}
-      {filtered.length > 0 && (
-        <div className="flex items-center justify-between border-t border-border bg-muted/20 px-6 py-3 text-sm text-muted-foreground">
-          <span>
-            عرض <span className="font-semibold text-foreground number-ar">{filtered.length}</span> من أصل{' '}
-            <span className="font-semibold text-foreground number-ar">{total}</span> موظف
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EmployeesListGrid({ filtered, onDelete }: { filtered: FilteredRow[]; onDelete: (id: string) => void }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {filtered.map((emp) => (
-        <Link
-          key={emp.id}
-          href={hrOrganizationRoutes.employee(emp.id)}
-          className="group relative overflow-hidden rounded-lg border border-border bg-card p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-elevated"
-        >
-          <div className="relative flex items-start justify-between">
-            <Avatar className="h-14 w-14 ring-2 ring-border">
-              <AvatarImage src={emp.avatar ?? undefined} />
-              <AvatarFallback>{getInitials(emp.nameAr)}</AvatarFallback>
-            </Avatar>
-            <div className="flex items-center gap-2">
-              <StatusBadge status={emp.contractStatus ?? ''} />
-              <button
-                type="button"
-                className="rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-                onClick={(e) => { e.preventDefault(); onDelete(emp.id); }}
-                aria-label="حذف الموظف"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div className="relative mt-4">
-            <h3 className="font-display text-lg font-bold group-hover:text-primary transition-colors">{emp.nameAr}</h3>
-            <p className="text-sm text-muted-foreground">{emp.position ?? '—'}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{emp.employeeCode}</p>
-          </div>
-          <div className="relative mt-4 space-y-1.5 border-t border-border pt-4 text-xs">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Building2 className="h-3.5 w-3.5" />
-              <span>—</span>
-            </div>
-            {emp.email && (
-              <div className="flex items-center gap-2 text-muted-foreground" dir="ltr">
-                <Mail className="h-3.5 w-3.5" />
-                <span className="truncate">{emp.email}</span>
-              </div>
-            )}
-          </div>
-        </Link>
-      ))}
-    </div>
+        {emp.nationality && (
+          <span className="shrink-0 text-[10px] text-muted-foreground">{emp.nationality}</span>
+        )}
+      </DirectoryGridCardHeader>
+      <DirectoryGridCardMeta>
+        <DirectoryGridCardMetaRow>
+          <span className="text-muted-foreground">الكود</span>
+          <span className="font-mono text-xs">{emp.employeeCode}</span>
+        </DirectoryGridCardMetaRow>
+        {emp.position && (
+          <DirectoryGridCardMetaRow>
+            <span className="text-muted-foreground">المسمى</span>
+            <span className="truncate">{emp.position}</span>
+          </DirectoryGridCardMetaRow>
+        )}
+        {(emp.departmentNameAr ?? emp.branchNameAr) && (
+          <DirectoryGridCardMetaRow>
+            <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate text-muted-foreground">{emp.departmentNameAr ?? emp.branchNameAr}</span>
+          </DirectoryGridCardMetaRow>
+        )}
+        {emp.email && (
+          <DirectoryGridCardMetaRow dir="ltr">
+            <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="truncate">{emp.email}</span>
+          </DirectoryGridCardMetaRow>
+        )}
+      </DirectoryGridCardMeta>
+      <DirectoryGridCardFooter>
+        <RowActions
+          menuItems={[
+            { label: 'عرض', href: hrOrganizationRoutes.employee(emp.id) },
+            { label: 'حذف', onClick: (e) => { e.stopPropagation(); onDelete(); }, destructive: true, separator: true },
+          ]}
+        />
+      </DirectoryGridCardFooter>
+    </DirectoryGridCard>
   );
 }

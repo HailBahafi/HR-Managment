@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  Plus, Pencil, Trash2, Loader2, AlertTriangle, Search, ChevronDown, ChevronRight,
+  Plus, Pencil, Trash2, Loader2, AlertTriangle, Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
@@ -258,7 +258,7 @@ const LEAVE_TYPE_COLORS = [
   'bg-violet-500', 'bg-pink-500', 'bg-teal-500', 'bg-orange-500',
 ];
 
-function EmployeeBalanceRow({
+function EmployeeBalanceCard({
   employeeId,
   employeeName,
   balances,
@@ -273,7 +273,6 @@ function EmployeeBalanceRow({
   onEdit: (b: EmployeeLeaveBalanceResponseDto) => void;
   onDelete: (b: EmployeeLeaveBalanceResponseDto) => void;
 }) {
-  const [expanded, setExpanded] = React.useState(false);
   const totalUsed = balances.reduce((s, b) => s + b.usedDays, 0);
   const totalAlloc = balances.reduce((s, b) => s + b.totalDays, 0);
   const initials = employeeName.split(' ').map((w) => w[0]).slice(0, 2).join('');
@@ -281,12 +280,8 @@ function EmployeeBalanceRow({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-      {/* Employee header row */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-right transition-colors hover:bg-muted/30"
-      >
+      {/* Employee header */}
+      <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
           style={{ background: `hsl(${hue} 55% 45%)` }}
@@ -299,80 +294,75 @@ function EmployeeBalanceRow({
             {balances.length} نوع إجازة · {totalUsed}/{totalAlloc} يوم مستخدم
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {totalAlloc > 0 && (
-            <div className="flex items-center gap-1.5">
-              <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-                <div
-                  className={cn('h-full rounded-full bg-primary transition-all',
-                    pct(totalUsed, totalAlloc) >= 90 ? 'bg-destructive' :
-                    pct(totalUsed, totalAlloc) >= 70 ? 'bg-warning' : 'bg-primary'
-                  )}
-                  style={{ width: `${pct(totalUsed, totalAlloc)}%` }}
-                />
-              </div>
-              <span className="font-mono text-[10px] tabular-nums text-muted-foreground" dir="ltr">
-                {pct(totalUsed, totalAlloc)}%
-              </span>
+        {totalAlloc > 0 && (
+          <div className="flex shrink-0 items-center gap-1.5">
+            <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn('h-full rounded-full transition-all',
+                  pct(totalUsed, totalAlloc) >= 90 ? 'bg-destructive' :
+                  pct(totalUsed, totalAlloc) >= 70 ? 'bg-warning' : 'bg-primary'
+                )}
+                style={{ width: `${pct(totalUsed, totalAlloc)}%` }}
+              />
             </div>
-          )}
-          {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-        </div>
-      </button>
+            <span className="font-mono text-[10px] tabular-nums text-muted-foreground" dir="ltr">
+              {pct(totalUsed, totalAlloc)}%
+            </span>
+          </div>
+        )}
+      </div>
 
-      {/* Expanded leave type rows */}
-      {expanded && (
-        <div className="border-t border-border/60 divide-y divide-border/40">
-          {balances.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-muted-foreground">لا توجد أرصدة مسجّلة</p>
-          ) : (
-            balances.map((b, idx) => {
-              const lt = leaveTypes.find((t) => t.id === b.leaveTypeId);
-              const color = LEAVE_TYPE_COLORS[idx % LEAVE_TYPE_COLORS.length] ?? 'bg-primary';
-              const remaining = b.remainingDays;
-              return (
-                <div key={b.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <div className={cn('h-3 w-3 shrink-0 rounded-sm', color)} />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium">{lt?.nameAr ?? b.leaveTypeId}</span>
-                      {remaining <= 2 && remaining >= 0 && (
-                        <Badge variant="outline" className="h-4 border-destructive/40 bg-destructive/5 px-1.5 text-[9px] text-destructive">
-                          {remaining === 0 ? 'استُنفد' : `${remaining} يوم متبقي`}
-                        </Badge>
-                      )}
-                    </div>
-                    <BalanceBar used={b.usedDays} total={b.totalDays} color={color} />
+      {/* Leave type rows — always visible */}
+      <div className="divide-y divide-border/40">
+        {balances.length === 0 ? (
+          <p className="px-4 py-3 text-xs text-muted-foreground">لا توجد أرصدة مسجّلة</p>
+        ) : (
+          balances.map((b, idx) => {
+            const lt = leaveTypes.find((t) => t.id === b.leaveTypeId);
+            const color = LEAVE_TYPE_COLORS[idx % LEAVE_TYPE_COLORS.length] ?? 'bg-primary';
+            const remaining = b.remainingDays;
+            return (
+              <div key={b.id} className="flex items-center gap-3 px-4 py-2.5">
+                <div className={cn('h-3 w-3 shrink-0 rounded-sm', color)} />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium">{lt?.nameAr ?? b.leaveTypeId}</span>
+                    {remaining <= 2 && remaining >= 0 && (
+                      <Badge variant="outline" className="h-4 border-destructive/40 bg-destructive/5 px-1.5 text-[9px] text-destructive">
+                        {remaining === 0 ? 'استُنفد' : `${remaining} يوم متبقي`}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <span className="font-mono text-[11px] text-muted-foreground tabular-nums" dir="ltr">
-                      {b.remainingDays} متبقي
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                      onClick={() => onEdit(b)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => onDelete(b)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  <BalanceBar used={b.usedDays} total={b.totalDays} color={color} />
                 </div>
-              );
-            })
-          )}
-        </div>
-      )}
+                <div className="flex shrink-0 items-center gap-1">
+                  <span className="font-mono text-[11px] text-muted-foreground tabular-nums" dir="ltr">
+                    {b.remainingDays} متبقي
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                    onClick={() => onEdit(b)}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => onDelete(b)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
@@ -518,7 +508,7 @@ export function AnalyticsClient() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {grouped.map(([empId, empBalances]) => (
-            <EmployeeBalanceRow
+            <EmployeeBalanceCard
               key={empId}
               employeeId={empId}
               employeeName={empMap.get(empId) ?? empId}

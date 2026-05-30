@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -71,7 +71,7 @@ export function RowActions({ primaryActions, menuItems, className }: RowActionsP
               className="h-7 w-7 text-muted-foreground data-[state=open]:bg-muted"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreVertical className="h-4 w-4" />
               <span className="sr-only">الإجراءات</span>
             </Button>
           </DropdownMenuTrigger>

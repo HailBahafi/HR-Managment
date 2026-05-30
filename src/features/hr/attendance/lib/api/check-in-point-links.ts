@@ -33,6 +33,42 @@ export type CheckInPointLinkListQuery = {
   linkActive?: boolean;
 };
 
+export type GroupedByPointEmployee = {
+  linkId: string;
+  employeeId: string;
+  employeeNameAr: string;
+  employeeNameEn: string | null;
+  employeeCode: string;
+  batchId: string | null;
+  effectiveFrom: string | null;
+  linkActive: boolean;
+};
+
+export type GroupedByPointItem = {
+  checkInPoint: {
+    id: string;
+    companyId: string;
+    nameAr: string;
+    nameEn: string | null;
+    latitude: string;
+    longitude: string;
+    radiusMeters: number;
+    isActive: boolean;
+  };
+  totalLinks: number;
+  activeLinks: number;
+  employees: GroupedByPointEmployee[];
+};
+
+export type GroupedByPointQuery = {
+  page?: number;
+  limit?: number;
+  companyId?: string;
+  employeeId?: string;
+  checkInPointId?: string;
+  linkActive?: boolean;
+};
+
 export const checkInPointLinksApi = {
   getAll(query?: CheckInPointLinkListQuery) {
     return apiRequest<PaginatedResult<CheckInPointLinkResponseDto>>('/attendance/check-in-point-links', {
@@ -56,5 +92,8 @@ export const checkInPointLinksApi = {
   },
   remove(id: string) {
     return apiRequest<void>(`/attendance/check-in-point-links/${id}`, { method: 'DELETE' });
+  },
+  getGroupedByPoint(query?: GroupedByPointQuery) {
+    return apiRequest<PaginatedResult<GroupedByPointItem>>('/attendance/check-in-point-links/grouped-by-point', { query });
   },
 };

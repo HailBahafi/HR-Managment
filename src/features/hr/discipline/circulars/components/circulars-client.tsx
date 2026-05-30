@@ -33,6 +33,10 @@ import {
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { tryBuildCircularAudienceSnapshot } from '@/features/hr/discipline/circulars/utils/build-circular-audience-summary';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
+  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
+} from '@/components/ui/directory-table';
 
 const AUDIENCE_OPTIONS = (Object.entries(CIRCULAR_AUDIENCE_LABELS) as [HRDisciplineCircularAudience, string][]).map(
   ([v, l]) => ({ value: v, label: l }),
@@ -439,25 +443,23 @@ export function CircularsClient() {
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
-          <table className="w-full min-w-[880px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50 text-right">
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">العنوان</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">النطاق</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الإرسال</th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground">النص</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
+        <DirectoryTableContainer>
+          <DirectoryTable className="min-w-[880px]">
+            <DirectoryTableHeaderRow>
+              <DirectoryTableHead className="whitespace-nowrap">العنوان</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">النطاق</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">الإرسال</DirectoryTableHead>
+              <DirectoryTableHead>النص</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
+            </DirectoryTableHeaderRow>
+            <DirectoryTableBody>
               {listFiltered.map((c) => (
-                <tr key={c.id} className="border-b border-border/70 transition-colors hover:bg-muted/25 cursor-pointer" onClick={() => setDetailCircular(c)}>
-                  <td className="max-w-[12rem] truncate p-3 font-medium">{c.titleAr || '—'}</td>
-                  <td className="max-w-[14rem] whitespace-normal p-3 text-xs">{c.audienceSummaryAr}</td>
-                  <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{c.date}</td>
-                  <td className="whitespace-nowrap p-3" onClick={(e) => e.stopPropagation()}>
+                <DirectoryTableRow key={c.id} interactive onClick={() => setDetailCircular(c)}>
+                  <DirectoryTableCell className="max-w-[12rem] truncate font-medium">{c.titleAr || '—'}</DirectoryTableCell>
+                  <DirectoryTableCell className="max-w-[14rem] whitespace-normal text-xs">{c.audienceSummaryAr}</DirectoryTableCell>
+                  <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{c.date}</DirectoryTableCell>
+                  <DirectoryTableActionsCell>
                     {c.sentAt ? (
                       <span className="text-xs text-muted-foreground">مُرسل</span>
                     ) : (
@@ -482,18 +484,18 @@ export function CircularsClient() {
                         إرسال التعميم
                       </Button>
                     )}
-                  </td>
-                  <td className="max-w-[24rem] truncate p-3 text-xs text-muted-foreground">{c.bodyAr}</td>
-                  <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                  </DirectoryTableActionsCell>
+                  <DirectoryTableCell className="max-w-[24rem] truncate text-xs text-muted-foreground">{c.bodyAr}</DirectoryTableCell>
+                  <DirectoryTableActionsCell>
                     <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(c.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  </td>
-                </tr>
+                  </DirectoryTableActionsCell>
+                </DirectoryTableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </DirectoryTableBody>
+          </DirectoryTable>
+        </DirectoryTableContainer>
       )}
 
       <HRSettingsFormDrawer

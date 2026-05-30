@@ -35,19 +35,23 @@ function mapTemplate(row: JobTitleResponseDto, index: number): JobTitleTemplateR
 }
 
 export async function loadJobTitlesDirectory(): Promise<JobTitlesDirectoryData> {
-  const [jobs, deps, scope] = await Promise.all([
+  const [jobs, scope] = await Promise.all([
     jobTitlesApi.getAll(),
-    departmentsApi.getAll(),
     resolveOrganizationScope(),
   ]);
   return {
     templates: jobs.items.map(mapTemplate),
-    departments: deps.items,
+    departments: [],
     scope: {
-      companyId: scope.companyId ?? jobs.items[0]?.companyId ?? deps.items[0]?.companyId ?? null,
+      companyId: scope.companyId ?? jobs.items[0]?.companyId ?? null,
       branchId: scope.branchId,
     },
   };
+}
+
+export async function loadJobTitlesDepartments(): Promise<DepartmentResponseDto[]> {
+  const res = await departmentsApi.getAll();
+  return res.items;
 }
 
 export async function createJobTitle(payload: CreateJobTitleDto) {

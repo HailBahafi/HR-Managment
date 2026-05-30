@@ -104,13 +104,18 @@ export interface HRRequestSubtype {
 
 // ─── Request types ────────────────────────────────────────────────────────────
 
-export const HR_REQUEST_TYPE_CATEGORIES = ['leaves', 'attendance', 'advances'] as const;
+export const HR_REQUEST_TYPE_CATEGORIES = ['leave', 'attendance', 'document', 'advance', 'transfer', 'resignation', 'discipline', 'other'] as const;
 export type HRRequestTypeCategory = (typeof HR_REQUEST_TYPE_CATEGORIES)[number];
 
 export const HR_REQUEST_TYPE_CATEGORY_LABELS_AR: Record<HRRequestTypeCategory, string> = {
-  leaves: 'الإجازات',
+  leave: 'الإجازات',
   attendance: 'الحضور',
-  advances: 'السلف',
+  document: 'المستندات',
+  advance: 'السلف',
+  transfer: 'النقل',
+  resignation: 'الاستقالة',
+  discipline: 'الانضباط',
+  other: 'أخرى',
 };
 
 export interface HRRequestTypeEntity {

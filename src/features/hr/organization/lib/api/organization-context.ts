@@ -1,37 +1,16 @@
-import { branchesApi } from '@/features/hr/organization/lib/api/branches';
-import { companiesApi } from '@/features/hr/organization/lib/api/companies';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 
 export type OrganizationScope = {
   companyId: string | null;
   branchId: string | null;
 };
 
-/** Resolves company/branch ids for create flows (not only from existing rows). */
+/** Resolves company/branch ids for create flows using the auth store (no API calls). */
 export async function resolveOrganizationScope(
   hints?: Partial<OrganizationScope>,
 ): Promise<OrganizationScope> {
-  const companyId = hints?.companyId ?? null;
-  const branchId = hints?.branchId ?? null;
-
-  if (companyId && branchId) {
-    return { companyId, branchId };
-  }
-
-  let resolvedCompanyId = companyId;
-  if (!resolvedCompanyId) {
-    try {
-      const companies = await companiesApi.getAll({ limit: 50 });
-      resolvedCompanyId = companies.items[0]?.id ?? null;
-    } catch { /* 403 or other — proceed with null */ }
-  }
-  if (!resolvedCompanyId) return { companyId: null, branchId: null };
-
-  if (branchId) return { companyId: resolvedCompanyId, branchId };
-
-  try {
-    const branches = await branchesApi.getAll({ companyId: resolvedCompanyId, limit: 50 });
-    return { companyId: resolvedCompanyId, branchId: branches.items[0]?.id ?? null };
-  } catch {
-    return { companyId: resolvedCompanyId, branchId: null };
-  }
+  const store = useAuthStore.getState();
+  const companyId = hints?.companyId ?? store.activeCompanyId ?? null;
+  const branchId = hints?.branchId ?? store.activeBranchId ?? null;
+  return { companyId, branchId };
 }

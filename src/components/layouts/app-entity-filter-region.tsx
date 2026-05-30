@@ -21,10 +21,16 @@ export function AppEntityFilterRegion({ className }: { className?: string }) {
 
   // Register our forceUpdate before any useEffect in child components fire
   // (useLayoutEffect runs before useEffect across the whole commit).
+  // Also wire setFilterPanelOpen so the first content registration opens the
+  // filter bar in the same micro-task — no extra effect cycle needed.
   React.useLayoutEffect(() => {
-    reRenderSlotRef.current = forceUpdate;
+    reRenderSlotRef.current = () => {
+      // Only open when content is being registered, not when it's cleared.
+      if (!excluded && renderFnRef.current !== null) setFilterPanelOpen(true);
+      forceUpdate();
+    };
     return () => { reRenderSlotRef.current = null; };
-  }, [reRenderSlotRef]);
+  }, [reRenderSlotRef, renderFnRef, excluded, setFilterPanelOpen]);
 
   // Clear slot when navigating to an excluded path.
   React.useEffect(() => {
@@ -34,15 +40,9 @@ export function AppEntityFilterRegion({ className }: { className?: string }) {
   // Render the slot content fresh on every render (renderFnRef.current is always current).
   const content = excluded ? null : (renderFnRef.current?.() ?? null);
 
-  // Auto-open the filter panel the first time a slot is registered.
-  const hasContent = content !== null;
-  React.useEffect(() => {
-    if (hasContent && !excluded) setFilterPanelOpen(true);
-  }, [hasContent, excluded, setFilterPanelOpen]);
-
   if (excluded || !content || !filterPanelOpen) return null;
   return (
-    <div className={cn('mb-5 animate-fade-in', className)}>
+    <div className={cn('relative mb-5 animate-fade-in', className)}>
       {content}
     </div>
   );

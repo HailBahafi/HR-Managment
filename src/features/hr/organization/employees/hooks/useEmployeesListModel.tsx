@@ -25,6 +25,7 @@ import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organi
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useFilterPanel } from '@/components/layouts/filter-panel-context';
 
 function empStartYmd(e: EmployeeResponseDto): string {
   const s = e.startDate;
@@ -59,9 +60,12 @@ export function useEmployeesListModel() {
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  // Load branches and departments — 403 is silently ignored (user lacks that permission)
+  // Load branches and departments lazily — only when the filter panel is first opened
+  const { open: filterOpen } = useFilterPanel();
+  const filterDataFetched = React.useRef(false);
   React.useEffect(() => {
-    if (!companyId) return;
+    if (!filterOpen || filterDataFetched.current || !companyId) return;
+    filterDataFetched.current = true;
     void Promise.allSettled([
       branchesApi.getAll({ limit: 200, companyId }),
       departmentsApi.getAll({ limit: 200, companyId }),
@@ -69,7 +73,7 @@ export function useEmployeesListModel() {
       if (branchesRes.status === 'fulfilled') setBranches(branchesRes.value.items);
       if (deptsRes.status === 'fulfilled') setDepartments(deptsRes.value.items);
     });
-  }, [companyId]);
+  }, [filterOpen, companyId]);
 
   const loadEmployees = React.useCallback(async () => {
     if (!companyId) return;

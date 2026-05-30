@@ -11,6 +11,9 @@ export type AttendanceCorrectionRequest = {
   /** kept for UI compat — derived from requestTypeNameAr */
   requestTypeId: string;
   requestTypeNameAr: string;
+  subtypeSlug: string | null;
+  subtypeNameAr: string | null;
+  attendanceDaySummaryId: string | null;
   workDate: string;
   previousCheckIn: string;
   previousCheckOut: string;
@@ -20,6 +23,8 @@ export type AttendanceCorrectionRequest = {
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   reasonAr: string;
   decisionNotesAr: string;
+  submittedAt: string;
+  cancelledAt: string | null;
   createdAt: string;
   decidedAt: string | null;
   decidedByEmployeeId: string | null;
@@ -36,7 +41,13 @@ function isoToTime(iso: string | null | undefined): string {
 
 function dateTimeIso(workDate: string, time: string): string | undefined {
   if (!time) return undefined;
-  return `${workDate}T${time}:00`;
+  // Include local timezone offset so backend stores the correct instant
+  const d = new Date(`${workDate}T${time}:00`);
+  const off = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const hh = String(Math.floor(Math.abs(off) / 60)).padStart(2, '0');
+  const mm = String(Math.abs(off) % 60).padStart(2, '0');
+  return `${workDate}T${time}:00${sign}${hh}:${mm}`;
 }
 
 function mapApi(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
@@ -47,6 +58,9 @@ function mapApi(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
     departmentNameAr: r.departmentNameAr ?? '',
     requestTypeId: r.requestTypeId,
     requestTypeNameAr: r.requestTypeNameAr,
+    subtypeSlug: r.subtypeSlug,
+    subtypeNameAr: r.subtypeNameAr,
+    attendanceDaySummaryId: r.attendanceDaySummaryId,
     workDate: r.workDate,
     previousCheckIn: isoToTime(r.previousCheckInAt),
     previousCheckOut: isoToTime(r.previousCheckOutAt),
@@ -56,6 +70,8 @@ function mapApi(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
     status: r.status as AttendanceCorrectionRequest['status'],
     reasonAr: r.reasonAr ?? '',
     decisionNotesAr: r.decisionNotesAr ?? '',
+    submittedAt: r.submittedAt,
+    cancelledAt: r.cancelledAt,
     createdAt: r.createdAt,
     decidedAt: r.decidedAt,
     decidedByEmployeeId: r.decidedByEmployeeId,
@@ -73,7 +89,6 @@ interface State {
     workDate: string;
     correctedCheckIn?: string;
     correctedCheckOut?: string;
-    previousStatusAr?: string;
     reasonAr?: string;
   }) => Promise<{ ok: true } | { ok: false; error: string }>;
   approve: (id: string) => Promise<void>;
@@ -100,6 +115,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
 
   submit: async (input) => {
     const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const userId = useAuthStore.getState().user?.id;
     if (!input.employeeId.trim()) return { ok: false, error: 'اختر الموظف.' };
     if (!input.requestTypeId.trim()) return { ok: false, error: 'اختر نوع الطلب.' };
     if (!input.workDate.trim()) return { ok: false, error: 'أدخل تاريخ اليوم.' };
@@ -109,10 +125,10 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
         employeeId: input.employeeId,
         requestTypeId: input.requestTypeId,
         workDate: input.workDate,
-        previousStatus: input.previousStatusAr,
         correctedCheckInAt: dateTimeIso(input.workDate, input.correctedCheckIn ?? ''),
         correctedCheckOutAt: dateTimeIso(input.workDate, input.correctedCheckOut ?? ''),
         reasonAr: input.reasonAr,
+        createdBy: userId,
       });
       set(s => ({ items: [mapApi(created), ...s.items] }));
       return { ok: true };
@@ -126,6 +142,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
     const updated = await correctionRequestsApi.decide(id, {
       decision: 'approve',
       decidedByEmployeeId: userId,
+      updatedBy: userId,
     });
     set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
   },
@@ -135,12 +152,14 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
     const updated = await correctionRequestsApi.decide(id, {
       decision: 'reject',
       decidedByEmployeeId: userId,
+      updatedBy: userId,
     });
     set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
   },
 
   cancel: async (id, notes) => {
-    const updated = await correctionRequestsApi.cancel(id, { decisionNotesAr: notes });
+    const userId = useAuthStore.getState().user?.id ?? '';
+    const updated = await correctionRequestsApi.cancel(id, { decisionNotesAr: notes, updatedBy: userId });
     set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
   },
 }));

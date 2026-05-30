@@ -1,7 +1,7 @@
 'use client';
 
-import { Briefcase, Pencil, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Briefcase } from 'lucide-react';
+import { RowActions } from '@/components/ui/row-actions';
 import {
   DirectoryGrid,
   DirectoryGridCard,
@@ -31,11 +31,7 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
       <DirectoryResultCount>{templates.length} قالب مسمى</DirectoryResultCount>
 
       {templates.length === 0 ? (
-        <EmptyState
-          icon={Briefcase}
-          title="لا توجد قوالب"
-          description="أضف مسميات وظيفية شائعة في شركتك لاستخدامها عند إضافة موظف."
-        />
+        <EmptyState icon={Briefcase} title="لا توجد قوالب" description="أضف مسميات وظيفية شائعة في شركتك لاستخدامها عند إضافة موظف." />
       ) : layoutView === 'grid' ? (
         <DirectoryGrid>
           {templates.map((row) => {
@@ -48,18 +44,13 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
                 </DirectoryGridCardHeader>
                 {deptName && <p className="text-xs text-muted-foreground">قسم مقترح: {deptName}</p>}
                 <DirectoryGridCardFooter>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row)} aria-label="تعديل">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => setConfirmId(row.id)}
-                    aria-label="حذف"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <RowActions
+                    menuItems={[
+                      { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewRow(row); } },
+                      { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
+                      { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
+                    ]}
+                  />
                 </DirectoryGridCardFooter>
               </DirectoryGridCard>
             );
@@ -72,7 +63,7 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
               <DirectoryTableHead>المسمى الوظيفي</DirectoryTableHead>
               <DirectoryTableHead>القسم المقترح</DirectoryTableHead>
               <DirectoryTableHead>وصف</DirectoryTableHead>
-              <DirectoryTableHead className="text-start w-28">إجراءات</DirectoryTableHead>
+              <DirectoryTableHead className="text-start w-16">إجراءات</DirectoryTableHead>
             </DirectoryTableHeaderRow>
             <DirectoryTableBody>
               {templates.map((row) => {
@@ -83,12 +74,13 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
                     <DirectoryTableCell className="text-muted-foreground">{deptName ?? '—'}</DirectoryTableCell>
                     <DirectoryTableCell className="max-w-[240px] truncate text-muted-foreground">{row.descriptionAr ?? '—'}</DirectoryTableCell>
                     <DirectoryTableActionsCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(row)} aria-label="تعديل">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setConfirmId(row.id)} aria-label="حذف">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <RowActions
+                        menuItems={[
+                          { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewRow(row); } },
+                          { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
+                          { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
+                        ]}
+                      />
                     </DirectoryTableActionsCell>
                   </DirectoryTableRow>
                 );

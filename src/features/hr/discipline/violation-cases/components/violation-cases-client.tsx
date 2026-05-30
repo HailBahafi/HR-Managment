@@ -24,7 +24,6 @@ import { useViolationCasesDirectoryModel } from '@/features/hr/discipline/violat
 import type { ViolationCaseRecord } from '@/features/hr/discipline/violation-cases/hooks/useViolationCasesDirectoryModel';
 import type { ViolationRecordStatus } from '@/features/hr/discipline/lib/api/violation-records';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -41,6 +40,10 @@ import { disciplineNoticesApi } from '@/features/hr/discipline/lib/api/disciplin
 import { disciplineInvestigationsApi } from '@/features/hr/discipline/lib/api/discipline-investigations';
 import { disciplineAppealsApi } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import {
+  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
+  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
+} from '@/components/ui/directory-table';
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -364,7 +367,7 @@ interface EditForm { date: string; description: string; notes: string; attachmen
 
 export function ViolationCasesClient() {
   const hook = useViolationCasesDirectoryModel();
-  const { cases, employees, violationTypes, loading, listError, createCase, updateCase, deleteCase } = hook;
+  const { cases, employees, violationTypes, loading, listError, createCase, updateCase, deleteCase, reload } = hook;
   const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
 
   const [companyNameAr, setCompanyNameAr] = React.useState('');
@@ -422,24 +425,33 @@ export function ViolationCasesClient() {
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [cases]);
 
-  const searchFiltered = React.useMemo(
-    () => cases.filter((c) => selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId)),
-    [cases, selectedEmpIds],
-  );
-  const filtered = React.useMemo(
-    () => searchFiltered.filter((c) => matchesDateRange(c.date, dateBounds.from, dateBounds.to)),
-    [searchFiltered, dateBounds.from, dateBounds.to],
-  );
+  // Debounced backend fetch whenever employee or date filters change
+  const dateDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => {
+    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
+    if (dateDebounceRef.current) clearTimeout(dateDebounceRef.current);
+    dateDebounceRef.current = setTimeout(() => {
+      void reload({
+        employeeId,
+        violationDateFrom: dateBounds.from || undefined,
+        violationDateTo: dateBounds.to || undefined,
+      });
+    }, 400);
+    return () => { if (dateDebounceRef.current) clearTimeout(dateDebounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmpIds, dateBounds.from, dateBounds.to]);
+
+  // Status filter applied locally (API doesn't support it)
   const listFiltered = React.useMemo(
-    () => (statusFilter === 'all' ? filtered : filtered.filter((c) => c.status === statusFilter)),
-    [filtered, statusFilter],
+    () => (statusFilter === 'all' ? cases : cases.filter((c) => c.status === statusFilter)),
+    [cases, statusFilter],
   );
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: filtered.length };
+    const counts: Record<string, number> = { all: cases.length };
     for (const s of STATUS_ORDER) counts[s] = 0;
-    for (const c of filtered) counts[c.status] = (counts[c.status] ?? 0) + 1;
+    for (const c of cases) counts[c.status] = (counts[c.status] ?? 0) + 1;
     return counts;
-  }, [filtered]);
+  }, [cases]);
 
   const dateRangeActive = dateMeta.hasRestriction;
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
@@ -634,22 +646,9 @@ export function ViolationCasesClient() {
     <div className="space-y-4">
       <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير سجل المخالفات" fileName="violation-cases.pdf" printable={printable} />
 
-      {searchFiltered.length === 0 ? (
-        <EmptyState title="لا توجد مخالفات مطابقة للبحث أو الموظفين المحددين." />
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
-          <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today'  ? 'لا توجد مخالفات بتاريخ اليوم.'
-              : dateMeta.tab === 'week'  ? 'لا توجد مخالفات ضمن هذا الأسبوع.'
-              : dateMeta.tab === 'month' ? 'لا توجد مخالفات ضمن هذا الشهر.'
-              : dateRangeActive ? 'لا توجد مخالفات ضمن نطاق التاريخ المخصص.'
-              : 'لا توجد مخالفات ضمن النتائج الحالية.'}
-          </p>
-          {dateRangeActive && (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>عرض كل الفترات</Button>
-          )}
-        </div>
-      ) : listFiltered.length === 0 ? (
+      {cases.length === 0 && !loading ? (
+        <EmptyState title="لا توجد مخالفات مطابقة للفلاتر المحددة." />
+      ) : listFiltered.length === 0 && !loading ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
             لا توجد مخالفات بحالة «{STATUS_LABELS[statusFilter as ViolationRecordStatus]}».
@@ -744,34 +743,32 @@ export function ViolationCasesClient() {
           })}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
-          <table className="w-full min-w-[900px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50 text-right">
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الرقم</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الموظف</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">نوع المخالفة</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الحالة</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">المتطلبات</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
+        <DirectoryTableContainer>
+          <DirectoryTable className="min-w-[900px]">
+            <DirectoryTableHeaderRow>
+              <DirectoryTableHead className="whitespace-nowrap">الرقم</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">الموظف</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">نوع المخالفة</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">الحالة</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">المتطلبات</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
+            </DirectoryTableHeaderRow>
+            <DirectoryTableBody>
               {listFiltered.map((c) => {
                 const type = typeFor(c);
                 return (
-                  <tr key={c.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
-                    <td className="p-3 font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{c.caseNumber}</td>
-                    <td className="max-w-[10rem] truncate p-3 font-medium">{c.employeeNameAr}</td>
-                    <td className="max-w-[9rem] truncate p-3 text-xs text-muted-foreground">{c.typeNameAr}</td>
-                    <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{c.date}</td>
-                    <td className="p-3">
+                  <DirectoryTableRow key={c.id}>
+                    <DirectoryTableCell className="font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{c.caseNumber}</DirectoryTableCell>
+                    <DirectoryTableCell className="max-w-[10rem] truncate font-medium">{c.employeeNameAr}</DirectoryTableCell>
+                    <DirectoryTableCell className="max-w-[9rem] truncate text-xs text-muted-foreground">{c.typeNameAr}</DirectoryTableCell>
+                    <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{c.date}</DirectoryTableCell>
+                    <DirectoryTableCell>
                       <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium', STATUS_COLORS[c.status])}>
                         {STATUS_LABELS[c.status]}
                       </span>
-                    </td>
-                    <td className="p-3">
+                    </DirectoryTableCell>
+                    <DirectoryTableCell>
                       <div className="flex flex-wrap gap-1">
                         {type?.needsInvestigation && (
                           <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-[9px] text-blue-700 dark:text-blue-400">تحقيق</Badge>
@@ -780,8 +777,8 @@ export function ViolationCasesClient() {
                           <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[9px] text-amber-700 dark:text-amber-400">إنذار</Badge>
                         )}
                       </div>
-                    </td>
-                    <td className="p-2">
+                    </DirectoryTableCell>
+                    <DirectoryTableActionsCell>
                       <div className="flex flex-wrap items-center gap-1">
                         <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" type="button" onClick={() => setViewCase(c)}>
                           <Eye className="h-3.5 w-3.5" /> عرض
@@ -812,13 +809,13 @@ export function ViolationCasesClient() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </DirectoryTableActionsCell>
+                  </DirectoryTableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </DirectoryTableBody>
+          </DirectoryTable>
+        </DirectoryTableContainer>
       )}
 
       {/* ── Create Drawer ── */}

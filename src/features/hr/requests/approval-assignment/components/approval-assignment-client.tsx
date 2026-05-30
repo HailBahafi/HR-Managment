@@ -47,7 +47,7 @@ function buildNameAr(linkedIds: string[], requestTypes: { id: string; nameAr: st
 }
 
 export function ApprovalAssignmentClient() {
-  const { templates, requestTypes, employees, loading, listError, createTemplate, updateTemplate, deleteTemplate } =
+  const { templates, requestTypes, employees, loading, listError, reload, createTemplate, updateTemplate, deleteTemplate } =
     useApprovalAssignmentModel();
 
   const [statusFilter, setStatusFilter] = React.useState('all');
@@ -65,6 +65,11 @@ export function ApprovalAssignmentClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [dialogContentEl, setDialogContentEl] = React.useState<HTMLElement | null>(null);
 
+  React.useEffect(() => {
+    const isActive = statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined;
+    void reload(isActive !== undefined ? { isActive } : {});
+  }, [statusFilter]);
+
   const statusCounts = React.useMemo(() => ({
     all: templates.length,
     active: templates.filter((t) => t.isActive).length,
@@ -72,13 +77,9 @@ export function ApprovalAssignmentClient() {
   }), [templates]);
 
   const PER = 9;
-  const filtered = React.useMemo(() => {
-    if (statusFilter === 'active') return templates.filter((t) => t.isActive);
-    if (statusFilter === 'inactive') return templates.filter((t) => !t.isActive);
-    return templates;
-  }, [templates, statusFilter]);
+  const filtered = templates;
   const paginated = filtered.slice((page - 1) * PER, page * PER);
-  const pages = Math.max(1, Math.ceil(filtered.length / PER));
+  const pages = Math.max(1, Math.ceil(templates.length / PER));
 
   const usedRequestTypeIds = React.useMemo(() => {
     const set = new Set<string>();

@@ -11,7 +11,6 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogTitle,
 } from '@/components/ui/dialog';
@@ -31,6 +30,10 @@ import {
   HR_REQUEST_TYPE_CATEGORY_LABELS_AR,
 } from '@/features/hr/requests/lib/types';
 import { cn } from '@/shared/utils';
+import {
+  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
+  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
+} from '@/components/ui/directory-table';
 
 interface DraftForm {
   requestCategory: HRRequestTypeCategory;
@@ -40,7 +43,7 @@ interface DraftForm {
 }
 
 const EMPTY: DraftForm = {
-  requestCategory: 'leaves',
+  requestCategory: 'leave',
   nameAr: '',
   sortOrder: 1,
   isActive: true,
@@ -62,7 +65,6 @@ export function RequestTypesClient() {
   React.useEffect(() => { fetchRequestTypes(); fetchDepartments(); }, []);
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
-  const filterDepts: string[] = [];
   const [typeStatusFilter, setTypeStatusFilter] = React.useState<string>('all');
   const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -71,35 +73,23 @@ export function RequestTypesClient() {
   const [error, setError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  const activeDepts = departments.filter(d => d.isActive);
-  const afterSearch = React.useMemo(() => {
-    return requestTypes.filter((rt) => {
-      if (filterDepts.length && !filterDepts.includes(rt.departmentId)) return false;
-      return true;
-    });
-  }, [requestTypes, filterDepts]);
+  React.useEffect(() => {
+    const requestCategory = categoryFilter !== 'all' ? categoryFilter : undefined;
+    const isActive = typeStatusFilter === 'active' ? true : typeStatusFilter === 'inactive' ? false : undefined;
+    fetchRequestTypes({ requestCategory, isActive });
+  }, [categoryFilter, typeStatusFilter]);
 
-  const afterCategoryFilter = React.useMemo(() => {
-    if (categoryFilter === 'all') return afterSearch;
-    return afterSearch.filter((rt) => rt.requestCategory === categoryFilter);
-  }, [afterSearch, categoryFilter]);
+  const activeDepts = departments.filter(d => d.isActive);
 
   const typeStatusCounts = React.useMemo(() => ({
-    all: afterCategoryFilter.length,
-    active: afterCategoryFilter.filter((rt) => rt.isActive).length,
-    inactive: afterCategoryFilter.filter((rt) => !rt.isActive).length,
-  }), [afterCategoryFilter]);
+    all: requestTypes.length,
+    active: requestTypes.filter((rt) => rt.isActive).length,
+    inactive: requestTypes.filter((rt) => !rt.isActive).length,
+  }), [requestTypes]);
 
   const filtered = React.useMemo(() => {
-    return afterCategoryFilter
-      .filter((rt) => {
-        if (typeStatusFilter === 'all') return true;
-        if (typeStatusFilter === 'active') return rt.isActive;
-        if (typeStatusFilter === 'inactive') return !rt.isActive;
-        return true;
-      })
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [afterCategoryFilter, typeStatusFilter]);
+    return [...requestTypes].sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [requestTypes]);
 
   const openCreate = React.useCallback(() => {
     setEditId(null);
@@ -246,9 +236,14 @@ export function RequestTypesClient() {
                     <span
                       className={cn(
                         'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium',
-                        rt.requestCategory === 'leaves' && 'bg-success/15 text-success',
+                        rt.requestCategory === 'leave' && 'bg-success/15 text-success',
                         rt.requestCategory === 'attendance' && 'bg-primary/15 text-primary',
-                        rt.requestCategory === 'advances' && 'bg-gold/15 text-gold',
+                        rt.requestCategory === 'advance' && 'bg-gold/15 text-gold',
+                        rt.requestCategory === 'document' && 'bg-blue-500/15 text-blue-600',
+                        rt.requestCategory === 'transfer' && 'bg-violet-500/15 text-violet-600',
+                        rt.requestCategory === 'resignation' && 'bg-destructive/15 text-destructive',
+                        rt.requestCategory === 'discipline' && 'bg-orange-500/15 text-orange-600',
+                        rt.requestCategory === 'other' && 'bg-muted text-muted-foreground',
                       )}
                     >
                       {HR_REQUEST_TYPE_CATEGORY_LABELS_AR[rt.requestCategory]}
@@ -271,47 +266,43 @@ export function RequestTypesClient() {
           </div>
         </>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 text-xs font-semibold text-muted-foreground">
-                  <th className="px-4 py-3 text-right">القسم</th>
-                  <th className="px-4 py-3 text-right">النوع</th>
-                  <th className="px-4 py-3 text-right">التصنيف</th>
-                  <th className="px-4 py-3 text-right">الحالة</th>
-                  <th className="px-4 py-3 text-left w-28">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((rt) => {
-                  return (
-                    <tr
-                      key={rt.id}
-                      className="border-b border-border/60 cursor-pointer hover:bg-muted/25"
-                      onClick={() => openEdit(rt)}
-                    >
-                      <td className="px-4 py-3 text-muted-foreground">{getDeptLabel(rt.departmentId)}</td>
-                      <td className="px-4 py-3 font-medium">{rt.nameAr}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{HR_REQUEST_TYPE_CATEGORY_LABELS_AR[rt.requestCategory]}</td>
-                      <td className="px-4 py-3"><ActiveBadge active={rt.isActive} /></td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(rt)} aria-label="تعديل">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(rt.id)} aria-label="حذف">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DirectoryTableContainer>
+          <DirectoryTable>
+            <DirectoryTableHeaderRow>
+              <DirectoryTableHead>القسم</DirectoryTableHead>
+              <DirectoryTableHead>النوع</DirectoryTableHead>
+              <DirectoryTableHead>التصنيف</DirectoryTableHead>
+              <DirectoryTableHead>الحالة</DirectoryTableHead>
+              <DirectoryTableHead className="w-28">إجراءات</DirectoryTableHead>
+            </DirectoryTableHeaderRow>
+            <DirectoryTableBody>
+              {filtered.map((rt) => {
+                return (
+                  <DirectoryTableRow
+                    key={rt.id}
+                    interactive
+                    onClick={() => openEdit(rt)}
+                  >
+                    <DirectoryTableCell className="text-muted-foreground">{getDeptLabel(rt.departmentId)}</DirectoryTableCell>
+                    <DirectoryTableCell className="font-medium">{rt.nameAr}</DirectoryTableCell>
+                    <DirectoryTableCell className="text-muted-foreground">{HR_REQUEST_TYPE_CATEGORY_LABELS_AR[rt.requestCategory]}</DirectoryTableCell>
+                    <DirectoryTableCell><ActiveBadge active={rt.isActive} /></DirectoryTableCell>
+                    <DirectoryTableActionsCell>
+                      <div className="flex justify-start gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(rt)} aria-label="تعديل">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(rt.id)} aria-label="حذف">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </DirectoryTableActionsCell>
+                  </DirectoryTableRow>
+                );
+              })}
+            </DirectoryTableBody>
+          </DirectoryTable>
+        </DirectoryTableContainer>
       )}
 
       {/* Create / Edit dialog */}

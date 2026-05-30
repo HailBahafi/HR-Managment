@@ -4,7 +4,7 @@ import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 
 export type ContractNature = 'indefinite' | 'fixed_term' | 'task_based' | 'temporary' | 'seasonal';
 export type WorkArrangement = 'full_time' | 'part_time' | 'flexible';
-export type ContractStatus = 'draft' | 'active' | 'expired' | 'terminated' | 'archived';
+export type ContractStatus = 'draft' | 'pending_signature' | 'active' | 'expired' | 'terminated' | 'superseded' | 'cancelled';
 
 // ─── Contract Templates ───────────────────────────────────────────────────────
 

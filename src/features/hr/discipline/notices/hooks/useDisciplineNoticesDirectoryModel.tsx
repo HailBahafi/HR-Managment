@@ -63,6 +63,29 @@ export function useDisciplineNoticesDirectoryModel() {
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
+  const companyIdRef = React.useRef<string | null>(null);
+  const employeeMapRef = React.useRef<Map<string, string>>(new Map());
+
+  const reloadNotices = React.useCallback(async (params?: { employeeId?: string }) => {
+    const cid = companyIdRef.current;
+    if (!cid) return;
+    setLoading(true);
+    setListError(null);
+    try {
+      const noticesRes = await disciplineNoticesApi.getAll({
+        companyId: cid,
+        limit: 200,
+        ...(params?.employeeId ? { employeeId: params.employeeId } : {}),
+      });
+      setNotices(noticesRes.items.map((n) => mapNotice(n, employeeMapRef.current)));
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-notices.load');
+      setListError(displayMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const reload = React.useCallback(async () => {
     setLoading(true);
     setListError(null);
@@ -70,6 +93,7 @@ export function useDisciplineNoticesDirectoryModel() {
       const scope = await resolveOrganizationScope();
       const cid = scope.companyId ?? null;
       setCompanyId(cid);
+      companyIdRef.current = cid;
 
       const [employeesRes, recordsRes, noticesRes] = await Promise.all([
         employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
@@ -78,6 +102,7 @@ export function useDisciplineNoticesDirectoryModel() {
       ]);
 
       const employeeMap = new Map(employeesRes.items.map((e) => [e.id, e.nameAr]));
+      employeeMapRef.current = employeeMap;
       setEmployees(employeesRes.items.map((e) => ({ id: e.id, nameAr: e.nameAr })));
       setCases(
         recordsRes.items.map((r) => ({
@@ -133,5 +158,5 @@ export function useDisciplineNoticesDirectoryModel() {
     [reload],
   );
 
-  return { notices, employees, cases, companyId, loading, listError, createNotice, deleteNotice };
+  return { notices, employees, cases, companyId, loading, listError, createNotice, deleteNotice, reloadNotices };
 }

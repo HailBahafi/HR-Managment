@@ -20,6 +20,8 @@ import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attend
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { attendanceEventsApi } from '@/features/hr/attendance/lib/api/attendance-events';
 import { companiesApi } from '@/features/hr/lib/api/companies';
+import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 
 export type AttendanceViewMode = 'card' | 'table';
 
@@ -38,15 +40,21 @@ export function useDailyAttendanceModel() {
 
   const { from: filterFrom, to: filterTo } = dateBounds;
 
-  // Load company info once
+  // Load company info and all employees once on mount
   React.useEffect(() => {
-    void (async () => {
-      try {
-        const res = await companiesApi.getAll({ limit: 1 });
-        const c = res.items[0];
+    const companyId = useAuthStore.getState().activeCompanyId;
+    void Promise.allSettled([
+      companiesApi.getAll({ limit: 1 }),
+      companyId ? employeesApi.getAll({ limit: 500, companyId }) : Promise.resolve(null),
+    ]).then(([companyRes, empRes]) => {
+      if (companyRes.status === 'fulfilled') {
+        const c = companyRes.value.items[0];
         if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
-      } catch { /* ignore */ }
-    })();
+      }
+      if (empRes.status === 'fulfilled' && empRes.value) {
+        setAllEmployees(empRes.value.items.map((e) => ({ id: e.id, name: e.nameAr })));
+      }
+    });
   }, []);
 
   // Load day summaries & events when date range changes
@@ -81,10 +89,6 @@ export function useDailyAttendanceModel() {
             expectedEndAt: (s as Record<string, unknown>).expectedEndAt as string | null ?? null,
           })),
         );
-        // Derive unique employees from the API data
-        const empMap = new Map<string, string>();
-        for (const s of summRes.items) empMap.set(s.employeeId, s.employeeNameAr);
-        setAllEmployees([...empMap.entries()].map(([id, name]) => ({ id, name })));
         setEvents(
           evtRes.items.map((e) => ({
             id: e.id,

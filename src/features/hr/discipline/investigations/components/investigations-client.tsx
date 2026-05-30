@@ -38,6 +38,10 @@ import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xls
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import {
+  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
+  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
+} from '@/components/ui/directory-table';
 
 const RESULT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -62,7 +66,7 @@ const EMPTY: DraftForm = {
 
 export function InvestigationsClient() {
   const m = useDisciplineInvestigationsDirectoryModel();
-  const { investigations } = m;
+  const { investigations, reloadInvestigations } = m;
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
@@ -80,6 +84,12 @@ export function InvestigationsClient() {
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [investigations]);
 
+  React.useEffect(() => {
+    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
+    const result = resultFilter !== 'all' ? resultFilter : undefined;
+    void reloadInvestigations({ employeeId, result });
+  }, [selectedEmpIds, resultFilter, reloadInvestigations]);
+
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -89,36 +99,28 @@ export function InvestigationsClient() {
   const caseOptions = m.cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
   const investigatorOptions = m.employees.map((e) => ({ value: e.id, label: e.nameAr }));
 
-  const searchFiltered = React.useMemo(
-    () =>
-      investigations.filter(
-        (i) => selectedEmpIds.size === 0 || selectedEmpIds.has(i.employeeId),
-      ),
-    [investigations, selectedEmpIds],
-  );
+  // Employee and result filters are handled by the backend via reloadInvestigations; use investigations directly.
+  const searchFiltered = investigations;
 
   const filtered = React.useMemo(
-    () => searchFiltered.filter((i) => matchesDateRange(i.date, dateBounds.from, dateBounds.to)),
-    [searchFiltered, dateBounds.from, dateBounds.to],
+    () => investigations.filter((i) => matchesDateRange(i.date, dateBounds.from, dateBounds.to)),
+    [investigations, dateBounds.from, dateBounds.to],
   );
 
   const listFiltered = React.useMemo(
     () => {
-      const byResult = resultFilter === 'all'
-        ? filtered
-        : filtered.filter((i) => i.result === resultFilter);
-      if (recommendationFilter === 'all') return byResult;
-      return byResult.filter((i) => i.recommendationType === recommendationFilter);
+      if (recommendationFilter === 'all') return filtered;
+      return filtered.filter((i) => i.recommendationType === recommendationFilter);
     },
-    [filtered, recommendationFilter, resultFilter],
+    [filtered, recommendationFilter],
   );
 
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: filtered.length };
+    const counts: Record<string, number> = { all: investigations.length };
     for (const r of INVESTIGATION_RESULT_FILTER_ORDER) counts[r] = 0;
-    for (const i of filtered) counts[i.result] = (counts[i.result] ?? 0) + 1;
+    for (const i of investigations) counts[i.result] = (counts[i.result] ?? 0) + 1;
     return counts;
-  }, [filtered]);
+  }, [investigations]);
 
   const dateRangeActive = dateMeta.hasRestriction;
 
@@ -398,36 +400,34 @@ export function InvestigationsClient() {
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50 text-right">
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">المخالفة</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الموظف</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">المحقق</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">النتيجة</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
+        <DirectoryTableContainer>
+          <DirectoryTable className="min-w-[720px]">
+            <DirectoryTableHeaderRow>
+              <DirectoryTableHead className="whitespace-nowrap">المخالفة</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">الموظف</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">المحقق</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">النتيجة</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
+            </DirectoryTableHeaderRow>
+            <DirectoryTableBody>
               {listFiltered.map((inv) => (
-                <tr key={inv.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
-                  <td className="p-3 font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{inv.caseNumber}</td>
-                  <td className="max-w-[10rem] truncate p-3 font-medium">{inv.employeeNameAr}</td>
-                  <td className="max-w-[9rem] truncate p-3 text-xs">{inv.investigatorName}</td>
-                  <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{inv.date}</td>
-                  <td className="whitespace-nowrap p-3 text-xs">{INVESTIGATION_RESULT_LABELS[inv.result]}</td>
-                  <td className="p-2">
+                <DirectoryTableRow key={inv.id}>
+                  <DirectoryTableCell className="font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{inv.caseNumber}</DirectoryTableCell>
+                  <DirectoryTableCell className="max-w-[10rem] truncate font-medium">{inv.employeeNameAr}</DirectoryTableCell>
+                  <DirectoryTableCell className="max-w-[9rem] truncate text-xs">{inv.investigatorName}</DirectoryTableCell>
+                  <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{inv.date}</DirectoryTableCell>
+                  <DirectoryTableCell className="whitespace-nowrap text-xs">{INVESTIGATION_RESULT_LABELS[inv.result]}</DirectoryTableCell>
+                  <DirectoryTableActionsCell>
                     <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(inv.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  </td>
-                </tr>
+                  </DirectoryTableActionsCell>
+                </DirectoryTableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </DirectoryTableBody>
+          </DirectoryTable>
+        </DirectoryTableContainer>
       )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة تحقيق" size="lg" onSave={() => void handleSave()} error={formError}>

@@ -61,7 +61,10 @@ export function useDisciplineAppealsDirectoryModel() {
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async () => {
+  const reload = React.useCallback(async (filterParams?: {
+    employeeId?: string;
+    status?: AppealStatusDto;
+  }) => {
     setLoading(true);
     setListError(null);
     try {
@@ -69,10 +72,17 @@ export function useDisciplineAppealsDirectoryModel() {
       const cid = scope.companyId ?? null;
       setCompanyId(cid);
 
+      const appealsQuery = {
+        ...(cid ? { companyId: cid } : {}),
+        limit: 200,
+        ...(filterParams?.employeeId ? { subjectEmployeeId: filterParams.employeeId } : {}),
+        ...(filterParams?.status ? { status: filterParams.status } : {}),
+      };
+
       const [employeesRes, recordsRes, appealsRes] = await Promise.all([
         employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
         violationRecordsApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-        disciplineAppealsApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+        disciplineAppealsApi.getAll(appealsQuery),
       ]);
 
       const employeeMap = new Map(employeesRes.items.map((e) => [e.id, e.nameAr]));
@@ -136,5 +146,5 @@ export function useDisciplineAppealsDirectoryModel() {
     [reload],
   );
 
-  return { appeals, employees, cases, companyId, loading, listError, createAppeal, updateAppeal, deleteAppeal };
+  return { appeals, employees, cases, companyId, loading, listError, createAppeal, updateAppeal, deleteAppeal, reload };
 }

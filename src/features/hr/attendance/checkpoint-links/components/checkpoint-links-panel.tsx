@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { Link2, Plus, Search, Trash2, Pencil, Users, MapPin, CalendarDays, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,9 @@ import { EmptyStateCard } from '@/components/shared/empty-state-card';
 
 export function CheckpointLinksPanel() {
   const m = useCheckpointLinksPanelModel();
+  const [viewBatchId, setViewBatchId] = React.useState<string | null>(null);
+
+  const viewBatch = viewBatchId ? m.batches.find((b) => b.batchId === viewBatchId) : null;
 
   return (
     <div className="space-y-5">
@@ -56,18 +60,17 @@ export function CheckpointLinksPanel() {
         </EmptyStateCard>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {m.batches.map(({ batchId, rows, eff: efd }) => {
-            const empIds = [...new Set(rows.map((r) => r.employeeId))];
-            const cpIds  = [...new Set(rows.map((r) => r.checkInPointId))];
-            const emps   = empIds.map((id) => m.employees.find((e) => e.id === id)).filter(Boolean) as NonNullable<ReturnType<typeof m.employees.find>>[];
-            const cpoints = cpIds.map((id) => m.checkpoints.find((c) => c.id === id)).filter(Boolean) as NonNullable<
-              (typeof m.checkpoints)[number]
-            >[];
-            const overflowEmps = Math.max(0, emps.length - 3);
+          {m.batches.map((batch) => {
+            const visibleEmps = batch.rows.slice(0, 3);
+            const overflow = batch.rows.length - visibleEmps.length;
             return (
               <div
-                key={batchId}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated"
+                key={batch.batchId}
+                className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated"
+                onClick={() => setViewBatchId(batch.batchId)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && setViewBatchId(batch.batchId)}
               >
                 {/* coloured accent strip */}
                 <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
@@ -76,65 +79,51 @@ export function CheckpointLinksPanel() {
                   {/* top row */}
                   <div className="mb-4 flex items-start justify-between">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <Link2 className="h-5 w-5" />
+                      <MapPin className="h-5 w-5" />
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Badge variant="subtle" className="gap-1 text-[10px]">
                         <Users className="h-3 w-3" />
-                        <span className="number-ar">{empIds.length}</span>
-                      </Badge>
-                      <Badge variant="subtle" className="gap-1 text-[10px]">
-                        <MapPin className="h-3 w-3" />
-                        <span className="number-ar">{cpIds.length}</span>
+                        <span className="number-ar">{batch.activeLinks}</span>/<span className="number-ar">{batch.totalLinks}</span>
                       </Badge>
                     </div>
                   </div>
 
+                  {/* checkpoint name */}
+                  <h3 className="mb-1 truncate font-display text-base font-bold leading-snug transition-colors group-hover:text-primary">
+                    {batch.checkInPointName}
+                  </h3>
+
                   {/* employee avatars */}
-                  <div className="mb-3 flex items-center gap-0">
-                    {emps.slice(0, 3).map((e, i) => (
+                  <div className="mb-3 flex items-center" style={{ gap: 0 }}>
+                    {visibleEmps.map((row, i) => (
                       <div
-                        key={e.id}
-                        title={e.nameAr}
-                        className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-card bg-muted text-[10px] font-bold text-muted-foreground"
+                        key={row.id}
+                        title={row.employeeName}
+                        className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-card bg-primary/10 text-[10px] font-bold text-primary"
                         style={{ marginRight: i > 0 ? '-8px' : undefined, zIndex: 3 - i }}
                       >
-                        {(e as { avatar?: string }).avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={e.avatar ?? ''} alt={e.nameAr} className="h-full w-full object-cover" />
-                        ) : (
-                          e.nameAr.slice(0, 1)
-                        )}
+                        {row.employeeName.slice(0, 1)}
                       </div>
                     ))}
-                    {overflowEmps > 0 && (
+                    {overflow > 0 && (
                       <div
                         className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-bold text-muted-foreground"
                         style={{ marginRight: '-8px', zIndex: 0 }}
                       >
-                        +{overflowEmps}
+                        +{overflow}
                       </div>
                     )}
                   </div>
 
-                  {/* checkpoint names */}
-                  <div className="mb-4 space-y-1">
-                    {cpoints.slice(0, 2).map((cp) => (
-                      <div key={cp.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3 shrink-0 text-gold" />
-                        <span className="truncate">{cp.nameAr}</span>
-                      </div>
-                    ))}
-                    {cpoints.length > 2 && (
-                      <p className="text-[11px] text-muted-foreground/60">+{cpoints.length - 2} نقاط أخرى</p>
-                    )}
-                  </div>
-
-                  {/* footer */}
-                  <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                  {/* effective date + actions */}
+                  <div
+                    className="flex items-center justify-between border-t border-border/60 pt-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <CalendarDays className="h-3.5 w-3.5" />
-                      <span className="font-mono tabular-nums" dir="ltr">{efd ?? '—'}</span>
+                      <span className="font-mono tabular-nums" dir="ltr">{batch.eff ?? '—'}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
@@ -142,7 +131,7 @@ export function CheckpointLinksPanel() {
                         size="sm"
                         type="button"
                         className="h-7 gap-1 px-2 text-xs"
-                        onClick={() => m.openEditDialog(batchId)}
+                        onClick={() => m.openEditDialog(batch.batchId)}
                       >
                         <Pencil className="h-3 w-3" /> تعديل
                       </Button>
@@ -151,7 +140,7 @@ export function CheckpointLinksPanel() {
                         size="sm"
                         type="button"
                         className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => m.setDeleteTarget(batchId)}
+                        onClick={() => m.setDeleteTarget(batch.batchId)}
                       >
                         <Trash2 className="h-3 w-3" /> حذف
                       </Button>
@@ -163,6 +152,68 @@ export function CheckpointLinksPanel() {
           })}
         </div>
       )}
+
+      {/* ── Detail dialog ── */}
+      <Dialog open={!!viewBatch} onOpenChange={(o) => !o && setViewBatchId(null)}>
+        <DialogContent className="max-w-lg border-border" dir="rtl">
+          {viewBatch && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <DialogTitle className="font-display text-lg">{viewBatch.checkInPointName}</DialogTitle>
+                    <DialogDescription className="flex items-center gap-1 text-xs">
+                      <CalendarDays className="h-3 w-3" />
+                      <span dir="ltr">{viewBatch.eff ?? '—'}</span>
+                      <span className="mx-1">·</span>
+                      <span>{viewBatch.activeLinks} نشط من {viewBatch.totalLinks}</span>
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="max-h-[60vh] overflow-y-auto">
+                {viewBatch.rows.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">لا يوجد موظفون مرتبطون</p>
+                ) : (
+                  <div className="space-y-1.5 py-2">
+                    {viewBatch.rows.map((row) => (
+                      <div
+                        key={row.id}
+                        className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/10 px-3 py-2.5"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                          {row.employeeName.slice(0, 1)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{row.employeeName}</p>
+                          <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">{row.employeeCode}</p>
+                        </div>
+                        <Badge
+                          variant={row.linkActive ? 'success' : 'secondary'}
+                          className="shrink-0 text-[10px]"
+                        >
+                          {row.linkActive ? 'نشط' : 'غير نشط'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewBatchId(null)}>إغلاق</Button>
+                <Button variant="luxe" onClick={() => { setViewBatchId(null); m.openEditDialog(viewBatch.batchId); }}>
+                  <Pencil className="h-4 w-4" /> تعديل
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Create batch dialog ── */}
       <Dialog open={m.open} onOpenChange={m.setOpen}>

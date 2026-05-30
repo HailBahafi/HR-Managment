@@ -609,7 +609,7 @@ export const EntityFilterToolbar = React.forwardRef<
 
   return (
     <>
-      <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:px-4">
+      <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm overflow-visible sm:px-4">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
           {filterDropdownRow}
           {hasSecondaryFilters ? (

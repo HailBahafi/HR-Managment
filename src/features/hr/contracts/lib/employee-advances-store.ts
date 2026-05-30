@@ -85,7 +85,7 @@ type State = {
   items: HREmployeeAdvance[];
   isLoading: boolean;
   error: string | null;
-  fetch: (params?: { employeeId?: string }) => Promise<void>;
+  fetch: (params?: { employeeId?: string; status?: string }) => Promise<void>;
   add: (a: Omit<HREmployeeAdvance, 'id' | 'updatedAt'>) => Promise<HREmployeeAdvance>;
   update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'updatedAt'>>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
@@ -104,6 +104,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
       const result = await employeeAdvancesApi.list({
         companyId,
         employeeId: params?.employeeId,
+        status: params?.status,
         limit: 200,
       });
       set({ items: result.items.map(mapApi), isLoading: false });

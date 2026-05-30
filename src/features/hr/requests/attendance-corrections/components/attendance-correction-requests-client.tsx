@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { CheckCircle2, Plus, XCircle } from 'lucide-react';
+import { Ban, CheckCircle2, Plus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,15 +22,14 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { FormField, EmptyState } from '@/features/hr/requests/components/shared-ui';
-import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import {
   useAttendanceCorrectionRequestsStore,
   attendanceCorrectionStatusLabelAr,
 } from '@/features/hr/requests/lib/attendance-correction-store';
 import type { AttendanceCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
-import { ATTENDANCE_PREVIOUS_STATUS_PRESETS } from '@/features/hr/requests/lib/attendance-correction-types';
 import { cn } from '@/shared/utils';
 
 const STATUS_ORDER: readonly string[] = ['pending', 'approved', 'rejected'];
@@ -62,23 +61,24 @@ function statusBadgeClass(s: AttendanceCorrectionRequest['status']) {
 }
 
 export function AttendanceCorrectionRequestsClient() {
+  const companyId = useAuthStore((s) => s.activeCompanyId);
   const departments = useHRConfigurationStore((s) => s.departments);
   const { requestTypes, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
   const employees = useHREmployeeDirectoryStore((s) => s.employees);
   const fetchEmployees = useHREmployeeDirectoryStore((s) => s.fetch);
   const activeEmployees = React.useMemo(() => employees.filter((e) => e.status === 'active'), [employees]);
 
-  const { items, fetch: fetchItems, submit, approve, reject } = useAttendanceCorrectionRequestsStore();
+  const { items, fetch: fetchItems, submit, approve, reject, cancel } = useAttendanceCorrectionRequestsStore();
 
   React.useEffect(() => {
-    fetchItems();
+    if (!companyId) return;
     fetchRequestTypes();
     fetchDepartments();
     fetchEmployees();
-  }, []);
+  }, [companyId]);
 
   const attendanceRequestTypes = React.useMemo(
-    () => requestTypes.filter(rt => rt.requestCategory === 'attendance' && rt.isActive),
+    () => requestTypes.filter(rt => rt.isActive),
     [requestTypes],
   );
 
@@ -91,11 +91,8 @@ export function AttendanceCorrectionRequestsClient() {
   const [formEmpId, setFormEmpId] = React.useState('');
   const [formRequestTypeId, setFormRequestTypeId] = React.useState('');
   const [formWorkDate, setFormWorkDate] = React.useState('');
-  const [formPrevIn, setFormPrevIn] = React.useState('');
-  const [formPrevOut, setFormPrevOut] = React.useState('');
   const [formCorrIn, setFormCorrIn] = React.useState('');
   const [formCorrOut, setFormCorrOut] = React.useState('');
-  const [formPrevStatus, setFormPrevStatus] = React.useState('');
   const [formReason, setFormReason] = React.useState('');
 
   const deptOptions = React.useMemo(
@@ -103,51 +100,56 @@ export function AttendanceCorrectionRequestsClient() {
     [departments],
   );
 
-  const empPickerList = React.useMemo(() => {
-    const m = new Map<string, string>();
-    for (const r of items) m.set(r.employeeId, r.employeeNameAr);
-    return [...m.entries()].map(([id, name]) => ({ id, name }));
-  }, [items]);
+  const empPickerList = React.useMemo(
+    () => activeEmployees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [activeEmployees],
+  );
 
-  const baseFiltered = React.useMemo(() => {
-    const picks = [...selectedEmpIds];
-    return items.filter((r) => {
-      if (appliedDept !== 'all' && r.departmentNameAr !== appliedDept) return false;
-      if (picks.length > 0 && !picks.includes(r.employeeId)) return false;
-      if (!matchesDateRange(r.workDate, dateBounds.from, dateBounds.to)) return false;
-      return true;
-    });
-  }, [items, appliedDept, selectedEmpIds, dateBounds.from, dateBounds.to]);
+  // Debounce ref for backend fetch on filter changes
+  const fetchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    if (!companyId) return;
+    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
+    const status = statusFilter !== 'all' ? statusFilter : undefined;
+    const workDateFrom = dateBounds.from || undefined;
+    const workDateTo = dateBounds.to || undefined;
+    if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+    fetchDebounceRef.current = setTimeout(() => {
+      fetchItems({ employeeId, status, workDateFrom, workDateTo });
+    }, 400);
+    return () => {
+      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+    };
+  }, [companyId, selectedEmpIds, statusFilter, dateBounds.from, dateBounds.to]);
+
+  // API doesn't support dept filter — apply locally after server response
+  const deptFiltered = React.useMemo(
+    () => appliedDept === 'all' ? items : items.filter((r) => r.departmentNameAr === appliedDept),
+    [items, appliedDept],
+  );
 
   const statusCounts = React.useMemo(
     () => ({
-      all: baseFiltered.length,
-      pending: baseFiltered.filter((r) => r.status === 'pending').length,
-      approved: baseFiltered.filter((r) => r.status === 'approved').length,
-      rejected: baseFiltered.filter((r) => r.status === 'rejected').length,
+      all: deptFiltered.length,
+      pending: deptFiltered.filter((r) => r.status === 'pending').length,
+      approved: deptFiltered.filter((r) => r.status === 'approved').length,
+      rejected: deptFiltered.filter((r) => r.status === 'rejected').length,
     }),
-    [baseFiltered],
+    [deptFiltered],
   );
 
-  const filtered = React.useMemo(() => {
-    if (statusFilter === 'all') return baseFiltered;
-    return baseFiltered.filter((r) => r.status === statusFilter);
-  }, [baseFiltered, statusFilter]);
-
   const sorted = React.useMemo(
-    () => [...filtered].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
-    [filtered],
+    () => [...deptFiltered].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    [deptFiltered],
   );
 
   const resetForm = React.useCallback(() => {
     setFormEmpId('');
     setFormRequestTypeId('');
     setFormWorkDate('');
-    setFormPrevIn('');
-    setFormPrevOut('');
     setFormCorrIn('');
     setFormCorrOut('');
-    setFormPrevStatus('');
     setFormReason('');
   }, []);
 
@@ -166,7 +168,6 @@ export function AttendanceCorrectionRequestsClient() {
       workDate: formWorkDate,
       correctedCheckIn: formCorrIn,
       correctedCheckOut: formCorrOut,
-      previousStatusAr: formPrevStatus.trim(),
       reasonAr: formReason.trim(),
     });
     if (res.ok === false) {
@@ -177,8 +178,6 @@ export function AttendanceCorrectionRequestsClient() {
     resetForm();
     setDialogOpen(false);
   };
-
-  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
   const activeFilterCount = React.useMemo(() => {
     let count = 0;
@@ -229,7 +228,7 @@ export function AttendanceCorrectionRequestsClient() {
     ),
     [
       appliedDept,
-      selectedEmpKey,
+      selectedEmpIds,
       statusFilter,
       dateBounds.from,
       dateBounds.to,
@@ -262,7 +261,7 @@ export function AttendanceCorrectionRequestsClient() {
       },
       {
         key: 'workDate',
-        title: 'تاريخ اليوم',
+        title: 'تاريخ التصحيح',
         render: (r) => <span className="font-mono text-xs" dir="ltr">{r.workDate}</span>,
       },
       {
@@ -274,11 +273,6 @@ export function AttendanceCorrectionRequestsClient() {
             <p className="text-sm font-medium">{r.requestTypeNameAr}</p>
           </div>
         ),
-      },
-      {
-        key: 'prevTimes',
-        title: 'الحضور والانصراف (السابق)',
-        render: (r) => timeCell(r.previousCheckIn, r.previousCheckOut, 'حضور', 'انصراف'),
       },
       {
         key: 'corrTimes',
@@ -322,12 +316,15 @@ export function AttendanceCorrectionRequestsClient() {
               <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" title="رفض" aria-label="رفض" onClick={async () => { await reject(r.id); toast.message('تم رفض الطلب.'); }}>
                 <XCircle className="h-4 w-4" />
               </Button>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-amber-600 hover:bg-amber-500/10" title="إلغاء" aria-label="إلغاء" onClick={async (ev) => { ev.stopPropagation(); await cancel(r.id); toast.message('تم سحب الطلب.'); }}>
+                <Ban className="h-4 w-4" />
+              </Button>
             </div>
           );
         },
       },
     ],
-    [approve, reject],
+    [approve, reject, cancel],
   );
 
   return (
@@ -355,9 +352,10 @@ export function AttendanceCorrectionRequestsClient() {
                 {timeCell(r.correctedCheckIn, r.correctedCheckOut, 'مصحح حضور', 'مصحح انصراف')}
                 <p className="text-xs"><span className="text-muted-foreground">الحالة السابقة:</span> {r.previousStatusAr}</p>
                 {r.status === 'pending' ? (
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2 pt-1" onClick={(ev) => ev.stopPropagation()}>
                     <Button type="button" variant="outline" size="sm" className="flex-1 text-xs" onClick={async () => { await approve(r.id); toast.success('تم اعتماد طلب التصحيح.'); }}>موافقة</Button>
                     <Button type="button" variant="outline" size="sm" className="flex-1 text-xs text-destructive" onClick={async () => { await reject(r.id); toast.message('تم رفض الطلب.'); }}>رفض</Button>
+                    <Button type="button" variant="outline" size="sm" className="flex-1 text-xs text-amber-600" onClick={async (ev) => { ev.stopPropagation(); await cancel(r.id); toast.message('تم سحب الطلب.'); }}>إلغاء</Button>
                   </div>
                 ) : null}
               </div>
@@ -372,7 +370,7 @@ export function AttendanceCorrectionRequestsClient() {
             <DialogHeader>
               <DialogTitle>طلب تصحيح حضور</DialogTitle>
               <DialogDescription>
-                أدخل من سيوافق على الطلب، وأوقات الحضور والانصراف كما في السجل ثم الأوقات المصححة، والحالة السابقة للسجل.
+                أدخل الموظف وتاريخ التصحيح والأوقات المصححة وسبب الطلب.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-2">
@@ -400,39 +398,19 @@ export function AttendanceCorrectionRequestsClient() {
                   </SelectContent>
                 </Select>
               </FormField>
-              <FormField label="تاريخ اليوم المعني">
+              <FormField label="تاريخ التصحيح">
                 <DatePickerInput value={formWorkDate} onChange={setFormWorkDate} />
               </FormField>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="text-xs font-medium">وقت الحضور السابق (كما في السجل)</Label>
-                  <Input type="time" value={formPrevIn} onChange={(e) => setFormPrevIn(e.target.value)} step={60} dir="ltr" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">وقت الانصراف السابق (كما في السجل)</Label>
-                  <Input type="time" value={formPrevOut} onChange={(e) => setFormPrevOut(e.target.value)} step={60} dir="ltr" />
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">وقت الحضور بعد التصحيح</Label>
+                  <Label className="text-xs font-medium">وقت الحضور الجديد</Label>
                   <Input type="time" value={formCorrIn} onChange={(e) => setFormCorrIn(e.target.value)} step={60} dir="ltr" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-medium">وقت الانصراف بعد التصحيح</Label>
+                  <Label className="text-xs font-medium">وقت الانصراف الجديد  </Label>
                   <Input type="time" value={formCorrOut} onChange={(e) => setFormCorrOut(e.target.value)} step={60} dir="ltr" />
                 </div>
               </div>
-              <FormField label="الحالة السابقة للسجل">
-                <Select value={formPrevStatus} onValueChange={setFormPrevStatus}>
-                  <SelectTrigger><SelectValue placeholder="اختر وصف الحالة…" /></SelectTrigger>
-                  <SelectContent>
-                    {ATTENDANCE_PREVIOUS_STATUS_PRESETS.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>{p.labelAr}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
               <FormField label="سبب الطلب (اختياري)">
                 <Textarea value={formReason} onChange={(e) => setFormReason(e.target.value)} rows={3} placeholder="تفاصيل إضافية للمراجع…" />
               </FormField>

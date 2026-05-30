@@ -25,13 +25,13 @@ export function useApprovalAssignmentModel() {
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async () => {
+  const reload = React.useCallback(async (params?: { isActive?: boolean }) => {
     if (!companyId) { setLoading(false); return; }
     setLoading(true);
     setListError(null);
     try {
       const [tplRes, rtRes, empRes] = await Promise.all([
-        requestApprovalTemplatesApi.getAll({ companyId, limit: 200 }),
+        requestApprovalTemplatesApi.getAll({ companyId, limit: 200, ...params }),
         requestTypesApi.list({ companyId, limit: 200 }),
         employeesApi.getAll({ companyId, limit: 500 }),
       ]);
@@ -78,6 +78,7 @@ export function useApprovalAssignmentModel() {
     employees,
     loading,
     listError,
+    reload,
     createTemplate,
     updateTemplate,
     deleteTemplate,

@@ -29,6 +29,8 @@ export interface UnifiedEmployee {
 export interface UnifiedLeaveRecord {
   id: string;
   employeeId: string;
+  leaveTypeId: string;
+  leaveTypeName: string;
   type: UnifiedLeaveType;
   status: LeaveStatus;
   start: string;

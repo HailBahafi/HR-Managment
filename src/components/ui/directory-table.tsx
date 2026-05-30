@@ -28,7 +28,7 @@ export function DirectoryTableHeaderRow({ className, children, ...props }: React
 }
 
 export function DirectoryTableHead({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn('px-4 py-3 text-end', className)} {...props} />;
+  return <th className={cn('px-4 py-3 text-start', className)} {...props} />;
 }
 
 export function DirectoryTableBody({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {

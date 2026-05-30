@@ -75,10 +75,6 @@ export function EmployeeAdvancesClient() {
   const allEmployees = useHREmployeeDirectoryStore(s => s.employees);
   const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
 
-  React.useEffect(() => {
-    fetchAdvances();
-  }, [fetchAdvances]);
-
   const empOptions = React.useMemo(() =>
     employees.map(e => ({ value: e.id, label: e.nameAr })),
     [employees],
@@ -99,28 +95,31 @@ export function EmployeeAdvancesClient() {
   const [error, setError] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
 
-  const narrowedForStatus = React.useMemo(
-    () =>
-      items.filter((x) => {
-        const matchEmp = selectedEmpIds.size === 0 || selectedEmpIds.has(x.employeeId);
-        return matchEmp;
-      }),
-    [items, selectedEmpIds],
-  );
+  // Debounce ref for backend fetch on filter changes
+  const fetchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
+    const status = statusFilter !== 'all' ? statusFilter : undefined;
+    if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+    fetchDebounceRef.current = setTimeout(() => {
+      fetchAdvances({ employeeId, status });
+    }, 400);
+    return () => {
+      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+    };
+  }, [selectedEmpIds, statusFilter]);
 
   const advanceStatusCounts = React.useMemo((): Record<string, number> => ({
-    all: narrowedForStatus.length,
-    outstanding: narrowedForStatus.filter((x) => x.status === 'outstanding').length,
-    repaid: narrowedForStatus.filter((x) => x.status === 'repaid').length,
-    cancelled: narrowedForStatus.filter((x) => x.status === 'cancelled').length,
-  }), [narrowedForStatus]);
+    all: items.length,
+    outstanding: items.filter((x) => x.status === 'outstanding').length,
+    repaid: items.filter((x) => x.status === 'repaid').length,
+    cancelled: items.filter((x) => x.status === 'cancelled').length,
+  }), [items]);
 
   const filtered = React.useMemo(
-    () =>
-      narrowedForStatus
-        .filter((x) => statusFilter === 'all' || x.status === statusFilter)
-        .sort((a, b) => b.advanceDate.localeCompare(a.advanceDate)),
-    [narrowedForStatus, statusFilter],
+    () => [...items].sort((a, b) => b.advanceDate.localeCompare(a.advanceDate)),
+    [items],
   );
 
   const total = filtered.length;

@@ -50,7 +50,7 @@ const EMPTY: DraftForm = { caseId: '', employeeNameAr: '', date: '', channel: 'i
 
 export function AppealsClient() {
   const hook = useDisciplineAppealsDirectoryModel();
-  const { appeals, cases, loading, listError, createAppeal, updateAppeal, deleteAppeal } = hook;
+  const { appeals, cases, loading, listError, createAppeal, updateAppeal, deleteAppeal, reload } = hook;
 
   const [companyNameAr, setCompanyNameAr] = React.useState('');
   const [companyNameEn, setCompanyNameEn] = React.useState('');
@@ -88,27 +88,28 @@ export function AppealsClient() {
 
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
-  const searchFiltered = React.useMemo(
-    () => appeals.filter((a) => selectedEmpIds.size === 0 || selectedEmpIds.has(a.employeeId)),
-    [appeals, selectedEmpIds],
-  );
+  // Backend fetch whenever employee or status filters change
+  React.useEffect(() => {
+    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
+    const status = statusFilter !== 'all' ? (statusFilter as AppealStatusDto) : undefined;
+    void reload({ employeeId, status });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmpIds, statusFilter]);
 
+  // Date range filter applied locally (API doesn't support it)
   const filtered = React.useMemo(
-    () => searchFiltered.filter((a) => matchesDateRange(a.date, dateBounds.from, dateBounds.to)),
-    [searchFiltered, dateBounds.from, dateBounds.to],
+    () => appeals.filter((a) => matchesDateRange(a.date, dateBounds.from, dateBounds.to)),
+    [appeals, dateBounds.from, dateBounds.to],
   );
 
-  const listFiltered = React.useMemo(
-    () => (statusFilter === 'all' ? filtered : filtered.filter((a) => a.status === statusFilter)),
-    [filtered, statusFilter],
-  );
+  const listFiltered = filtered;
 
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: filtered.length };
+    const counts: Record<string, number> = { all: appeals.length };
     for (const s of APPEAL_STATUS_FILTER_ORDER) counts[s] = 0;
-    for (const a of filtered) counts[a.status] = (counts[a.status] ?? 0) + 1;
+    for (const a of appeals) counts[a.status] = (counts[a.status] ?? 0) + 1;
     return counts;
-  }, [filtered]);
+  }, [appeals]);
 
   const dateRangeActive = dateMeta.hasRestriction;
 
@@ -266,9 +267,9 @@ export function AppealsClient() {
     <div className="space-y-4">
       <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير التظلمات" fileName="discipline-appeals.pdf" printable={printable} />
 
-      {searchFiltered.length === 0 ? (
-        <EmptyState title="لا توجد تظلمات مطابقة للبحث أو الموظفين المحددين." />
-      ) : filtered.length === 0 ? (
+      {appeals.length === 0 && !loading ? (
+        <EmptyState title="لا توجد تظلمات مطابقة للفلاتر المحددة." />
+      ) : filtered.length === 0 && !loading ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
             {dateMeta.tab === 'today' ? 'لا توجد تظلمات بتاريخ اليوم ضمن النتائج الحالية.'
@@ -280,11 +281,6 @@ export function AppealsClient() {
           {dateRangeActive ? (
             <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>عرض كل الفترات</Button>
           ) : null}
-        </div>
-      ) : listFiltered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
-          <p className="text-sm text-muted-foreground">لا توجد تظلمات بحالة «{statusFilter === 'all' ? '' : APPEAL_STATUS_LABELS[statusFilter]}» مع عوامل البحث الحالية.</p>
-          <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>عرض الكل</Button>
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

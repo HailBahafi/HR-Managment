@@ -249,7 +249,7 @@ export function Topbar() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 flex flex-col border-b backdrop-blur-xl',
+        'sticky top-0 z-40 flex flex-col border-b backdrop-blur-xl',
         'border-border/60',
         /* Light: crisp glass bar — cool white → parchment → whisper of primary teal */
         'bg-linear-to-b from-card via-background to-primary-50/35',

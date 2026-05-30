@@ -11,12 +11,20 @@ import {
   disciplinePayrollDeductionsApi,
   type CreateDisciplinePayrollDeductionDto,
   type UpdateDisciplinePayrollDeductionDto,
+  type PayrollDeductionStatusDto,
+  type PayrollDeductionTypeDto,
 } from '@/features/hr/discipline/lib/api/discipline-payroll-deductions';
 import {
   mapDisciplinePayrollDeductionResponse,
 } from '@/features/hr/discipline/deductions/services/discipline-payroll-deductions.service';
 
 const PAGE_LIMIT = 200;
+
+export type DeductionFetchParams = {
+  employeeId?: string;
+  status?: PayrollDeductionStatusDto;
+  deductionType?: PayrollDeductionTypeDto;
+};
 
 export type DeductionEmployeeOption = {
   id: string;
@@ -38,7 +46,7 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async () => {
+  const reload = React.useCallback(async (params?: DeductionFetchParams) => {
     setLoading(true);
     setListError(null);
     try {
@@ -46,16 +54,17 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
       const resolvedCompanyId = scope.companyId ?? null;
       setCompanyId(resolvedCompanyId);
 
+      const baseQuery = resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT };
+
       const [employeesRes, casesRes, deductionsRes] = await Promise.all([
-        employeesApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-        ),
-        violationRecordsApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-        ),
-        disciplinePayrollDeductionsApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-        ),
+        employeesApi.getAll(baseQuery),
+        violationRecordsApi.getAll(baseQuery),
+        disciplinePayrollDeductionsApi.getAll({
+          ...baseQuery,
+          ...(params?.employeeId ? { employeeId: params.employeeId } : {}),
+          ...(params?.status ? { status: params.status } : {}),
+          ...(params?.deductionType ? { deductionType: params.deductionType } : {}),
+        }),
       ]);
 
       const employeesItems = ensurePaginatedResult(employeesRes).items;
@@ -129,6 +138,7 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
     companyId,
     loading,
     listError,
+    reload,
     add,
     update,
     sendToPayroll,

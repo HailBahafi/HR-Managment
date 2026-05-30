@@ -40,7 +40,7 @@ function mapApiRequestType(r: ApiRequestType): HRRequestTypeEntity {
     slug: r.slug,
     sortOrder: r.sortOrder,
     isActive: r.isActive,
-    requestCategory: (r.requestCategory as HRRequestTypeCategory) ?? 'leaves',
+    requestCategory: (r.requestCategory as HRRequestTypeCategory) ?? 'leave',
     approvalAssignmentTemplateId: r.approvalAssignmentTemplateId ?? null,
     approvalStages: (r.approvalStages ?? []) as unknown as HRApprovalStage[],
     subtypes: (r.subtypes ?? []).map(s => ({
@@ -68,7 +68,7 @@ interface HRConfigState {
   fetchDepartments: () => Promise<void>;
 
   // Request types — async (backed by API)
-  fetchRequestTypes: () => Promise<void>;
+  fetchRequestTypes: (params?: { requestCategory?: string; isActive?: boolean }) => Promise<void>;
   addRequestType: (draft: Omit<HRRequestTypeEntity, 'id' | 'slug'>) => Promise<void>;
   updateRequestType: (id: string, patch: Partial<Omit<HRRequestTypeEntity, 'id'>>) => Promise<void>;
   deleteRequestType: (id: string) => Promise<void>;
@@ -112,12 +112,12 @@ export const useHRConfigurationStore = create<HRConfigState>()(
 
       // ── Request types (API-backed) ──────────────────────────────────────────
 
-      fetchRequestTypes: async () => {
+      fetchRequestTypes: async (params?: { requestCategory?: string; isActive?: boolean }) => {
         const companyId = useAuthStore.getState().activeCompanyId;
         if (!companyId) return;
         set({ requestTypesLoading: true, requestTypesError: null });
         try {
-          const result = await requestTypesApi.list({ companyId, limit: 200 });
+          const result = await requestTypesApi.list({ companyId, limit: 200, ...params });
           set({ requestTypes: result.items.map(mapApiRequestType), requestTypesLoading: false });
         } catch (e) {
           set({ requestTypesError: (e as Error).message, requestTypesLoading: false });

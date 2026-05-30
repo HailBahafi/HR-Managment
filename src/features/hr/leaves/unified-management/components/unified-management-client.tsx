@@ -23,7 +23,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  applyStepDecision, canActOnLeave, getApprovalStage, defaultPendingApprovalChain,
+  canActOnLeave, getApprovalStage,
   LEAVE_TYPE_LABELS, STATUS_LABELS,
 } from '@/features/hr/leaves/unified-management/lib/leaves-utils';
 import type { EmployeeLeaveBalanceRow } from '@/features/hr/leaves/unified-management/types';
@@ -31,6 +31,9 @@ import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmpl
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/features/hr/leaves/unified-management/types';
+import { leaveRequestsApi, type LeaveRequestResponseDto } from '@/features/hr/leaves/lib/api/leave-requests';
+import { leaveTypesApi, type LeaveTypeResponseDto } from '@/features/hr/leaves/lib/api/leave-types';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { cn, toWesternDigits } from '@/shared/utils';
 
 // ─── Style config ─────────────────────────────────────────────────────────────
@@ -60,6 +63,27 @@ function wDays(start: string, end: string): number {
   return Math.max(1, Math.round((e - s) / 86400000) + 1);
 }
 
+const KNOWN_LEAVE_CODES = ['annual', 'sick', 'unpaid', 'maternity', 'emergency'];
+
+function mapApiLeave(r: LeaveRequestResponseDto, leaveTypes: LeaveTypeResponseDto[]): UnifiedLeaveRecord {
+  const lt = leaveTypes.find((t) => t.id === r.leaveTypeId);
+  const derivedType = (lt?.code && KNOWN_LEAVE_CODES.includes(lt.code) ? lt.code : 'annual') as UnifiedLeaveType;
+  return {
+    id: r.id,
+    employeeId: r.employeeId,
+    leaveTypeId: r.leaveTypeId,
+    leaveTypeName: lt?.nameAr ?? r.leaveTypeId,
+    type: derivedType,
+    status: (r.status as LeaveStatus) ?? 'pending',
+    start: r.startDate ?? '',
+    end: r.endDate ?? '',
+    requestBranchId: '',
+    workingDays: r.workingDays ?? 0,
+    noteAr: r.noteAr ?? undefined,
+    approvalChain: [],
+  };
+}
+
 function leaveOverlapsYmdRange(leave: UnifiedLeaveRecord, from: string, to: string): boolean {
   return intervalOverlapsYmdRange(leave.start, leave.end, from, to);
 }
@@ -79,6 +103,8 @@ export function UnifiedManagementClient() {
   const { data: employeesResult } = useEmployees();
   const employeesList = React.useMemo(() => employeesResult?.items ?? [], [employeesResult]);
 
+  const companyId = useAuthStore((s) => s.activeCompanyId);
+
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   React.useEffect(() => {
     void (async () => {
@@ -92,7 +118,25 @@ export function UnifiedManagementClient() {
     })();
   }, []);
 
+  const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
   const [leaves, setLeaves] = React.useState<UnifiedLeaveRecord[]>([]);
+
+  React.useEffect(() => {
+    if (!companyId) return;
+    void (async () => {
+      try {
+        const [ltRes, lrRes] = await Promise.all([
+          leaveTypesApi.getAll({ companyId, limit: 200 }),
+          leaveRequestsApi.getAll({ companyId, limit: 200 }),
+        ]);
+        const activeTypes = ltRes.items.filter((t) => t.isActive);
+        setLeaveTypes(activeTypes);
+        setLeaves(lrRes.items.map((r) => mapApiLeave(r, ltRes.items)));
+      } catch {
+        // silently ignore — stays empty
+      }
+    })();
+  }, [companyId]);
   const [branchId, setBranchId] = React.useState('all');
   const [departmentId, setDepartmentId] = React.useState('all');
   const [leaveType, setLeaveType] = React.useState<string>('all');
@@ -193,16 +237,22 @@ export function UnifiedManagementClient() {
   const updateLeave = (updated: UnifiedLeaveRecord) =>
     setLeaves((ls) => ls.map((l) => l.id === updated.id ? updated : l));
 
-  const handleApprove = (leave: UnifiedLeaveRecord) => {
-    const updated = applyStepDecision(leave, 'approve');
-    updateLeave(updated);
-    if (detailLeave?.id === updated.id) setDetailLeave(updated);
+  const handleApprove = async (leave: UnifiedLeaveRecord) => {
+    try {
+      const updated = await leaveRequestsApi.update(leave.id, { status: 'approved' });
+      const mapped = mapApiLeave(updated, leaveTypes);
+      updateLeave(mapped);
+      if (detailLeave?.id === leave.id) setDetailLeave(mapped);
+    } catch { /* ignore */ }
   };
 
-  const handleReject = (leave: UnifiedLeaveRecord) => {
-    const updated = applyStepDecision(leave, 'reject');
-    updateLeave(updated);
-    if (detailLeave?.id === updated.id) setDetailLeave(updated);
+  const handleReject = async (leave: UnifiedLeaveRecord) => {
+    try {
+      const updated = await leaveRequestsApi.update(leave.id, { status: 'rejected' });
+      const mapped = mapApiLeave(updated, leaveTypes);
+      updateLeave(mapped);
+      if (detailLeave?.id === leave.id) setDetailLeave(mapped);
+    } catch { /* ignore */ }
   };
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
@@ -301,8 +351,10 @@ export function UnifiedManagementClient() {
         editLeave={editLeave}
         employees={employeesList}
         branches={branches}
+        leaveTypes={leaveTypes}
+        companyId={companyId ?? ''}
         onClose={() => { setAddOpen(false); setEditLeave(null); }}
-        onSave={(l) => {
+        onSave={async (l) => {
           if (editLeave) updateLeave(l);
           else setLeaves((ls) => [l, ...ls]);
           setAddOpen(false);
@@ -670,19 +722,19 @@ function LeaveDetailDialog({ leave, employees, open, onClose, onApprove, onRejec
 
 // ─── Add/Edit leave dialog ────────────────────────────────────────────────────
 
-function AddLeaveDialog({ open, editLeave, employees, branches, onClose, onSave }: {
+function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, companyId, onClose, onSave }: {
   open: boolean;
   editLeave: UnifiedLeaveRecord | null;
   employees: { id: string; nameAr: string }[];
   branches: BranchResponseDto[];
+  leaveTypes: LeaveTypeResponseDto[];
+  companyId: string;
   onClose: () => void;
-  onSave: (l: UnifiedLeaveRecord) => void;
+  onSave: (l: UnifiedLeaveRecord) => Promise<void>;
 }) {
-  function lid() { return `lv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; }
-
   const [empId, setEmpId] = React.useState('');
   const [branchId, setBranchId] = React.useState('');
-  const [type, setType] = React.useState<UnifiedLeaveType>('annual');
+  const [leaveTypeId, setLeaveTypeId] = React.useState('');
   const [start, setStart] = React.useState('');
   const [end, setEnd] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -691,34 +743,52 @@ function AddLeaveDialog({ open, editLeave, employees, branches, onClose, onSave 
     if (open && editLeave) {
       setEmpId(editLeave.employeeId);
       setBranchId(editLeave.requestBranchId);
-      setType(editLeave.type);
+      setLeaveTypeId(editLeave.leaveTypeId);
       setStart(editLeave.start);
       setEnd(editLeave.end);
     } else if (open) {
-      setEmpId(''); setBranchId(''); setType('annual'); setStart(''); setEnd('');
+      setEmpId(''); setBranchId(''); setLeaveTypeId(leaveTypes[0]?.id ?? ''); setStart(''); setEnd('');
     }
     setError(null);
-  }, [open, editLeave]);
+  }, [open, editLeave, leaveTypes]);
 
-  const submit = () => {
-    if (!empId) { setError('اختر الموظف'); return; }
-    if (!start || !end) { setError('حدد تاريخ البداية والنهاية'); return; }
-    if (start > end) { setError('تاريخ البداية يجب أن يكون قبل النهاية'); return; }
-    const record: UnifiedLeaveRecord = editLeave
-      ? { ...editLeave, employeeId: empId, requestBranchId: branchId, type, start, end, workingDays: wDays(start, end) }
-      : {
-          id: lid(),
+  const submit = async () => {
+    if (!empId || !leaveTypeId) { setError('اختر الموظف ونوع الإجازة'); return; }
+    if (!start || !end || start > end) { setError('تحقق من التواريخ'); return; }
+    try {
+      if (editLeave) {
+        await leaveRequestsApi.update(editLeave.id, {
+          startDate: start, endDate: end, workingDays: wDays(start, end),
+        });
+        await onSave({ ...editLeave, start, end, workingDays: wDays(start, end) });
+      } else {
+        const created = await leaveRequestsApi.create({
+          companyId,
           employeeId: empId,
-          type,
-          status: 'pending',
-          start,
-          end,
-          requestBranchId: branchId || '',
+          leaveTypeId,
+          startDate: start,
+          endDate: end,
           workingDays: wDays(start, end),
-          noteAr: 'طلب إجازة جديد', noteEn: 'New leave request',
-          approvalChain: defaultPendingApprovalChain(),
-        };
-    onSave(record);
+        });
+        const lt = leaveTypes.find((t) => t.id === created.leaveTypeId);
+        const derivedType = (lt?.code && KNOWN_LEAVE_CODES.includes(lt.code) ? lt.code : 'annual') as UnifiedLeaveType;
+        await onSave({
+          id: created.id,
+          employeeId: created.employeeId,
+          leaveTypeId: created.leaveTypeId,
+          leaveTypeName: lt?.nameAr ?? '',
+          type: derivedType,
+          status: 'pending',
+          start: created.startDate ?? start,
+          end: created.endDate ?? end,
+          requestBranchId: '',
+          workingDays: created.workingDays ?? wDays(start, end),
+          approvalChain: [],
+        });
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   const empOptions = employees.map((e) => ({ value: e.id, label: e.nameAr }));
@@ -760,11 +830,11 @@ function AddLeaveDialog({ open, editLeave, employees, branches, onClose, onSave 
           </div>
 
           <div className="space-y-2">
-            <Label>نوع الإجازة</Label>
-            <Select value={type} onValueChange={(v) => setType(v as UnifiedLeaveType)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Label>نوع الإجازة <span className="text-destructive">*</span></Label>
+            <Select value={leaveTypeId} onValueChange={setLeaveTypeId}>
+              <SelectTrigger><SelectValue placeholder="اختر نوع الإجازة" /></SelectTrigger>
               <SelectContent>
-                {Object.entries(LEAVE_TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                {leaveTypes.map((lt) => <SelectItem key={lt.id} value={lt.id}>{lt.nameAr}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -790,7 +860,7 @@ function AddLeaveDialog({ open, editLeave, employees, branches, onClose, onSave 
         </div>
         <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
           <Button variant="outline" onClick={onClose}>إلغاء</Button>
-          <Button variant="luxe" onClick={submit}>{editLeave ? 'حفظ التعديلات' : 'إضافة الإجازة'}</Button>
+          <Button variant="luxe" onClick={() => void submit()}>{editLeave ? 'حفظ التعديلات' : 'إضافة الإجازة'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

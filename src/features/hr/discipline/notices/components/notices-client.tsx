@@ -27,6 +27,10 @@ import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xls
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import {
+  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
+  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
+} from '@/components/ui/directory-table';
 
 const KIND_OPTIONS = (Object.entries(NOTICE_KIND_LABELS) as [HRDisciplineNoticeKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -40,7 +44,7 @@ const EMPTY: DraftForm = { employeeId: '', kind: 'verbal', reasonAr: '', date: '
 
 export function NoticesClient() {
   const hook = useDisciplineNoticesDirectoryModel();
-  const { notices, employees, cases, loading, listError, createNotice, deleteNotice } = hook;
+  const { notices, employees, cases, loading, listError, createNotice, deleteNotice, reloadNotices } = hook;
 
   const [companyNameAr, setCompanyNameAr] = React.useState('');
   const [companyNameEn, setCompanyNameEn] = React.useState('');
@@ -69,6 +73,11 @@ export function NoticesClient() {
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [notices]);
 
+  React.useEffect(() => {
+    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
+    void reloadNotices({ employeeId });
+  }, [selectedEmpIds, reloadNotices]);
+
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
   const [saving, setSaving] = React.useState(false);
@@ -79,14 +88,12 @@ export function NoticesClient() {
   const empOptions = employees.map(e => ({ value: e.id, label: e.nameAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
-  const searchFiltered = React.useMemo(
-    () => notices.filter((n) => selectedEmpIds.size === 0 || selectedEmpIds.has(n.employeeId)),
-    [notices, selectedEmpIds],
-  );
+  // Employee filter is handled by the backend via reloadNotices; use notices directly.
+  const searchFiltered = notices;
 
   const filtered = React.useMemo(
-    () => searchFiltered.filter((n) => matchesDateRange(n.date, dateBounds.from, dateBounds.to)),
-    [searchFiltered, dateBounds.from, dateBounds.to],
+    () => notices.filter((n) => matchesDateRange(n.date, dateBounds.from, dateBounds.to)),
+    [notices, dateBounds.from, dateBounds.to],
   );
 
   const listFiltered = React.useMemo(
@@ -294,34 +301,32 @@ export function NoticesClient() {
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50 text-right">
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الموظف</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">نوع الإنذار</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
-                <th className="p-3 text-xs font-semibold text-muted-foreground">السبب</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
+        <DirectoryTableContainer>
+          <DirectoryTable className="min-w-[640px]">
+            <DirectoryTableHeaderRow>
+              <DirectoryTableHead className="whitespace-nowrap">الموظف</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">نوع الإنذار</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
+              <DirectoryTableHead>السبب</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
+            </DirectoryTableHeaderRow>
+            <DirectoryTableBody>
               {listFiltered.map((n) => (
-                <tr key={n.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
-                  <td className="max-w-[12rem] truncate p-3 font-medium">{n.employeeNameAr}</td>
-                  <td className="whitespace-nowrap p-3 text-xs">{NOTICE_KIND_LABELS[n.kind]}</td>
-                  <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{n.date}</td>
-                  <td className="max-w-[20rem] truncate p-3 text-xs text-muted-foreground">{n.reasonAr}</td>
-                  <td className="p-2">
+                <DirectoryTableRow key={n.id}>
+                  <DirectoryTableCell className="max-w-[12rem] truncate font-medium">{n.employeeNameAr}</DirectoryTableCell>
+                  <DirectoryTableCell className="whitespace-nowrap text-xs">{NOTICE_KIND_LABELS[n.kind]}</DirectoryTableCell>
+                  <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{n.date}</DirectoryTableCell>
+                  <DirectoryTableCell className="max-w-[20rem] truncate text-xs text-muted-foreground">{n.reasonAr}</DirectoryTableCell>
+                  <DirectoryTableActionsCell>
                     <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(n.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  </td>
-                </tr>
+                  </DirectoryTableActionsCell>
+                </DirectoryTableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </DirectoryTableBody>
+          </DirectoryTable>
+        </DirectoryTableContainer>
       )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة إنذار" size="lg" onSave={() => void handleSave()} saveDisabled={saving} error={formError}>

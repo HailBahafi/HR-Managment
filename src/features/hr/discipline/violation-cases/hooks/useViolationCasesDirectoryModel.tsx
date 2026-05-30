@@ -65,7 +65,11 @@ export function useViolationCasesDirectoryModel() {
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async () => {
+  const reload = React.useCallback(async (filterParams?: {
+    employeeId?: string;
+    violationDateFrom?: string;
+    violationDateTo?: string;
+  }) => {
     setLoading(true);
     setListError(null);
     try {
@@ -73,10 +77,18 @@ export function useViolationCasesDirectoryModel() {
       const cid = scope.companyId ?? null;
       setCompanyId(cid);
 
+      const recordsQuery = {
+        ...(cid ? { companyId: cid } : {}),
+        limit: 200,
+        ...(filterParams?.employeeId ? { employeeId: filterParams.employeeId } : {}),
+        ...(filterParams?.violationDateFrom ? { violationDateFrom: filterParams.violationDateFrom } : {}),
+        ...(filterParams?.violationDateTo ? { violationDateTo: filterParams.violationDateTo } : {}),
+      };
+
       const [employeesRes, typesRes, recordsRes] = await Promise.all([
         employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
         violationTypesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-        violationRecordsApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+        violationRecordsApi.getAll(recordsQuery),
       ]);
 
       const employeeMap = new Map(employeesRes.items.map((e) => [e.id, e.nameAr]));
@@ -140,5 +152,5 @@ export function useViolationCasesDirectoryModel() {
     [reload],
   );
 
-  return { cases, employees, violationTypes, companyId, loading, listError, createCase, updateCase, deleteCase };
+  return { cases, employees, violationTypes, companyId, loading, listError, createCase, updateCase, deleteCase, reload };
 }

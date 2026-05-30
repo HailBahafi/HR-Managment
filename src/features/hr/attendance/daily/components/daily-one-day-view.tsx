@@ -258,7 +258,7 @@ function TimelineBar({
       {/* Hover time card — above dotted line */}
       {hoverMins !== null && (
         <div
-          className="pointer-events-none absolute top-0 z-30 whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1 text-xs font-medium text-popover-foreground shadow-elevated"
+          className="pointer-events-none absolute top-0 z-[3] whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1 text-xs font-medium text-popover-foreground shadow-elevated"
           style={{ left: minsToPct(TOTAL_MINS - hoverMins), transform: 'translateX(-50%)' }}
         >
           <span className="font-mono tabular-nums text-primary">{formatHoverTime12(hoverMins)}</span>
@@ -285,7 +285,7 @@ function TimelineBar({
         {/* Hover position — dotted vertical line */}
         {hoverMins !== null && (
           <div
-            className="pointer-events-none absolute top-0 z-20 h-full w-0 border-s-2 border-dotted border-primary/75"
+            className="pointer-events-none absolute top-0 z-[2] h-full w-0 border-s-2 border-dotted border-primary/75"
             style={{ insetInlineStart: minsToPct(hoverMins) }}
           />
         )}
@@ -329,7 +329,7 @@ function TimelineBar({
               type="button"
               title={`${EVENT_TYPE_META[e.eventType]?.labelAr} — ${isoToHHMM(e.occurredAt)}`}
               onClick={() => onVoid(e)}
-              className="absolute top-0 z-10 h-full w-1.5 cursor-pointer opacity-80 transition-all hover:w-2 hover:opacity-100"
+              className="absolute top-0 z-[1] h-full w-1.5 cursor-pointer opacity-80 transition-all hover:w-2 hover:opacity-100"
               style={{ insetInlineStart: pct(mins), transform: 'translateX(-50%)', backgroundColor: color }}
             />
           );
@@ -370,7 +370,7 @@ function NowCursor({ workDate }: { workDate: string }) {
   if (nowMins === null) return null;
   return (
     <div
-      className="absolute top-0 z-10 h-full w-px bg-primary/70"
+      className="absolute top-0 z-[1] h-full w-px bg-primary/70"
       style={{ insetInlineStart: pct(nowMins) }}
     />
   );

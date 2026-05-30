@@ -1,7 +1,7 @@
 'use client';
 
-import { Building2, Pencil, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Building2 } from 'lucide-react';
+import { RowActions } from '@/components/ui/row-actions';
 import {
   DirectoryGrid,
   DirectoryGridCard,
@@ -48,18 +48,13 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
                 </DirectoryGridCardMetaRow>
               </DirectoryGridCardMeta>
               <DirectoryGridCardFooter>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(b)} aria-label="تعديل">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  onClick={() => setConfirmId(b.id)}
-                  aria-label="حذف"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <RowActions
+                  menuItems={[
+                    { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewBranch(b); } },
+                    { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(b); } },
+                    { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(b.id); }, destructive: true, separator: true },
+                  ]}
+                />
               </DirectoryGridCardFooter>
             </DirectoryGridCard>
           ))}
@@ -70,7 +65,7 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
             <DirectoryTableHeaderRow>
               <DirectoryTableHead>الفرع</DirectoryTableHead>
               <DirectoryTableHead>المدينة</DirectoryTableHead>
-              <DirectoryTableHead className="text-start w-28">إجراءات</DirectoryTableHead>
+              <DirectoryTableHead className="text-start w-16">إجراءات</DirectoryTableHead>
             </DirectoryTableHeaderRow>
             <DirectoryTableBody>
               {filtered.map((b) => (
@@ -78,12 +73,13 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
                   <DirectoryTableCell className="font-medium">{b.name}</DirectoryTableCell>
                   <DirectoryTableCell className="text-muted-foreground">{b.city}</DirectoryTableCell>
                   <DirectoryTableActionsCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(b)} aria-label="تعديل">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setConfirmId(b.id)} aria-label="حذف">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <RowActions
+                      menuItems={[
+                        { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewBranch(b); } },
+                        { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(b); } },
+                        { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(b.id); }, destructive: true, separator: true },
+                      ]}
+                    />
                   </DirectoryTableActionsCell>
                 </DirectoryTableRow>
               ))}

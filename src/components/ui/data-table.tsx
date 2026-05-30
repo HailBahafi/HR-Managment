@@ -75,7 +75,7 @@ export function DataTable<T>({
               <tr key={keyExtractor(row)} className={cn('group transition-colors hover:bg-muted/20', onRowClick && 'cursor-pointer')} onClick={() => onRowClick?.(row)}>
                 {columns.map(col => (
                   <td key={col.key} className={cn('px-4 py-3', col.className)}>
-                    <div className={cn(col.isActions && 'opacity-0 group-hover:opacity-100 transition-opacity')}>
+                    <div>
                       {col.render(row, i)}
                     </div>
                   </td>
