@@ -1,8 +1,9 @@
 'use client';
 
-import { Building2, Mail } from 'lucide-react';
+import { Building2, Mail, Eye, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ContractTypeLabel } from '@/components/shared/status-badge';
+import { Button } from '@/components/ui/button';
 import { RowActions } from '@/components/ui/row-actions';
 import {
   DirectoryGrid,
@@ -211,12 +212,8 @@ function EmployeeGridCard({
         )}
       </DirectoryGridCardMeta>
       <DirectoryGridCardFooter>
-        <RowActions
-          menuItems={[
-            { label: 'عرض', href: hrOrganizationRoutes.employee(emp.id) },
-            { label: 'حذف', onClick: (e) => { e.stopPropagation(); onDelete(); }, destructive: true, separator: true },
-          ]}
-        />
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={onOpen}><Eye className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="حذف" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
       </DirectoryGridCardFooter>
     </DirectoryGridCard>
   );

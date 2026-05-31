@@ -43,11 +43,13 @@ export function useDepartmentsDirectoryModel() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [deleteWarning, setDeleteWarning] = React.useState('');
 
-  const reload = React.useCallback(async () => {
+  const reload = React.useCallback(async (isActiveFilter?: boolean) => {
     setLoading(true);
     setListError(null);
     try {
-      const data = await loadDepartmentsDirectory();
+      const data = await loadDepartmentsDirectory(
+        isActiveFilter !== undefined ? { isActive: isActiveFilter } : undefined,
+      );
       setDepartments(data.departments);
       setDefaultCompanyId(data.scope.companyId);
       setDefaultBranchId(data.scope.branchId);
@@ -60,16 +62,13 @@ export function useDepartmentsDirectoryModel() {
   }, []);
 
   React.useEffect(() => {
-    void reload();
-  }, [reload]);
+    void reload(filterActive ? true : undefined);
+  }, [reload, filterActive]);
 
   const forest = React.useMemo(() => buildDepartmentForest(departments), [departments]);
   const flat = React.useMemo(() => flattenDepartmentsTree(forest), [forest]);
 
-  const filtered = React.useMemo(
-    () => flat.filter((n) => !(filterActive && !n.dept.isActive)),
-    [flat, filterActive],
-  );
+  const filtered = flat;
 
   const openCreate = React.useCallback(() => {
     setEditId(null);

@@ -50,7 +50,7 @@ const EMPTY: DraftForm = { caseId: '', employeeNameAr: '', date: '', channel: 'i
 
 export function AppealsClient() {
   const hook = useDisciplineAppealsDirectoryModel();
-  const { appeals, cases, loading, listError, createAppeal, updateAppeal, deleteAppeal, reload } = hook;
+  const { appeals, employees, cases, loading, listError, createAppeal, updateAppeal, deleteAppeal, reload } = hook;
 
   const [companyNameAr, setCompanyNameAr] = React.useState('');
   const [companyNameEn, setCompanyNameEn] = React.useState('');
@@ -73,11 +73,10 @@ export function AppealsClient() {
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
   const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
 
-  const empPickerList = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const a of appeals) map.set(a.employeeId, a.employeeNameAr);
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [appeals]);
+  const empPickerList = React.useMemo(
+    () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [employees],
+  );
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);

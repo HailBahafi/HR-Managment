@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPicker } from '@/components/ui/map-picker';
 import { cn } from '@/shared/utils';
 import { useCheckpointsPanelModel } from '@/features/hr/attendance/checkpoints/hooks/useCheckpointsPanelModel';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { CheckpointsEditDialog } from '@/features/hr/attendance/checkpoints/components/checkpoints-edit-dialog';
 
@@ -13,14 +14,18 @@ export function CheckpointsPanel() {
   const model = useCheckpointsPanelModel();
   const { checkpoints, removeCheckpoint, selected, setSelected, openCreate, openEdit, selectedPoint } = model;
 
+  usePageHeaderActions(
+    () => (
+      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shrink-0" type="button" onClick={openCreate}>
+        <Plus className="h-3.5 w-3.5" />
+        نقطة جديدة
+      </Button>
+    ),
+    [openCreate],
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <Button variant="luxe" className="shrink-0 gap-2" type="button" onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          نقطة جديدة
-        </Button>
-      </div>
 
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

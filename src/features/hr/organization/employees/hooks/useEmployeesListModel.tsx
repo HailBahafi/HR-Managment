@@ -25,7 +25,6 @@ import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organi
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { useFilterPanel } from '@/components/layouts/filter-panel-context';
 
 function empStartYmd(e: EmployeeResponseDto): string {
   const s = e.startDate;
@@ -52,6 +51,7 @@ export function useEmployeesListModel() {
   const [branchFilter, setBranchFilter] = React.useState('all');
   const [deptFilter, setDeptFilter] = React.useState('all');
   const [search, setSearch] = React.useState('');
+  const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [view, setView] = React.useState<'table' | 'grid'>('table');
   const [newEmpOpen, setNewEmpOpen] = React.useState(false);
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
@@ -60,12 +60,15 @@ export function useEmployeesListModel() {
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  // Load branches and departments lazily — only when the filter panel is first opened
-  const { open: filterOpen } = useFilterPanel();
-  const filterDataFetched = React.useRef(false);
+  // Debounce search input to avoid firing a request on every keystroke
   React.useEffect(() => {
-    if (!filterOpen || filterDataFetched.current || !companyId) return;
-    filterDataFetched.current = true;
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Load branches and departments eagerly so filter dropdowns are ready on open
+  React.useEffect(() => {
+    if (!companyId) return;
     void Promise.allSettled([
       branchesApi.getAll({ limit: 200, companyId }),
       departmentsApi.getAll({ limit: 200, companyId }),
@@ -73,15 +76,22 @@ export function useEmployeesListModel() {
       if (branchesRes.status === 'fulfilled') setBranches(branchesRes.value.items);
       if (deptsRes.status === 'fulfilled') setDepartments(deptsRes.value.items);
     });
-  }, [filterOpen, companyId]);
+  }, [companyId]);
 
   const loadEmployees = React.useCallback(async () => {
     if (!companyId) return;
     setLoading(true);
     setListError(null);
     try {
-      // Backend only supports page/limit/companyId — all other filters are client-side
-      const res = await employeesApi.getAll({ limit: 500, companyId });
+      const query: Parameters<typeof employeesApi.getAll>[0] = { limit: 200, companyId };
+      if (branchFilter !== 'all') query.branchId = branchFilter;
+      if (deptFilter !== 'all') query.departmentId = deptFilter;
+      if (toolbarStatus !== 'all') query.contractStatus = toolbarStatus;
+      if (debouncedSearch.trim()) query.search = debouncedSearch.trim();
+      if (dateBounds.from) query.startDateFrom = dateBounds.from;
+      if (dateBounds.to) query.startDateTo = dateBounds.to;
+
+      const res = await employeesApi.getAll(query);
       setEmployees(res.items);
       setTotalCount(res.pagination.total);
     } catch (err) {
@@ -90,7 +100,7 @@ export function useEmployeesListModel() {
     } finally {
       setLoading(false);
     }
-  }, [companyId]);
+  }, [companyId, branchFilter, deptFilter, toolbarStatus, debouncedSearch, dateBounds.from, dateBounds.to]);
 
   React.useEffect(() => { void loadEmployees(); }, [loadEmployees]);
 
@@ -108,29 +118,11 @@ export function useEmployeesListModel() {
     [employees],
   );
 
-  // All filtering is client-side (backend only accepts page/limit/companyId)
-  const filtered = React.useMemo(() => {
-    return employees.filter((e) => {
-      if (branchFilter !== 'all' && e.branchId !== branchFilter) return false;
-      if (deptFilter !== 'all' && e.departmentId !== deptFilter) return false;
-      if (toolbarStatus !== 'all' && e.contractStatus !== toolbarStatus) return false;
-      if (search.trim()) {
-        const q = search.trim().toLowerCase();
-        if (
-          !e.nameAr.toLowerCase().includes(q) &&
-          !(e.nameEn ?? '').toLowerCase().includes(q) &&
-          !e.employeeCode.toLowerCase().includes(q)
-        ) return false;
-      }
-      if (selectedEmpIds.size > 0 && !selectedEmpIds.has(e.id)) return false;
-      if (dateBounds.from || dateBounds.to) {
-        const ymd = empStartYmd(e);
-        if (dateBounds.from && ymd < dateBounds.from) return false;
-        if (dateBounds.to && ymd > dateBounds.to) return false;
-      }
-      return true;
-    });
-  }, [employees, branchFilter, deptFilter, toolbarStatus, search, selectedEmpIds, dateBounds.from, dateBounds.to]);
+  // Server handles all filters; only selectedEmpIds (export picker) is applied client-side
+  const filtered = React.useMemo(
+    () => (selectedEmpIds.size > 0 ? employees.filter((e) => selectedEmpIds.has(e.id)) : employees),
+    [employees, selectedEmpIds],
+  );
 
   const contractStatusCounts = React.useMemo(
     () => ({

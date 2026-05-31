@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import {
-  Plus, Pencil, Trash2, Loader2, AlertTriangle, Search,
+  Plus, Pencil, Trash2, Loader2, AlertTriangle,
+  Users, CalendarDays,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
@@ -17,6 +18,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import {
   leaveBalancesApi,
   type EmployeeLeaveBalanceResponseDto,
@@ -251,10 +256,46 @@ function DeleteDialog({
   );
 }
 
-// ─── Employee balance row ─────────────────────────────────────────────────────
+// ─── Stat card ────────────────────────────────────────────────────────────────
+
+function StatCard({
+  label, value, icon: Icon, variant = 'default',
+}: {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  variant?: 'default' | 'destructive';
+}) {
+  return (
+    <div className={cn(
+      'rounded-xl border bg-card p-4 shadow-soft',
+      variant === 'destructive' ? 'border-destructive/20' : 'border-border',
+    )}>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+          <p className={cn(
+            'mt-1 font-display text-2xl font-bold tabular-nums',
+            variant === 'destructive' ? 'text-destructive' : 'text-foreground',
+          )}>
+            {value}
+          </p>
+        </div>
+        <div className={cn(
+          'rounded-lg p-2',
+          variant === 'destructive' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary',
+        )}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Employee balance card ────────────────────────────────────────────────────
 
 const LEAVE_TYPE_COLORS = [
-  'bg-primary', 'bg-success', 'bg-warning', 'bg-blue-500',
+  'bg-primary', 'bg-emerald-500', 'bg-amber-500', 'bg-blue-500',
   'bg-violet-500', 'bg-pink-500', 'bg-teal-500', 'bg-orange-500',
 ];
 
@@ -273,89 +314,79 @@ function EmployeeBalanceCard({
   onEdit: (b: EmployeeLeaveBalanceResponseDto) => void;
   onDelete: (b: EmployeeLeaveBalanceResponseDto) => void;
 }) {
-  const totalUsed = balances.reduce((s, b) => s + b.usedDays, 0);
-  const totalAlloc = balances.reduce((s, b) => s + b.totalDays, 0);
   const initials = employeeName.split(' ').map((w) => w[0]).slice(0, 2).join('');
   const hue = ((employeeId.charCodeAt(0) ?? 0) * 47) % 360;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-      {/* Employee header */}
-      <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-        <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-          style={{ background: `hsl(${hue} 55% 45%)` }}
-        >
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{employeeName}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {balances.length} نوع إجازة · {totalUsed}/{totalAlloc} يوم مستخدم
-          </p>
-        </div>
-        {totalAlloc > 0 && (
-          <div className="flex shrink-0 items-center gap-1.5">
-            <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn('h-full rounded-full transition-all',
-                  pct(totalUsed, totalAlloc) >= 90 ? 'bg-destructive' :
-                  pct(totalUsed, totalAlloc) >= 70 ? 'bg-warning' : 'bg-primary'
-                )}
-                style={{ width: `${pct(totalUsed, totalAlloc)}%` }}
-              />
-            </div>
-            <span className="font-mono text-[10px] tabular-nums text-muted-foreground" dir="ltr">
-              {pct(totalUsed, totalAlloc)}%
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Leave type rows — always visible */}
-      <div className="divide-y divide-border/40">
+      <div className="divide-y divide-border/50">
         {balances.length === 0 ? (
-          <p className="px-4 py-3 text-xs text-muted-foreground">لا توجد أرصدة مسجّلة</p>
+          <div className="space-y-1.5 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                style={{ background: `hsl(${hue} 55% 45%)` }}
+              >
+                {initials}
+              </div>
+              <p className="min-w-0 truncate text-sm font-semibold">{employeeName}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">لا توجد أرصدة</p>
+          </div>
         ) : (
           balances.map((b, idx) => {
             const lt = leaveTypes.find((t) => t.id === b.leaveTypeId);
             const color = LEAVE_TYPE_COLORS[idx % LEAVE_TYPE_COLORS.length] ?? 'bg-primary';
-            const remaining = b.remainingDays;
+            const rowPct = pct(b.usedDays, b.totalDays);
+
             return (
-              <div key={b.id} className="flex items-center gap-3 px-4 py-2.5">
-                <div className={cn('h-3 w-3 shrink-0 rounded-sm', color)} />
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium">{lt?.nameAr ?? b.leaveTypeId}</span>
-                    {remaining <= 2 && remaining >= 0 && (
-                      <Badge variant="outline" className="h-4 border-destructive/40 bg-destructive/5 px-1.5 text-[9px] text-destructive">
-                        {remaining === 0 ? 'استُنفد' : `${remaining} يوم متبقي`}
-                      </Badge>
-                    )}
+              <div key={b.id} className="px-4 py-3">
+                {/* Row 1 — employee name + label/bar justify-between */}
+                <div className="flex min-w-0 items-center gap-2 pb-2">
+                  {idx === 0 ? (
+                    <>
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                        style={{ background: `hsl(${hue} 55% 45%)` }}
+                      >
+                        {initials}
+                      </div>
+                      <p className="max-w-[5rem] shrink-0 truncate text-sm font-semibold">{employeeName}</p>
+                    </>
+                  ) : (
+                    <div className="flex shrink-0 gap-2" aria-hidden>
+                      <div className="h-9 w-9" />
+                      <div className="w-20" />
+                    </div>
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                    <div className="flex w-full max-w-[16rem] justify-center">
+                      <p className="truncate text-xs font-medium">{lt?.nameAr ?? '—'}</p>
+                    </div>
+                    <div className="flex w-full max-w-[12rem] items-center gap-2">
+                      <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            rowPct >= 90 ? 'bg-destructive' : rowPct >= 70 ? 'bg-amber-500' : color,
+                          )}
+                          style={{ width: `${rowPct}%` }}
+                        />
+                      </div>
+                      <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground" dir="ltr">
+                        {b.usedDays}/{b.totalDays}
+                      </span>
+                    </div>
                   </div>
-                  <BalanceBar used={b.usedDays} total={b.totalDays} color={color} />
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <span className="font-mono text-[11px] text-muted-foreground tabular-nums" dir="ltr">
-                    {b.remainingDays} متبقي
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                    onClick={() => onEdit(b)}
-                  >
-                    <Pencil className="h-3 w-3" />
+
+                {/* Row 2 — edit & delete (left side in RTL) */}
+                <div className="flex w-full justify-end gap-0.5 border-t border-border/60 pt-2">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => onEdit(b)}>
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => onDelete(b)}
-                  >
-                    <Trash2 className="h-3 w-3" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => onDelete(b)}>
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
@@ -377,7 +408,7 @@ export function AnalyticsClient() {
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  const [search, setSearch] = React.useState('');
+  const [employeeFilter, setEmployeeFilter] = React.useState('all');
   const [leaveTypeFilter, setLeaveTypeFilter] = React.useState('all');
 
   const [formOpen, setFormOpen] = React.useState(false);
@@ -413,14 +444,11 @@ export function AnalyticsClient() {
   // Filtered balances
   const filteredBalances = React.useMemo(() => {
     return balances.filter((b) => {
+      if (employeeFilter !== 'all' && b.employeeId !== employeeFilter) return false;
       if (leaveTypeFilter !== 'all' && b.leaveTypeId !== leaveTypeFilter) return false;
-      if (search.trim()) {
-        const name = empMap.get(b.employeeId) ?? '';
-        if (!name.includes(search.trim())) return false;
-      }
       return true;
     });
-  }, [balances, leaveTypeFilter, search, empMap]);
+  }, [balances, employeeFilter, leaveTypeFilter]);
 
   // Group by employee
   const grouped = React.useMemo(() => {
@@ -452,42 +480,61 @@ export function AnalyticsClient() {
     setBalances((prev) => prev.filter((b) => b.id !== id));
   };
 
-  const openCreate = () => { setDialogMode({ mode: 'create' }); setFormOpen(true); };
-  const openEdit = (b: EmployeeLeaveBalanceResponseDto) => { setDialogMode({ mode: 'edit', balance: b }); setFormOpen(true); };
+  const openCreate = React.useCallback(() => { setDialogMode({ mode: 'create' }); setFormOpen(true); }, []);
+  const openEdit = React.useCallback((b: EmployeeLeaveBalanceResponseDto) => { setDialogMode({ mode: 'edit', balance: b }); setFormOpen(true); }, []);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton />
+        <Button type="button" variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs" onClick={openCreate}>
+          <Plus className="h-3.5 w-3.5" />
+          إضافة رصيد
+        </Button>
+      </div>
+    ),
+    [openCreate],
+  );
+
+  const employeeFilterOptions = React.useMemo(
+    () => [
+      { value: 'all', label: 'كل الموظفين' },
+      ...employees.map((emp) => ({ value: emp.id, label: emp.nameAr })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [employees.length],
+  );
+
+  const leaveTypeFilterOptions = React.useMemo(
+    () => [
+      { value: 'all', label: 'كل الأنواع' },
+      ...leaveTypes.map((lt) => ({ value: lt.id, label: lt.nameAr })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [leaveTypes.length],
+  );
+
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showDateSection={false}
+        showStatusSection={false}
+        showEmployeePicker={false}
+        onDateBoundsChange={() => {}}
+        inlineSelects={[
+          { id: 'employee', value: employeeFilter, onChange: setEmployeeFilter, placeholder: 'الموظف', options: employeeFilterOptions },
+          { id: 'leaveType', value: leaveTypeFilter, onChange: setLeaveTypeFilter, placeholder: 'نوع الإجازة', options: leaveTypeFilterOptions },
+        ]}
+      />
+    ),
+    [employeeFilter, leaveTypeFilter, employeeFilterOptions, leaveTypeFilterOptions],
+  );
 
   const deleteEmpName = deleteTarget ? (empMap.get(deleteTarget.employeeId) ?? '—') : '';
   const deleteLtName = deleteTarget ? (leaveTypes.find((t) => t.id === deleteTarget.leaveTypeId)?.nameAr ?? '—') : '';
 
   return (
     <div className="space-y-5">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="بحث باسم الموظف..."
-            className="h-9 ps-9 text-sm"
-          />
-        </div>
-        <Select value={leaveTypeFilter} onValueChange={setLeaveTypeFilter}>
-          <SelectTrigger className="h-9 w-44 text-sm">
-            <SelectValue placeholder="نوع الإجازة" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الأنواع</SelectItem>
-            {leaveTypes.map((lt) => (
-              <SelectItem key={lt.id} value={lt.id}>{lt.nameAr}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button type="button" size="sm" className="h-9 gap-1.5" onClick={openCreate}>
-          <Plus className="h-3.5 w-3.5" />
-          إضافة رصيد
-        </Button>
-      </div>
-
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20">

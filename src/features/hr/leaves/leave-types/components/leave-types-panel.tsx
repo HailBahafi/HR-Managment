@@ -10,22 +10,27 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { useLeaveTypesPanelModel, type LeaveTypeDraft } from '@/features/hr/leaves/leave-types/hooks/useLeaveTypesPanelModel';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { cn } from '@/shared/utils';
 
 export function LeaveTypesPanel() {
   const m = useLeaveTypesPanelModel();
+
+  usePageHeaderActions(
+    () => (
+      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs" onClick={m.openCreate} disabled={m.loading}>
+        <Plus className="h-3.5 w-3.5" />
+        إضافة نوع إجازة
+      </Button>
+    ),
+    [m.openCreate, m.loading],
+  );
 
   return (
     <div className="space-y-4">
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.listError}</p>
       ) : null}
-      <div className="flex justify-end">
-        <Button variant="luxe" className="gap-2" onClick={m.openCreate} disabled={m.loading}>
-          <Plus className="h-4 w-4" />
-          إضافة نوع إجازة
-        </Button>
-      </div>
 
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>

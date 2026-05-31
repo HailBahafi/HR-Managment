@@ -40,6 +40,7 @@ export type DepartmentListQuery = {
   limit?: number;
   companyId?: string;
   branchId?: string;
+  isActive?: boolean;
 };
 
 export const departmentsApi = {

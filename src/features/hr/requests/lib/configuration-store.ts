@@ -126,24 +126,32 @@ export const useHRConfigurationStore = create<HRConfigState>()(
 
       addRequestType: async (draft) => {
         const companyId = useAuthStore.getState().activeCompanyId ?? '';
-        const created = await requestTypesApi.create({
+        // POST only accepts basic fields — departmentId, approvalStages, subtypes are PATCH-only
+        let created = await requestTypesApi.create({
           companyId,
           nameAr: draft.nameAr,
           nameEn: draft.nameEn,
           slug: slugify(draft.nameAr),
           requestCategory: draft.requestCategory,
-          departmentId: draft.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID ? null : draft.departmentId,
           sortOrder: draft.sortOrder,
           isActive: draft.isActive,
-          approvalStages: draft.approvalStages as never[],
-          subtypes: draft.subtypes.map(s => ({
-            slug: s.slug,
-            nameAr: s.nameAr,
-            nameEn: s.nameEn,
-            sortOrder: s.sortOrder,
-            isActive: s.isActive,
-          })),
         });
+        // Apply advanced fields via PATCH if any are provided
+        const deptId = draft.departmentId === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID ? null : (draft.departmentId ?? null);
+        const hasAdvanced = deptId !== null || (draft.approvalStages?.length ?? 0) > 0 || (draft.subtypes?.length ?? 0) > 0;
+        if (hasAdvanced) {
+          created = await requestTypesApi.update(created.id, {
+            departmentId: deptId,
+            approvalStages: draft.approvalStages as never[] | undefined,
+            subtypes: draft.subtypes?.map(s => ({
+              slug: s.slug,
+              nameAr: s.nameAr,
+              nameEn: s.nameEn,
+              sortOrder: s.sortOrder,
+              isActive: s.isActive,
+            })),
+          });
+        }
         set(s => ({ requestTypes: [...s.requestTypes, mapApiRequestType(created)] }));
       },
 

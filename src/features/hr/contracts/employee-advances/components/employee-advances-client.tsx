@@ -72,8 +72,12 @@ function repaymentLine(x: HREmployeeAdvance): string {
 
 export function EmployeeAdvancesClient() {
   const { items, add, update, remove, fetch: fetchAdvances } = useHREmployeeAdvancesStore();
-  const allEmployees = useHREmployeeDirectoryStore(s => s.employees);
+  const { employees: allEmployees, fetch: fetchEmployees } = useHREmployeeDirectoryStore();
   const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
+
+  React.useEffect(() => {
+    if (allEmployees.length === 0) void fetchEmployees();
+  }, []);
 
   const empOptions = React.useMemo(() =>
     employees.map(e => ({ value: e.id, label: e.nameAr })),
@@ -83,11 +87,10 @@ export function EmployeeAdvancesClient() {
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
-  const empPickerList = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const x of items) map.set(x.employeeId, x.employeeNameAr);
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [items]);
+  const empPickerList = React.useMemo(
+    () => employees.map(e => ({ id: e.id, name: e.nameAr })),
+    [employees],
+  );
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);

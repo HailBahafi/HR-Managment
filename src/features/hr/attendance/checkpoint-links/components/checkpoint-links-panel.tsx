@@ -24,6 +24,7 @@ import {
   CP_LINKS_ALL_DEPARTMENTS,
 } from '@/features/hr/attendance/checkpoint-links/constants/checkpoint-links-panel';
 import { useCheckpointLinksPanelModel } from '@/features/hr/attendance/checkpoint-links/hooks/useCheckpointLinksPanelModel';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 
 export function CheckpointLinksPanel() {
@@ -32,20 +33,17 @@ export function CheckpointLinksPanel() {
 
   const viewBatch = viewBatchId ? m.batches.find((b) => b.batchId === viewBatchId) : null;
 
+  usePageHeaderActions(
+    () => (
+      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs" type="button" onClick={m.openBatchDialog}>
+        <Plus className="h-3.5 w-3.5" /> ربط نقاط بموظفين
+      </Button>
+    ),
+    [m.openBatchDialog],
+  );
+
   return (
     <div className="space-y-5">
-
-      {/* ── Header bar ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            <span className="number-ar font-semibold text-foreground">{m.batches.length}</span> دفعة ربط
-          </p>
-        </div>
-        <Button variant="luxe" className="gap-2" type="button" onClick={m.openBatchDialog}>
-          <Plus className="h-4 w-4" /> ربط نقاط بموظفين
-        </Button>
-      </div>
 
       {/* ── Empty state ── */}
       {m.batches.length === 0 ? (

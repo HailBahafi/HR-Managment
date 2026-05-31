@@ -50,6 +50,26 @@ function dateTimeIso(workDate: string, time: string): string | undefined {
   return `${workDate}T${time}:00${sign}${hh}:${mm}`;
 }
 
+const ATTENDANCE_STATUS_AR: Record<string, string> = {
+  present:     'حاضر',
+  late:        'متأخر',
+  absent:      'غائب',
+  early_leave: 'انصراف مبكر',
+  'early-leave': 'انصراف مبكر',
+  on_leave:    'إجازة',
+  'on-leave':  'إجازة',
+  holiday:     'عطلة رسمية',
+  weekend:     'يوم راحة',
+  rest_day:    'يوم راحة',
+  unscheduled: 'غير مجدول',
+  no_record:   'لا يوجد سجل',
+};
+
+function translateAttendanceStatus(s: string | null | undefined): string {
+  if (!s) return '—';
+  return ATTENDANCE_STATUS_AR[s] ?? s;
+}
+
 function mapApi(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
   return {
     id: r.id,
@@ -66,7 +86,7 @@ function mapApi(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
     previousCheckOut: isoToTime(r.previousCheckOutAt),
     correctedCheckIn: isoToTime(r.correctedCheckInAt),
     correctedCheckOut: isoToTime(r.correctedCheckOutAt),
-    previousStatusAr: r.previousStatus ?? '',
+    previousStatusAr: translateAttendanceStatus(r.previousStatus),
     status: r.status as AttendanceCorrectionRequest['status'],
     reasonAr: r.reasonAr ?? '',
     decisionNotesAr: r.decisionNotesAr ?? '',

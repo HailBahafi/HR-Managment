@@ -2,16 +2,21 @@
 
 import * as React from 'react';
 import { CalendarDays, Clock, Plus, Users } from 'lucide-react';
+import { format, parse, isValid } from 'date-fns';
+import { arSA } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/shared/utils';
 import { Badge } from '@/components/ui/badge';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { useAssignmentsPanelModel } from '@/features/hr/attendance/assignment/hooks/useAssignmentsPanelModel';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { AssignmentsBatchCard } from '@/features/hr/attendance/assignment/components/assignments-batch-card';
 import { AssignmentsBatchDialog } from '@/features/hr/attendance/assignment/components/assignments-batch-dialog';
 
@@ -21,14 +26,18 @@ export function AssignmentsPanel() {
 
   const viewBatch = viewBatchId ? model.batches.find((b) => b.batchId === viewBatchId) : null;
 
+  usePageHeaderActions(
+    () => (
+      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs" type="button" onClick={model.openNew}>
+        <Plus className="h-3.5 w-3.5" />
+        ربط قالب جديد
+      </Button>
+    ),
+    [model.openNew],
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <Button variant="luxe" className="gap-2" type="button" onClick={model.openNew}>
-          <Plus className="h-4 w-4" />
-          ربط قالب جديد
-        </Button>
-      </div>
 
       {model.batches.length === 0 ? (
         <EmptyStateCard icon={Users} title="لا توجد دفعات تعيين بعد" />
@@ -130,17 +139,43 @@ export function AssignmentsPanel() {
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-eff" className="flex items-center gap-1.5 text-sm">
+              <Label className="flex items-center gap-1.5 text-sm">
                 <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                 تاريخ التطبيق
               </Label>
-              <Input
-                id="edit-eff"
-                type="date"
-                value={model.editEffectiveFrom}
-                onChange={(e) => model.setEditEffectiveFrom(e.target.value)}
-                className="font-mono"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn('w-full justify-start gap-2 text-sm', !model.editEffectiveFrom && 'text-muted-foreground')}
+                  >
+                    <CalendarDays className="h-4 w-4 shrink-0" />
+                    {model.editEffectiveFrom
+                      ? (() => {
+                          const d = parse(model.editEffectiveFrom, 'yyyy-MM-dd', new Date());
+                          return isValid(d) ? format(d, 'dd MMMM yyyy', { locale: arSA }) : model.editEffectiveFrom;
+                        })()
+                      : 'اختر التاريخ'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={(() => {
+                      const d = parse(model.editEffectiveFrom, 'yyyy-MM-dd', new Date());
+                      return isValid(d) ? d : undefined;
+                    })()}
+                    onSelect={(day) => {
+                      if (day) model.setEditEffectiveFrom(format(day, 'yyyy-MM-dd'));
+                    }}
+                    defaultMonth={(() => {
+                      const d = parse(model.editEffectiveFrom, 'yyyy-MM-dd', new Date());
+                      return isValid(d) ? d : new Date();
+                    })()}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <label className="flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all border-border hover:bg-muted/20">

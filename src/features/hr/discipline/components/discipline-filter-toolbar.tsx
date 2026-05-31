@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   EntityFilterToolbar,
   type EntityFilterToolbarHandle,
+  type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 
@@ -49,6 +50,9 @@ export interface DisciplineFilterToolbarProps {
 
   /** عناصر قبل منتقي الموظفين (مثل فئة السجل في سجل العمليات) */
   beforeEmployeePicker?: React.ReactNode;
+
+  /** فلاتر ثانوية في نافذة منبثقة "فلاتر" */
+  moreFilters?: readonly EntityFilterInlineSelect[];
 }
 
 export const DisciplineFilterToolbar = React.forwardRef<
@@ -74,6 +78,7 @@ export const DisciplineFilterToolbar = React.forwardRef<
     onDateFilterMetaChange,
     toolbarExtraTrailing,
     beforeEmployeePicker,
+    moreFilters,
   },
   ref,
 ) {
@@ -93,6 +98,7 @@ export const DisciplineFilterToolbar = React.forwardRef<
       onDateBoundsChange={onDateBoundsChange}
       onDateFilterMetaChange={onDateFilterMetaChange}
       beforeEmployeePicker={beforeEmployeePicker}
+      moreFilters={moreFilters}
       dataView={{
         value: viewMode,
         onChange: (v) => onViewModeChange(v as DisciplineViewMode),

@@ -9,7 +9,11 @@ import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { format, parse, isValid } from 'date-fns';
+import { arSA } from 'date-fns/locale';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
@@ -298,7 +302,37 @@ function AppealDialog({
         </DialogHeader>
         <div className="space-y-4 py-1">
           <FormField label="تاريخ التظلم" required>
-            <DatePickerInput value={date} onChange={setDate} />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn('w-full justify-start gap-2 text-sm', !date && 'text-muted-foreground')}
+                >
+                  <CalendarDays className="h-4 w-4 shrink-0" />
+                  {date
+                    ? (() => {
+                        const d = parse(date, 'yyyy-MM-dd', new Date());
+                        return isValid(d) ? format(d, 'dd MMMM yyyy', { locale: arSA }) : date;
+                      })()
+                    : 'اختر التاريخ'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={(() => {
+                    const d = parse(date, 'yyyy-MM-dd', new Date());
+                    return isValid(d) ? d : undefined;
+                  })()}
+                  onSelect={(day) => { if (day) setDate(format(day, 'yyyy-MM-dd')); }}
+                  defaultMonth={(() => {
+                    const d = parse(date, 'yyyy-MM-dd', new Date());
+                    return isValid(d) ? d : new Date();
+                  })()}
+                />
+              </PopoverContent>
+            </Popover>
           </FormField>
           <FormField label="قناة التظلم">
             <Select value={channel} onValueChange={setChannel}>
@@ -322,7 +356,7 @@ function AppealDialog({
           </FormField>
         </div>
         <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
-          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-1.5">
+          <Button variant="luxe" onClick={handleSave} disabled={saving} className="flex-1 gap-1.5">
             {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
             تقديم التظلم
           </Button>
@@ -367,7 +401,7 @@ interface EditForm { date: string; description: string; notes: string; attachmen
 
 export function ViolationCasesClient() {
   const hook = useViolationCasesDirectoryModel();
-  const { cases, employees, violationTypes, loading, listError, createCase, updateCase, deleteCase, reload } = hook;
+  const { cases, employees, violationTypes, loading, listError, createCase, updateCase, decideCase, deleteCase, reload } = hook;
   const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
 
   const [companyNameAr, setCompanyNameAr] = React.useState('');
@@ -576,14 +610,14 @@ export function ViolationCasesClient() {
   };
 
   const handleApprove = async (c: ViolationCaseRecord) => {
-    try { await updateCase(c.id, { status: 'approved' }); toast.success(`تمت الموافقة على ${c.caseNumber}`); }
+    try { await decideCase(c.id, { decision: 'approve' }); toast.success(`تمت الموافقة على ${c.caseNumber}`); }
     catch { toast.error('فشلت الموافقة'); }
   };
 
   const handleReject = async () => {
     if (!rejectCase) return;
     try {
-      await updateCase(rejectCase.id, { status: 'rejected', notes: rejectNote.trim() || rejectCase.notes });
+      await decideCase(rejectCase.id, { decision: 'reject', notes: rejectNote.trim() || null });
       toast.success('تم رفض المخالفة');
     } catch { toast.error('فشل الرفض'); }
     setRejectCase(null);

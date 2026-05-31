@@ -11,6 +11,7 @@ import {
   type ViolationRecordStatus,
   type CreateViolationRecordDto,
   type UpdateViolationRecordDto,
+  type DecideViolationRecordDto,
 } from '@/features/hr/discipline/lib/api/violation-records';
 
 export type ViolationCaseRecord = {
@@ -144,6 +145,14 @@ export function useViolationCasesDirectoryModel() {
     [reload],
   );
 
+  const decideCase = React.useCallback(
+    async (id: string, payload: DecideViolationRecordDto) => {
+      await violationRecordsApi.decide(id, payload);
+      await reload();
+    },
+    [reload],
+  );
+
   const deleteCase = React.useCallback(
     async (id: string) => {
       await violationRecordsApi.remove(id);
@@ -152,5 +161,5 @@ export function useViolationCasesDirectoryModel() {
     [reload],
   );
 
-  return { cases, employees, violationTypes, companyId, loading, listError, createCase, updateCase, deleteCase, reload };
+  return { cases, employees, violationTypes, companyId, loading, listError, createCase, updateCase, decideCase, deleteCase, reload };
 }

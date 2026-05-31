@@ -39,16 +39,27 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'مرفوض',
 };
 
+function to12h(t: string): string {
+  if (!t) return '—';
+  const [hStr, mStr] = t.split(':');
+  const h = parseInt(hStr ?? '0', 10);
+  const m = mStr ?? '00';
+  if (isNaN(h)) return t;
+  const period = h < 12 ? 'ص' : 'م';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m} ${period}`;
+}
+
 function timeCell(a: string, b: string, labelA: string, labelB: string) {
   return (
     <div className="text-xs leading-relaxed space-y-0.5">
       <p>
         <span className="text-muted-foreground">{labelA}:</span>{' '}
-        <span className="font-mono tabular-nums" dir="ltr">{a || '—'}</span>
+        <span className="font-mono tabular-nums">{to12h(a)}</span>
       </p>
       <p>
         <span className="text-muted-foreground">{labelB}:</span>{' '}
-        <span className="font-mono tabular-nums" dir="ltr">{b || '—'}</span>
+        <span className="font-mono tabular-nums">{to12h(b)}</span>
       </p>
     </div>
   );

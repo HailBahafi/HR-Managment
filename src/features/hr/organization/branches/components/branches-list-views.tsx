@@ -1,6 +1,7 @@
 'use client';
 
-import { Building2 } from 'lucide-react';
+import { Building2, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { RowActions } from '@/components/ui/row-actions';
 import {
   DirectoryGrid,
@@ -48,13 +49,9 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
                 </DirectoryGridCardMetaRow>
               </DirectoryGridCardMeta>
               <DirectoryGridCardFooter>
-                <RowActions
-                  menuItems={[
-                    { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewBranch(b); } },
-                    { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(b); } },
-                    { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(b.id); }, destructive: true, separator: true },
-                  ]}
-                />
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={() => setViewBranch(b)}><Eye className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="تعديل" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="حذف" onClick={() => setConfirmId(b.id)}><Trash2 className="h-4 w-4" /></Button>
               </DirectoryGridCardFooter>
             </DirectoryGridCard>
           ))}

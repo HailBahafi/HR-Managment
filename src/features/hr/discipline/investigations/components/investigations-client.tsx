@@ -290,20 +290,18 @@ export function InvestigationsClient() {
         statusOrder={INVESTIGATION_RESULT_FILTER_ORDER}
         statusLabels={INVESTIGATION_RESULT_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        beforeEmployeePicker={(
-          <MinimalDropdown
-            value={recommendationFilter}
-            onChange={(v) => setRecommendationFilter(v as RecommendationFilter)}
-            options={[
+        moreFilters={[
+          {
+            id: 'recommendation',
+            value: recommendationFilter,
+            onChange: (v) => setRecommendationFilter(v as RecommendationFilter),
+            placeholder: 'التوصية',
+            options: [
               { value: 'all', label: 'كل التوصيات' },
-              ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({
-                value,
-                label,
-              })),
-            ]}
-            placeholder="التوصية"
-          />
-        )}
+              ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({ value, label })),
+            ],
+          },
+        ]}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onDateBoundsChange={onDateBoundsChange}
@@ -317,9 +315,10 @@ export function InvestigationsClient() {
       recommendationFilter,
       statusCounts,
       viewMode,
-      listFiltered,
+      investigationsPdfRows.length,
       onDateBoundsChange,
       onDateFilterMetaChange,
+      handleExportInvestigationsExcel,
     ],
   );
 

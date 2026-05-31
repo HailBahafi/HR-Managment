@@ -6,22 +6,14 @@ import { DailySmartTimeline } from '@/features/hr/attendance/daily/components/da
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Table2 } from 'lucide-react';
 import { cn } from '@/shared/utils';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 
 export function DailyAttendancePanel() {
   const model = useDailyAttendanceModel();
 
-  return (
-    <div className="space-y-4">
-      <PdfPreviewExportDialog
-        open={model.pdfOpen}
-        onOpenChange={model.setPdfOpen}
-        title="معاينة تصدير الحضور"
-        fileName={model.attendancePdfFileName}
-        printable={model.attendancePrintable}
-      />
-
-      {/* View mode toggle */}
-      <div className="flex items-center justify-end gap-1">
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-1">
         <Button
           type="button"
           variant="ghost"
@@ -43,6 +35,19 @@ export function DailyAttendancePanel() {
           <Table2 className="h-4 w-4" />
         </Button>
       </div>
+    ),
+    [model.viewMode, model.setViewMode],
+  );
+
+  return (
+    <div className="space-y-4">
+      <PdfPreviewExportDialog
+        open={model.pdfOpen}
+        onOpenChange={model.setPdfOpen}
+        title="معاينة تصدير الحضور"
+        fileName={model.attendancePdfFileName}
+        printable={model.attendancePrintable}
+      />
 
       <DailySmartTimeline
         summaries={model.denseForView}

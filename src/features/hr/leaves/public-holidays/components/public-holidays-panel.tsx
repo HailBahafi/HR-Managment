@@ -17,6 +17,7 @@ import {
   usePublicHolidaysPanelModel,
   type PublicHolidayDraft,
 } from '@/features/hr/leaves/public-holidays/hooks/usePublicHolidaysPanelModel';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { cn } from '@/shared/utils';
 
 const MONTH_NAMES = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -24,17 +25,21 @@ const MONTH_NAMES = ['يناير','فبراير','مارس','أبريل','ماي
 export function PublicHolidaysPanel() {
   const m = usePublicHolidaysPanelModel();
 
+  usePageHeaderActions(
+    () => (
+      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs" onClick={m.openCreate} disabled={m.loading}>
+        <Plus className="h-3.5 w-3.5" />
+        إضافة عطلة رسمية
+      </Button>
+    ),
+    [m.openCreate, m.loading],
+  );
+
   return (
     <div className="space-y-4">
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.listError}</p>
       ) : null}
-      <div className="flex justify-end">
-        <Button variant="luxe" className="gap-2" onClick={m.openCreate} disabled={m.loading}>
-          <Plus className="h-4 w-4" />
-          إضافة عطلة رسمية
-        </Button>
-      </div>
 
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
@@ -130,7 +135,7 @@ export function PublicHolidaysPanel() {
                     <Button
                       type="button"
                       variant="outline"
-                      className={cn('w-full justify-start gap-2 font-mono text-sm', !m.draft.date && 'text-muted-foreground')}
+                      className={cn('w-full justify-start gap-2 text-sm', !m.draft.date && 'text-muted-foreground')}
                     >
                       <CalendarIcon className="h-4 w-4 shrink-0" />
                       {m.draft.date

@@ -24,8 +24,13 @@ export type UpdateViolationRecordDto = {
   description?: string;
   notes?: string | null;
   attachmentsNote?: string | null;
-  status?: ViolationRecordStatus;
   updatedBy?: string | null;
+};
+
+export type DecideViolationRecordDto = {
+  decision: 'approve' | 'reject';
+  notes?: string | null;
+  decidedBy?: string | null;
 };
 
 export type ViolationRecordListQuery = {
@@ -61,6 +66,9 @@ export const violationRecordsApi = {
   },
   update(id: string, payload: UpdateViolationRecordDto) {
     return apiRequest<ViolationRecordResponseDto>(`/discipline/violation-records/${id}`, { method: 'PATCH', body: payload });
+  },
+  decide(id: string, payload: DecideViolationRecordDto) {
+    return apiRequest<ViolationRecordResponseDto>(`/discipline/violation-records/${id}/decision`, { method: 'PATCH', body: payload });
   },
   remove(id: string) {
     return apiRequest<void>(`/discipline/violation-records/${id}`, { method: 'DELETE' });

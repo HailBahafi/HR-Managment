@@ -1,6 +1,7 @@
 'use client';
 
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { RowActions } from '@/components/ui/row-actions';
 import {
   DirectoryGrid,
@@ -44,13 +45,9 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
                 </DirectoryGridCardHeader>
                 {deptName && <p className="text-xs text-muted-foreground">قسم مقترح: {deptName}</p>}
                 <DirectoryGridCardFooter>
-                  <RowActions
-                    menuItems={[
-                      { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewRow(row); } },
-                      { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
-                      { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
-                    ]}
-                  />
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={() => setViewRow(row)}><Eye className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="تعديل" onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="حذف" onClick={() => setConfirmId(row.id)}><Trash2 className="h-4 w-4" /></Button>
                 </DirectoryGridCardFooter>
               </DirectoryGridCard>
             );

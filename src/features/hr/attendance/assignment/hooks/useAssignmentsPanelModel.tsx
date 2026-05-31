@@ -97,7 +97,7 @@ export function useAssignmentsPanelModel() {
     })),
   [grouped]);
 
-  const activeTemplates = shiftTemplates.filter((t) => t.isActive);
+  const activeTemplates = React.useMemo(() => shiftTemplates.filter((t) => t.isActive), [shiftTemplates]);
 
   const openNew = React.useCallback(() => {
     setTemplateId(activeTemplates[0]?.id ?? '');

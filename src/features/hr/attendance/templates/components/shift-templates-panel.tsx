@@ -24,6 +24,7 @@ import {
 } from '@/features/hr/attendance/templates/utils/shift-template-helpers';
 import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
 import { companiesApi } from '@/features/hr/lib/api/companies';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 
 function dtoToLocal(dto: ShiftTemplateResponseDto): ShiftTemplate {
   return {
@@ -108,17 +109,19 @@ export function ShiftTemplatesPanel() {
     };
   };
 
-  const openCreate = () => {
+  const openCreate = React.useCallback(() => {
     setDraft(buildDefault());
     setError(null);
     setOpen(true);
-  };
+  // buildDefault is a stable inner fn; its deps are stable constants + companyId
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
 
-  const openEdit = (t: ShiftTemplate) => {
+  const openEdit = React.useCallback((t: ShiftTemplate) => {
     setDraft(normalizeShiftTemplate(cloneTemplate(t)));
     setError(null);
     setOpen(true);
-  };
+  }, []);
 
   const isEdit = !!draft && shiftTemplates.some((x) => x.id === draft.id);
 
@@ -178,13 +181,17 @@ export function ShiftTemplatesPanel() {
     setDraft(null);
   };
 
+  usePageHeaderActions(
+    () => (
+      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shrink-0" type="button" onClick={openCreate}>
+        <Plus className="h-3.5 w-3.5" /> قالب جديد
+      </Button>
+    ),
+    [openCreate],
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <Button variant="luxe" className="shrink-0 gap-2" type="button" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> قالب جديد
-        </Button>
-      </div>
 
       {shiftTemplates.length === 0 ? (
         <EmptyStateCard

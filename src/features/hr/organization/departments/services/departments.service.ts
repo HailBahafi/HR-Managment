@@ -12,8 +12,11 @@ export type DepartmentsDirectoryData = {
   scope: OrganizationScope;
 };
 
-export async function loadDepartmentsDirectory(): Promise<DepartmentsDirectoryData> {
-  const res = await departmentsApi.getAll();
+export async function loadDepartmentsDirectory(filters?: { isActive?: boolean }): Promise<DepartmentsDirectoryData> {
+  const query: Parameters<typeof departmentsApi.getAll>[0] = {};
+  if (filters?.isActive !== undefined) query.isActive = filters.isActive;
+
+  const res = await departmentsApi.getAll(query);
   const scope = await resolveOrganizationScope({
     companyId: res.items[0]?.companyId,
     branchId: res.items[0]?.branchId,

@@ -1,7 +1,8 @@
 'use client';
 
-import { UserCircle } from 'lucide-react';
+import { UserCircle, Eye, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { RowActions } from '@/components/ui/row-actions';
 import {
   DirectoryGrid,
@@ -137,13 +138,9 @@ function UserGridCard({ row, onOpen, onEdit, onDelete }: { row: UserRecord; onOp
         )}
       </DirectoryGridCardMeta>
       <DirectoryGridCardFooter>
-        <RowActions
-          menuItems={[
-            { label: 'عرض', onClick: (e) => { e.stopPropagation(); onOpen(); } },
-            { label: 'تعديل', onClick: (e) => { e.stopPropagation(); onEdit(); } },
-            { label: 'حذف', onClick: (e) => { e.stopPropagation(); onDelete(); }, destructive: true, separator: true },
-          ]}
-        />
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={onOpen}><Eye className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" title="تعديل" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="حذف" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
       </DirectoryGridCardFooter>
     </DirectoryGridCard>
   );
