@@ -4,10 +4,11 @@ import {
   employeeAdvancesApi,
   type EmployeeAdvanceResponseDto,
   type AdvanceKindDto,
+  type AdvanceStatusDto,
   type RepaymentModeDto,
 } from './api/employee-advances';
 
-export type HREmployeeAdvanceStatus = 'outstanding' | 'repaid' | 'cancelled';
+export type HREmployeeAdvanceStatus = AdvanceStatusDto;
 
 export type HREmployeeAdvanceKind = 'housing' | 'personal' | 'urgent' | 'violation';
 
@@ -15,6 +16,7 @@ export type HREmployeeAdvanceRepaymentMode = 'by_months' | 'by_monthly_amount';
 
 export type HREmployeeAdvance = {
   id: string;
+  advanceNumber: string;
   employeeId: string;
   employeeNameAr: string;
   amount: number;
@@ -22,22 +24,25 @@ export type HREmployeeAdvance = {
   advanceDate: string;
   note: string;
   status: HREmployeeAdvanceStatus;
-  /** نوع السلفة */
   advanceKind: HREmployeeAdvanceKind;
-  /** آلية احتساب القسط الشهري */
   repaymentMode: HREmployeeAdvanceRepaymentMode;
-  /** عند الوضع «عدد أشهر محدد»: عدد أشهر السداد */
   repaymentMonths: number | null;
-  /** عند الوضع «مبلغ شهري محدد»: مبلغ القسط الشهري */
   monthlyInstallmentAmount: number | null;
+  approvedAt: string | null;
   updatedAt: string;
 };
 
-function mapStatus(s: EmployeeAdvanceResponseDto['status']): HREmployeeAdvanceStatus {
-  if (s === 'fully_repaid') return 'repaid';
-  if (s === 'rejected' || s === 'cancelled') return 'cancelled';
-  return 'outstanding';
-}
+export const EDITABLE_ADVANCE_STATUSES: HREmployeeAdvanceStatus[] = [
+  'draft',
+  'pending_approval',
+  'rejected',
+];
+
+export const DELETABLE_ADVANCE_STATUSES: HREmployeeAdvanceStatus[] = [
+  'draft',
+  'rejected',
+  'cancelled',
+];
 
 function mapKind(k: AdvanceKindDto | null): HREmployeeAdvanceKind {
   if (k === 'housing') return 'housing';
@@ -53,19 +58,21 @@ function mapRepaymentMode(m: RepaymentModeDto | null): HREmployeeAdvanceRepaymen
 function mapApi(r: EmployeeAdvanceResponseDto): HREmployeeAdvance {
   return {
     id: r.id,
+    advanceNumber: r.advanceNumber,
     employeeId: r.employeeId,
     employeeNameAr: r.employeeNameAr,
     amount: parseFloat(r.amount) || 0,
     currency: r.currency,
     advanceDate: r.advanceDate,
     note: r.note ?? '',
-    status: mapStatus(r.status),
+    status: r.status,
     advanceKind: mapKind(r.advanceKind),
     repaymentMode: mapRepaymentMode(r.repaymentMode),
     repaymentMonths: r.repaymentMonths ?? null,
     monthlyInstallmentAmount: r.monthlyInstallmentAmount != null
       ? parseFloat(r.monthlyInstallmentAmount)
       : null,
+    approvedAt: r.approvedAt,
     updatedAt: r.updatedAt,
   };
 }
@@ -85,10 +92,13 @@ type State = {
   items: HREmployeeAdvance[];
   isLoading: boolean;
   error: string | null;
-  fetch: (params?: { employeeId?: string; status?: string }) => Promise<void>;
-  add: (a: Omit<HREmployeeAdvance, 'id' | 'updatedAt'>) => Promise<HREmployeeAdvance>;
-  update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'updatedAt'>>) => Promise<boolean>;
+  fetch: (params?: { employeeId?: string; status?: HREmployeeAdvanceStatus }) => Promise<void>;
+  add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status'>) => Promise<HREmployeeAdvance>;
+  update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt'>>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
+  submitForApproval: (id: string) => Promise<void>;
+  approve: (id: string) => Promise<void>;
+  reject: (id: string) => Promise<void>;
 };
 
 export const useHREmployeeAdvancesStore = create<State>()((set) => ({
@@ -110,6 +120,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
       set({ items: result.items.map(mapApi), isLoading: false });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
+      throw e;
     }
   },
 
@@ -122,6 +133,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
       currency: a.currency,
       advanceDate: a.advanceDate,
       note: a.note,
+      status: 'pending_approval',
       advanceKind: toBackendKind(a.advanceKind),
       repaymentMode: toBackendRepaymentMode(a.repaymentMode),
       repaymentMonths: a.repaymentMonths ?? undefined,
@@ -133,40 +145,63 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
   },
 
   update: async (id, patch) => {
-    try {
-      const updated = await employeeAdvancesApi.update(id, {
-        amount: patch.amount,
-        currency: patch.currency,
-        advanceDate: patch.advanceDate,
-        note: patch.note,
-        advanceKind: patch.advanceKind != null ? toBackendKind(patch.advanceKind) : undefined,
-        repaymentMode: patch.repaymentMode != null ? toBackendRepaymentMode(patch.repaymentMode) : undefined,
-        repaymentMonths: patch.repaymentMonths ?? undefined,
-        monthlyInstallmentAmount: patch.monthlyInstallmentAmount ?? undefined,
-      });
-      set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
-      return true;
-    } catch {
-      return false;
-    }
+    const updated = await employeeAdvancesApi.update(id, {
+      amount: patch.amount,
+      currency: patch.currency,
+      advanceDate: patch.advanceDate,
+      note: patch.note,
+      advanceKind: patch.advanceKind != null ? toBackendKind(patch.advanceKind) : undefined,
+      repaymentMode: patch.repaymentMode != null ? toBackendRepaymentMode(patch.repaymentMode) : undefined,
+      repaymentMonths: patch.repaymentMonths ?? undefined,
+      monthlyInstallmentAmount: patch.monthlyInstallmentAmount ?? undefined,
+    });
+    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
+    return true;
   },
 
   remove: async (id) => {
-    try {
-      await employeeAdvancesApi.delete(id);
-      set(s => ({ items: s.items.filter(row => row.id !== id) }));
-      return true;
-    } catch {
-      return false;
-    }
+    await employeeAdvancesApi.delete(id);
+    set(s => ({ items: s.items.filter(row => row.id !== id) }));
+    return true;
+  },
+
+  submitForApproval: async (id) => {
+    const updated = await employeeAdvancesApi.update(id, { status: 'pending_approval' });
+    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
+  },
+
+  approve: async (id) => {
+    const updated = await employeeAdvancesApi.update(id, { status: 'approved' });
+    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
+  },
+
+  reject: async (id) => {
+    const updated = await employeeAdvancesApi.update(id, { status: 'rejected' });
+    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
   },
 }));
 
 export const ADVANCE_STATUS_LABELS: Record<HREmployeeAdvanceStatus, string> = {
-  outstanding: 'قائمة',
-  repaid: 'مُسدَّدة',
+  draft: 'مسودة',
+  pending_approval: 'قيد الموافقة',
+  approved: 'معتمد',
+  rejected: 'مرفوض',
+  disbursed: 'مصروف',
+  repaying: 'قيد السداد',
+  fully_repaid: 'مُسدَّدة',
   cancelled: 'ملغاة',
 };
+
+export const ADVANCE_STATUS_FILTER_ORDER: HREmployeeAdvanceStatus[] = [
+  'pending_approval',
+  'approved',
+  'rejected',
+  'draft',
+  'disbursed',
+  'repaying',
+  'fully_repaid',
+  'cancelled',
+];
 
 export const ADVANCE_KIND_LABELS: Record<HREmployeeAdvanceKind, string> = {
   housing: 'سكني',
