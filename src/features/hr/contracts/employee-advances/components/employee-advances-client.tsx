@@ -332,7 +332,7 @@ export function EmployeeAdvancesClient() {
               <div
                 key={x.id}
                 className={cn(
-                  'rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col',
+                  'rounded-lg border border-border bg-card p-3 shadow-soft space-y-2 flex flex-col',
                   isEditable(x.status) && 'cursor-pointer',
                 )}
                 onClick={() => { if (isEditable(x.status)) openEdit(x.id); }}
@@ -352,12 +352,12 @@ export function EmployeeAdvancesClient() {
                     {ADVANCE_KIND_LABELS[x.advanceKind]}
                   </Badge>
                 </div>
-                <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-center">
-                  <p className="text-xl font-bold tabular-nums text-foreground">
+                <div className="rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-center">
+                  <p className="text-base font-bold tabular-nums text-foreground">
                     {formatNumber(x.amount)}
                   </p>
                   <p className="text-[10px] text-muted-foreground">{x.currency}</p>
-                  <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{repaymentLine(x)}</p>
+                  <p className="text-[10px] leading-snug text-muted-foreground">{repaymentLine(x)}</p>
                 </div>
                 {x.note && (
                   <p className="text-[11px] text-muted-foreground line-clamp-2">{x.note}</p>
@@ -367,7 +367,7 @@ export function EmployeeAdvancesClient() {
                     تاريخ الاعتماد: {x.approvedAt.slice(0, 10)}
                   </p>
                 )}
-                <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
+                <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-2" onClick={e => e.stopPropagation()}>
                   {canSubmit && (
                     <Button
                       size="sm"
