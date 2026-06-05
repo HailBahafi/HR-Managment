@@ -19,16 +19,18 @@ export function todayYMD(): string {
   return dateToYMD(new Date());
 }
 
-/** من الأحد إلى السبت (التقويم المحلي) */
+/** من السبت إلى الجمعة (التقويم المحلي) */
 export function thisWeekSunSatYMD(): { from: string; to: string } {
   const now = new Date();
   const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dow = day.getDay();
-  const sun = new Date(day);
-  sun.setDate(day.getDate() - dow);
-  const sat = new Date(sun);
-  sat.setDate(sun.getDate() + 6);
-  return { from: dateToYMD(sun), to: dateToYMD(sat) };
+  const dow = day.getDay(); // 0=Sun … 6=Sat
+  // How many days since last Saturday: Sat=0, Sun=1, Mon=2, …, Fri=6
+  const daysSinceSat = (dow + 1) % 7;
+  const sat = new Date(day);
+  sat.setDate(day.getDate() - daysSinceSat);
+  const fri = new Date(sat);
+  fri.setDate(sat.getDate() + 6);
+  return { from: dateToYMD(sat), to: dateToYMD(fri) };
 }
 
 /** أول وآخر يوم من الشهر الحالي (التقويم المحلي) */

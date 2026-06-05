@@ -14,21 +14,22 @@ import { DailyDayDetailDialog } from '@/features/hr/attendance/daily/components/
 import type { AttendanceViewMode } from '@/features/hr/attendance/daily/hooks/useDailyAttendanceModel';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 
-// ─── Full Arabic day names (Sun=0 … Sat=6) ────────────────────────────────────
+// ─── Full Arabic day names (col 0=Sat … col 6=Fri) ───────────────────────────
 
 const DAY_NAMES_FULL: Record<number, string> = {
-  0: 'الأحد',
-  1: 'الاثنين',
-  2: 'الثلاثاء',
-  3: 'الأربعاء',
-  4: 'الخميس',
-  5: 'الجمعة',
-  6: 'السبت',
+  0: 'السبت',
+  1: 'الأحد',
+  2: 'الاثنين',
+  3: 'الثلاثاء',
+  4: 'الأربعاء',
+  5: 'الخميس',
+  6: 'الجمعة',
 };
 
+/** Returns column index where Saturday=0, Sunday=1, …, Friday=6 */
 function getDayOfWeek(iso: string) {
   const d = new Date(`${iso}T12:00:00`);
-  return d.getDay();
+  return (d.getDay() + 1) % 7; // Sat=6→0, Sun=0→1, …, Fri=5→6
 }
 
 // ─── per-employee summary row ─────────────────────────────────────────────────

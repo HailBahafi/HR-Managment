@@ -453,8 +453,8 @@ function nowTimeLocal() {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function RegisterEventComboDialog({
-  open, onOpenChange, allEmployees, defaultEmployeeId, workDate, companyId, onCreated,
+export function RegisterEventComboDialog({
+  open, onOpenChange, allEmployees, defaultEmployeeId, workDate, companyId, onCreated, availableDates,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -463,25 +463,30 @@ function RegisterEventComboDialog({
   workDate: string;
   companyId: string;
   onCreated: (empId: string, evt: AttendanceEventResponseDto) => void;
+  availableDates?: string[];
 }) {
   const [search, setSearch] = React.useState('');
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = React.useState(workDate);
   const [eventType, setEventType] = React.useState<AttendanceEventType>('check_in');
   const [time, setTime] = React.useState(nowTimeLocal);
   const [notes, setNotes] = React.useState('');
   const [saving, setSaving] = React.useState(false);
+
+  const showDatePicker = availableDates && availableDates.length > 1;
 
   // Reset all state whenever the dialog opens
   React.useEffect(() => {
     if (open) {
       setSearch('');
       setSelectedId(defaultEmployeeId ?? null);
+      setSelectedDate(workDate);
       setEventType('check_in');
       setTime(nowTimeLocal());
       setNotes('');
       setSaving(false);
     }
-  }, [open, defaultEmployeeId]);
+  }, [open, defaultEmployeeId, workDate]);
 
   const selectedName = allEmployees.find((e) => e.id === selectedId)?.name ?? '';
   const q = search.trim().toLowerCase();
@@ -492,9 +497,9 @@ function RegisterEventComboDialog({
     setSaving(true);
     try {
       const [hh, mm] = time.split(':');
-      const occurredAt = new Date(`${workDate}T${hh}:${mm}:00`).toISOString();
+      const occurredAt = new Date(`${selectedDate}T${hh}:${mm}:00`).toISOString();
       const res = await attendanceEventsApi.create({
-        companyId, employeeId: selectedId, eventType, occurredAt, workDate,
+        companyId, employeeId: selectedId, eventType, occurredAt, workDate: selectedDate,
         source: 'manual_hr', notes: notes.trim() || null,
       });
       toast.success(`تم تسجيل ${EVENT_TYPE_META[eventType].labelAr} بنجاح`);
@@ -512,7 +517,7 @@ function RegisterEventComboDialog({
       <DialogContent className="max-w-sm border-border" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-right font-display text-base">تسجيل حدث حضور</DialogTitle>
-          <p className="text-right text-xs text-muted-foreground" dir="ltr">{workDate}</p>
+          {!showDatePicker && <p className="text-right text-xs text-muted-foreground" dir="ltr">{selectedDate}</p>}
         </DialogHeader>
 
         <div className="space-y-4 py-1">
@@ -554,6 +559,23 @@ function RegisterEventComboDialog({
               </div>
             )}
           </div>
+
+          {/* Date selector — shown only for multi-day views */}
+          {showDatePicker && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">التاريخ <span className="text-destructive">*</span></Label>
+              <select
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                dir="ltr"
+              >
+                {availableDates!.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Event form — only shown after employee is selected */}
           {selectedId && (
@@ -724,16 +746,6 @@ export function DailyOneDayView({
               <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', headerEventsExpanded && 'rotate-180')} />
             )}
           </button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={handleHeaderRegister}
-            className="h-8 gap-1.5 border-dashed border-primary/40 text-primary hover:border-primary hover:bg-primary/5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="text-xs">تسجيل</span>
-          </Button>
         </div>
       </div>
 

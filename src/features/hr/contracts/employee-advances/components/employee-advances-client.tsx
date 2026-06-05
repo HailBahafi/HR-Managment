@@ -106,6 +106,7 @@ export function EmployeeAdvancesClient() {
 
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+  const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
 
   const empPickerList = React.useMemo(
     () => employees.map(e => ({ id: e.id, name: e.nameAr })),
@@ -124,16 +125,18 @@ export function EmployeeAdvancesClient() {
   React.useEffect(() => {
     const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
     const status = statusFilter !== 'all' ? statusFilter : undefined;
+    const advanceDateFrom = dateBounds.from || undefined;
+    const advanceDateTo = dateBounds.to || undefined;
     if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
     fetchDebounceRef.current = setTimeout(() => {
-      void fetchAdvances({ employeeId, status }).catch((e) => {
+      void fetchAdvances({ employeeId, status, advanceDateFrom, advanceDateTo }).catch((e) => {
         handleApiError(e, 'employee-advances/fetch');
       });
     }, 400);
     return () => {
       if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
     };
-  }, [selectedEmpIds, statusFilter, fetchAdvances]);
+  }, [selectedEmpIds, statusFilter, dateBounds, fetchAdvances]);
 
   const advanceStatusCounts = React.useMemo((): Record<string, number> => {
     const counts: Record<string, number> = { all: items.length };
@@ -285,7 +288,7 @@ export function EmployeeAdvancesClient() {
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        showDateSection={false}
+        showDateSection={true}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -294,7 +297,7 @@ export function EmployeeAdvancesClient() {
         statusOrder={ADVANCE_STATUS_FILTER_ORDER}
         statusLabels={statusFilterLabels}
         statusCounts={advanceStatusCounts}
-        onDateBoundsChange={() => {}}
+        onDateBoundsChange={setDateBounds}
         trailingActions={filtered.length > 0 ? (
           <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
             <Download className="h-3.5 w-3.5" />تصدير
@@ -305,6 +308,7 @@ export function EmployeeAdvancesClient() {
     [
       statusFilter,
       selectedEmpKey,
+      dateBounds,
       advanceStatusCounts.all,
       ...ADVANCE_STATUS_FILTER_ORDER.map((k) => advanceStatusCounts[k]),
       filtered.length,

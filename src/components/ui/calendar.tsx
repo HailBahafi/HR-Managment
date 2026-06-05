@@ -26,11 +26,12 @@ const LATIN_NUMERAL_FORMATTERS: NonNullable<CalendarProps['formatters']> = {
   formatWeekNumber: (weekNumber) => (weekNumber < 10 ? `0${weekNumber}` : `${weekNumber}`),
 };
 
-function Calendar({ className, classNames, locale = arSA, showOutsideDays = true, formatters, ...props }: CalendarProps) {
+function Calendar({ className, classNames, locale = arSA, showOutsideDays = true, formatters, weekStartsOn = 6, ...props }: CalendarProps & { weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 }) {
   const defaults = getDefaultClassNames();
   return (
     <DayPicker
       locale={locale}
+      weekStartsOn={weekStartsOn}
       showOutsideDays={showOutsideDays}
       formatters={{ ...LATIN_NUMERAL_FORMATTERS, ...formatters }}
       className={cn('p-2', className)}

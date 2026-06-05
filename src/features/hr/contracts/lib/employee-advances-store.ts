@@ -92,7 +92,7 @@ type State = {
   items: HREmployeeAdvance[];
   isLoading: boolean;
   error: string | null;
-  fetch: (params?: { employeeId?: string; status?: HREmployeeAdvanceStatus }) => Promise<void>;
+  fetch: (params?: { employeeId?: string; status?: HREmployeeAdvanceStatus; advanceDateFrom?: string; advanceDateTo?: string }) => Promise<void>;
   add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status'>) => Promise<HREmployeeAdvance>;
   update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt'>>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
@@ -115,6 +115,8 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
         companyId,
         employeeId: params?.employeeId,
         status: params?.status,
+        advanceDateFrom: params?.advanceDateFrom,
+        advanceDateTo: params?.advanceDateTo,
         limit: 200,
       });
       set({ items: result.items.map(mapApi), isLoading: false });

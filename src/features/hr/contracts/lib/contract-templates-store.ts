@@ -18,6 +18,7 @@ export type HRContractTemplateRecord = {
   currency: string;
   durationMonths: number | null;
   allowanceLines: { allowanceTypeId: string; amount: number; sortOrder: number }[];
+  articleIds: string[];
   allowancesHint: string;
   sortOrder: number;
   isActive: boolean;
@@ -42,6 +43,7 @@ function mapApiTemplate(t: ApiContractTemplate): HRContractTemplateRecord {
       amount: Number(l.amount) || 0,
       sortOrder: l.sortOrder,
     })),
+    articleIds: (t.articles ?? []).map((a) => a.articleId),
     allowancesHint: t.allowancesHint ?? '',
     sortOrder: t.sortOrder,
     isActive: t.isActive,

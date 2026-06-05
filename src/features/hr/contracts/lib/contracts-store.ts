@@ -7,11 +7,13 @@ import { useAuthStore } from '@/features/auth/lib/auth-store';
 export type HRContractNature =
   | 'fixed_term'
   | 'indefinite'
+  | 'project_based'
   | 'task_based'
   | 'temporary'
   | 'seasonal';
 
-export type HRWorkArrangement = 'flexible' | 'full_time' | 'part_time';
+/** مطابق لـ backend WorkArrangement (+ flexible للسجلات القديمة) */
+export type HRWorkArrangement = 'full_time' | 'part_time' | 'remote' | 'hybrid' | 'flexible';
 
 export type HRContractLifecycleStatus = 'draft' | 'pending_signature' | 'active' | 'expired' | 'terminated' | 'superseded' | 'cancelled';
 
@@ -135,6 +137,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
       deductionsNote: data.deductionsNote || undefined,
       amendsContractId: data.amendsContractId ?? undefined,
       contractTemplateId: data.templateId ?? undefined,
+      applyTemplateDefaults: data.templateId ? true : undefined,
       articleIds: data.articleIds.length > 0 ? data.articleIds : undefined,
       allowanceLines: data.allowanceLines
         .filter(l => l.allowanceTypeId)
@@ -271,15 +274,18 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
 export const CONTRACT_NATURE_LABELS: Record<HRContractNature, string> = {
   fixed_term: 'محدد المدة',
   indefinite: 'غير محدد المدة',
+  project_based: 'عقد إنجاز / مشروع',
   task_based: 'عقد إنجاز مهام',
   temporary: 'مؤقت',
   seasonal: 'موسمي',
 };
 
 export const WORK_ARRANGEMENT_LABELS: Record<HRWorkArrangement, string> = {
-  flexible: 'دوام مرن',
   full_time: 'دوام كامل',
   part_time: 'دوام جزئي',
+  remote: 'عن بُعد',
+  hybrid: 'هجين (مختلط)',
+  flexible: 'دوام مرن',
 };
 
 export const CONTRACT_STATUS_LABELS: Record<HRContractLifecycleStatus, string> = {

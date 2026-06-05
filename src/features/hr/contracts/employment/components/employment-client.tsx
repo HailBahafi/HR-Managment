@@ -37,6 +37,8 @@ import {
   type HRWorkArrangement,
 } from '@/features/hr/contracts/lib/contracts-store';
 import { useHRContractTemplatesStore } from '@/features/hr/contracts/lib/contract-templates-store';
+import { contractTemplatesApi } from '@/features/hr/contracts/contract-templates/lib/api/contract-templates';
+import { applyContractTemplateToForm, computeTemplateEndDate } from '@/features/hr/contracts/employment/utils/apply-contract-template';
 import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
 import { useHRContractArticlesStore } from '@/features/hr/contracts/lib/contract-articles-store';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
@@ -105,10 +107,17 @@ export function EmploymentContractsClient() {
   );
 
   const empOptions = React.useMemo(() => employees.map(e => ({ value: e.id, label: `${e.nameAr} — ${e.jobTitleAr}` })), [employees]);
-  const templateOptions = React.useMemo(() => [
-    { value: '', label: 'بدون قالب' },
-    ...templates.filter(t => t.isActive).map(t => ({ value: t.id, label: t.nameAr })),
-  ], [templates]);
+  const templateOptions = React.useMemo(
+    () => [
+      { value: '', label: 'بدون قالب' },
+      ...[...templates]
+        .filter((t) => t.isActive)
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.nameAr.localeCompare(b.nameAr, 'ar'))
+        .map((t) => ({ value: t.id, label: t.nameAr })),
+    ],
+    [templates],
+  );
+  const [applyingTemplate, setApplyingTemplate] = React.useState(false);
   const allowanceOptions = React.useMemo(() =>
     allowanceTypes.filter(a => a.isActive).map(a => ({ value: a.id, label: `${a.code} — ${a.nameAr}` })),
     [allowanceTypes],
@@ -363,20 +372,42 @@ export function EmploymentContractsClient() {
 
   const patch = (p: Partial<FormValues>) => setForm(f => ({ ...f, ...p }));
 
-  const applyTemplate = (tplId: string) => {
-    const t = templates.find(x => x.id === tplId);
-    if (!t) { patch({ templateId: '' }); return; }
-    patch({
-      templateId: tplId,
-      contractType: t.defaultContractNature,
-      workArrangement: t.defaultWorkArrangement,
-      probationDays: t.defaultProbationDays != null ? String(t.defaultProbationDays) : '',
-      baseSalary: String(t.suggestedBaseSalary), currency: t.currency,
-      allowanceLines: t.allowanceLines.length > 0
-        ? t.allowanceLines.map(l => ({ allowanceTypeId: l.allowanceTypeId, amount: String(l.amount) }))
-        : [{ allowanceTypeId: '', amount: '' }],
-    });
+  const applyTemplate = async (tplId: string) => {
+    if (!tplId) {
+      patch({ templateId: '' });
+      return;
+    }
+    setApplyingTemplate(true);
+    try {
+      const template = await contractTemplatesApi.get(tplId);
+      patch(
+        applyContractTemplateToForm(template, {
+          essentialArticleIds,
+          startDate: form.startDate,
+        }),
+      );
+      toast.success(`تم تطبيق قالب «${template.nameAr}» على النموذج`);
+    } catch (e) {
+      toast.error((e as Error).message || 'تعذّر تحميل القالب');
+      patch({ templateId: '' });
+    } finally {
+      setApplyingTemplate(false);
+    }
   };
+
+  React.useEffect(() => {
+    if (!form.templateId || !form.startDate || panelMode === 'view') return;
+    const cached = templates.find((t) => t.id === form.templateId);
+    if (!cached?.durationMonths) return;
+    const end = computeTemplateEndDate(
+      form.contractType,
+      cached.durationMonths,
+      form.startDate,
+    );
+    if (end && end !== form.endDate) {
+      setForm((f) => ({ ...f, endDate: end }));
+    }
+  }, [form.startDate, form.templateId, form.contractType, form.endDate, templates, panelMode]);
 
   const updateAllowanceLine = (idx: number, p: Partial<AllowanceLine>) => {
     setForm(f => ({ ...f, allowanceLines: f.allowanceLines.map((l, i) => i === idx ? { ...l, ...p } : l) }));
@@ -564,9 +595,20 @@ export function EmploymentContractsClient() {
           </Button>
         )}
       >
-        {!readOnly && panelMode !== 'create' && (
-          <FormField label="القالب">
-            <MinimalDropdown value={form.templateId} onChange={applyTemplate} options={templateOptions} placeholder="اختر قالباً (اختياري)…" />
+        {!readOnly && (
+          <FormField label="قالب العقد" span2>
+            <MinimalDropdown
+              value={form.templateId}
+              onChange={(id) => { void applyTemplate(id); }}
+              options={templateOptions}
+              placeholder={applyingTemplate ? 'جاري تحميل القالب…' : 'اختر قالباً لتعبئة الحقول تلقائياً…'}
+            />
+            <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
+              عند الاختيار يُملأ النموذج فوراً بالراتب والبدلات ومواد العقد والإعدادات الافتراضية من القالب.
+              {form.templateId && form.startDate && form.contractType === 'fixed_term' ? (
+                <span> عند تغيير تاريخ البداية يُحدَّث تاريخ الانتهاء حسب مدة القالب.</span>
+              ) : null}
+            </p>
           </FormField>
         )}
 

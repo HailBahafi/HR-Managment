@@ -47,7 +47,7 @@ export type CreateEmployeeAdvanceDto = {
 export type UpdateEmployeeAdvanceDto = Partial<Omit<CreateEmployeeAdvanceDto, 'companyId' | 'employeeId'>>;
 
 export const employeeAdvancesApi = {
-  list: (params?: { companyId?: string; employeeId?: string; status?: string; page?: number; limit?: number }) =>
+  list: (params?: { companyId?: string; employeeId?: string; status?: string; advanceDateFrom?: string; advanceDateTo?: string; page?: number; limit?: number }) =>
     apiRequest<PaginatedResult<EmployeeAdvanceResponseDto>>('/payroll/employee-advances', { query: params }),
   get: (id: string) =>
     apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}`),
