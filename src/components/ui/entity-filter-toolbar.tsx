@@ -7,10 +7,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
@@ -26,6 +22,7 @@ import {
   hasDateRangeFilter,
   ymdToMDYDisplay,
 } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 
 export const DATE_TAB_BASE =
   'discipline-tab-trigger shrink-0 gap-1 px-3 text-[11px] transition-all duration-150 border';
@@ -207,6 +204,8 @@ export interface EntityFilterToolbarProps {
   defaultDateFilterTab?: DateFilterTab;
 
   trailingActions?: React.ReactNode;
+  /** Filters rendered first (rightmost in RTL), e.g. a custom date-range trigger */
+  leadingFilters?: React.ReactNode;
   beforeEmployeePicker?: React.ReactNode;
 
   /** Primary inline selects always visible in the toolbar */
@@ -297,6 +296,7 @@ export const EntityFilterToolbar = React.forwardRef<
     showEmployeePicker = true,
     defaultDateFilterTab = 'all',
     trailingActions,
+    leadingFilters,
     beforeEmployeePicker,
     inlineSelects,
     moreFilters,
@@ -309,11 +309,6 @@ export const EntityFilterToolbar = React.forwardRef<
   const [appliedCustomFrom, setAppliedCustomFrom] = React.useState('');
   const [appliedCustomTo, setAppliedCustomTo] = React.useState('');
   const [customDialogOpen, setCustomDialogOpen] = React.useState(false);
-  const [dialogFromDate, setDialogFromDate] = React.useState<Date | undefined>(undefined);
-  const [dialogToDate, setDialogToDate] = React.useState<Date | undefined>(undefined);
-  const [rangeError, setRangeError] = React.useState<string | null>(null);
-  const [customMode, setCustomMode] = React.useState<'days' | 'months'>('days');
-  const [monthPickerYear, setMonthPickerYear] = React.useState(() => new Date().getFullYear());
 
   const effectiveBounds = React.useMemo(
     () => (showDateSection ? effectiveDateRange(dateFilterTab, appliedCustomFrom, appliedCustomTo) : { from: '', to: '' }),
@@ -352,56 +347,8 @@ export const EntityFilterToolbar = React.forwardRef<
     });
   }, [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo]);
 
-  const ymdToDate = (ymd: string): Date | undefined => {
-    if (!ymd) return undefined;
-    const [y, m, d] = ymd.split('-').map(Number);
-    if (!y || !m || !d) return undefined;
-    return new Date(y, m - 1, d);
-  };
-
-  const dateToYmd = (d: Date): string => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-
   const openCustomDateDialog = React.useCallback(() => {
-    setDialogFromDate(ymdToDate(appliedCustomFrom));
-    setDialogToDate(ymdToDate(appliedCustomTo));
-    setRangeError(null);
     setCustomDialogOpen(true);
-  }, [appliedCustomFrom, appliedCustomTo]);
-
-  const applyCustomDialog = React.useCallback(() => {
-    if (!dialogFromDate || !dialogToDate) return;
-    setAppliedCustomFrom(dateToYmd(dialogFromDate));
-    setAppliedCustomTo(dateToYmd(dialogToDate));
-    setCustomDialogOpen(false);
-  }, [dialogFromDate, dialogToDate]);
-
-  const MAX_RANGE_DAYS = 31;
-
-  const handleRangeSelect = React.useCallback((range: { from?: Date; to?: Date } | undefined) => {
-    const from = range?.from;
-    const to = range?.to;
-    if (from && to) {
-      const diffDays = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
-      if (diffDays > MAX_RANGE_DAYS) {
-        setRangeError(`الحد الأقصى ${MAX_RANGE_DAYS} يوماً — يرجى اختيار نطاق أصغر`);
-        // Clamp to: keep from, set to = from + 30 days
-        const clamped = new Date(from);
-        clamped.setDate(clamped.getDate() + MAX_RANGE_DAYS - 1);
-        setDialogFromDate(from);
-        setDialogToDate(clamped);
-        return;
-      }
-      setRangeError(null);
-    } else {
-      setRangeError(null);
-    }
-    setDialogFromDate(from);
-    setDialogToDate(to);
   }, []);
 
   const resetDateFilter = React.useCallback(() => {
@@ -460,7 +407,7 @@ export const EntityFilterToolbar = React.forwardRef<
             )
           : 'لم يُحدَّد نطاق. استخدم «اختيار التواريخ» ثم تأكيد.'}
       </p>
-      <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 text-[11px]" onClick={openCustomDateDialog}>
+      <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 text-[11px]" onClick={() => setCustomDialogOpen(true)}>
         {hasDateRangeFilter(appliedCustomFrom, appliedCustomTo) ? 'تعديل النطاق' : 'اختيار التواريخ'}
       </Button>
     </div>
@@ -507,6 +454,37 @@ export const EntityFilterToolbar = React.forwardRef<
     Boolean(inlineSelects?.length) || Boolean(beforeEmployeePicker) || showEmployeePicker;
   const hasDataView = Boolean(dataView && dataView.options.length >= 2);
   const hasActionStrip = hasDataView || Boolean(trailingActions);
+
+  const pickerBlock = hasSecondaryFilters ? (
+    <>
+      {inlineSelects?.map((sel) => {
+        const allowed = new Set(sel.options.map((o) => o.value));
+        const coerced =
+          allowed.has(sel.value)
+            ? sel.value
+            : (sel.options.find((o) => o.value === 'all')?.value ?? sel.options[0]?.value ?? '');
+        if (!sel.options.length) return null;
+        return (
+          <SelectWithClear
+            key={sel.id}
+            value={coerced === 'all' ? '' : coerced}
+            onValueChange={(v) => sel.onChange(v || 'all')}
+            onClear={() => sel.onChange('all')}
+            placeholder={sel.placeholder ?? '—'}
+            className={cn('w-[9rem] max-w-[9rem]', sel.className)}
+          >
+            {sel.options.filter((o) => o.value !== 'all').map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectWithClear>
+        );
+      })}
+      {beforeEmployeePicker}
+      {showEmployeePicker ? (
+        <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
+      ) : null}
+    </>
+  ) : null;
 
 
   const [moreFiltersOpen, setMoreFiltersOpen] = React.useState(false);
@@ -616,37 +594,18 @@ export const EntityFilterToolbar = React.forwardRef<
     <>
       <div className="rounded-xl border border-border/60 bg-card/80 px-3 py-2.5 shadow-sm backdrop-blur-sm overflow-visible sm:px-4">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
-          {filterDropdownRow}
-          {hasSecondaryFilters ? (
+          {leadingFilters}
+          {leadingFilters ? (
             <>
-              {inlineSelects?.map((sel) => {
-                const allowed = new Set(sel.options.map((o) => o.value));
-                const coerced =
-                  allowed.has(sel.value)
-                    ? sel.value
-                    : (sel.options.find((o) => o.value === 'all')?.value ?? sel.options[0]?.value ?? '');
-                if (!sel.options.length) return null;
-                return (
-                  <SelectWithClear
-                    key={sel.id}
-                    value={coerced === 'all' ? '' : coerced}
-                    onValueChange={(v) => sel.onChange(v || 'all')}
-                    onClear={() => sel.onChange('all')}
-                    placeholder={sel.placeholder ?? '—'}
-                    className={cn('w-[9rem] max-w-[9rem]', sel.className)}
-                  >
-                    {sel.options.filter((o) => o.value !== 'all').map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectWithClear>
-                );
-              })}
-              {beforeEmployeePicker}
-              {showEmployeePicker ? (
-                <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
-              ) : null}
+              {pickerBlock}
+              {filterDropdownRow}
             </>
-          ) : null}
+          ) : (
+            <>
+              {filterDropdownRow}
+              {pickerBlock}
+            </>
+          )}
           {moreFiltersPopover}
           {hasDataView && dataView ? (
             <div className="ms-auto">
@@ -662,6 +621,11 @@ export const EntityFilterToolbar = React.forwardRef<
               </Tabs>
             </div>
           ) : null}
+          {trailingActions && (
+            <div className="ms-auto flex items-center gap-2">
+              {trailingActions}
+            </div>
+          )}
           {hasAnyActiveFilter && (
             <button
               type="button"
@@ -677,195 +641,18 @@ export const EntityFilterToolbar = React.forwardRef<
       </div>
 
       {showDateSection ? (
-        <Dialog open={customDialogOpen} onOpenChange={(open) => {
-          if (!open && !appliedCustomFrom && !appliedCustomTo) setDateFilterTab(prevDateTabRef.current);
-          setRangeError(null);
-          setCustomDialogOpen(open);
-        }}>
-          <DialogContent className="border-border sm:max-w-sm" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-sm">
-                <CalendarDays className="h-4 w-4 text-primary" />
-                نطاق تاريخ مخصص
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-3 py-1">
-
-              {/* Mode toggle */}
-              <div className="flex rounded-lg border border-border bg-muted/30 p-0.5">
-                {(['days', 'months'] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => { setCustomMode(m); setDialogFromDate(undefined); setDialogToDate(undefined); setRangeError(null); }}
-                    className={cn(
-                      'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
-                      customMode === m
-                        ? 'bg-card text-primary shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {m === 'days' ? 'تحديد بالأيام' : 'تحديد بالأشهر'}
-                  </button>
-                ))}
-              </div>
-
-              {customMode === 'days' ? (
-                <>
-                  {/* Quick presets */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { label: 'اليوم', days: 0 },
-                      { label: 'آخر 7 أيام', days: 6 },
-                      { label: 'آخر 14 يوماً', days: 13 },
-                      { label: 'آخر شهر', days: 30 },
-                    ].map(({ label, days }) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => {
-                          const to = new Date(); to.setHours(0, 0, 0, 0);
-                          const from = new Date(to); from.setDate(from.getDate() - days);
-                          setDialogFromDate(from); setDialogToDate(to); setRangeError(null);
-                        }}
-                        className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Inline range calendar */}
-                  <div className="flex justify-center rounded-xl border border-border bg-muted/10 p-1">
-                    <Calendar
-                      mode="range"
-                      selected={{ from: dialogFromDate, to: dialogToDate }}
-                      onSelect={handleRangeSelect}
-                      numberOfMonths={1}
-                      disabled={(d) => {
-                        if (dialogFromDate && !dialogToDate) {
-                          const max = new Date(dialogFromDate);
-                          max.setDate(max.getDate() + MAX_RANGE_DAYS - 1);
-                          return d < dialogFromDate || d > max;
-                        }
-                        return false;
-                      }}
-                    />
-                  </div>
-
-                  {rangeError && (
-                    <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                      {rangeError}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Year navigator */}
-                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setMonthPickerYear((y) => y - 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      ‹
-                    </button>
-                    <span className="text-sm font-semibold tabular-nums">{monthPickerYear}</span>
-                    <button
-                      type="button"
-                      onClick={() => setMonthPickerYear((y) => y + 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                    >
-                      ›
-                    </button>
-                  </div>
-
-                  {/* Month grid */}
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const monthDate = new Date(monthPickerYear, i, 1);
-                      const monthEnd = new Date(monthPickerYear, i + 1, 0);
-                      const label = monthDate.toLocaleDateString('ar-SA', { month: 'short' });
-                      const isSelected = dialogFromDate &&
-                        dialogFromDate.getMonth() === i &&
-                        dialogFromDate.getFullYear() === monthPickerYear &&
-                        dialogToDate &&
-                        dialogToDate.getMonth() === i &&
-                        dialogToDate.getFullYear() === monthPickerYear;
-                      const isToday = new Date().getMonth() === i && new Date().getFullYear() === monthPickerYear;
-                      return (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => {
-                            setDialogFromDate(monthDate);
-                            setDialogToDate(monthEnd);
-                            setRangeError(null);
-                          }}
-                          className={cn(
-                            'relative rounded-lg border py-2.5 text-xs font-medium transition-all',
-                            isSelected
-                              ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                              : isToday
-                                ? 'border-primary/40 bg-primary/8 text-primary'
-                                : 'border-border bg-muted/20 text-foreground hover:border-primary/50 hover:bg-primary/10 hover:text-primary',
-                          )}
-                        >
-                          {label}
-                          {isToday && !isSelected && (
-                            <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-
-              {/* Summary */}
-              {dialogFromDate && dialogToDate && (
-                <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
-                  <span className="font-semibold text-primary">
-                    {customMode === 'days'
-                      ? `${Math.round((dialogToDate.getTime() - dialogFromDate.getTime()) / 86_400_000) + 1} يوم`
-                      : dialogFromDate.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' })}
-                  </span>
-                  <span className="text-muted-foreground" dir="ltr">
-                    {dialogFromDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })}
-                    {' — '}
-                    {dialogToDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
-                </div>
-              )}
-              {!dialogFromDate && (
-                <p className="text-center text-xs text-muted-foreground">
-                  {customMode === 'days' ? 'انقر لتحديد تاريخ البداية' : 'اختر شهراً من القائمة'}
-                </p>
-              )}
-            </div>
-
-            <DialogFooter className="gap-2 sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setCustomDialogOpen(false);
-                  if (!appliedCustomFrom && !appliedCustomTo) setDateFilterTab(prevDateTabRef.current);
-                }}
-              >
-                إلغاء
-              </Button>
-              <Button
-                type="button"
-                onClick={applyCustomDialog}
-                disabled={!dialogFromDate || !dialogToDate || !!rangeError}
-              >
-                تطبيق
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <DateRangePicker
+          open={customDialogOpen}
+          onOpenChange={(open) => {
+            if (!open && !appliedCustomFrom && !appliedCustomTo) setDateFilterTab(prevDateTabRef.current);
+            setCustomDialogOpen(open);
+          }}
+          value={{ from: appliedCustomFrom, to: appliedCustomTo }}
+          onApply={({ from, to }) => {
+            setAppliedCustomFrom(from);
+            setAppliedCustomTo(to);
+          }}
+        />
       ) : null}
     </>
   );

@@ -1,7 +1,6 @@
 import {
   checkInPointLinksApi,
   type CheckInPointLinkResponseDto,
-  type CreateCheckInPointLinkDto,
 } from '@/features/hr/attendance/lib/api/check-in-point-links';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
@@ -34,20 +33,14 @@ export async function createCheckInPointLinkBatch(input: {
   pairs: { employeeId: string; checkInPointId: string }[];
 }) {
   const batchId = crypto.randomUUID();
-  const created: AttendanceCheckInPointLink[] = [];
-  for (const pair of input.pairs) {
-    const payload: CreateCheckInPointLinkDto = {
-      companyId: input.companyId,
-      employeeId: pair.employeeId,
-      checkInPointId: pair.checkInPointId,
-      batchId,
-      effectiveFrom: input.effectiveFrom,
-      linkActive: true,
-    };
-    const dto = await checkInPointLinksApi.create(payload);
-    created.push(mapCheckInPointLinkResponse(dto));
-  }
-  return created;
+  const res = await checkInPointLinksApi.createBulk({
+    companyId: input.companyId,
+    links: input.pairs,
+    batchId,
+    effectiveFrom: input.effectiveFrom,
+    linkActive: true,
+  });
+  return res.items.map(mapCheckInPointLinkResponse);
 }
 
 export async function deleteCheckInPointLinkBatch(links: AttendanceCheckInPointLink[]) {

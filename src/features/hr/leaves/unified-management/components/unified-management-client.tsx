@@ -2,11 +2,9 @@
 
 import * as React from 'react';
 import {
-  Plus, ChevronLeft, ChevronRight,
-  CheckCircle2, XCircle, Clock,
+  Plus,
+  CheckCircle2, XCircle, Clock, CalendarDays,
 } from 'lucide-react';
-import { format, addMonths, subMonths, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, getDay, isValid } from 'date-fns';
-import { arSA } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,9 +22,8 @@ import {
 } from '@/components/ui/dialog';
 import {
   canActOnLeave, getApprovalStage,
-  LEAVE_TYPE_LABELS, STATUS_LABELS,
+  LEAVE_TYPE_LABELS,
 } from '@/features/hr/leaves/unified-management/lib/leaves-utils';
-import type { EmployeeLeaveBalanceRow } from '@/features/hr/leaves/unified-management/types';
 import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
@@ -34,7 +31,7 @@ import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterSt
 import { leaveRequestsApi, type LeaveRequestResponseDto } from '@/features/hr/leaves/lib/api/leave-requests';
 import { leaveTypesApi, type LeaveTypeResponseDto } from '@/features/hr/leaves/lib/api/leave-types';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
-import { cn, toWesternDigits } from '@/shared/utils';
+import { cn } from '@/shared/utils';
 
 // ─── Style config ─────────────────────────────────────────────────────────────
 
@@ -190,8 +187,7 @@ export function UnifiedManagementClient() {
     employeeIds: [...selectedEmpIds],
   };
 
-  const [view, setView] = React.useState<'table' | 'calendar'>('table');
-  const [calMonth, setCalMonth] = React.useState(() => new Date());
+  const [view, setView] = React.useState<'table' | 'card'>('table');
   const [detailLeave, setDetailLeave] = React.useState<UnifiedLeaveRecord | null>(null);
   const [addOpen, setAddOpen] = React.useState(false);
   const [editLeave, setEditLeave] = React.useState<UnifiedLeaveRecord | null>(null);
@@ -305,10 +301,10 @@ export function UnifiedManagementClient() {
         onDateBoundsChange={setDateBounds}
         dataView={{
           value: view,
-          onChange: (v) => setView(v as 'table' | 'calendar'),
+          onChange: (v) => setView(v as 'table' | 'card'),
           options: [
             { value: 'table', label: 'جدول', icon: 'list' },
-            { value: 'calendar', label: 'تقويم', icon: 'calendar-days' },
+            { value: 'card', label: 'بطاقات', icon: 'layout-grid' },
           ],
         }}
       />
@@ -329,7 +325,7 @@ export function UnifiedManagementClient() {
       {/* Content */}
       {view === 'table'
         ? <LeaveTable leaves={filtered} employees={employeesList} branches={branches} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
-        : <LeaveCalendar leaves={filtered} employees={employeesList} month={calMonth} onMonthChange={setCalMonth} onDetail={setDetailLeave} />
+        : <LeaveCardGrid leaves={filtered} employees={employeesList} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
       }
 
       {/* Detail dialog */}
@@ -515,86 +511,98 @@ function LeaveTable({ leaves, employees, branches, onDetail, onApprove, onReject
   );
 }
 
-// ─── Calendar view ─────────────────────────────────────────────────────────────
+// ─── Card grid view ────────────────────────────────────────────────────────────
 
-function LeaveCalendar({ leaves, employees, month, onMonthChange, onDetail }: {
+function LeaveCardGrid({ leaves, employees, onDetail, onApprove, onReject }: {
   leaves: UnifiedLeaveRecord[];
   employees: { id: string; nameAr: string }[];
-  month: Date;
-  onMonthChange: (d: Date) => void;
   onDetail: (l: UnifiedLeaveRecord) => void;
+  onApprove: (l: UnifiedLeaveRecord) => void;
+  onReject: (l: UnifiedLeaveRecord) => void;
 }) {
-  const start = startOfMonth(month);
-  const end = endOfMonth(month);
-  const days = eachDayOfInterval({ start, end });
-  const firstDow = getDay(start); // 0=Sun
-
-  const leavesInMonth = React.useMemo(() =>
-    leaves.filter((l) => {
-      const s = new Date(l.start + 'T12:00:00');
-      const e = new Date(l.end + 'T12:00:00');
-      return s <= end && e >= start;
-    }),
-    [leaves, start, end],
-  );
-
-  function leavesOnDay(d: Date): UnifiedLeaveRecord[] {
-    const iso = format(d, 'yyyy-MM-dd');
-    return leavesInMonth.filter((l) => l.start <= iso && l.end >= iso);
+  if (leaves.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border py-16 text-center">
+        <CalendarDays className="h-10 w-10 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">لا توجد إجازات بهذه الفلاتر</p>
+      </div>
+    );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-      {/* Month nav */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onMonthChange(subMonths(month, 1))}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <span className="font-display font-semibold">{toWesternDigits(format(month, 'MMMM yyyy', { locale: arSA }))}</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onMonthChange(addMonths(month, 1))}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-      </div>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {leaves.map((l) => {
+        const emp = employees.find((e) => e.id === l.employeeId);
+        const typeCfg = TYPE_STYLE[l.type];
+        const statusCfg = STATUS_STYLE[l.status];
+        const canAct = canActOnLeave(l);
+        return (
+          <div
+            key={l.id}
+            onClick={() => onDetail(l)}
+            className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+          >
+            <div className="h-0.5 w-full shrink-0 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
 
-      {/* Day headers */}
-      <div className="grid grid-cols-7 border-b border-border bg-muted/30">
-        {['أحد','إثن','ثلا','أرب','خمس','جمع','سبت'].map((d) => (
-          <div key={d} className="py-2 text-center text-[11px] font-semibold text-muted-foreground">{d}</div>
-        ))}
-      </div>
+            <div className="flex flex-1 flex-col gap-2.5 p-3.5">
+              {/* Employee row */}
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                  {emp?.nameAr.charAt(0) ?? '?'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold leading-tight transition-colors group-hover:text-primary">
+                    {emp?.nameAr ?? l.employeeId}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{LEAVE_TYPE_LABELS[l.type]}</p>
+                </div>
+                <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium', statusCfg.color)}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', statusCfg.dot)} />
+                  {statusCfg.label}
+                </span>
+              </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-7">
-        {Array.from({ length: firstDow }).map((_, i) => (
-          <div key={`blank-${i}`} className="min-h-[80px] border-b border-l border-border/40 bg-muted/10" />
-        ))}
-        {days.map((d) => {
-          const dayLeaves = leavesOnDay(d);
-          const isToday = format(d, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-          return (
-            <div key={d.toISOString()} className="min-h-[80px] border-b border-l border-border/40 p-1.5">
-              <span className={cn('mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium', isToday && 'bg-primary text-primary-foreground')}>
-                {format(d, 'd')}
+              {/* Type badge */}
+              <span className={cn('inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium', typeCfg.color)}>
+                <span className={cn('h-1.5 w-1.5 rounded-full', typeCfg.dot)} />
+                {LEAVE_TYPE_LABELS[l.type]}
               </span>
-              {dayLeaves.slice(0, 2).map((l) => {
-                const typeCfg = TYPE_STYLE[l.type];
-                const emp = employees.find((e) => e.id === l.employeeId);
-                return (
-                  <button key={l.id} type="button" onClick={() => onDetail(l)}
-                    className={cn('mb-0.5 flex w-full cursor-pointer items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] text-right hover:opacity-80 transition-opacity', typeCfg.color)}
-                  >
-                    <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', typeCfg.dot)} />
-                    <span className="truncate">{emp?.nameAr}</span>
-                  </button>
-                );
-              })}
-              {dayLeaves.length > 2 && (
-                <span className="px-1 text-[9px] text-muted-foreground">+{dayLeaves.length - 2} أكثر</span>
-              )}
+
+              {/* Dates row */}
+              <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                <div className="text-center">
+                  <p className="text-[9px] text-muted-foreground">من</p>
+                  <p className="font-mono text-xs font-bold" dir="ltr">{l.start}</p>
+                </div>
+                <div className="h-4 w-px bg-border/60" />
+                <div className="text-center">
+                  <p className="text-[9px] text-muted-foreground">إلى</p>
+                  <p className="font-mono text-xs font-bold" dir="ltr">{l.end}</p>
+                </div>
+                <div className="h-4 w-px bg-border/60" />
+                <div className="text-center">
+                  <p className="text-[9px] text-muted-foreground">أيام</p>
+                  <p className="text-xs font-bold number-ar">{l.workingDays}</p>
+                </div>
+              </div>
             </div>
-          );
-        })}
-      </div>
+
+            {/* Action footer */}
+            {canAct && (
+              <div className="flex items-center gap-1 border-t border-border/50 bg-muted/10 px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="h-7 flex-1 gap-1 px-2 text-xs text-success hover:bg-success/10 hover:text-success"
+                  onClick={(e) => { e.stopPropagation(); onApprove(l); }}>
+                  <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 flex-1 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={(e) => { e.stopPropagation(); onReject(l); }}>
+                  <XCircle className="h-3.5 w-3.5" /> رفض
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

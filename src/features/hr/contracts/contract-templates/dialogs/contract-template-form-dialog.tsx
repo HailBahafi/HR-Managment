@@ -225,17 +225,11 @@ export function ContractTemplateFormDialog({ open, onOpenChange, editItem, compa
         </DialogHeader>
 
         <div className="space-y-4 py-1">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">
-                الاسم العربي <span className="text-destructive">*</span>
-              </Label>
-              <Input value={form.nameAr} onChange={(e) => patch({ nameAr: e.target.value })} className="h-9" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">الاسم الإنجليزي</Label>
-              <Input value={form.nameEn} onChange={(e) => patch({ nameEn: e.target.value })} className="h-9" dir="ltr" />
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">
+              الاسم العربي <span className="text-destructive">*</span>
+            </Label>
+            <Input value={form.nameAr} onChange={(e) => patch({ nameAr: e.target.value })} className="h-9" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

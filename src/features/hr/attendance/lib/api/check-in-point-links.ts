@@ -19,6 +19,25 @@ export type CreateCheckInPointLinkDto = {
   linkActive?: boolean;
 };
 
+export type BulkCheckInPointLinkItem = {
+  employeeId: string;
+  checkInPointId: string;
+};
+
+export type BulkCreateCheckInPointLinkDto = {
+  companyId: string;
+  links: BulkCheckInPointLinkItem[];
+  batchId?: string | null;
+  effectiveFrom?: string | null;
+  linkActive?: boolean;
+};
+
+export type BulkCreateCheckInPointLinkResponseDto = {
+  created: number;
+  requested: number;
+  items: CheckInPointLinkResponseDto[];
+};
+
 export type UpdateCheckInPointLinkDto = Omit<
   Partial<CreateCheckInPointLinkDto>,
   'companyId' | 'employeeId' | 'checkInPointId'
@@ -80,6 +99,12 @@ export const checkInPointLinksApi = {
   },
   create(payload: CreateCheckInPointLinkDto) {
     return apiRequest<CheckInPointLinkResponseDto>('/attendance/check-in-point-links', {
+      method: 'POST',
+      body: payload,
+    });
+  },
+  createBulk(payload: BulkCreateCheckInPointLinkDto) {
+    return apiRequest<BulkCreateCheckInPointLinkResponseDto>('/attendance/check-in-point-links/bulk', {
       method: 'POST',
       body: payload,
     });

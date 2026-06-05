@@ -175,8 +175,8 @@ export function EmploymentContractsClient() {
       toast.error('اختر الموظف أولاً');
       return;
     }
-    if (!form.startDate.trim() || !form.endDate.trim()) {
-      toast.error('حدّد تواريخ البداية والانتهاء لاستكمال نص العرض');
+    if (!form.startDate.trim()) {
+      toast.error('حدّد تاريخ البداية لاستكمال نص العرض');
       return;
     }
     const empAr = getEmpName(form.employeeId);
@@ -332,7 +332,8 @@ export function EmploymentContractsClient() {
   const handleSave = async () => {
     if (!form.employeeId) { setError('اختر الموظف'); return; }
     if (!form.contractNumber.trim()) { setError('رقم العقد مطلوب'); return; }
-    if (!form.startDate || !form.endDate) { setError('تواريخ العقد مطلوبة'); return; }
+    if (!form.startDate) { setError('تاريخ البداية مطلوب'); return; }
+    if (form.contractType === 'fixed_term' && !form.endDate) { setError('تاريخ الانتهاء مطلوب للعقود محددة المدة'); return; }
     const alRaw = form.annualLeaveDays.trim();
     const alNum = parseInt(alRaw, 10);
     if (alRaw === '' || !Number.isFinite(alNum) || alNum < 0 || alNum > 366) {
@@ -702,7 +703,7 @@ export function EmploymentContractsClient() {
             max={form.endDate || undefined}
           />
         </FormField>
-        <FormField label="تاريخ الانتهاء" required>
+        <FormField label="تاريخ الانتهاء" required={form.contractType === 'fixed_term'}>
           <SingleDatePicker
             value={form.endDate || undefined}
             onChange={(next) => patch({ endDate: next })}
@@ -754,7 +755,14 @@ export function EmploymentContractsClient() {
               <div key={idx} className="flex items-center gap-2">
                 <div className="flex-1">
                   {readOnly ? (
-                    <Input value={allowanceTypes.find(a => a.id === line.allowanceTypeId)?.nameAr ?? line.allowanceTypeId} readOnly className="bg-muted/30 text-xs" />
+                    <Input
+                      value={
+                        selected?.allowanceLines.find(l => l.allowanceTypeId === line.allowanceTypeId)?.allowanceTypeNameAr ||
+                        allowanceTypes.find(a => a.id === line.allowanceTypeId)?.nameAr ||
+                        line.allowanceTypeId
+                      }
+                      readOnly className="bg-muted/30 text-xs"
+                    />
                   ) : (
                     <MinimalDropdown
                       value={line.allowanceTypeId}

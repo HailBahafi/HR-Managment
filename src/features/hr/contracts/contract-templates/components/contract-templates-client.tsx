@@ -126,103 +126,112 @@ export function ContractTemplatesClient() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => {
             const allowanceTotal = totalAllowances(item.allowanceLines);
+            const nature = TEMPLATE_CONTRACT_NATURE_LABELS[item.defaultContractNature as keyof typeof TEMPLATE_CONTRACT_NATURE_LABELS] ?? item.defaultContractNature;
+            const arrangement = TEMPLATE_WORK_ARRANGEMENT_LABELS[item.defaultWorkArrangement as keyof typeof TEMPLATE_WORK_ARRANGEMENT_LABELS] ?? item.defaultWorkArrangement;
             return (
               <div
                 key={item.id}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-elevated"
+                className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 hover:shadow-md hover:-translate-y-px"
               >
-                <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
+                {/* top accent */}
+                <div className="h-0.5 w-full shrink-0 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
 
-                <div className="p-5">
-                  <div className="mb-3 flex items-start justify-between gap-2">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <FileStack className="h-5 w-5" />
+                <div className="flex flex-1 flex-col gap-3 p-4">
+                  {/* Row 1: icon · name · status */}
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <FileStack className="h-4 w-4" />
                     </div>
-                    <Badge variant={item.isActive ? 'success' : 'secondary'} className="px-1.5 py-px text-[9px]">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold leading-tight transition-colors group-hover:text-primary">
+                        {item.nameAr}
+                      </p>
+                      <p className="font-mono text-[10px] text-muted-foreground/70" dir="ltr">{item.code}</p>
+                    </div>
+                    <Badge variant={item.isActive ? 'success' : 'secondary'} className="shrink-0 text-[9px] px-1.5 py-px">
                       {item.isActive ? 'نشط' : 'موقوف'}
                     </Badge>
                   </div>
 
-                  <h3 className="mb-0.5 truncate font-display text-base font-bold leading-snug transition-colors group-hover:text-primary">
-                    {item.nameAr}
-                  </h3>
-                  {item.nameEn && (
-                    <p className="mb-2 truncate text-[11px] text-muted-foreground" dir="ltr">{item.nameEn}</p>
-                  )}
-
-                  <div className="mb-3 flex flex-wrap gap-1.5">
-                    <Badge variant="subtle" className="text-[10px]">
-                      {TEMPLATE_CONTRACT_NATURE_LABELS[item.defaultContractNature as keyof typeof TEMPLATE_CONTRACT_NATURE_LABELS]
-                        ?? item.defaultContractNature}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px]">
-                      {TEMPLATE_WORK_ARRANGEMENT_LABELS[item.defaultWorkArrangement as keyof typeof TEMPLATE_WORK_ARRANGEMENT_LABELS]
-                        ?? item.defaultWorkArrangement}
-                    </Badge>
+                  {/* Row 2: nature + arrangement badges */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="subtle" className="text-[10px]">{nature}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{arrangement}</Badge>
+                    {item.durationMonths && (
+                      <Badge variant="outline" className="text-[10px]">{item.durationMonths} شهر</Badge>
+                    )}
                   </div>
 
-                  <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-lg border border-border bg-muted/20 px-2.5 py-2">
-                      <p className="text-[10px] text-muted-foreground">الراتب المقترح</p>
-                      <p className="font-mono font-semibold text-primary">
-                        {fmtSalary(item.suggestedBaseSalary, item.currency)}
+                  {/* Row 3: salary + allowances inline */}
+                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                    <div className="text-center">
+                      <p className="text-[9px] text-muted-foreground">الراتب</p>
+                      <p className="font-mono text-xs font-bold text-primary">{fmtSalary(item.suggestedBaseSalary, item.currency)}</p>
+                    </div>
+                    <div className="h-6 w-px bg-border/60" />
+                    <div className="text-center">
+                      <p className="text-[9px] text-muted-foreground">البدلات</p>
+                      <p className="font-mono text-xs font-bold">
+                        {allowanceTotal > 0 ? `${allowanceTotal.toLocaleString('ar-SA')} ${item.currency}` : '—'}
                       </p>
                     </div>
-                    <div className="rounded-lg border border-border bg-muted/20 px-2.5 py-2">
-                      <p className="text-[10px] text-muted-foreground">إجمالي البدلات</p>
-                      <p className="font-mono font-semibold">
-                        {allowanceTotal > 0
-                          ? `${allowanceTotal.toLocaleString('ar-SA')} ${item.currency}`
-                          : '—'}
-                      </p>
+                    <div className="h-6 w-px bg-border/60" />
+                    <div className="text-center">
+                      <p className="text-[9px] text-muted-foreground">التجربة</p>
+                      <p className="text-xs font-bold">{item.defaultProbationDays ?? '—'} <span className="font-normal text-muted-foreground">يوم</span></p>
                     </div>
                   </div>
 
-                  <div className="mb-3 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-                    <span className={cn('flex items-center gap-1 rounded-full border px-2 py-0.5', item.allowanceLines?.length ? 'border-primary/30 bg-primary/5 text-primary' : 'border-border')}>
+                  {/* Row 4: counters */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className={cn(
+                      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                      item.allowanceLines?.length ? 'border-primary/30 bg-primary/5 text-primary' : 'border-border text-muted-foreground',
+                    )}>
                       <Coins className="h-2.5 w-2.5" />
-                      {(item.allowanceLines?.length ?? 0)} بدل
+                      {item.allowanceLines?.length ?? 0} بدل
                     </span>
-                    <span className={cn('flex items-center gap-1 rounded-full border px-2 py-0.5', item.articles?.length ? 'border-primary/30 bg-primary/5 text-primary' : 'border-border')}>
+                    <span className={cn(
+                      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                      item.articles?.length ? 'border-primary/30 bg-primary/5 text-primary' : 'border-border text-muted-foreground',
+                    )}>
                       <BookOpen className="h-2.5 w-2.5" />
-                      {(item.articles?.length ?? 0)} مادة
+                      {item.articles?.length ?? 0} مادة
                     </span>
-                    {item.defaultProbationDays != null && (
-                      <span className="rounded-full border border-border px-2 py-0.5">
-                        تجربة {item.defaultProbationDays} يوم
+                    {item.defaultAnnualLeaveDays != null && (
+                      <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                        إجازة {item.defaultAnnualLeaveDays} يوم
                       </span>
                     )}
                   </div>
 
-                  {item.allowancesHint && (
-                    <p className="mb-3 line-clamp-2 text-[11px] text-muted-foreground">{item.allowancesHint}</p>
+                  {/* description / hint if any */}
+                  {(item.descriptionAr || item.allowancesHint) && (
+                    <p className="line-clamp-1 text-[10px] text-muted-foreground">
+                      {item.descriptionAr || item.allowancesHint}
+                    </p>
                   )}
+                </div>
 
-                  <p className="mb-4 font-mono text-[10px] text-muted-foreground" dir="ltr">{item.code}</p>
-
-                  <div className="flex items-center gap-1 border-t border-border/60 pt-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      className="h-7 gap-1 px-2 text-xs"
-                      onClick={() => { setEditItem(item); setFormOpen(true); }}
-                    >
-                      <Pencil className="h-3 w-3" /> تعديل
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => setDeleteTarget(item)}
-                    >
-                      <Trash2 className="h-3 w-3" /> حذف
-                    </Button>
-                  </div>
+                {/* actions footer */}
+                <div className="flex items-center gap-1 border-t border-border/50 bg-muted/10 px-3 py-2">
+                  <Button
+                    variant="ghost" size="sm" type="button"
+                    className="h-7 gap-1 px-2 text-xs"
+                    onClick={() => { setEditItem(item); setFormOpen(true); }}
+                  >
+                    <Pencil className="h-3 w-3" /> تعديل
+                  </Button>
+                  <Button
+                    variant="ghost" size="sm" type="button"
+                    className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setDeleteTarget(item)}
+                  >
+                    <Trash2 className="h-3 w-3" /> حذف
+                  </Button>
                 </div>
               </div>
             );

@@ -3,15 +3,13 @@ import type { EmploymentContractFormValues } from '@/features/hr/contracts/emplo
 import type { HRContractNature, HRWorkArrangement } from '@/features/hr/contracts/lib/contracts-store';
 
 function toContractNature(value: string): HRContractNature {
-  if (value === 'indefinite' || value === 'fixed_term' || value === 'project_based') {
-    return value;
-  }
-  if (value === 'task_based') return 'project_based';
+  const valid: HRContractNature[] = ['indefinite', 'fixed_term', 'project_based', 'task_based', 'temporary', 'seasonal'];
+  if (valid.includes(value as HRContractNature)) return value as HRContractNature;
   return 'fixed_term';
 }
 
 function toWorkArrangement(value: string): HRWorkArrangement {
-  const valid: HRWorkArrangement[] = ['full_time', 'part_time', 'remote', 'hybrid'];
+  const valid: HRWorkArrangement[] = ['full_time', 'part_time', 'remote', 'hybrid', 'flexible'];
   if (valid.includes(value as HRWorkArrangement)) return value as HRWorkArrangement;
   return 'full_time';
 }

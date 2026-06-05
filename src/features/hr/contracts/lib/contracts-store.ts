@@ -19,7 +19,10 @@ export type HRContractLifecycleStatus = 'draft' | 'pending_signature' | 'active'
 
 export type HRContractAllowanceLine = {
   allowanceTypeId: string;
+  allowanceTypeNameAr: string;
+  allowanceTypeCode: string;
   amount: number;
+  sortOrder: number;
 };
 
 export type HRContractRecord = {
@@ -69,9 +72,12 @@ function mapApiContract(c: ApiEmployeeContract): HRContractRecord {
     currency: c.currency,
     status: c.status as HRContractLifecycleStatus,
     templateId: c.contractTemplateId ?? null,
-    allowanceLines: (c.allowanceLines ?? []).map(l => ({
+    allowanceLines: (c.allowanceLines ?? []).map((l, i) => ({
       allowanceTypeId: l.allowanceTypeId,
+      allowanceTypeNameAr: l.allowanceTypeNameAr ?? '',
+      allowanceTypeCode: l.allowanceTypeCode ?? '',
       amount: Number(l.amount) || 0,
+      sortOrder: l.sortOrder ?? i,
     })),
     allowancesNote: c.allowancesNote ?? '',
     deductionsNote: c.deductionsNote ?? '',

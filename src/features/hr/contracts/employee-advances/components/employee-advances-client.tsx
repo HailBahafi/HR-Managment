@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Banknote, Download, CheckCircle2, XCircle, Send } from 'lucide-react';
+import { Plus, Banknote, Download, CheckCircle2, XCircle, Send, CalendarDays, X } from 'lucide-react';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { toast } from 'sonner';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -107,6 +108,7 @@ export function EmployeeAdvancesClient() {
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
+  const [datePickerOpen, setDatePickerOpen] = React.useState(false);
 
   const empPickerList = React.useMemo(
     () => employees.map(e => ({ id: e.id, name: e.nameAr })),
@@ -285,10 +287,15 @@ export function EmployeeAdvancesClient() {
     [activeFilterCount],
   );
 
+  const hasDateFilter = Boolean(dateBounds.from || dateBounds.to);
+  const dateLabel = hasDateFilter
+    ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}`
+    : 'نطاق التاريخ';
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        showDateSection={true}
+        showDateSection={false}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -297,20 +304,52 @@ export function EmployeeAdvancesClient() {
         statusOrder={ADVANCE_STATUS_FILTER_ORDER}
         statusLabels={statusFilterLabels}
         statusCounts={advanceStatusCounts}
-        onDateBoundsChange={setDateBounds}
-        trailingActions={filtered.length > 0 ? (
-          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
-            <Download className="h-3.5 w-3.5" />تصدير
-          </Button>
-        ) : undefined}
+        onDateBoundsChange={() => {}}
+        leadingFilters={
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setDatePickerOpen(true)}
+              className={cn(
+                'flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs transition-colors',
+                hasDateFilter
+                  ? 'border-primary/40 bg-primary/5 text-primary hover:bg-primary/10'
+                  : 'border-input bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+              )}
+              dir="ltr"
+            >
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+              <span className="max-w-[160px] truncate" dir="rtl">{dateLabel}</span>
+            </button>
+            {hasDateFilter && (
+              <button
+                type="button"
+                aria-label="مسح التاريخ"
+                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => { e.stopPropagation(); setDateBounds({ from: '', to: '' }); }}
+                className="absolute -end-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </div>
+        }
+        trailingActions={
+          filtered.length > 0 ? (
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
+              <Download className="h-3.5 w-3.5" />تصدير
+            </Button>
+          ) : undefined
+        }
       />
     ),
     [
       statusFilter,
       selectedEmpKey,
       dateBounds,
+      hasDateFilter,
       advanceStatusCounts.all,
-      ...ADVANCE_STATUS_FILTER_ORDER.map((k) => advanceStatusCounts[k]),
+      advanceStatusCounts,
       filtered.length,
       empPickerList,
       statusFilterLabels,
@@ -319,6 +358,13 @@ export function EmployeeAdvancesClient() {
 
   return (
     <>
+      <DateRangePicker
+        open={datePickerOpen}
+        onOpenChange={setDatePickerOpen}
+        value={dateBounds}
+        onApply={(range) => setDateBounds(range)}
+      />
+
       <SetPageTitle titleAr="سلف الموظفين" descriptionAr="تسجيل وإدارة سلف الموظفين واعتمادها." iconName="Banknote" />
 
       <p className="text-sm text-muted-foreground">{total} سلفة</p>

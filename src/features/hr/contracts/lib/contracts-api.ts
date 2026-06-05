@@ -2,8 +2,8 @@ import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 
 // ─── Shared enums ────────────────────────────────────────────────────────────
 
-export type ContractNature = 'indefinite' | 'fixed_term' | 'task_based' | 'temporary' | 'seasonal';
-export type WorkArrangement = 'full_time' | 'part_time' | 'flexible';
+export type ContractNature = 'indefinite' | 'fixed_term' | 'project_based' | 'task_based' | 'temporary' | 'seasonal';
+export type WorkArrangement = 'full_time' | 'part_time' | 'remote' | 'hybrid' | 'flexible';
 export type ContractStatus = 'draft' | 'pending_signature' | 'active' | 'expired' | 'terminated' | 'superseded' | 'cancelled';
 
 // ─── Contract Templates (re-export from page capsule) ─────────────────────────

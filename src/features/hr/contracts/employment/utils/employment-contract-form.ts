@@ -76,7 +76,9 @@ export function recordToEmploymentForm(r: HRContractRecord): EmploymentContractF
     templateId: r.templateId ?? '',
     allowanceLines:
       r.allowanceLines?.length > 0
-        ? r.allowanceLines.map((l) => ({ allowanceTypeId: l.allowanceTypeId, amount: String(l.amount) }))
+        ? r.allowanceLines
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((l) => ({ allowanceTypeId: l.allowanceTypeId, amount: String(l.amount) }))
         : [{ allowanceTypeId: '', amount: '' }],
     allowancesNote: r.allowancesNote,
     deductionsNote: r.deductionsNote,
