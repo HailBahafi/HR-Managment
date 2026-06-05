@@ -24,9 +24,6 @@ import {
   effectiveDateRange,
   dateFilterHasRestriction,
   hasDateRangeFilter,
-  todayYMD,
-  thisWeekSunSatYMD,
-  thisCalendarMonthYMD,
   ymdToMDYDisplay,
 } from '@/features/hr/discipline/lib/discipline-date-filter';
 
@@ -314,8 +311,9 @@ export const EntityFilterToolbar = React.forwardRef<
   const [customDialogOpen, setCustomDialogOpen] = React.useState(false);
   const [dialogFromDate, setDialogFromDate] = React.useState<Date | undefined>(undefined);
   const [dialogToDate, setDialogToDate] = React.useState<Date | undefined>(undefined);
-  const [fromCalOpen, setFromCalOpen] = React.useState(false);
-  const [toCalOpen, setToCalOpen] = React.useState(false);
+  const [rangeError, setRangeError] = React.useState<string | null>(null);
+  const [customMode, setCustomMode] = React.useState<'days' | 'months'>('days');
+  const [monthPickerYear, setMonthPickerYear] = React.useState(() => new Date().getFullYear());
 
   const effectiveBounds = React.useMemo(
     () => (showDateSection ? effectiveDateRange(dateFilterTab, appliedCustomFrom, appliedCustomTo) : { from: '', to: '' }),
@@ -371,6 +369,7 @@ export const EntityFilterToolbar = React.forwardRef<
   const openCustomDateDialog = React.useCallback(() => {
     setDialogFromDate(ymdToDate(appliedCustomFrom));
     setDialogToDate(ymdToDate(appliedCustomTo));
+    setRangeError(null);
     setCustomDialogOpen(true);
   }, [appliedCustomFrom, appliedCustomTo]);
 
@@ -381,22 +380,28 @@ export const EntityFilterToolbar = React.forwardRef<
     setCustomDialogOpen(false);
   }, [dialogFromDate, dialogToDate]);
 
-  const fillDialogToday = React.useCallback(() => {
-    const t = ymdToDate(todayYMD());
-    setDialogFromDate(t);
-    setDialogToDate(t);
-  }, []);
+  const MAX_RANGE_DAYS = 31;
 
-  const fillDialogThisWeek = React.useCallback(() => {
-    const { from, to } = thisWeekSunSatYMD();
-    setDialogFromDate(ymdToDate(from));
-    setDialogToDate(ymdToDate(to));
-  }, []);
-
-  const fillDialogThisMonth = React.useCallback(() => {
-    const { from, to } = thisCalendarMonthYMD();
-    setDialogFromDate(ymdToDate(from));
-    setDialogToDate(ymdToDate(to));
+  const handleRangeSelect = React.useCallback((range: { from?: Date; to?: Date } | undefined) => {
+    const from = range?.from;
+    const to = range?.to;
+    if (from && to) {
+      const diffDays = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
+      if (diffDays > MAX_RANGE_DAYS) {
+        setRangeError(`الحد الأقصى ${MAX_RANGE_DAYS} يوماً — يرجى اختيار نطاق أصغر`);
+        // Clamp to: keep from, set to = from + 30 days
+        const clamped = new Date(from);
+        clamped.setDate(clamped.getDate() + MAX_RANGE_DAYS - 1);
+        setDialogFromDate(from);
+        setDialogToDate(clamped);
+        return;
+      }
+      setRangeError(null);
+    } else {
+      setRangeError(null);
+    }
+    setDialogFromDate(from);
+    setDialogToDate(to);
   }, []);
 
   const resetDateFilter = React.useCallback(() => {
@@ -673,92 +678,190 @@ export const EntityFilterToolbar = React.forwardRef<
 
       {showDateSection ? (
         <Dialog open={customDialogOpen} onOpenChange={(open) => {
-          if (!open && !appliedCustomFrom && !appliedCustomTo) {
-            setDateFilterTab(prevDateTabRef.current);
-          }
+          if (!open && !appliedCustomFrom && !appliedCustomTo) setDateFilterTab(prevDateTabRef.current);
+          setRangeError(null);
           setCustomDialogOpen(open);
         }}>
-          <DialogContent className="border-border sm:max-w-md" dir="rtl">
+          <DialogContent className="border-border sm:max-w-sm" dir="rtl">
             <DialogHeader>
-              <DialogTitle>نطاق تاريخ مخصص</DialogTitle>
+              <DialogTitle className="flex items-center gap-2 text-sm">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                نطاق تاريخ مخصص
+              </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-muted-foreground">من</label>
-                  <Popover open={fromCalOpen} onOpenChange={setFromCalOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn(
-                          'w-full justify-start gap-2 text-sm font-normal',
-                          !dialogFromDate && 'text-muted-foreground',
-                        )}
-                      >
-                        <CalendarDays className="h-4 w-4 shrink-0 opacity-60" />
-                        {dialogFromDate
-                          ? dialogFromDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })
-                          : 'اختر تاريخاً'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dialogFromDate}
-                        onSelect={(d) => { setDialogFromDate(d); setFromCalOpen(false); }}
-                        disabled={(d) => dialogToDate ? d > dialogToDate : false}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-muted-foreground">إلى</label>
-                  <Popover open={toCalOpen} onOpenChange={setToCalOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn(
-                          'w-full justify-start gap-2 text-sm font-normal',
-                          !dialogToDate && 'text-muted-foreground',
-                        )}
-                      >
-                        <CalendarDays className="h-4 w-4 shrink-0 opacity-60" />
-                        {dialogToDate
-                          ? dialogToDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' })
-                          : 'اختر تاريخاً'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dialogToDate}
-                        onSelect={(d) => { setDialogToDate(d); setToCalOpen(false); }}
-                        disabled={(d) => dialogFromDate ? d < dialogFromDate : false}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+
+            <div className="space-y-3 py-1">
+
+              {/* Mode toggle */}
+              <div className="flex rounded-lg border border-border bg-muted/30 p-0.5">
+                {(['days', 'months'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => { setCustomMode(m); setDialogFromDate(undefined); setDialogToDate(undefined); setRangeError(null); }}
+                    className={cn(
+                      'flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
+                      customMode === m
+                        ? 'bg-card text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {m === 'days' ? 'تحديد بالأيام' : 'تحديد بالأشهر'}
+                  </button>
+                ))}
               </div>
+
+              {customMode === 'days' ? (
+                <>
+                  {/* Quick presets */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: 'اليوم', days: 0 },
+                      { label: 'آخر 7 أيام', days: 6 },
+                      { label: 'آخر 14 يوماً', days: 13 },
+                      { label: 'آخر شهر', days: 30 },
+                    ].map(({ label, days }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => {
+                          const to = new Date(); to.setHours(0, 0, 0, 0);
+                          const from = new Date(to); from.setDate(from.getDate() - days);
+                          setDialogFromDate(from); setDialogToDate(to); setRangeError(null);
+                        }}
+                        className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Inline range calendar */}
+                  <div className="flex justify-center rounded-xl border border-border bg-muted/10 p-1">
+                    <Calendar
+                      mode="range"
+                      selected={{ from: dialogFromDate, to: dialogToDate }}
+                      onSelect={handleRangeSelect}
+                      numberOfMonths={1}
+                      disabled={(d) => {
+                        if (dialogFromDate && !dialogToDate) {
+                          const max = new Date(dialogFromDate);
+                          max.setDate(max.getDate() + MAX_RANGE_DAYS - 1);
+                          return d < dialogFromDate || d > max;
+                        }
+                        return false;
+                      }}
+                    />
+                  </div>
+
+                  {rangeError && (
+                    <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      {rangeError}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Year navigator */}
+                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setMonthPickerYear((y) => y - 1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      ‹
+                    </button>
+                    <span className="text-sm font-semibold tabular-nums">{monthPickerYear}</span>
+                    <button
+                      type="button"
+                      onClick={() => setMonthPickerYear((y) => y + 1)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      ›
+                    </button>
+                  </div>
+
+                  {/* Month grid */}
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const monthDate = new Date(monthPickerYear, i, 1);
+                      const monthEnd = new Date(monthPickerYear, i + 1, 0);
+                      const label = monthDate.toLocaleDateString('ar-SA', { month: 'short' });
+                      const isSelected = dialogFromDate &&
+                        dialogFromDate.getMonth() === i &&
+                        dialogFromDate.getFullYear() === monthPickerYear &&
+                        dialogToDate &&
+                        dialogToDate.getMonth() === i &&
+                        dialogToDate.getFullYear() === monthPickerYear;
+                      const isToday = new Date().getMonth() === i && new Date().getFullYear() === monthPickerYear;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            setDialogFromDate(monthDate);
+                            setDialogToDate(monthEnd);
+                            setRangeError(null);
+                          }}
+                          className={cn(
+                            'relative rounded-lg border py-2.5 text-xs font-medium transition-all',
+                            isSelected
+                              ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                              : isToday
+                                ? 'border-primary/40 bg-primary/8 text-primary'
+                                : 'border-border bg-muted/20 text-foreground hover:border-primary/50 hover:bg-primary/10 hover:text-primary',
+                          )}
+                        >
+                          {label}
+                          {isToday && !isSelected && (
+                            <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Summary */}
+              {dialogFromDate && dialogToDate && (
+                <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+                  <span className="font-semibold text-primary">
+                    {customMode === 'days'
+                      ? `${Math.round((dialogToDate.getTime() - dialogFromDate.getTime()) / 86_400_000) + 1} يوم`
+                      : dialogFromDate.toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <span className="text-muted-foreground" dir="ltr">
+                    {dialogFromDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' })}
+                    {' — '}
+                    {dialogToDate.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
+              {!dialogFromDate && (
+                <p className="text-center text-xs text-muted-foreground">
+                  {customMode === 'days' ? 'انقر لتحديد تاريخ البداية' : 'اختر شهراً من القائمة'}
+                </p>
+              )}
             </div>
+
             <DialogFooter className="gap-2 sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
                   setCustomDialogOpen(false);
-                  if (!appliedCustomFrom && !appliedCustomTo) {
-                    setDateFilterTab(prevDateTabRef.current);
-                  }
+                  if (!appliedCustomFrom && !appliedCustomTo) setDateFilterTab(prevDateTabRef.current);
                 }}
               >
                 إلغاء
               </Button>
-              <Button type="button" onClick={applyCustomDialog} disabled={!dialogFromDate || !dialogToDate}>
-                تأكيد
+              <Button
+                type="button"
+                onClick={applyCustomDialog}
+                disabled={!dialogFromDate || !dialogToDate || !!rangeError}
+              >
+                تطبيق
               </Button>
             </DialogFooter>
           </DialogContent>

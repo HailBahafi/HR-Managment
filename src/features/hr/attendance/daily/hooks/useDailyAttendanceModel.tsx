@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { AttendanceRegisterPrintHtml } from '@/components/pdf/print/attendance-register-print-html';
-import { hasDateRangeFilter, thisCalendarMonthYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { hasDateRangeFilter, thisCalendarMonthYMD, todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
 import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
 import { enumerateDates } from '@/features/hr/attendance/lib/utils';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -33,7 +33,7 @@ export function useDailyAttendanceModel() {
   const [companyNameEn, setCompanyNameEn] = React.useState('');
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [dateBounds, setDateBounds] = React.useState(() => thisCalendarMonthYMD());
+  const [dateBounds, setDateBounds] = React.useState(() => ({ from: todayYMD(), to: todayYMD() }));
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<AttendanceViewMode>('card');
@@ -45,13 +45,13 @@ export function useDailyAttendanceModel() {
     const companyId = useAuthStore.getState().activeCompanyId;
     void Promise.allSettled([
       companiesApi.getAll({ limit: 1 }),
-      companyId ? employeesApi.getAll({ limit: 500, companyId }) : Promise.resolve(null),
+      employeesApi.getAll({ limit: 500 }),
     ]).then(([companyRes, empRes]) => {
       if (companyRes.status === 'fulfilled') {
         const c = companyRes.value.items[0];
         if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
       }
-      if (empRes.status === 'fulfilled' && empRes.value) {
+      if (empRes.status === 'fulfilled') {
         setAllEmployees(empRes.value.items.map((e) => ({ id: e.id, name: e.nameAr })));
       }
     });
@@ -59,16 +59,15 @@ export function useDailyAttendanceModel() {
 
   // Load day summaries & events when date range changes
   React.useEffect(() => {
+    // Always use a date range — fall back to today if filter was cleared
+    const from = filterFrom || todayYMD();
+    const to   = filterTo   || todayYMD();
+
     void (async () => {
       try {
-        const query: Record<string, unknown> = { limit: 2000 };
-        if (hasDateRangeFilter(filterFrom, filterTo)) {
-          query.from = filterFrom;
-          query.to = filterTo;
-        }
         const [summRes, evtRes] = await Promise.all([
-          attendanceDaySummariesApi.getAll(query as Parameters<typeof attendanceDaySummariesApi.getAll>[0]),
-          attendanceEventsApi.getAll({ limit: 2000, ...(hasDateRangeFilter(filterFrom, filterTo) ? { workDateFrom: filterFrom, workDateTo: filterTo } : {}) }),
+          attendanceDaySummariesApi.getAll({ limit: 2000, from, to } as Parameters<typeof attendanceDaySummariesApi.getAll>[0]),
+          attendanceEventsApi.getAll({ limit: 2000, workDateFrom: from, workDateTo: to }),
         ]);
         setDaySummaries(
           summRes.items.map((s) => ({
@@ -167,10 +166,8 @@ export function useDailyAttendanceModel() {
     return denseSummaries.filter((s) => resolveVisualKey(s.status) === statusFilter);
   }, [denseSummaries, statusFilter]);
 
-  const eventsForView = React.useMemo(() => {
-    const keys = new Set(denseForView.map((s) => `${s.employeeId}|${s.date}`));
-    return eventsFiltered.filter((e) => keys.has(`${e.employeeId}|${e.date}`));
-  }, [eventsFiltered, denseForView]);
+  // Do NOT filter events by summaries — employees may have events without a day summary
+  const eventsForView = eventsFiltered;
 
   const attendancePdfRows = React.useMemo(
     () =>
@@ -243,7 +240,7 @@ export function useDailyAttendanceModel() {
         statusOrder={ATT_VISUAL_STATUS_ORDER}
         statusLabels={attendanceStatusLabels}
         statusCounts={attendanceStatusCounts}
-        onDateBoundsChange={setDateBounds}
+        onDateBoundsChange={(b) => setDateBounds({ from: b.from || todayYMD(), to: b.to || todayYMD() })}
         trailingActions={(
           <>
             <Button
@@ -303,6 +300,7 @@ export function useDailyAttendanceModel() {
     dates,
     denseForView,
     eventsForView,
+    allEmployees,
     attendancePrintable,
     attendancePdfFileName,
     pdfOpen,

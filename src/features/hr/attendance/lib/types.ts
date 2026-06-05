@@ -7,7 +7,8 @@ export type AttendanceSection =
   | 'assignment'
   | 'daily'
   | 'checkpoints'
-  | 'checkpoint-links';
+  | 'checkpoint-links'
+  | 'events';
 
 /** Slugs for `/hr/attendance/[section]` (order matches product nav). */
 export const ATTENDANCE_SECTION_SLUGS: AttendanceSection[] = [
@@ -16,6 +17,7 @@ export const ATTENDANCE_SECTION_SLUGS: AttendanceSection[] = [
   'assignment',
   'checkpoints',
   'checkpoint-links',
+  'events',
 ];
 
 export function isAttendanceSection(value: string): value is AttendanceSection {

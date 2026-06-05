@@ -7,6 +7,8 @@ import { ASSIGNMENTS_ALL_DEPARTMENTS } from '@/features/hr/attendance/assignment
 import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
 import { shiftAssignmentsApi, type GroupedByTemplateItem } from '@/features/hr/attendance/lib/api/shift-assignments';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
+import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
+import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 
 // Shape consumed by AssignmentsBatchCard
@@ -39,6 +41,8 @@ export function useAssignmentsPanelModel() {
   const [grouped, setGrouped] = React.useState<GroupedByTemplateItem[]>([]);
   const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplateResponseDto[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
+  const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
+  const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
 
   const [open, setOpen] = React.useState(false);
   const [dialogContentEl, setDialogContentEl] = React.useState<HTMLElement | null>(null);
@@ -66,9 +70,13 @@ export function useAssignmentsPanelModel() {
     void Promise.allSettled([
       shiftTemplatesApi.getAll({ limit: 200, companyId }),
       employeesApi.getAll({ limit: 500, companyId }),
-    ]).then(([tmplRes, empRes]) => {
+      departmentsApi.getAll({ companyId }),
+      branchesApi.getAll({ companyId }),
+    ]).then(([tmplRes, empRes, deptRes, branchRes]) => {
       if (tmplRes.status === 'fulfilled') setShiftTemplates(tmplRes.value.items);
       if (empRes.status === 'fulfilled') setEmployees(empRes.value.items);
+      if (deptRes.status === 'fulfilled') setDepartments(deptRes.value.items);
+      if (branchRes.status === 'fulfilled') setBranches(branchRes.value.items);
     });
     void reloadAssignments();
   }, [companyId, reloadAssignments]);
@@ -110,23 +118,35 @@ export function useAssignmentsPanelModel() {
 
   const submit = React.useCallback(async () => {
     if (!templateId || selectedIds.size === 0 || !companyId) return;
+
+    let employeeIds: string[];
+    if (targetType === 'employee') {
+      employeeIds = [...selectedIds];
+    } else if (targetType === 'department') {
+      employeeIds = employees
+        .filter((e) => e.departmentId && selectedIds.has(e.departmentId))
+        .map((e) => e.id);
+    } else {
+      // location / branch
+      employeeIds = employees
+        .filter((e) => e.branchId && selectedIds.has(e.branchId))
+        .map((e) => e.id);
+    }
+
+    if (employeeIds.length === 0) return;
+
     try {
-      await Promise.all(
-        [...selectedIds].map((empId) =>
-          shiftAssignmentsApi.create({
-            companyId,
-            shiftTemplateId: templateId,
-            employeeId: empId,
-            effectiveFrom,
-            openShiftHours: null,
-            isActive: true,
-          }),
-        ),
-      );
+      await shiftAssignmentsApi.bulkCreate({
+        companyId,
+        shiftTemplateId: templateId,
+        employeeIds,
+        effectiveFrom,
+        isActive: true,
+      });
       await reloadAssignments();
     } catch { /* ignore */ }
     setOpen(false);
-  }, [templateId, selectedIds, companyId, effectiveFrom, reloadAssignments]);
+  }, [templateId, selectedIds, companyId, effectiveFrom, targetType, employees, reloadAssignments]);
 
   const openEdit = React.useCallback((batchId: string) => {
     const batch = batches.find((b) => b.batchId === batchId);
@@ -167,14 +187,31 @@ export function useAssignmentsPanelModel() {
 
   const multiOptions = React.useMemo((): MultiSelectOption[] => {
     if (targetType === 'employee') {
-      return employees.map((e) => ({
+      const filtered = employeeDepartmentFilter === ASSIGNMENTS_ALL_DEPARTMENTS
+        ? employees
+        : employees.filter((e) => e.departmentId === employeeDepartmentFilter);
+      return filtered.map((e) => ({
         value: e.id,
         label: e.nameAr,
         subtitle: e.employeeCode,
       }));
     }
+    if (targetType === 'department') {
+      return departments.map((d) => ({
+        value: d.id,
+        label: d.nameAr,
+        subtitle: d.code,
+      }));
+    }
+    if (targetType === 'location') {
+      return branches.map((b) => ({
+        value: b.id,
+        label: b.nameAr,
+        subtitle: b.code,
+      }));
+    }
     return [];
-  }, [targetType, employees]);
+  }, [targetType, employees, departments, branches, employeeDepartmentFilter]);
 
   React.useEffect(() => {
     if (targetType !== 'employee') return;
@@ -195,6 +232,8 @@ export function useAssignmentsPanelModel() {
   return {
     batches,
     shiftTemplates,
+    departments,
+    branches,
     removeAssignmentBatch,
     openEdit,
     submitEdit,

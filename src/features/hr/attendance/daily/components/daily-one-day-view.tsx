@@ -17,12 +17,13 @@ import {
   type AttendanceEventResponseDto,
   type AttendanceEventType,
 } from '@/features/hr/attendance/lib/api/attendance-events';
-import { DailyRegisterEventDialog } from '@/features/hr/attendance/daily/components/daily-register-event-dialog';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
 import { minutesFromMidnight } from '@/features/hr/attendance/lib/utils';
 import { resolveVisualKey } from '@/features/hr/attendance/daily/utils/daily-attendance-status-resolve';
 import { STATUS } from '@/features/hr/attendance/daily/constants/daily-attendance-status';
-import { fmtDayFull, minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
+import { fmtDayFull } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { DailyAttendanceLegend } from '@/features/hr/attendance/daily/components/daily-attendance-legend';
 
 // ─── constants ─────────────────────────────────────────────────────────────────
@@ -379,13 +380,14 @@ function NowCursor({ workDate }: { workDate: string }) {
 // ─── employee row ──────────────────────────────────────────────────────────────
 
 function EmployeeRow({
-  summary, events, workDate, companyId, onEventsChange,
+  summary, events, workDate, companyId, onEventsChange, allEmployees,
 }: {
   summary: AttendanceDaySummary;
   events: AttendanceEventResponseDto[];
   workDate: string;
   companyId: string;
   onEventsChange: (employeeId: string, newEvents: AttendanceEventResponseDto[]) => void;
+  allEmployees: { id: string; name: string }[];
 }) {
   const [addOpen, setAddOpen] = React.useState(false);
   const [voidTarget, setVoidTarget] = React.useState<AttendanceEventResponseDto | null>(null);
@@ -398,8 +400,7 @@ function EmployeeRow({
   const checkIn  = sorted.find((e) => e.eventType === 'check_in');
   const checkOut = [...sorted].reverse().find((e) => e.eventType === 'check_out');
 
-  const handleCreated = (evt: AttendanceEventResponseDto) => onEventsChange(summary.employeeId, [...events, evt]);
-  const handleVoided  = (id: string) => onEventsChange(summary.employeeId, events.map((e) => e.id === id ? { ...e, isVoided: true } : e));
+  const handleVoided = (id: string) => onEventsChange(summary.employeeId, events.map((e) => e.id === id ? { ...e, isVoided: true } : e));
 
   return (
     <>
@@ -431,17 +432,174 @@ function EmployeeRow({
         </div>
       </div>
 
-      <DailyRegisterEventDialog
+      <RegisterEventComboDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        employeeId={summary.employeeId}
-        employeeName={summary.employeeName}
+        allEmployees={allEmployees}
+        defaultEmployeeId={summary.employeeId}
         workDate={workDate}
         companyId={companyId}
-        onCreated={handleCreated}
+        onCreated={(empId, evt) => onEventsChange(empId, [...events, evt])}
       />
       <VoidDialog event={voidTarget} onClose={() => setVoidTarget(null)} onVoided={handleVoided} />
     </>
+  );
+}
+
+// ─── single register dialog (employee picker + form in one) ────────────────────
+
+function nowTimeLocal() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function RegisterEventComboDialog({
+  open, onOpenChange, allEmployees, defaultEmployeeId, workDate, companyId, onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  allEmployees: { id: string; name: string }[];
+  defaultEmployeeId?: string | null;
+  workDate: string;
+  companyId: string;
+  onCreated: (empId: string, evt: AttendanceEventResponseDto) => void;
+}) {
+  const [search, setSearch] = React.useState('');
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [eventType, setEventType] = React.useState<AttendanceEventType>('check_in');
+  const [time, setTime] = React.useState(nowTimeLocal);
+  const [notes, setNotes] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+
+  // Reset all state whenever the dialog opens
+  React.useEffect(() => {
+    if (open) {
+      setSearch('');
+      setSelectedId(defaultEmployeeId ?? null);
+      setEventType('check_in');
+      setTime(nowTimeLocal());
+      setNotes('');
+      setSaving(false);
+    }
+  }, [open, defaultEmployeeId]);
+
+  const selectedName = allEmployees.find((e) => e.id === selectedId)?.name ?? '';
+  const q = search.trim().toLowerCase();
+  const filtered = q ? allEmployees.filter((e) => e.name.toLowerCase().includes(q)) : allEmployees;
+
+  const handleSave = async () => {
+    if (!selectedId || !time) return;
+    setSaving(true);
+    try {
+      const [hh, mm] = time.split(':');
+      const occurredAt = new Date(`${workDate}T${hh}:${mm}:00`).toISOString();
+      const res = await attendanceEventsApi.create({
+        companyId, employeeId: selectedId, eventType, occurredAt, workDate,
+        source: 'manual_hr', notes: notes.trim() || null,
+      });
+      toast.success(`تم تسجيل ${EVENT_TYPE_META[eventType].labelAr} بنجاح`);
+      onCreated(selectedId, res);
+      onOpenChange(false);
+    } catch {
+      toast.error('فشل تسجيل الحدث');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm border-border" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="text-right font-display text-base">تسجيل حدث حضور</DialogTitle>
+          <p className="text-right text-xs text-muted-foreground" dir="ltr">{workDate}</p>
+        </DialogHeader>
+
+        <div className="space-y-4 py-1">
+          {/* Employee selector */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">الموظف <span className="text-destructive">*</span></Label>
+            {selectedId ? (
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="flex w-full items-center gap-2.5 rounded-lg border border-primary/30 bg-primary/8 px-3 py-2 text-right text-sm font-medium text-primary transition-colors hover:bg-primary/12"
+              >
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold">
+                  {selectedName.charAt(0)}
+                </div>
+                <span className="flex-1">{selectedName}</span>
+                <X className="h-3.5 w-3.5 opacity-60" />
+              </button>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث بالاسم…" className="h-9 pr-9 text-sm" dir="rtl" autoFocus />
+                </div>
+                <div className="max-h-44 overflow-y-auto rounded-lg border border-border bg-muted/10">
+                  {filtered.length === 0
+                    ? <p className="py-3 text-center text-xs text-muted-foreground">لا يوجد موظف مطابق</p>
+                    : filtered.map((e) => (
+                      <button key={e.id} type="button" onClick={() => { setSelectedId(e.id); setSearch(''); }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-right text-sm transition-colors hover:bg-accent first:rounded-t-lg last:rounded-b-lg"
+                      >
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                          {e.name.charAt(0)}
+                        </div>
+                        {e.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Event form — only shown after employee is selected */}
+          {selectedId && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">نوع الحدث</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(EVENT_TYPE_META) as AttendanceEventType[]).map((t) => {
+                    const meta = EVENT_TYPE_META[t];
+                    const Icon = meta.icon;
+                    return (
+                      <button key={t} type="button" onClick={() => setEventType(t)}
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition-all',
+                          eventType === t
+                            ? 'border-primary bg-primary/8 text-primary shadow-sm ring-1 ring-primary/30'
+                            : 'border-border bg-card text-muted-foreground hover:bg-muted/40',
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0" />{meta.labelAr}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">الوقت <span className="text-destructive">*</span></Label>
+                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10 font-mono" dir="ltr" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">ملاحظة (اختياري)</Label>
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="سبب التعديل اليدوي…" className="min-h-[56px] resize-none text-sm" />
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2 sm:flex-row-reverse">
+          <Button onClick={handleSave} disabled={saving || !selectedId || !time} className="flex-1 gap-2">
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            تسجيل
+          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -451,10 +609,12 @@ export function DailyOneDayView({
   summaries,
   initialEvents,
   workDate,
+  allEmployees,
 }: {
   summaries: AttendanceDaySummary[];
   initialEvents: AttendanceEvent[];
   workDate: string;
+  allEmployees: { id: string; name: string }[];
 }) {
   const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
 
@@ -484,19 +644,48 @@ export function DailyOneDayView({
     [summaries],
   );
 
+  // Employees who have events on this day but no summary — build stub summaries for them
+  const eventOnlyRows = React.useMemo<AttendanceDaySummary[]>(() => {
+    const summaryEmpIds = new Set(sorted.map((s) => s.employeeId));
+    const extra = new Map<string, string>(); // employeeId → name
+    for (const [empId, evts] of eventsMap.entries()) {
+      if (!summaryEmpIds.has(empId) && evts.length > 0) {
+        const name = evts[0]?.employeeNameAr ?? allEmployees.find((e) => e.id === empId)?.name ?? empId;
+        extra.set(empId, name);
+      }
+    }
+    return [...extra.entries()].map(([employeeId, employeeName]) => ({
+      id: `stub-${employeeId}`,
+      employeeId,
+      employeeName,
+      date: workDate,
+      templateId: null,
+      status: 'unscheduled' as AttendanceDaySummary['status'],
+      lateMinutes: 0,
+      earlyLeaveMinutes: 0,
+      overtimeMinutes: 0,
+      workedMinutes: 0,
+      actualCheckInAt: null,
+      actualCheckOutAt: null,
+      expectedStartAt: null,
+      expectedEndAt: null,
+    })).sort((a, b) => a.employeeName.localeCompare(b.employeeName, 'ar'));
+  }, [sorted, eventsMap, allEmployees, workDate]);
+
+  const allRows = React.useMemo(() => [...sorted, ...eventOnlyRows], [sorted, eventOnlyRows]);
+
   const totalEvents = React.useMemo(
     () => [...eventsMap.values()].reduce((acc, arr) => acc + arr.filter((e) => !e.isVoided).length, 0),
     [eventsMap],
   );
 
   const [headerEventsExpanded, setHeaderEventsExpanded] = React.useState(false);
-  const [registerOpen, setRegisterOpen] = React.useState(false);
-  const [pickEmployeeOpen, setPickEmployeeOpen] = React.useState(false);
-  const [registerEmployeeId, setRegisterEmployeeId] = React.useState<string | null>(null);
+  const [registerDialogOpen, setRegisterDialogOpen] = React.useState(false);
+  const [registerDefaultEmpId, setRegisterDefaultEmpId] = React.useState<string | null>(null);
 
   const allDayEvents = React.useMemo(() => {
     const items: { event: AttendanceEventResponseDto; employeeId: string; employeeName: string }[] = [];
-    for (const s of sorted) {
+    for (const s of allRows) {
       for (const e of eventsMap.get(s.employeeId) ?? []) {
         if (!e.isVoided) {
           items.push({ event: e, employeeId: s.employeeId, employeeName: s.employeeName });
@@ -504,36 +693,12 @@ export function DailyOneDayView({
       }
     }
     return items.sort((a, b) => a.event.occurredAt.localeCompare(b.event.occurredAt));
-  }, [sorted, eventsMap]);
-
-  const registerEmployeeName = React.useMemo(
-    () => sorted.find((s) => s.employeeId === registerEmployeeId)?.employeeName ?? '',
-    [sorted, registerEmployeeId],
-  );
-
-  const openRegisterForEmployee = React.useCallback((employeeId: string) => {
-    setRegisterEmployeeId(employeeId);
-    setPickEmployeeOpen(false);
-    setRegisterOpen(true);
-  }, []);
+  }, [allRows, eventsMap]);
 
   const handleHeaderRegister = React.useCallback(() => {
-    if (sorted.length === 0) {
-      toast.error('لا يوجد موظفون في هذا اليوم');
-      return;
-    }
-    if (sorted.length === 1) {
-      openRegisterForEmployee(sorted[0]!.employeeId);
-      return;
-    }
-    setPickEmployeeOpen(true);
-  }, [sorted, openRegisterForEmployee]);
-
-  const handleHeaderEventCreated = React.useCallback((evt: AttendanceEventResponseDto) => {
-    if (!registerEmployeeId) return;
-    const existing = eventsMap.get(registerEmployeeId) ?? [];
-    handleEventsChange(registerEmployeeId, [...existing, evt]);
-  }, [registerEmployeeId, eventsMap, handleEventsChange]);
+    setRegisterDefaultEmpId(allRows.length === 1 ? allRows[0]!.employeeId : null);
+    setRegisterDialogOpen(true);
+  }, [allRows]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft" dir="rtl">
@@ -575,13 +740,13 @@ export function DailyOneDayView({
     
 
       {/* Rows — dispatch console */}
-      {sorted.length === 0 ? (
+      {allRows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center">
           <Clock className="h-8 w-8 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">لا سجلات في هذا اليوم</p>
         </div>
       ) : (
-        sorted.map((s) => (
+        allRows.map((s) => (
           <EmployeeRow
             key={s.id}
             summary={s}
@@ -589,6 +754,7 @@ export function DailyOneDayView({
             workDate={workDate}
             companyId={companyId}
             onEventsChange={handleEventsChange}
+            allEmployees={allEmployees}
           />
         ))
       )}
@@ -624,37 +790,18 @@ export function DailyOneDayView({
         <DailyAttendanceLegend />
       </div>
 
-      <Dialog open={pickEmployeeOpen} onOpenChange={setPickEmployeeOpen}>
-        <DialogContent className="max-w-sm" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-right text-base">اختر الموظف</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-64 space-y-1 overflow-y-auto py-1">
-            {sorted.map((s) => (
-              <button
-                key={s.employeeId}
-                type="button"
-                onClick={() => openRegisterForEmployee(s.employeeId)}
-                className="flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium text-right transition-colors hover:bg-muted"
-              >
-                {s.employeeName}
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {registerEmployeeId && (
-        <DailyRegisterEventDialog
-          open={registerOpen}
-          onOpenChange={setRegisterOpen}
-          employeeId={registerEmployeeId}
-          employeeName={registerEmployeeName}
-          workDate={workDate}
-          companyId={companyId}
-          onCreated={handleHeaderEventCreated}
-        />
-      )}
+      <RegisterEventComboDialog
+        open={registerDialogOpen}
+        onOpenChange={setRegisterDialogOpen}
+        allEmployees={allEmployees}
+        defaultEmployeeId={registerDefaultEmpId}
+        workDate={workDate}
+        companyId={companyId}
+        onCreated={(empId, evt) => {
+          const existing = eventsMap.get(empId) ?? [];
+          handleEventsChange(empId, [...existing, evt]);
+        }}
+      />
     </div>
   );
 }

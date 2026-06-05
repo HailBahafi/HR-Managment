@@ -5,6 +5,7 @@ import {
   BookOpen,
   FileSpreadsheet,
   UserCheck,
+  Coins,
 } from 'lucide-react';
 
 export type HRContractsNavItem = {
@@ -23,7 +24,8 @@ export const hrContractsNavGroups: HRContractsNavGroup[] = [
   {
     labelAr: 'الراتب',
     items: [
-      { slug: 'payroll-periods', labelAr: 'فترات الراتب', icon: CalendarRange },
+      { slug: 'payroll-periods',   labelAr: 'فترات الراتب',  icon: CalendarRange },
+      { slug: 'allowance-types',   labelAr: 'أنواع البدلات', icon: Coins },
     ],
   },
   {

@@ -16,7 +16,6 @@ import {
   createJobTitle,
   deleteJobTitle,
   loadJobTitlesDirectory,
-  loadJobTitlesDepartments,
   updateJobTitle,
 } from '@/features/hr/organization/job-titles/services/job-titles.service';
 import { slugify } from '@/features/hr/requests/lib/types';
@@ -71,23 +70,14 @@ export function useJobTitlesDirectoryModel() {
     setForm((f) => ({ ...f, ...p }));
   }, []);
 
-  const deptsFetched = React.useRef(false);
-  const ensureDepts = React.useCallback(() => {
-    if (deptsFetched.current) return;
-    deptsFetched.current = true;
-    void loadJobTitlesDepartments().then(setDepartments).catch(() => {});
-  }, []);
-
   const openCreate = React.useCallback(() => {
-    ensureDepts();
     setEditId(null);
     setForm(JOB_TITLE_EMPTY_FORM);
     setError(null);
     setDrawerOpen(true);
-  }, [ensureDepts]);
+  }, []);
 
   const openEdit = React.useCallback((row: JobTitleTemplateRecord) => {
-    ensureDepts();
     setEditId(row.id);
     setForm({
       titleAr: row.titleAr,
@@ -96,7 +86,7 @@ export function useJobTitlesDirectoryModel() {
     });
     setError(null);
     setDrawerOpen(true);
-  }, [ensureDepts]);
+  }, []);
 
   const handleSave = React.useCallback(async () => {
     const titleAr = form.titleAr.trim();

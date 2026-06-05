@@ -79,11 +79,10 @@ export function useEmployeesListModel() {
   }, [companyId]);
 
   const loadEmployees = React.useCallback(async () => {
-    if (!companyId) return;
     setLoading(true);
     setListError(null);
     try {
-      const query: Parameters<typeof employeesApi.getAll>[0] = { limit: 200, companyId };
+      const query: Parameters<typeof employeesApi.getAll>[0] = { limit: 200 };
       if (branchFilter !== 'all') query.branchId = branchFilter;
       if (deptFilter !== 'all') query.departmentId = deptFilter;
       if (toolbarStatus !== 'all') query.contractStatus = toolbarStatus;

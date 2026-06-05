@@ -50,8 +50,6 @@ export function MapPicker({
       <InnerMap
         value={value}
         onChange={onChange}
-        minRadius={minRadius}
-        maxRadius={maxRadius}
         height={height}
         interactive={interactive}
         showRadius={showRadius}

@@ -7,7 +7,7 @@ import {
   Bell, Moon, Sun, LogOut, User, Settings, Shield, Menu,
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
-  LayoutGrid, MapPin, Link2, CalendarRange,
+  LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck, UserPlus,
 } from 'lucide-react';
@@ -79,6 +79,7 @@ export const navConfig: NavItem[] = [
     groups: [
       { labelAr: 'المتابعة', items: [
         { label: 'إدارة الحضور', href: '/hr/attendance/daily', icon: CalendarRange },
+        { label: 'الأحداث',      href: '/hr/attendance/events', icon: Activity },
       ]},
       { labelAr: 'الإسناد', items: [
         { label: 'ربط الشيفتات بالموظفين',        href: '/hr/attendance/assignment',       icon: ClipboardList },

@@ -40,6 +40,22 @@ export type CreateShiftAssignmentDto = {
   notes?: string | null;
 };
 
+export type BulkCreateShiftAssignmentDto = {
+  companyId: string;
+  shiftTemplateId: string;
+  employeeIds: string[];
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  isActive?: boolean;
+  notes?: string | null;
+};
+
+export type BulkCreateShiftAssignmentResult = {
+  created: number;
+  requested: number;
+  items: ShiftAssignmentResponseDto[];
+};
+
 export type UpdateShiftAssignmentDto = Partial<Omit<CreateShiftAssignmentDto, 'companyId' | 'shiftTemplateId' | 'employeeId'>>;
 
 export type GroupedByTemplateEmployee = {
@@ -93,6 +109,9 @@ export const shiftAssignmentsApi = {
   },
   create(payload: CreateShiftAssignmentDto) {
     return apiRequest<ShiftAssignmentResponseDto>('/attendance/shift-assignments', { method: 'POST', body: payload });
+  },
+  bulkCreate(payload: BulkCreateShiftAssignmentDto) {
+    return apiRequest<BulkCreateShiftAssignmentResult>('/attendance/shift-assignments/bulk', { method: 'POST', body: payload });
   },
   update(id: string, payload: UpdateShiftAssignmentDto) {
     return apiRequest<ShiftAssignmentResponseDto>(`/attendance/shift-assignments/${id}`, { method: 'PATCH', body: payload });

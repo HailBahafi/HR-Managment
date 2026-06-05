@@ -35,13 +35,14 @@ function mapTemplate(row: JobTitleResponseDto, index: number): JobTitleTemplateR
 }
 
 export async function loadJobTitlesDirectory(): Promise<JobTitlesDirectoryData> {
-  const [jobs, scope] = await Promise.all([
+  const [jobs, scope, depts] = await Promise.all([
     jobTitlesApi.getAll(),
     resolveOrganizationScope(),
+    departmentsApi.getAll(),
   ]);
   return {
     templates: jobs.items.map(mapTemplate),
-    departments: [],
+    departments: depts.items,
     scope: {
       companyId: scope.companyId ?? jobs.items[0]?.companyId ?? null,
       branchId: scope.branchId,

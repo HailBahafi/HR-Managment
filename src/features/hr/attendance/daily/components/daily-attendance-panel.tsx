@@ -54,6 +54,7 @@ export function DailyAttendancePanel() {
         events={model.eventsForView}
         dates={model.dates}
         viewMode={model.viewMode}
+        allEmployees={model.allEmployees}
       />
     </div>
   );

@@ -135,9 +135,9 @@ export function useCheckpointLinksPanelModel() {
     if (empSel.size === 0 || cpSel.size === 0) return;
     if (!companyId) { toast.error('تعذر تحديد الشركة'); return; }
     const pairs: { employeeId: string; checkInPointId: string }[] = [];
-    for (const e of empSel) {
+    for (const empId of empSel) {
       for (const c of cpSel) {
-        pairs.push({ employeeId: e, checkInPointId: c });
+        pairs.push({ employeeId: empId, checkInPointId: c });
       }
     }
     try {
@@ -167,14 +167,25 @@ export function useCheckpointLinksPanelModel() {
     }
   }, [batches, reload]);
 
+  const departments = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of employees) {
+      if (e.departmentId && e.departmentNameAr) map.set(e.departmentId, e.departmentNameAr);
+    }
+    return [...map.entries()].map(([id, nameAr]) => ({ id, nameAr }));
+  }, [employees]);
+
   const employeesFiltered = React.useMemo(() => {
     const q = eq.trim().toLowerCase();
-    if (!q) return employees;
-    return employees.filter((e) =>
+    const byDept = employeeDepartmentFilter === CP_LINKS_ALL_DEPARTMENTS
+      ? employees
+      : employees.filter((e) => e.departmentId === employeeDepartmentFilter);
+    if (!q) return byDept;
+    return byDept.filter((e) =>
       [e.nameAr, e.employeeCode, e.email, e.phone, e.position]
         .filter(Boolean).join(' ').toLowerCase().includes(q),
     );
-  }, [employees, eq]);
+  }, [employees, eq, employeeDepartmentFilter]);
 
   React.useEffect(() => {
     const allowed = new Set(employeesFiltered.map((e) => e.id));
@@ -222,6 +233,7 @@ export function useCheckpointLinksPanelModel() {
     setCq,
     employeeDepartmentFilter,
     setEmployeeDepartmentFilter,
+    departments,
     employeesFiltered,
     cps,
     toggle,

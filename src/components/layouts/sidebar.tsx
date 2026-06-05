@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import {
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Shield,
-  LayoutGrid, MapPin, Link2, CalendarRange,
+  LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet,
   UserCircle, Briefcase, UserPlus,
@@ -56,6 +56,7 @@ const mobileNav: MobileNavItem[] = [
     key: 'attendance', label: 'الحضور', icon: Clock,
     children: [
       { label: 'إدارة الحضور', href: '/hr/attendance/daily', icon: CalendarRange },
+      { label: 'الأحداث', href: '/hr/attendance/events', icon: Activity },
       { separator: true },
       { label: 'ربط الشيفتات بالموظفين', href: '/hr/attendance/assignment', icon: ClipboardList },
       { label: 'ربط النقاط بالموظفين  ', href: '/hr/attendance/checkpoint-links', icon: Link2 },

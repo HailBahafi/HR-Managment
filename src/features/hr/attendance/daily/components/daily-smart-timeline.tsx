@@ -14,11 +14,13 @@ export function DailySmartTimeline({
   events,
   dates,
   viewMode,
+  allEmployees,
 }: {
   summaries: AttendanceDaySummary[];
   events: AttendanceEvent[];
   dates: string[];
   viewMode: AttendanceViewMode;
+  allEmployees: { id: string; name: string }[];
 }) {
   const days = dates.length;
   if (days === 0) {
@@ -33,6 +35,7 @@ export function DailySmartTimeline({
         summaries={summaries}
         initialEvents={events}
         workDate={dates[0]!}
+        allEmployees={allEmployees}
       />
     );
   }

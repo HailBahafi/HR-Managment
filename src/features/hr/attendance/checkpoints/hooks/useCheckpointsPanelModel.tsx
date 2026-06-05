@@ -16,6 +16,8 @@ import {
   updateCheckInPoint,
 } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 
+const r6 = (n: number) => parseFloat(n.toFixed(6));
+
 export function useCheckpointsPanelModel() {
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
   // companyId from auth store — never blocked by GET /companies 403
@@ -31,6 +33,8 @@ export function useCheckpointsPanelModel() {
   const [geoLoading, setGeoLoading] = React.useState(false);
   const [geoError, setGeoError] = React.useState<string | null>(null);
   const [geoSuggestions, setGeoSuggestions] = React.useState<GeocodingResult[]>([]);
+  const draftRef = React.useRef(draft);
+  React.useEffect(() => { draftRef.current = draft; }, [draft]);
 
   const reload = React.useCallback(async () => {
     if (!companyId) return;
@@ -56,8 +60,8 @@ export function useCheckpointsPanelModel() {
       id: '',
       nameAr: '',
       nameEn: '',
-      latitude: 24.7136,
-      longitude: 46.6753,
+      latitude: 24.713600,
+      longitude: 46.675300,
       radiusMeters: 100,
       isActive: true,
     });
@@ -69,7 +73,7 @@ export function useCheckpointsPanelModel() {
   }, []);
 
   const openEdit = React.useCallback((c: AttendanceCheckInPoint) => {
-    setDraft({ ...c });
+    setDraft({ ...c, latitude: r6(c.latitude), longitude: r6(c.longitude) });
     setError(null);
     setGeoQuery('');
     setGeoError(null);
@@ -82,7 +86,7 @@ export function useCheckpointsPanelModel() {
     setDraft((d) => {
       if (!d) return d;
       if (!Number.isFinite(row.latitude) || !Number.isFinite(row.longitude)) return d;
-      return { ...d, latitude: row.latitude, longitude: row.longitude };
+      return { ...d, latitude: r6(row.latitude), longitude: r6(row.longitude) };
     });
     setGeoQuery(row.title);
     setGeoSuggestions([]);
@@ -119,7 +123,7 @@ export function useCheckpointsPanelModel() {
           setGeoLoading(false);
           return;
         }
-        const center = draft ? { lat: draft.latitude, lng: draft.longitude } : { lat: 24.7136, lng: 46.6753 };
+        const center = draftRef.current ? { lat: draftRef.current.latitude, lng: draftRef.current.longitude } : { lat: 24.7136, lng: 46.6753 };
         const rows = await autosuggestQuery(q, publicConfig.hereApiKey, center, 8);
         if (ac.signal.aborted) return;
         setGeoSuggestions(rows);
@@ -138,7 +142,7 @@ export function useCheckpointsPanelModel() {
       window.clearTimeout(timer);
       ac.abort();
     };
-  }, [geoQuery, open, draft]);
+  }, [geoQuery, open]);
 
   const save = React.useCallback(async () => {
     if (!draft) return;

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { publicConfig } from '@/shared/config';
 import { loadHereMapsSdk } from '@/components/here-map/components/here-loader';
-import { Minus, Plus, LocateFixed, Loader2 } from 'lucide-react';
+import { LocateFixed, Loader2 } from 'lucide-react';
 import { Button } from './button';
 import type { MapPickerValue } from './map-picker';
 
@@ -14,14 +14,12 @@ type AnyH = any;
 interface Props {
   value: MapPickerValue;
   onChange: (v: MapPickerValue) => void;
-  minRadius: number;
-  maxRadius: number;
   height: number;
   interactive: boolean;
   showRadius?: boolean;
 }
 
-export default function MapPickerInner({ value, onChange, minRadius, maxRadius, interactive, showRadius = true }: Props) {
+export default function MapPickerInner({ value, onChange, interactive, showRadius = true }: Props) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef       = React.useRef<AnyH>(null);
   const markerRef    = React.useRef<AnyH>(null);
@@ -132,26 +130,23 @@ export default function MapPickerInner({ value, onChange, minRadius, maxRadius, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, interactive]);
 
-  // ── Sync marker + circle when value changes from outside ─────────────────
+  // ── Sync marker + circle position when coordinates change ────────────────
   React.useEffect(() => {
     const map    = mapRef.current;
     const marker = markerRef.current;
-    const circle = circleRef.current;
-    if (!map || !marker || !circle) return;
-
+    if (!map || !marker) return;
     const pos = { lat: value.latitude, lng: value.longitude };
     marker.setGeometry(pos);
-    circle?.setCenter(pos);
-    circle?.setRadius(value.radiusMeters);
+    circleRef.current?.setCenter(pos);
     map.setCenter(pos, true);
-  }, [value.latitude, value.longitude, value.radiusMeters]);
+  }, [value.latitude, value.longitude]);
+
+  // ── Sync circle radius when radius changes ────────────────────────────────
+  React.useEffect(() => {
+    circleRef.current?.setRadius(value.radiusMeters);
+  }, [value.radiusMeters]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  const adjustRadius = (delta: number) => {
-    const next = Math.min(maxRadius, Math.max(minRadius, value.radiusMeters + delta));
-    onChange({ ...value, radiusMeters: next });
-  };
-
   const locateMe = () => {
     if (!navigator.geolocation) return;
     setLocating(true);
@@ -195,7 +190,7 @@ export default function MapPickerInner({ value, onChange, minRadius, maxRadius, 
         className="absolute end-3 top-3 z-10 rounded-md border border-border bg-card/90 px-2 py-1 font-mono text-[10px] text-muted-foreground backdrop-blur-sm"
         dir="ltr"
       >
-        {value.latitude.toFixed(5)}, {value.longitude.toFixed(5)}
+        {value.latitude.toFixed(6)}, {value.longitude.toFixed(6)}
       </div>
 
       {interactive && (
@@ -219,41 +214,6 @@ export default function MapPickerInner({ value, onChange, minRadius, maxRadius, 
           <div className="absolute start-3 top-14 z-10 max-w-[min(15rem,calc(100%-1.5rem))] rounded-md border border-border bg-card/90 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
             انقر لتحديد الموقع · اسحب الدبوس
           </div>
-
-          {/* Radius slider — bottom end (only when showRadius is enabled) */}
-          {showRadius && (
-            <div className="absolute bottom-3 end-3 z-10 flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-2 shadow-lg backdrop-blur-sm">
-              <Button
-                type="button" variant="ghost" size="icon"
-                className="h-7 w-7 rounded-full"
-                onClick={() => adjustRadius(-10)}
-                aria-label="تصغير النطاق"
-              >
-                <Minus className="h-3.5 w-3.5" />
-              </Button>
-              <div className="flex flex-col items-center">
-                <input
-                  type="range"
-                  min={minRadius}
-                  max={maxRadius}
-                  step={10}
-                  value={value.radiusMeters}
-                  onChange={(e) => onChange({ ...value, radiusMeters: Number(e.target.value) })}
-                  className="h-1.5 w-28 cursor-pointer accent-primary"
-                  aria-label="نطاق القبول"
-                />
-                <span className="mt-0.5 font-mono text-[10px] text-muted-foreground">{value.radiusMeters} م</span>
-              </div>
-              <Button
-                type="button" variant="ghost" size="icon"
-                className="h-7 w-7 rounded-full"
-                onClick={() => adjustRadius(10)}
-                aria-label="تكبير النطاق"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
         </>
       )}
     </div>

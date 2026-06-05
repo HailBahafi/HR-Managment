@@ -215,9 +215,9 @@ export function CheckpointLinksPanel() {
 
       {/* ── Create batch dialog ── */}
       <Dialog open={m.open} onOpenChange={m.setOpen}>
-        <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden border-border p-0 sm:max-w-3xl">
+        <DialogContent className="flex max-h-[80vh] h-[80vh] flex-col gap-0 overflow-hidden border-border p-0 sm:max-w-5xl">
           {/* dialog header */}
-          <DialogHeader className="border-b border-border px-6 py-5">
+          <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Link2 className="h-5 w-5" />
@@ -231,23 +231,8 @@ export function CheckpointLinksPanel() {
             </div>
           </DialogHeader>
 
-          {/* date + body */}
+          {/* body */}
           <div className="flex flex-1 flex-col gap-0 overflow-hidden">
-            {/* effective date row */}
-            <div className="flex items-center gap-4 border-b border-border bg-muted/20 px-6 py-3">
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <Label className="shrink-0 text-sm">ساري من</Label>
-              <div className="w-44">
-                <SingleDatePicker value={m.eff} onChange={m.setEff} />
-              </div>
-              {m.empSel.size > 0 && m.cpSel.size > 0 && (
-                <div className="mr-auto flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
-                  <Link2 className="h-3.5 w-3.5" />
-                  <span className="number-ar">{m.empSel.size * m.cpSel.size}</span> رابط سيُنشأ
-                </div>
-              )}
-            </div>
-
             {/* two-column selector */}
             <div className="grid flex-1 grid-cols-2 divide-x divide-x-reverse divide-border overflow-hidden">
 
@@ -274,23 +259,26 @@ export function CheckpointLinksPanel() {
                   </button>
                 </div>
 
-                <div className="space-y-2 border-b border-border px-3 py-2.5">
-                  <Select value={m.employeeDepartmentFilter} onValueChange={m.setEmployeeDepartmentFilter}>
-                    <SelectTrigger className="h-8 text-xs">
+                {/* dept filter + search in a single flex row */}
+                <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+                  <Select value={m.employeeDepartmentFilter} onValueChange={(v) => { m.setEmployeeDepartmentFilter(v); m.setEmpSel(new Set()); }}>
+                    <SelectTrigger className="h-8 w-36 shrink-0 text-xs">
                       <SelectValue placeholder="كل الأقسام" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={CP_LINKS_ALL_DEPARTMENTS}>كل الأقسام</SelectItem>
+                      {m.departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <div className="relative">
+                  <div className="relative flex-1">
                     <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={m.eq}
                       onChange={(e) => m.setEq(e.target.value)}
                       placeholder="اسم، رقم، قسم…"
                       className="h-8 bg-background pr-8 text-xs"
-                      aria-label="بحث في قائمة الموظفين"
                     />
                   </div>
                 </div>
@@ -300,8 +288,8 @@ export function CheckpointLinksPanel() {
                     <p className="py-6 text-center text-xs text-muted-foreground">لا يوجد موظف مطابق</p>
                   ) : (
                     m.employeesFiltered.slice(0, 120).map((e) => {
-                      const st   = e.contractStatus as ContractStatus;
-                      const sel  = m.empSel.has(e.id);
+                      const st  = e.contractStatus as ContractStatus;
+                      const sel = m.empSel.has(e.id);
                       return (
                         <button
                           key={e.id}
@@ -312,30 +300,20 @@ export function CheckpointLinksPanel() {
                             sel ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50',
                           )}
                         >
-                          <div className={cn(
-                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all',
-                            sel ? 'border-primary bg-primary' : 'border-border',
-                          )}>
+                          <div className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all', sel ? 'border-primary bg-primary' : 'border-border')}>
                             {sel && <Check className="h-3 w-3 text-primary-foreground" />}
                           </div>
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-                            {e.avatar ? (
+                            {e.avatar
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={e.avatar ?? ''} alt={e.nameAr} className="h-full w-full object-cover" />
-                            ) : (
-                              <span className="text-[10px] font-bold">{e.nameAr.slice(0, 1)}</span>
-                            )}
+                              ? <img src={e.avatar} alt={e.nameAr} className="h-full w-full object-cover" />
+                              : <span className="text-[10px] font-bold">{e.nameAr.slice(0, 1)}</span>}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{e.nameAr}</p>
-                            <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <span className="font-mono" dir="ltr">{e.employeeCode}</span>
-                            </p>
+                            <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">{e.employeeCode}</p>
                           </div>
-                          <Badge
-                            variant={st === 'active' ? 'success' : st === 'suspended' ? 'warning' : 'secondary'}
-                            className="shrink-0 px-1.5 py-0 text-[9px]"
-                          >
+                          <Badge variant={st === 'active' ? 'success' : st === 'suspended' ? 'warning' : 'secondary'} className="shrink-0 px-1.5 py-0 text-[9px]">
                             {CONTRACT_STATUS_AR[st]?.split(' ')[0] ?? st}
                           </Badge>
                         </button>
@@ -426,22 +404,9 @@ export function CheckpointLinksPanel() {
           </div>{/* end body */}
 
           {/* ── Footer ── */}
-          <div className="flex items-center justify-between border-t border-border bg-muted/20 px-6 py-4">
-            <div className="text-xs text-muted-foreground">
-              {m.empSel.size > 0 && m.cpSel.size > 0 ? (
-                <span>
-                  <span className="number-ar font-semibold text-foreground">{m.empSel.size}</span> موظف
-                  {' × '}
-                  <span className="number-ar font-semibold text-foreground">{m.cpSel.size}</span> نقطة
-                  {' = '}
-                  <span className="number-ar font-semibold text-primary">{m.empSel.size * m.cpSel.size}</span> رابط
-                </span>
-              ) : (
-                <span>اختر موظفين ونقاط لإنشاء الروابط</span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" type="button" onClick={() => m.setOpen(false)}>إلغاء</Button>
+          <div className="flex items-center justify-between gap-4 border-t border-border bg-muted/20 px-6 py-3">
+            {/* actions — right side (RTL: rendered first) */}
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="luxe"
                 type="button"
@@ -450,6 +415,18 @@ export function CheckpointLinksPanel() {
               >
                 <Link2 className="h-4 w-4" /> إنشاء الدفعة
               </Button>
+              <Button variant="outline" type="button" onClick={() => m.setOpen(false)}>إلغاء</Button>
+            </div>
+
+            {/* ساري من + summary — left side */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Label className="shrink-0 text-sm text-muted-foreground">ساري من</Label>
+                <div className="w-52">
+                  <SingleDatePicker value={m.eff} onChange={m.setEff} />
+                </div>
+              </div>
             </div>
           </div>
         </DialogContent>

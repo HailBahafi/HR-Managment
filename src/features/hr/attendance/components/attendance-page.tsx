@@ -7,6 +7,7 @@ import { AssignmentsPanel } from '@/features/hr/attendance/assignment/components
 import { DailyAttendancePanel } from '@/features/hr/attendance/daily/components/daily-attendance-panel';
 import { CheckpointsPanel } from '@/features/hr/attendance/checkpoints/components/checkpoints-panel';
 import { CheckpointLinksPanel } from '@/features/hr/attendance/checkpoint-links/components/checkpoint-links-panel';
+import { AttendanceEventsPanel } from '@/features/hr/attendance/events/components/attendance-events-panel';
 import type { AttendanceSection } from '@/features/hr/attendance/lib/types';
 
 const SECTION_COPY: Record<AttendanceSection, { title: string; desc: string }> = {
@@ -15,6 +16,7 @@ const SECTION_COPY: Record<AttendanceSection, { title: string; desc: string }> =
   daily: { title: 'الحضور اليومي', desc: 'متابعة السجلات ضمن نطاق زمني.' },
   checkpoints: { title: 'نقاط التسجيل', desc: 'إدارة المواقع الجغرافية المعتمدة للتسجيل.' },
   'checkpoint-links': { title: 'ربط النقاط بالموظفين  ', desc: 'ربط الموظفين بنقاط محددة' },
+  events:             { title: 'الأحداث', desc: 'سجلات الحضور والانصراف والاستراحات.' },
 };
 
 export default function AttendancePage({ section }: { section: AttendanceSection }) {
@@ -46,6 +48,7 @@ export default function AttendancePage({ section }: { section: AttendanceSection
             {section === 'daily' && <DailyAttendancePanel />}
             {section === 'checkpoints' && <CheckpointsPanel />}
             {section === 'checkpoint-links' && <CheckpointLinksPanel />}
+            {section === 'events' && <AttendanceEventsPanel />}
           </div>
         </div>
       </div>

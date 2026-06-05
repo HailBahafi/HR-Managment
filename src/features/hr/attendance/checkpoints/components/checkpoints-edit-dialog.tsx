@@ -104,17 +104,6 @@ export function CheckpointsEditDialog({
             <div className="flex w-full shrink-0 flex-col overflow-y-auto border-b border-border md:w-80 md:border-b-0 md:border-e md:border-border lg:w-96">
               <div className="flex flex-1 flex-col gap-5 p-5">
 
-                {/* Name */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground">اسم النقطة</Label>
-                  <Input
-                    value={draft.nameAr}
-                    onChange={(e) => setDraft({ ...draft, nameAr: e.target.value })}
-                    placeholder="مثال: مقر الشركة الرئيسي"
-                    className="h-10"
-                  />
-                </div>
-
                 {/* Geo search */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-muted-foreground">البحث عن عنوان</Label>
@@ -145,7 +134,7 @@ export function CheckpointsEditDialog({
                             (pos) => {
                               setDraft((d) =>
                                 d
-                                  ? { ...d, latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+                                  ? { ...d, latitude: parseFloat(pos.coords.latitude.toFixed(6)), longitude: parseFloat(pos.coords.longitude.toFixed(6)) }
                                   : d,
                               );
                               setGeoSuggestions([]);
@@ -183,28 +172,39 @@ export function CheckpointsEditDialog({
                   {geoError && <p className="text-xs text-destructive">{geoError}</p>}
                 </div>
 
+                {/* Name */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">اسم النقطة</Label>
+                  <Input
+                    value={draft.nameAr}
+                    onChange={(e) => setDraft({ ...draft, nameAr: e.target.value })}
+                    placeholder="مثال: مقر الشركة الرئيسي"
+                    className="h-10"
+                  />
+                </div>
+
                 {/* Coordinates */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground">خط العرض</Label>
                     <Input
-                      type="number"
-                      step="0.00001"
+                      type="text"
+                      inputMode="decimal"
                       dir="ltr"
                       className="h-10 font-mono text-xs"
-                      value={draft.latitude}
-                      onChange={(e) => setDraft({ ...draft, latitude: Number(e.target.value) })}
+                      value={draft.latitude.toFixed(6)}
+                      onChange={(e) => { const n = parseFloat(e.target.value); if (Number.isFinite(n)) setDraft({ ...draft, latitude: parseFloat(n.toFixed(6)) }); }}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-muted-foreground">خط الطول</Label>
                     <Input
-                      type="number"
-                      step="0.00001"
+                      type="text"
+                      inputMode="decimal"
                       dir="ltr"
                       className="h-10 font-mono text-xs"
-                      value={draft.longitude}
-                      onChange={(e) => setDraft({ ...draft, longitude: Number(e.target.value) })}
+                      value={draft.longitude.toFixed(6)}
+                      onChange={(e) => { const n = parseFloat(e.target.value); if (Number.isFinite(n)) setDraft({ ...draft, longitude: parseFloat(n.toFixed(6)) }); }}
                     />
                   </div>
                 </div>
@@ -215,14 +215,14 @@ export function CheckpointsEditDialog({
                     <Label className="text-xs font-medium text-muted-foreground">نطاق القبول</Label>
                     <span className="text-xs font-semibold text-primary">{draft.radiusMeters} م</span>
                   </div>
-                  <Input
+                  <input
                     type="range"
                     min={10}
                     max={2000}
                     step={10}
                     value={draft.radiusMeters}
                     onChange={(e) => setDraft({ ...draft, radiusMeters: Number(e.target.value) })}
-                    className="h-2 w-full cursor-pointer accent-primary"
+                    className="w-full cursor-pointer accent-primary"
                   />
                   <div className="flex justify-between text-[10px] text-muted-foreground">
                     <span>10 م</span>
@@ -267,7 +267,6 @@ export function CheckpointsEditDialog({
             <div ref={mapPanelRef} className="relative min-h-[320px] flex-1 overflow-hidden bg-muted/10 md:min-h-0">
               <MapPicker
                 height={mapHeight}
-                showRadius={false}
                 className="rounded-none border-0 shadow-none"
                 value={{
                   latitude: draft.latitude,
@@ -277,8 +276,8 @@ export function CheckpointsEditDialog({
                 onChange={(v) =>
                   setDraft({
                     ...draft,
-                    latitude: v.latitude,
-                    longitude: v.longitude,
+                    latitude: parseFloat(v.latitude.toFixed(6)),
+                    longitude: parseFloat(v.longitude.toFixed(6)),
                     radiusMeters: v.radiusMeters,
                   })
                 }

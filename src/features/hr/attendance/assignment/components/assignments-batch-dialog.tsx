@@ -35,6 +35,7 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
     setSelectedIds,
     activeTemplates,
     multiOptions,
+    departments,
     submit,
   } = model;
 
@@ -42,7 +43,7 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         ref={setDialogContentEl}
-        className="flex max-h-[min(90vh,640px)] flex-col gap-0 overflow-hidden border-border p-0 sm:max-w-lg"
+        className="flex max-h-[92vh] flex-col gap-0 overflow-hidden border-border p-0 sm:max-w-3xl"
       >
         <div className="shrink-0 space-y-2 border-b border-border px-6 pb-4 pt-6">
           <DialogHeader className="space-y-2 text-right">
@@ -96,6 +97,9 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ASSIGNMENTS_ALL_DEPARTMENTS}>كل الأقسام</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

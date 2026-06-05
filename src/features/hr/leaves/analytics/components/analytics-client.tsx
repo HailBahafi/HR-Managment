@@ -294,105 +294,79 @@ function StatCard({
 
 // ─── Employee balance card ────────────────────────────────────────────────────
 
-const LEAVE_TYPE_COLORS = [
-  'bg-primary', 'bg-emerald-500', 'bg-amber-500', 'bg-blue-500',
-  'bg-violet-500', 'bg-pink-500', 'bg-teal-500', 'bg-orange-500',
-];
-
 function EmployeeBalanceCard({
   employeeId,
   employeeName,
-  balances,
-  leaveTypes,
+  balance,
   onEdit,
   onDelete,
 }: {
   employeeId: string;
   employeeName: string;
-  balances: EmployeeLeaveBalanceResponseDto[];
-  leaveTypes: LeaveTypeResponseDto[];
+  balance: EmployeeLeaveBalanceResponseDto;
   onEdit: (b: EmployeeLeaveBalanceResponseDto) => void;
   onDelete: (b: EmployeeLeaveBalanceResponseDto) => void;
 }) {
   const initials = employeeName.split(' ').map((w) => w[0]).slice(0, 2).join('');
   const hue = ((employeeId.charCodeAt(0) ?? 0) * 47) % 360;
+  const used = balance.usedDays;
+  const total = balance.totalDays;
+  const remaining = balance.remainingDays;
+  const p = pct(used, total);
+  const danger = p >= 90;
+  const warn = p >= 70;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-      <div className="divide-y divide-border/50">
-        {balances.length === 0 ? (
-          <div className="space-y-1.5 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                style={{ background: `hsl(${hue} 55% 45%)` }}
-              >
-                {initials}
-              </div>
-              <p className="min-w-0 truncate text-sm font-semibold">{employeeName}</p>
-            </div>
-            <p className="text-xs text-muted-foreground">لا توجد أرصدة</p>
-          </div>
-        ) : (
-          balances.map((b, idx) => {
-            const lt = leaveTypes.find((t) => t.id === b.leaveTypeId);
-            const color = LEAVE_TYPE_COLORS[idx % LEAVE_TYPE_COLORS.length] ?? 'bg-primary';
-            const rowPct = pct(b.usedDays, b.totalDays);
+    <div className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-shadow hover:shadow-md">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 px-3.5 pt-3.5 pb-2.5">
+        <div
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+          style={{ background: `hsl(${hue} 55% 45%)` }}
+        >
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-semibold leading-tight">{employeeName}</p>
+          <p className="text-[10px] text-muted-foreground">إجازة سنوية</p>
+        </div>
+        <div className="flex shrink-0 gap-0 opacity-0 transition-opacity group-hover:opacity-100">
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" onClick={() => onEdit(balance)}>
+            <Pencil className="h-3 w-3" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => onDelete(balance)}>
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
 
-            return (
-              <div key={b.id} className="px-4 py-3">
-                {/* Row 1 — employee name + label/bar justify-between */}
-                <div className="flex min-w-0 items-center gap-2 pb-2">
-                  {idx === 0 ? (
-                    <>
-                      <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                        style={{ background: `hsl(${hue} 55% 45%)` }}
-                      >
-                        {initials}
-                      </div>
-                      <p className="max-w-[5rem] shrink-0 truncate text-sm font-semibold">{employeeName}</p>
-                    </>
-                  ) : (
-                    <div className="flex shrink-0 gap-2" aria-hidden>
-                      <div className="h-9 w-9" />
-                      <div className="w-20" />
-                    </div>
-                  )}
-                  <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                    <div className="flex w-full max-w-[16rem] justify-center">
-                      <p className="truncate text-xs font-medium">{lt?.nameAr ?? '—'}</p>
-                    </div>
-                    <div className="flex w-full max-w-[12rem] items-center gap-2">
-                      <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn(
-                            'h-full rounded-full transition-all',
-                            rowPct >= 90 ? 'bg-destructive' : rowPct >= 70 ? 'bg-amber-500' : color,
-                          )}
-                          style={{ width: `${rowPct}%` }}
-                        />
-                      </div>
-                      <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground" dir="ltr">
-                        {b.usedDays}/{b.totalDays}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+      {/* Stats row */}
+      <div className="grid grid-cols-3 divide-x divide-x-reverse divide-border/60 border-t border-border/60 bg-muted/30">
+        <div className="flex flex-col items-center gap-0 px-2 py-2">
+          <span className="font-display text-base font-bold tabular-nums text-foreground" dir="ltr">{total}</span>
+          <span className="text-[9px] text-muted-foreground">الإجمالي</span>
+        </div>
+        <div className="flex flex-col items-center gap-0 px-2 py-2">
+          <span className="font-display text-base font-bold tabular-nums text-muted-foreground" dir="ltr">{used}</span>
+          <span className="text-[9px] text-muted-foreground">المستخدم</span>
+        </div>
+        <div className="flex flex-col items-center gap-0 px-2 py-2">
+          <span className={cn('font-display text-base font-bold tabular-nums', danger ? 'text-destructive' : warn ? 'text-amber-500' : 'text-emerald-500')} dir="ltr">
+            {remaining}
+          </span>
+          <span className="text-[9px] text-muted-foreground">المتبقي</span>
+        </div>
+      </div>
 
-                {/* Row 2 — edit & delete (left side in RTL) */}
-                <div className="flex w-full justify-end gap-0.5 border-t border-border/60 pt-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => onEdit(b)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => onDelete(b)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })
-        )}
+      {/* Progress bar */}
+      <div className="px-3.5 py-2">
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn('h-full rounded-full transition-all duration-500', danger ? 'bg-destructive' : warn ? 'bg-amber-500' : 'bg-emerald-500')}
+            style={{ width: `${p}%` }}
+          />
+        </div>
+        <p className="mt-1 text-[9px] text-muted-foreground">{p}% مستخدم</p>
       </div>
     </div>
   );
@@ -409,7 +383,6 @@ export function AnalyticsClient() {
   const [loading, setLoading] = React.useState(true);
 
   const [employeeFilter, setEmployeeFilter] = React.useState('all');
-  const [leaveTypeFilter, setLeaveTypeFilter] = React.useState('all');
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [dialogMode, setDialogMode] = React.useState<DialogMode>({ mode: 'create' });
@@ -441,32 +414,31 @@ export function AnalyticsClient() {
     return m;
   }, [employees]);
 
-  // Filtered balances
+  // Annual leave type id
+  const annualLeaveTypeId = React.useMemo(
+    () => leaveTypes.find((lt) => lt.nameAr === 'إجازة سنوية')?.id ?? null,
+    [leaveTypes],
+  );
+
+  // Filtered balances — only إجازة سنوية
   const filteredBalances = React.useMemo(() => {
     return balances.filter((b) => {
+      if (annualLeaveTypeId && b.leaveTypeId !== annualLeaveTypeId) return false;
       if (employeeFilter !== 'all' && b.employeeId !== employeeFilter) return false;
-      if (leaveTypeFilter !== 'all' && b.leaveTypeId !== leaveTypeFilter) return false;
       return true;
     });
-  }, [balances, employeeFilter, leaveTypeFilter]);
+  }, [balances, annualLeaveTypeId, employeeFilter]);
 
-  // Group by employee
+  // One balance per employee (annual leave only)
   const grouped = React.useMemo(() => {
-    const m = new Map<string, EmployeeLeaveBalanceResponseDto[]>();
-    for (const b of filteredBalances) {
-      if (!m.has(b.employeeId)) m.set(b.employeeId, []);
-      m.get(b.employeeId)!.push(b);
-    }
-    // Sort by employee name
-    return [...m.entries()].sort((a, b) =>
-      (empMap.get(a[0]) ?? '').localeCompare(empMap.get(b[0]) ?? '', 'ar'),
-    );
+    return filteredBalances
+      .slice()
+      .sort((a, b) => (empMap.get(a.employeeId) ?? '').localeCompare(empMap.get(b.employeeId) ?? '', 'ar'));
   }, [filteredBalances, empMap]);
 
   // KPIs
   const totalEmployees = grouped.length;
-  const totalBalances = filteredBalances.length;
-  const exhausted = filteredBalances.filter((b) => b.remainingDays <= 0).length;
+  const exhausted = grouped.filter((b) => b.remainingDays <= 0).length;
 
   const handleSaved = (b: EmployeeLeaveBalanceResponseDto) => {
     setBalances((prev) => {
@@ -505,15 +477,6 @@ export function AnalyticsClient() {
     [employees.length],
   );
 
-  const leaveTypeFilterOptions = React.useMemo(
-    () => [
-      { value: 'all', label: 'كل الأنواع' },
-      ...leaveTypes.map((lt) => ({ value: lt.id, label: lt.nameAr })),
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [leaveTypes.length],
-  );
-
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -523,11 +486,10 @@ export function AnalyticsClient() {
         onDateBoundsChange={() => {}}
         inlineSelects={[
           { id: 'employee', value: employeeFilter, onChange: setEmployeeFilter, placeholder: 'الموظف', options: employeeFilterOptions },
-          { id: 'leaveType', value: leaveTypeFilter, onChange: setLeaveTypeFilter, placeholder: 'نوع الإجازة', options: leaveTypeFilterOptions },
         ]}
       />
     ),
-    [employeeFilter, leaveTypeFilter, employeeFilterOptions, leaveTypeFilterOptions],
+    [employeeFilter, employeeFilterOptions],
   );
 
   const deleteEmpName = deleteTarget ? (empMap.get(deleteTarget.employeeId) ?? '—') : '';
@@ -553,14 +515,13 @@ export function AnalyticsClient() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {grouped.map(([empId, empBalances]) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {grouped.map((b) => (
             <EmployeeBalanceCard
-              key={empId}
-              employeeId={empId}
-              employeeName={empMap.get(empId) ?? empId}
-              balances={empBalances}
-              leaveTypes={leaveTypes}
+              key={b.id}
+              employeeId={b.employeeId}
+              employeeName={empMap.get(b.employeeId) ?? b.employeeId}
+              balance={b}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
             />
