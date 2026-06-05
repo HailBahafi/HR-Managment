@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { contractTemplatesApi, type ApiContractTemplate } from './contracts-api';
+import { contractTemplatesApi } from '@/features/hr/contracts/contract-templates/lib/api/contract-templates';
+import type { ContractTemplateDto as ApiContractTemplate } from '@/features/hr/contracts/contract-templates/types/contract-template';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import type { HRContractNature, HRWorkArrangement } from './contracts-store';
 
@@ -27,8 +28,8 @@ function mapApiTemplate(t: ApiContractTemplate): HRContractTemplateRecord {
     id: t.id,
     code: t.code,
     nameAr: t.nameAr,
-    nameEn: t.nameEn,
-    descriptionAr: t.descriptionAr,
+    nameEn: t.nameEn ?? '',
+    descriptionAr: t.descriptionAr ?? '',
     defaultContractNature: t.defaultContractNature as HRContractNature,
     defaultWorkArrangement: t.defaultWorkArrangement as HRWorkArrangement,
     defaultProbationDays: t.defaultProbationDays ?? null,

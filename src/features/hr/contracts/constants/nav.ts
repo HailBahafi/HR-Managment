@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   UserCheck,
   Coins,
+  FileStack,
 } from 'lucide-react';
 
 export type HRContractsNavItem = {
@@ -31,6 +32,7 @@ export const hrContractsNavGroups: HRContractsNavGroup[] = [
   {
     labelAr: 'العقود',
     items: [
+      { slug: 'contract-templates', labelAr: 'قوالب العقود', icon: FileStack },
       { slug: 'employment', labelAr: 'عقود العمل', icon: FileSignature },
       { slug: 'articles', labelAr: 'مواد العقود', icon: BookOpen },
     ],

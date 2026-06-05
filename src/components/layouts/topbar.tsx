@@ -10,6 +10,7 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck, UserPlus,
+  Coins, FileStack,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ export const PAGE_ICONS: Record<string, React.ElementType> = {
   CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet, Bell,
   UserCircle, Briefcase, UserCheck, UserPlus,
   CalendarClock, LayoutList, ListChecks, ShieldCheck,
+  Coins, FileStack,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */

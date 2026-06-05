@@ -6,92 +6,17 @@ export type ContractNature = 'indefinite' | 'fixed_term' | 'task_based' | 'tempo
 export type WorkArrangement = 'full_time' | 'part_time' | 'flexible';
 export type ContractStatus = 'draft' | 'pending_signature' | 'active' | 'expired' | 'terminated' | 'superseded' | 'cancelled';
 
-// ─── Contract Templates ───────────────────────────────────────────────────────
+// ─── Contract Templates (re-export from page capsule) ─────────────────────────
 
-export type ApiTemplateAllowanceLine = {
-  id: string;
-  allowanceTypeId: string;
-  allowanceTypeCode: string;
-  allowanceTypeNameAr: string;
-  amount: string;
-  sortOrder: number;
-};
+export { contractTemplatesApi } from '@/features/hr/contracts/contract-templates/lib/api/contract-templates';
 
-export type ApiContractTemplate = {
-  id: string;
-  companyId: string;
-  code: string;
-  nameAr: string;
-  nameEn: string;
-  descriptionAr: string;
-  descriptionEn: string;
-  defaultContractNature: ContractNature;
-  defaultWorkArrangement: WorkArrangement;
-  defaultProbationDays: number;
-  defaultAnnualLeaveDays: number;
-  suggestedBaseSalary: string;
-  currency: string;
-  durationMonths: number;
-  allowancesHint: string;
-  sortOrder: number;
-  isActive: boolean;
-  allowanceLines: ApiTemplateAllowanceLine[];
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  updatedBy: string;
-};
-
-export type CreateContractTemplateDto = {
-  companyId: string;
-  code: string;
-  nameAr: string;
-  nameEn?: string;
-  descriptionAr?: string;
-  descriptionEn?: string;
-  defaultContractNature?: ContractNature;
-  defaultWorkArrangement?: WorkArrangement;
-  defaultProbationDays?: number;
-  defaultAnnualLeaveDays?: number;
-  suggestedBaseSalary?: number;
-  currency?: string;
-  durationMonths?: number;
-  allowancesHint?: string;
-  sortOrder?: number;
-  isActive?: boolean;
-  allowanceLines?: { allowanceTypeId: string; amount: number; sortOrder?: number }[];
-  createdBy?: string;
-};
-
-export type UpdateContractTemplateDto = Partial<Omit<CreateContractTemplateDto, 'companyId' | 'createdBy'>> & {
-  updatedBy?: string;
-};
-
-export const contractTemplatesApi = {
-  list: (params?: {
-    companyId?: string;
-    isActive?: boolean;
-    defaultContractNature?: string;
-    defaultWorkArrangement?: string;
-    page?: number;
-    limit?: number;
-  }) =>
-    apiRequest<PaginatedResult<ApiContractTemplate>>('/payroll/contract-templates', {
-      query: params as Record<string, string | number | boolean | null | undefined>,
-    }),
-
-  get: (id: string) =>
-    apiRequest<ApiContractTemplate>(`/payroll/contract-templates/${id}`),
-
-  create: (body: CreateContractTemplateDto) =>
-    apiRequest<ApiContractTemplate>('/payroll/contract-templates', { method: 'POST', body }),
-
-  update: (id: string, body: UpdateContractTemplateDto) =>
-    apiRequest<ApiContractTemplate>(`/payroll/contract-templates/${id}`, { method: 'PATCH', body }),
-
-  delete: (id: string) =>
-    apiRequest<void>(`/payroll/contract-templates/${id}`, { method: 'DELETE' }),
-};
+export type {
+  ContractTemplateDto as ApiContractTemplate,
+  ContractTemplateAllowanceLine as ApiTemplateAllowanceLine,
+  ContractTemplateArticleRef,
+  CreateContractTemplateDto,
+  UpdateContractTemplateDto,
+} from '@/features/hr/contracts/contract-templates/types/contract-template';
 
 // ─── Contract Articles ────────────────────────────────────────────────────────
 

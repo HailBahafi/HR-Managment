@@ -17,6 +17,7 @@ export const hrContractsRoutes = {
   payrollSalaryApprovals: hrContractsSectionHref('payroll-salary-approvals'),
   reports: hrContractsSectionHref('reports'),
   allowanceTypes: hrContractsSectionHref('allowance-types'),
+  contractTemplates: hrContractsSectionHref('contract-templates'),
 } as const;
 
 export function hrContractsPayrollSalaryApprovalsQueryHref(periodId: string): string {
