@@ -14,6 +14,7 @@ export const hrContractsRoutes = {
   articles: hrContractsSectionHref('articles'),
   employeeAdvances: hrContractsSectionHref('employee-advances'),
   payrollPeriods: hrContractsSectionHref('payroll-periods'),
+  monthlyInputs: hrContractsSectionHref('monthly-inputs'),
   payrollSalaryApprovals: hrContractsSectionHref('payroll-salary-approvals'),
   reports: hrContractsSectionHref('reports'),
   allowanceTypes: hrContractsSectionHref('allowance-types'),

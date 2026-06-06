@@ -16,25 +16,49 @@ export type MonthlyInputKindDto =
 
 export type MonthlyInputDirectionDto = 'addition' | 'deduction';
 
+export type MonthlyInputSourceKindDto =
+  | 'manual'
+  | 'attendance'
+  | 'discipline'
+  | 'advance'
+  | 'leave'
+  | 'other';
+
 export type MonthlyInputResponseDto = {
   id: string;
   companyId: string;
   payrollPeriodId: string;
-  periodYear: number;
-  periodMonth: number;
+  periodYear: number | null;
+  periodMonth: number | null;
   employeeId: string;
-  employeeNameAr: string;
+  employeeNameAr: string | null;
   inputKind: MonthlyInputKindDto;
   direction: MonthlyInputDirectionDto;
-  amount: number;
+  amount: string;
   currency: string;
   note: string | null;
-  sourceKind: string | null;
+  sourceKind: MonthlyInputSourceKindDto | null;
   sourceTable: string | null;
   sourceId: string | null;
   affectsSalary: boolean;
   createdAt: string;
   updatedAt: string;
+  createdBy: string | null;
+  updatedBy: string | null;
+};
+
+export type MonthlyInputListQuery = {
+  page?: number;
+  limit?: number;
+  companyId?: string;
+  payrollPeriodId?: string;
+  employeeId?: string;
+  inputKind?: MonthlyInputKindDto;
+  direction?: MonthlyInputDirectionDto;
+  sourceKind?: MonthlyInputSourceKindDto;
+  sourceTable?: string;
+  sourceId?: string;
+  affectsSalary?: boolean;
 };
 
 export type CreateMonthlyInputDto = {
@@ -57,15 +81,7 @@ export type UpdateMonthlyInputDto = Partial<
 >;
 
 export const monthlyInputsApi = {
-  list: (params?: {
-    companyId?: string;
-    payrollPeriodId?: string;
-    employeeId?: string;
-    sourceTable?: string;
-    sourceId?: string;
-    page?: number;
-    limit?: number;
-  }) =>
+  list: (params?: MonthlyInputListQuery) =>
     apiRequest<PaginatedResult<MonthlyInputResponseDto>>('/payroll/monthly-inputs', {
       query: params,
     }),

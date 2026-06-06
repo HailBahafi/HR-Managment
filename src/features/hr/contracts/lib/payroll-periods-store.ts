@@ -97,28 +97,28 @@ function mapApi(r: PayrollPeriodResponseDto): HRPayrollPeriodRecord {
 // Map a backend MonthlyInputResponseDto to a frontend HRPayrollMonthlyInput.
 // baseSalarySnapshot is required to convert absence SAR → days correctly.
 function fromBackendInput(dto: MonthlyInputResponseDto, baseSalarySnapshot = 0): HRPayrollMonthlyInput {
+  const amount = parseFloat(String(dto.amount)) || 0;
   switch (dto.inputKind) {
     case 'overtime':
-      return { kind: 'overtime_hours', value: dto.amount, note: dto.note ?? '' };
+      return { kind: 'overtime_hours', value: amount, note: dto.note ?? '' };
     case 'allowance_extra':
     case 'bonus':
-      return { kind: 'allowance_amount', value: dto.amount, note: dto.note ?? '' };
+      return { kind: 'allowance_amount', value: amount, note: dto.note ?? '' };
     case 'absence_deduction': {
-      // Backend stores SAR; frontend stores days. Convert back.
       const dailyRate = baseSalarySnapshot > 0 ? baseSalarySnapshot / 30 : 1;
-      const days = Math.round((dto.amount / dailyRate) * 1000) / 1000;
+      const days = Math.round((amount / dailyRate) * 1000) / 1000;
       return { kind: 'absence_days', value: days, note: dto.note ?? '' };
     }
     case 'lateness_deduction':
-      return { kind: 'late_minutes', value: dto.amount, note: dto.note ?? '' };
+      return { kind: 'late_minutes', value: amount, note: dto.note ?? '' };
     case 'advance_installment':
     case 'loan_installment':
-      return { kind: 'advance_recovery', value: dto.amount, note: dto.note ?? '' };
+      return { kind: 'advance_recovery', value: amount, note: dto.note ?? '' };
     case 'discipline_deduction':
     case 'other_deduction':
-      return { kind: 'deduction_amount', value: dto.amount, note: dto.note ?? '' };
+      return { kind: 'deduction_amount', value: amount, note: dto.note ?? '' };
     default:
-      return { kind: 'other', value: dto.amount, note: dto.note ?? '' };
+      return { kind: 'other', value: amount, note: dto.note ?? '' };
   }
 }
 

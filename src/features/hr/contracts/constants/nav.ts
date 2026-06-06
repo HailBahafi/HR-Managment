@@ -7,6 +7,7 @@ import {
   UserCheck,
   Coins,
   FileStack,
+  Receipt,
 } from 'lucide-react';
 
 export type HRContractsNavItem = {
@@ -26,6 +27,7 @@ export const hrPayrollNavGroups: HRContractsNavGroup[] = [
     labelAr: 'الراتب',
     items: [
       { slug: 'payroll-periods', labelAr: 'فترات الراتب', icon: CalendarRange },
+      { slug: 'monthly-inputs', labelAr: 'مدخلات الرواتب', icon: Receipt },
     ],
   },
   {
