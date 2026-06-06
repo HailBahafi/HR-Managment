@@ -1,6 +1,13 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 
-export type AttendanceDayStatus = 'present' | 'absent' | 'late' | 'early_leave' | 'holiday' | 'weekend' | 'on_leave';
+export type AttendanceDayStatus =
+  | 'present'
+  | 'late'
+  | 'absent'
+  | 'rest_day'
+  | 'unscheduled'
+  | 'holiday'
+  | 'on_leave';
 
 export type DaySummaryResponseDto = {
   id: string;

@@ -57,7 +57,7 @@ export function useEmployeeProfileAttendance(employee: Employee) {
     return {
       presentDays: employeeSummaries.filter((s) => s.status === 'present').length,
       absentDays: employeeSummaries.filter((s) => s.status === 'absent').length,
-      earlyLeaveDays: employeeSummaries.filter((s) => s.status === 'early_leave').length,
+      earlyLeaveDays: employeeSummaries.filter((s) => s.earlyLeaveMinutes > 0).length,
       lateHours: lateMinutes / 60,
     };
   }, [employeeSummaries]);

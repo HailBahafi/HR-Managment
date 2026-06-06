@@ -1,0 +1,231 @@
+'use client';
+
+import * as React from 'react';
+import { CalendarRange, Eye } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { DataTable, AppPagination, type ColumnDef } from '@/components/ui/data-table';
+import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
+import {
+  DAY_SUMMARY_STATUS_BADGE,
+  DAY_SUMMARY_STATUS_LABELS,
+} from '@/features/hr/attendance/day-summaries/constants/day-summary-labels';
+import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summaries/hooks/useDaySummariesDirectoryModel';
+import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
+import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
+import { cn } from '@/shared/utils';
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try {
+    return new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[7rem_1fr] gap-2 border-b border-border/40 py-2 text-sm last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="min-w-0 break-words">{value ?? '—'}</span>
+    </div>
+  );
+}
+
+function DaySummaryDetailDialog({
+  row,
+  open,
+  onOpenChange,
+}: {
+  row: DaySummaryResponseDto | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  if (!row) return null;
+  const statusLabel = DAY_SUMMARY_STATUS_LABELS[row.status] ?? row.status;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg border-border" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-base">تفاصيل ملخص الحضور</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-[70vh] overflow-y-auto pe-1">
+          <DetailRow label="الموظف" value={row.employeeNameAr ?? '—'} />
+          <DetailRow label="اليوم" value={row.workDate} />
+          <DetailRow label="الحالة" value={statusLabel} />
+          <DetailRow label="بداية متوقعة" value={formatDateTime(row.expectedStartAt)} />
+          <DetailRow label="نهاية متوقعة" value={formatDateTime(row.expectedEndAt)} />
+          <DetailRow label="تسجيل حضور" value={formatDateTime(row.actualCheckInAt)} />
+          <DetailRow label="تسجيل انصراف" value={formatDateTime(row.actualCheckOutAt)} />
+          <DetailRow label="دقائق التأخير" value={minutesToHHMM(row.lateMinutes)} />
+          <DetailRow label="انصراف مبكر" value={minutesToHHMM(row.earlyLeaveMinutes)} />
+          <DetailRow label="ساعات العمل" value={minutesToHHMM(row.workedMinutes)} />
+          <DetailRow label="إضافي" value={minutesToHHMM(row.overtimeMinutes)} />
+          <DetailRow label="تعديل يدوي" value={row.isManualOverride ? 'نعم' : 'لا'} />
+          <DetailRow label="نهائي" value={row.isFinalized ? 'نعم' : 'لا'} />
+          <DetailRow label="ملاحظات" value={row.notes} />
+          <DetailRow label="آخر حساب" value={formatDateTime(row.computedAt)} />
+          <DetailRow label="أُنشئ" value={formatDateTime(row.createdAt)} />
+          <DetailRow label="آخر تحديث" value={formatDateTime(row.updatedAt)} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function DaySummariesPage() {
+  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const model = useDaySummariesDirectoryModel();
+  const [detailRow, setDetailRow] = React.useState<DaySummaryResponseDto | null>(null);
+
+  const columns = React.useMemo((): ColumnDef<DaySummaryResponseDto>[] => [
+    {
+      key: 'employee',
+      title: 'الموظف',
+      render: (row) => (
+        <span className="font-medium">{row.employeeNameAr ?? '—'}</span>
+      ),
+    },
+    {
+      key: 'workDate',
+      title: 'اليوم',
+      render: (row) => (
+        <span className="font-mono tabular-nums text-xs" dir="ltr">{row.workDate}</span>
+      ),
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      render: (row) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            'text-[10px] font-normal',
+            DAY_SUMMARY_STATUS_BADGE[row.status] ?? '',
+          )}
+        >
+          {DAY_SUMMARY_STATUS_LABELS[row.status] ?? row.status}
+        </Badge>
+      ),
+    },
+    {
+      key: 'checkIn',
+      title: 'حضور',
+      hideOnMobile: true,
+      render: (row) => formatDateTime(row.actualCheckInAt),
+    },
+    {
+      key: 'checkOut',
+      title: 'انصراف',
+      hideOnMobile: true,
+      render: (row) => formatDateTime(row.actualCheckOutAt),
+    },
+    {
+      key: 'late',
+      title: 'تأخير',
+      hideOnMobile: true,
+      render: (row) => minutesToHHMM(row.lateMinutes),
+    },
+    {
+      key: 'worked',
+      title: 'عمل',
+      render: (row) => minutesToHHMM(row.workedMinutes),
+    },
+    {
+      key: 'manual',
+      title: 'يدوي',
+      hideOnMobile: true,
+      render: (row) => (row.isManualOverride ? 'نعم' : '—'),
+    },
+    {
+      key: 'actions',
+      title: '',
+      render: (row) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => setDetailRow(row)}
+          title="عرض التفاصيل"
+        >
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
+  ], []);
+
+  return (
+    <>
+      <SetPageTitle
+        titleAr="ملخص الحضور اليومي"
+        descriptionAr="سجلات الحضور المحسوبة لكل موظف — إعادة الحساب من الأحداث والورديات."
+        iconName="CalendarRange"
+      />
+
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">{model.total} ملخص</p>
+        <FilterToggleButton />
+      </div>
+
+      {!model.loading && model.items.length === 0 ? (
+        <EmptyState
+          icon={CalendarRange}
+          title="لا توجد ملخصات"
+          description="غيّر نطاق التاريخ أو نفّذ «تحديث البيانات» لإعادة الحساب من الأحداث."
+        />
+      ) : (
+        <>
+          <DataTable
+            columns={columns}
+            data={model.items}
+            keyExtractor={(row) => row.id}
+            loading={model.loading}
+            onRowClick={setDetailRow}
+          />
+          <AppPagination
+            page={model.page}
+            pageSize={model.limit}
+            total={model.total}
+            onPageChange={model.setPage}
+            onPageSizeChange={model.setLimit}
+          />
+        </>
+      )}
+
+      <DaySummaryDetailDialog
+        row={detailRow}
+        open={detailRow != null}
+        onOpenChange={(v) => { if (!v) setDetailRow(null); }}
+      />
+
+      {companyId ? (
+        <RecomputeDaySummariesDialog
+          open={model.recomputeOpen}
+          onOpenChange={model.setRecomputeOpen}
+          companyId={companyId}
+          defaultFrom={model.from}
+          defaultTo={model.to}
+          filterEmployeeIds={model.selectedEmpIds}
+          allEmployees={model.allEmployees}
+          onSuccess={model.reload}
+        />
+      ) : null}
+    </>
+  );
+}

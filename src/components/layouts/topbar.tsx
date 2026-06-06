@@ -94,6 +94,7 @@ export const navConfig: NavItem[] = [
     groups: [
       { labelAr: 'المتابعة', items: [
         { label: 'إدارة الحضور', href: '/hr/attendance/daily', icon: CalendarRange },
+        { label: 'ملخص الحضور اليومي', href: '/hr/attendance/day-summaries', icon: ListChecks },
         { label: 'الأحداث',      href: '/hr/attendance/events', icon: Activity },
       ]},
       { labelAr: 'الإسناد', items: [
