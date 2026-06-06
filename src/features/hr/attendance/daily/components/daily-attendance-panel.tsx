@@ -10,6 +10,7 @@ import { cn } from '@/shared/utils';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { RegisterEventComboDialog } from '@/features/hr/attendance/daily/components/daily-one-day-view';
+import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
 
 export function DailyAttendancePanel() {
   const model = useDailyAttendanceModel();
@@ -66,6 +67,19 @@ export function DailyAttendancePanel() {
         printable={model.attendancePrintable}
       />
 
+      {companyId ? (
+        <RecomputeDaySummariesDialog
+          open={model.recomputeOpen}
+          onOpenChange={model.setRecomputeOpen}
+          companyId={companyId}
+          defaultFrom={model.dateBounds.from}
+          defaultTo={model.dateBounds.to}
+          filterEmployeeIds={model.selectedEmpIds}
+          allEmployees={model.allEmployees}
+          onSuccess={model.refreshAfterRecompute}
+        />
+      ) : null}
+
       {companyId && model.dates.length > 0 && (
         <RegisterEventComboDialog
           open={registerOpen}
@@ -74,7 +88,7 @@ export function DailyAttendancePanel() {
           workDate={model.dates[0]!}
           companyId={companyId}
           availableDates={model.dates.length > 1 ? model.dates : undefined}
-          onCreated={() => { /* data will refresh on next filter change */ }}
+          onCreated={model.refreshAfterRecompute}
         />
       )}
 

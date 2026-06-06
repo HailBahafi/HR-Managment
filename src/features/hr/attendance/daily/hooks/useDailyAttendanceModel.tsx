@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { FileDown, FileSpreadsheet } from 'lucide-react';
+import { FileDown, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
@@ -36,6 +36,7 @@ export function useDailyAttendanceModel() {
   const [dateBounds, setDateBounds] = React.useState(() => ({ from: todayYMD(), to: todayYMD() }));
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [pdfOpen, setPdfOpen] = React.useState(false);
+  const [recomputeOpen, setRecomputeOpen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<AttendanceViewMode>('card');
 
   const { from: filterFrom, to: filterTo } = dateBounds;
@@ -57,51 +58,51 @@ export function useDailyAttendanceModel() {
     });
   }, []);
 
+  const reloadAttendanceData = React.useCallback(async (from: string, to: string) => {
+    try {
+      const [summRes, evtRes] = await Promise.all([
+        attendanceDaySummariesApi.getAll({ limit: 2000, from, to } as Parameters<typeof attendanceDaySummariesApi.getAll>[0]),
+        attendanceEventsApi.getAll({ limit: 2000, workDateFrom: from, workDateTo: to }),
+      ]);
+      setDaySummaries(
+        summRes.items.map((s) => ({
+          id: s.id,
+          employeeId: s.employeeId,
+          employeeName: s.employeeNameAr,
+          date: s.workDate,
+          templateId: s.shiftAssignmentId ?? null,
+          status: s.status as AttendanceDaySummary['status'],
+          lateMinutes: s.lateMinutes,
+          earlyLeaveMinutes: s.earlyLeaveMinutes,
+          overtimeMinutes: s.overtimeMinutes,
+          workedMinutes: s.workedMinutes,
+          notes: s.notes ?? undefined,
+          actualCheckInAt: (s as Record<string, unknown>).actualCheckInAt as string | null ?? null,
+          actualCheckOutAt: (s as Record<string, unknown>).actualCheckOutAt as string | null ?? null,
+          expectedStartAt: (s as Record<string, unknown>).expectedStartAt as string | null ?? null,
+          expectedEndAt: (s as Record<string, unknown>).expectedEndAt as string | null ?? null,
+        })),
+      );
+      setEvents(
+        evtRes.items.map((e) => ({
+          id: e.id,
+          employeeId: e.employeeId,
+          employeeName: e.employeeNameAr,
+          date: e.workDate,
+          type: e.eventType,
+          at: e.occurredAt,
+          source: e.source ?? 'manual_hr',
+        })) as AttendanceEvent[],
+      );
+    } catch { /* ignore */ }
+  }, []);
+
   // Load day summaries & events when date range changes
   React.useEffect(() => {
-    // Always use a date range — fall back to today if filter was cleared
     const from = filterFrom || todayYMD();
-    const to   = filterTo   || todayYMD();
-
-    void (async () => {
-      try {
-        const [summRes, evtRes] = await Promise.all([
-          attendanceDaySummariesApi.getAll({ limit: 2000, from, to } as Parameters<typeof attendanceDaySummariesApi.getAll>[0]),
-          attendanceEventsApi.getAll({ limit: 2000, workDateFrom: from, workDateTo: to }),
-        ]);
-        setDaySummaries(
-          summRes.items.map((s) => ({
-            id: s.id,
-            employeeId: s.employeeId,
-            employeeName: s.employeeNameAr,
-            date: s.workDate,
-            templateId: s.shiftAssignmentId ?? null,
-            status: s.status as AttendanceDaySummary['status'],
-            lateMinutes: s.lateMinutes,
-            earlyLeaveMinutes: s.earlyLeaveMinutes,
-            overtimeMinutes: s.overtimeMinutes,
-            workedMinutes: s.workedMinutes,
-            notes: s.notes ?? undefined,
-            actualCheckInAt: (s as Record<string, unknown>).actualCheckInAt as string | null ?? null,
-            actualCheckOutAt: (s as Record<string, unknown>).actualCheckOutAt as string | null ?? null,
-            expectedStartAt: (s as Record<string, unknown>).expectedStartAt as string | null ?? null,
-            expectedEndAt: (s as Record<string, unknown>).expectedEndAt as string | null ?? null,
-          })),
-        );
-        setEvents(
-          evtRes.items.map((e) => ({
-            id: e.id,
-            employeeId: e.employeeId,
-            employeeName: e.employeeNameAr,
-            date: e.workDate,
-            type: e.eventType,
-            at: e.occurredAt,
-            source: e.source ?? 'manual_hr',
-          })) as AttendanceEvent[],
-        );
-      } catch { /* ignore */ }
-    })();
-  }, [filterFrom, filterTo]);
+    const to = filterTo || todayYMD();
+    void reloadAttendanceData(from, to);
+  }, [filterFrom, filterTo, reloadAttendanceData]);
 
   const spanFromData = React.useMemo(() => {
     let lo = '';
@@ -248,6 +249,16 @@ export function useDailyAttendanceModel() {
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 text-xs"
+              onClick={() => setRecomputeOpen(true)}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              تحديث البيانات
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
               onClick={() => {
                 if (attendancePdfRows.length === 0) {
                   toast.error('لا توجد سجلات للتصدير ضمن الفلاتر الحالية.');
@@ -294,10 +305,18 @@ export function useDailyAttendanceModel() {
     ],
   );
 
+  const refreshAfterRecompute = React.useCallback(() => {
+    const from = filterFrom || todayYMD();
+    const to = filterTo || todayYMD();
+    void reloadAttendanceData(from, to);
+  }, [filterFrom, filterTo, reloadAttendanceData]);
+
   return {
     from,
     to,
     dates,
+    dateBounds,
+    selectedEmpIds,
     denseForView,
     eventsForView,
     allEmployees,
@@ -305,6 +324,9 @@ export function useDailyAttendanceModel() {
     attendancePdfFileName,
     pdfOpen,
     setPdfOpen,
+    recomputeOpen,
+    setRecomputeOpen,
+    refreshAfterRecompute,
     viewMode,
     setViewMode,
   };
