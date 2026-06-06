@@ -3,7 +3,7 @@
 import * as React from 'react';
 import {
   Plus, Pencil, Trash2, AlertTriangle, Loader2, Coins,
-  Check, X, LayoutGrid, List,
+  LayoutGrid, List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
@@ -25,6 +25,7 @@ import {
   allowanceTypesApi,
   type AllowanceTypeDto,
   type CreateAllowanceTypeDto,
+  type UpdateAllowanceTypeDto,
   type AllowanceCalculationType,
 } from '@/features/hr/contracts/lib/api/allowance-types';
 
@@ -54,9 +55,6 @@ type DraftForm = {
   typicalAmount: string;
   typicalPercent: string;
   currency: string;
-  isTaxable: boolean;
-  isIncludedInGosi: boolean;
-  sortOrder: string;
   isActive: boolean;
   notes: string;
 };
@@ -64,7 +62,7 @@ type DraftForm = {
 const EMPTY_FORM: DraftForm = {
   code: '', nameAr: '', calculationType: 'fixed_amount',
   typicalAmount: '', typicalPercent: '', currency: 'SAR',
-  isTaxable: true, isIncludedInGosi: false, sortOrder: '0', isActive: true, notes: '',
+  isActive: true, notes: '',
 };
 
 function formFromDto(dto: AllowanceTypeDto): DraftForm {
@@ -75,9 +73,6 @@ function formFromDto(dto: AllowanceTypeDto): DraftForm {
     typicalAmount: dto.typicalAmount ?? '',
     typicalPercent: dto.typicalPercent ?? '',
     currency: dto.currency,
-    isTaxable: dto.isTaxable,
-    isIncludedInGosi: dto.isIncludedInGosi,
-    sortOrder: String(dto.sortOrder),
     isActive: dto.isActive,
     notes: dto.notes ?? '',
   };
@@ -109,8 +104,7 @@ function AllowanceTypeDialog({
     if (!form.code.trim()) { setError('الكود مطلوب'); return; }
     setSaving(true); setError(null);
     try {
-      const payload: CreateAllowanceTypeDto = {
-        companyId,
+      const fields: UpdateAllowanceTypeDto = {
         code: form.code.trim(),
         nameAr: form.nameAr.trim(),
         nameEn: null,
@@ -118,17 +112,26 @@ function AllowanceTypeDialog({
         typicalAmount: form.calculationType === 'fixed_amount' && form.typicalAmount ? Number(form.typicalAmount) : null,
         typicalPercent: form.calculationType === 'percent_of_basic' && form.typicalPercent ? Number(form.typicalPercent) : null,
         currency: form.currency || 'SAR',
-        isTaxable: form.isTaxable,
-        isIncludedInGosi: form.isIncludedInGosi,
-        sortOrder: Number(form.sortOrder) || 0,
         isActive: form.isActive,
         notes: form.notes.trim() || null,
       };
       if (editItem) {
-        await allowanceTypesApi.update(editItem.id, payload);
+        await allowanceTypesApi.update(editItem.id, fields);
         toast.success('تم تحديث نوع البدل');
       } else {
-        await allowanceTypesApi.create(payload);
+        const createPayload: CreateAllowanceTypeDto = {
+          companyId,
+          code: fields.code!,
+          nameAr: fields.nameAr!,
+          nameEn: fields.nameEn,
+          calculationType: fields.calculationType!,
+          typicalAmount: fields.typicalAmount,
+          typicalPercent: fields.typicalPercent,
+          currency: fields.currency,
+          isActive: fields.isActive,
+          notes: fields.notes,
+        };
+        await allowanceTypesApi.create(createPayload);
         toast.success('تمت إضافة نوع البدل');
       }
       onSaved();
@@ -195,24 +198,6 @@ function AllowanceTypeDialog({
             </div>
           </div>
 
-          {/* Sort order */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">الترتيب</Label>
-            <Input type="number" value={form.sortOrder} onChange={(e) => patch({ sortOrder: e.target.value })} className="h-9 w-32" dir="ltr" />
-          </div>
-
-          {/* Flags */}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2.5">
-              <span className="text-xs font-medium">خاضع للضريبة</span>
-              <Switch checked={form.isTaxable} onCheckedChange={(v) => patch({ isTaxable: v })} />
-            </label>
-            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2.5">
-              <span className="text-xs font-medium">يدخل في GOSI</span>
-              <Switch checked={form.isIncludedInGosi} onCheckedChange={(v) => patch({ isIncludedInGosi: v })} />
-            </label>
-          </div>
-
           {/* Notes */}
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">ملاحظات (اختياري)</Label>
@@ -242,20 +227,6 @@ function AllowanceTypeDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ── flag pill ──────────────────────────────────────────────────────────────────
-
-function FlagPill({ active, activeClass, label }: { active: boolean; activeClass: string; label: string }) {
-  return (
-    <span className={cn(
-      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-      active ? activeClass : 'border-border bg-muted/40 text-muted-foreground',
-    )}>
-      {active ? <Check className="h-2.5 w-2.5" /> : <X className="h-2.5 w-2.5" />}
-      {label}
-    </span>
   );
 }
 
@@ -308,23 +279,6 @@ function AllowanceCard({
             {fmtAmount(item)}
           </span>
         </div>
-
-        {/* Row 3: flags */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <FlagPill
-            active={item.isTaxable}
-            activeClass="border-amber-300/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
-            label="ضريبة"
-          />
-          <FlagPill
-            active={item.isIncludedInGosi}
-            activeClass="border-blue-300/50 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300"
-            label="GOSI"
-          />
-          <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-            {item.currency}
-          </span>
-        </div>
       </div>
 
       {/* actions */}
@@ -364,8 +318,6 @@ function AllowanceTable({
             <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">الكود</th>
             <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">طريقة الاحتساب</th>
             <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">المبلغ</th>
-            <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">ضريبة</th>
-            <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">GOSI</th>
             <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">الحالة</th>
             <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">إجراءات</th>
           </tr>
@@ -397,16 +349,6 @@ function AllowanceTable({
                 )}>
                   {fmtAmount(item)}
                 </span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                {item.isTaxable
-                  ? <Check className="mx-auto h-3.5 w-3.5 text-amber-500" />
-                  : <X className="mx-auto h-3.5 w-3.5 text-muted-foreground/40" />}
-              </td>
-              <td className="px-4 py-3 text-center">
-                {item.isIncludedInGosi
-                  ? <Check className="mx-auto h-3.5 w-3.5 text-blue-500" />
-                  : <X className="mx-auto h-3.5 w-3.5 text-muted-foreground/40" />}
               </td>
               <td className="px-4 py-3 text-center">
                 <Badge variant={item.isActive ? 'success' : 'secondary'} className="text-[9px] px-1.5 py-px">

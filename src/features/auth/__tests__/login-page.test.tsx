@@ -78,9 +78,7 @@ describe('LoginPage', () => {
   it('calls authApi.login with trimmed lowercase email on valid submit', async () => {
     mockLogin.mockResolvedValueOnce({
       access_token: 'tok',
-      userId: 'u1',
       user: { id: 'u1', email: 'admin@test.com', phone: null },
-      accessProfile: {} as never,
     });
 
     renderLoginPage();

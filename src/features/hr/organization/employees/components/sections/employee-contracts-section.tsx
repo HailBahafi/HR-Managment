@@ -9,9 +9,19 @@ import { Empty, SectionH } from '@/features/hr/organization/employees/components
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 
-const ALLOW_LABELS: Record<string, string> = {
-  'halt-housing': 'سكن', 'halt-transport': 'مواصلات', 'halt-phone': 'هاتف',
-  'halt-food': 'غذاء', 'halt-field': 'ميدان', 'halt-risk': 'مخاطر', 'halt-gas': 'وقود',
+const NATURE_LABELS: Record<string, string> = {
+  indefinite: 'غير محدد المدة',
+  fixed_term: 'محدد المدة',
+  temporary: 'مؤقت',
+  seasonal: 'موسمي',
+};
+
+const ARRANGEMENT_LABELS: Record<string, string> = {
+  full_time: 'دوام كامل',
+  part_time: 'دوام جزئي',
+  remote: 'عن بُعد',
+  hybrid: 'مرن/هجين',
+  flexible: 'مرن',
 };
 
 export function EmployeeContractsSection({ model }: { model: EmployeeProfileModel }) {
@@ -80,8 +90,30 @@ export function EmployeeContractsSection({ model }: { model: EmployeeProfileMode
                             <StatusBadge status={c.status} />
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {c.startDate} <span className="mx-1 opacity-40">←</span> {c.endDate}
+                            {c.startDate} <span className="mx-1 opacity-40">←</span> {c.endDate || 'غير محدد'}
                           </p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            {c.contractType && (
+                              <span className="rounded border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                {NATURE_LABELS[c.contractType] ?? c.contractType}
+                              </span>
+                            )}
+                            {c.workArrangement && (
+                              <span className="rounded border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                {ARRANGEMENT_LABELS[c.workArrangement] ?? c.workArrangement}
+                              </span>
+                            )}
+                            {c.annualLeaveDays != null && (
+                              <span className="rounded border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                إجازة {c.annualLeaveDays}ي
+                              </span>
+                            )}
+                            {c.branchNameAr && (
+                              <span className="rounded border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                {c.branchNameAr}
+                              </span>
+                            )}
+                          </div>
                           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                             <span className="text-xs text-muted-foreground">
                               أساسي: <span className="font-semibold text-foreground tabular-nums">{formatCurrency(c.baseSalary)}</span>
@@ -101,7 +133,7 @@ export function EmployeeContractsSection({ model }: { model: EmployeeProfileMode
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               {c.allowanceLines.map((al, i) => (
                                 <span key={i} className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
-                                  {ALLOW_LABELS[al.allowanceTypeId] ?? al.allowanceTypeId} {formatNumber(al.amount)}
+                                  {al.allowanceTypeNameAr || al.allowanceTypeCode || 'بدل'} {formatNumber(al.amount)}
                                 </span>
                               ))}
                             </div>

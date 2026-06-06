@@ -199,8 +199,6 @@ export function PayrollPeriodsClient() {
     <>
       <SetPageTitle titleAr="فترات الراتب" descriptionAr="إنشاء وإدارة فترات الرواتب الشهرية." iconName="CalendarRange" />
 
-      <p className="mb-2 text-sm text-muted-foreground">{total} فترة</p>
-
       {filtered.length === 0 ? (
         <EmptyState icon={CalendarRange} title="لا توجد فترات" description="أنشئ فترة راتب جديدة للبدء." />
       ) : (

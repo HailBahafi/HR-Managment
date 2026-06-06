@@ -128,7 +128,13 @@ export function employmentFormToDraft(
     templateId: v.templateId || null,
     allowanceLines: v.allowanceLines
       .filter((l) => l.allowanceTypeId)
-      .map((l) => ({ allowanceTypeId: l.allowanceTypeId, amount: parseFloat(l.amount) || 0 })),
+      .map((l, i) => ({
+        allowanceTypeId: l.allowanceTypeId,
+        allowanceTypeNameAr: '',
+        allowanceTypeCode: '',
+        amount: parseFloat(l.amount) || 0,
+        sortOrder: i,
+      })),
     allowancesNote: v.allowancesNote,
     deductionsNote: v.deductionsNote,
     amendsContractId: null,

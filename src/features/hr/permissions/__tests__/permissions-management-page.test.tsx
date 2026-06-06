@@ -107,7 +107,7 @@ describe('PermissionsManagementPage', () => {
   it('opens delete dialog when delete button is clicked', async () => {
     renderPage();
     const trashBtn = screen.getAllByRole('button').find(
-      (b) => b.className.includes('destructive') && !b.disabled,
+      (b) => b.className.includes('destructive') && !(b as HTMLButtonElement).disabled,
     );
     if (!trashBtn) { expect(true).toBe(true); return; }
     await userEvent.click(trashBtn);

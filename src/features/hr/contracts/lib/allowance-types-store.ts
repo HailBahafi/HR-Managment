@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
-import { allowanceTypesApi, type AllowanceTypeResponseDto } from './api/allowance-types';
+import { allowanceTypesApi, type AllowanceTypeDto } from './api/allowance-types';
 
 export type HRAllowanceTypeRecord = {
   id: string;
@@ -14,7 +14,7 @@ export type HRAllowanceTypeRecord = {
   updatedAt: string;
 };
 
-function mapApi(r: AllowanceTypeResponseDto): HRAllowanceTypeRecord {
+function mapApi(r: AllowanceTypeDto): HRAllowanceTypeRecord {
   return {
     id: r.id,
     code: r.code,
@@ -48,7 +48,7 @@ export const useHRAllowanceTypesStore = create<State>()((set) => ({
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
-      const result = await allowanceTypesApi.list({ companyId, limit: 200 });
+      const result = await allowanceTypesApi.getAll({ companyId, limit: 200 });
       set({ items: result.items.map(mapApi), isLoading: false });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
@@ -62,6 +62,7 @@ export const useHRAllowanceTypesStore = create<State>()((set) => ({
       code: data.code,
       nameAr: data.nameAr,
       nameEn: data.nameEn,
+      calculationType: 'fixed_amount',
       typicalAmount: data.typicalAmount,
       currency: data.currency,
       sortOrder: data.sortOrder,
@@ -86,7 +87,7 @@ export const useHRAllowanceTypesStore = create<State>()((set) => ({
   },
 
   remove: async (id) => {
-    await allowanceTypesApi.delete(id);
+    await allowanceTypesApi.remove(id);
     set(s => ({ items: s.items.filter(row => row.id !== id) }));
   },
 }));

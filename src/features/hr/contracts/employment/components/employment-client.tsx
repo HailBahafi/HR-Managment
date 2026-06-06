@@ -520,8 +520,6 @@ export function EmploymentContractsClient() {
     <>
       <SetPageTitle titleAr="عقود العمل" descriptionAr="إدارة دورة حياة عقود العمل الوظيفية." iconName="FileText" />
 
-      <p className="mb-2 text-sm text-muted-foreground">{total} عقد</p>
-
       {filtered.length === 0 ? (
         <EmptyState icon={FileText} title="لا توجد عقود" description="أنشئ عقد عمل جديداً للبدء." />
       ) : (

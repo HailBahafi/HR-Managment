@@ -196,7 +196,7 @@ export function DaySummariesPage() {
             data={model.items}
             keyExtractor={(row) => row.id}
             loading={model.loading}
-            onRowClick={setDetailRow}
+            onRowClick={(row) => setDetailRow(row)}
           />
           <AppPagination
             page={model.page}

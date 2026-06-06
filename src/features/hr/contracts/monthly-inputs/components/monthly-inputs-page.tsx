@@ -301,7 +301,7 @@ export function MonthlyInputsPage() {
             data={items}
             keyExtractor={(row) => row.id}
             loading={loading}
-            onRowClick={setDetailRow}
+            onRowClick={(row) => setDetailRow(row)}
           />
           <AppPagination
             page={page}

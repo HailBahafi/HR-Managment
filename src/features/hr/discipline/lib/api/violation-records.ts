@@ -2,17 +2,52 @@ import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 
 export type ViolationRecordStatus = 'pending' | 'approved' | 'rejected' | 'needs_edit';
 
+export type ViolationTypeSummaryDto = {
+  id: string;
+  code: string;
+  nameAr: string;
+  nameEn: string | null;
+  hasDeduction: boolean;
+  deductionKind: 'amount' | 'hours' | 'days' | null;
+  deductionValue: string | null;
+  needsWarning: boolean;
+  needsInvestigation: boolean;
+  needsApproval: boolean;
+};
+
+export type ViolationInvestigationDto = {
+  id: string;
+  violationRecordId: string;
+  linkedViolationRecordNumber: string | null;
+  subjectEmployeeId: string;
+  investigatorEmployeeId: string;
+  investigationDate: string;
+  employeeStatement: string | null;
+  witnessStatement: string | null;
+  result: 'proven' | 'not_proven' | null;
+  recommendation: 'warning' | 'deduction' | null;
+  deductionType: 'amount' | 'hours' | 'days' | null;
+  deductionValue: string | null;
+};
+
 export type ViolationRecordResponseDto = {
   id: string;
   companyId: string;
   recordNumber: string;
   employeeId: string;
   violationTypeId: string;
+  violationType?: ViolationTypeSummaryDto | null;
+  violationTypeNeedsInvestigation?: boolean;
+  hasInvestigations?: boolean;
   status: ViolationRecordStatus;
   violationDate: string;
   description: string;
   notes: string | null;
   attachmentsNote: string | null;
+  decisionNotes?: string | null;
+  decidedAt?: string | null;
+  decidedBy?: string | null;
+  investigations?: ViolationInvestigationDto[];
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;

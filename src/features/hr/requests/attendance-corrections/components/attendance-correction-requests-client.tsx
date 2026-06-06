@@ -271,24 +271,17 @@ export function AttendanceCorrectionRequestsClient() {
         ),
       },
       {
-        key: 'workDate',
-        title: 'تاريخ التصحيح',
-        render: (r) => <span className="font-mono text-xs" dir="ltr">{r.workDate}</span>,
-      },
-      {
         key: 'requestType',
         title: 'نوع الطلب',
         hideOnMobile: true,
         render: (r) => (
           <div>
             <p className="text-sm font-medium">{r.requestTypeNameAr}</p>
+            {r.subtypeNameAr ? (
+              <p className="text-[10px] text-muted-foreground">{r.subtypeNameAr}</p>
+            ) : null}
           </div>
         ),
-      },
-      {
-        key: 'corrTimes',
-        title: 'بعد التصحيح',
-        render: (r) => timeCell(r.correctedCheckIn, r.correctedCheckOut, 'حضور', 'انصراف'),
       },
       {
         key: 'prevStatus',
@@ -310,6 +303,21 @@ export function AttendanceCorrectionRequestsClient() {
         title: 'السبب / الملاحظات',
         hideOnMobile: true,
         render: (r) => <span className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">{r.reasonAr || '—'}</span>,
+      },
+      {
+        key: 'prevTimes',
+        title: 'قبل التصحيح',
+        render: (r) => timeCell(r.previousCheckIn, r.previousCheckOut, 'حضور', 'انصراف'),
+      },
+      {
+        key: 'corrTimes',
+        title: 'بعد التصحيح',
+        render: (r) => timeCell(r.correctedCheckIn, r.correctedCheckOut, 'حضور', 'انصراف'),
+      },
+      {
+        key: 'workDate',
+        title: 'تاريخ التصحيح',
+        render: (r) => <span className="font-mono text-xs" dir="ltr">{r.workDate}</span>,
       },
       {
         key: 'actions',
@@ -358,7 +366,7 @@ export function AttendanceCorrectionRequestsClient() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground font-mono" dir="ltr">{r.workDate}</p>
-                <p className="text-xs"><span className="text-muted-foreground">نوع الطلب:</span> {r.requestTypeNameAr}</p>
+                <p className="text-xs"><span className="text-muted-foreground">نوع الطلب:</span> {r.requestTypeNameAr}{r.subtypeNameAr ? ` — ${r.subtypeNameAr}` : ''}</p>
                 {timeCell(r.previousCheckIn, r.previousCheckOut, 'سابق حضور', 'سابق انصراف')}
                 {timeCell(r.correctedCheckIn, r.correctedCheckOut, 'مصحح حضور', 'مصحح انصراف')}
                 <p className="text-xs"><span className="text-muted-foreground">الحالة السابقة:</span> {r.previousStatusAr}</p>

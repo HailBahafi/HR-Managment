@@ -77,9 +77,12 @@ export function useEmployeeProfileData(employee: Employee) {
           currency: c.currency,
           status: c.status as HRContractRecord['status'],
           templateId: c.contractTemplateId ?? null,
-          allowanceLines: (c.allowanceLines ?? []).map(l => ({
+          allowanceLines: (c.allowanceLines ?? []).map((l, i) => ({
             allowanceTypeId: l.allowanceTypeId,
+            allowanceTypeNameAr: l.allowanceTypeNameAr ?? '',
+            allowanceTypeCode: l.allowanceTypeCode ?? '',
             amount: Number(l.amount) || 0,
+            sortOrder: l.sortOrder ?? i,
           })),
           allowancesNote: c.allowancesNote ?? '',
           deductionsNote: c.deductionsNote ?? '',
@@ -152,18 +155,37 @@ export function useEmployeeProfileData(employee: Employee) {
 
   const employeeViolations = React.useMemo(
     () =>
-      violations.map((v) => ({
-        id: v.id,
-        employeeId: v.employeeId,
-        typeNameAr: v.violationTypeId,
-        date: v.violationDate,
-        description: v.description,
-        status: v.status ?? 'pending',
-        notes: v.notes,
-        typeHasDeduction: false,
-        typeDeductionValue: 0,
-        typeDeductionKind: 'amount' as const,
-      })),
+      violations.map((v) => {
+        const vt = v.violationType;
+        const normKind = (k: string | null | undefined): 'amount' | 'hours' | 'day' =>
+          k === 'amount' ? 'amount' : k === 'days' || k === 'day' ? 'day' : 'hours';
+        return {
+          id: v.id,
+          employeeId: v.employeeId,
+          recordNumber: v.recordNumber,
+          typeNameAr: vt?.nameAr || v.description || 'مخالفة',
+          typeCode: vt?.code ?? '',
+          date: v.violationDate,
+          description: v.description,
+          status: v.status ?? 'pending',
+          notes: v.notes ?? '',
+          attachmentsNote: v.attachmentsNote ?? '',
+          typeHasDeduction: vt?.hasDeduction ?? false,
+          typeDeductionValue: vt?.deductionValue ? Number(vt.deductionValue) : 0,
+          typeDeductionKind: normKind(vt?.deductionKind),
+          needsInvestigation: vt?.needsInvestigation ?? v.violationTypeNeedsInvestigation ?? false,
+          investigations: (v.investigations ?? []).map((inv) => ({
+            id: inv.id,
+            investigationDate: inv.investigationDate,
+            employeeStatement: inv.employeeStatement ?? '',
+            witnessStatement: inv.witnessStatement ?? '',
+            result: inv.result,
+            recommendation: inv.recommendation,
+            deductionKind: normKind(inv.deductionType),
+            deductionValue: inv.deductionValue ? Number(inv.deductionValue) : 0,
+          })),
+        };
+      }),
     [violations],
   );
 
