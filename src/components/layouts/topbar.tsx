@@ -30,7 +30,7 @@ import { Logo } from '@/components/layouts/logo';
 import { NotificationBellPopover } from '@/features/hr/notifications/components/notification-bell-popover';
 import { cn } from '@/shared/utils';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
-import { hrContractsNavGroups } from '@/features/hr/contracts/constants/nav';
+import { hrPayrollNavGroups, hrContractsOnlyNavGroups, isHrPayrollNavPath, isHrContractsOnlyNavPath } from '@/features/hr/contracts/constants/nav';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
 import { useLogout } from '@/features/auth/hooks/use-logout';
@@ -51,7 +51,20 @@ type NavGroup = { labelAr?: string; items: SubItem[] };
 type NavItem  = {
   key: string; label: string; href?: string;
   icon: React.ElementType; groups?: NavGroup[];
+  /** Override active detection (e.g. split payroll vs contracts under same URL base). */
+  isActive?: (pathname: string) => boolean;
 };
+
+function mapContractsNavGroups(groups: typeof hrPayrollNavGroups): NavGroup[] {
+  return groups.map((g) => ({
+    labelAr: g.labelAr,
+    items: g.items.map((item) => ({
+      label: item.labelAr,
+      href: hrContractsSectionHref(item.slug),
+      icon: item.icon,
+    })),
+  }));
+}
 
 export const navConfig: NavItem[] = [
   { key: 'dashboard', label: 'الرئيسية', href: '/hr/dashboard', icon: LayoutDashboard },
@@ -128,21 +141,25 @@ export const navConfig: NavItem[] = [
     })),
   },
   {
-    key: 'contracts', label: 'الرواتب والعقود', icon: Wallet,
-    groups: hrContractsNavGroups.map((g) => ({
-      labelAr: g.labelAr,
-      items: g.items.map((item) => ({
-        label: item.labelAr,
-        href: hrContractsSectionHref(item.slug),
-        icon: item.icon,
-      })),
-    })),
+    key: 'payroll',
+    label: 'الرواتب',
+    icon: Wallet,
+    isActive: isHrPayrollNavPath,
+    groups: mapContractsNavGroups(hrPayrollNavGroups),
+  },
+  {
+    key: 'contracts',
+    label: 'العقود',
+    icon: FileSignature,
+    isActive: isHrContractsOnlyNavPath,
+    groups: mapContractsNavGroups(hrContractsOnlyNavGroups),
   },
   { key: 'permissions', label: 'الصلاحيات', href: hrPermissionsHref(), icon: Shield },
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 function parentIsActive(pathname: string, item: NavItem) {
+  if (item.isActive) return item.isActive(pathname);
   if (item.href) return pathname === item.href || pathname.startsWith(item.href + '/');
   return item.groups?.some(g =>
     g.items.some(s => {
