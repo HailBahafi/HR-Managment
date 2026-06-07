@@ -9,7 +9,7 @@ import { Empty, LeaveBalanceCard } from '@/features/hr/organization/employees/co
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 
 export function EmployeeLeavesSection({ model }: { model: EmployeeProfileModel }) {
-  const { leaveBalanceDisplay, setLeaveRequestOpen, leaveRequests } = model;
+  const { leaveBalanceCards, setLeaveRequestOpen, leaveRequests } = model;
   const leaveReqs = leaveRequests;
 
   return (
@@ -30,30 +30,28 @@ export function EmployeeLeavesSection({ model }: { model: EmployeeProfileModel }
         </Button>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <LeaveBalanceCard
-          title="إجازة سنوية"
-          year={leaveBalanceDisplay.year}
-          entitlementLabel="الاستحقاق السنوي"
-          entitled={leaveBalanceDisplay.entitled}
-          used={leaveBalanceDisplay.annual.used}
-          available={leaveBalanceDisplay.annual.available}
-          yearEndExpected={leaveBalanceDisplay.annual.yearEnd}
-          accent="success"
-          onRequestLeave={() => setLeaveRequestOpen(true)}
-        />
-        <LeaveBalanceCard
-          title="إجازة مرضية"
-          year={leaveBalanceDisplay.year}
-          entitlementLabel="الاستحقاق المعتمد (أيام)"
-          entitled={leaveBalanceDisplay.entitled}
-          used={leaveBalanceDisplay.sick.used}
-          available={leaveBalanceDisplay.sick.available}
-          yearEndExpected={leaveBalanceDisplay.sick.yearEnd}
-          accent="primary"
-          onRequestLeave={() => setLeaveRequestOpen(true)}
-        />
-      </div>
+      {leaveBalanceCards.length > 0 ? (
+        <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {leaveBalanceCards.map((card) => (
+            <LeaveBalanceCard
+              key={card.leaveTypeId}
+              title={card.title}
+              year={card.year}
+              entitlementLabel="إجمالي الرصيد (أيام)"
+              entitled={card.entitled}
+              used={card.used}
+              available={card.available}
+              yearEndExpected={card.yearEnd}
+              accent={card.accent}
+              onRequestLeave={() => setLeaveRequestOpen(true)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mb-8">
+          <Empty icon={Calendar} text="لا توجد أرصدة إجازات مسجّلة" />
+        </div>
+      )}
 
       {leaveReqs.length > 0 ? (
         <div className="space-y-2">

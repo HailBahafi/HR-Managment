@@ -19,6 +19,8 @@ function mapApi(r: DisciplineInvestigationResponseDto): HRDisciplineInvestigatio
     result: r.result,
     recommendation: r.recommendation ?? '',
     recommendationType,
+    deductionType: r.deductionType ?? null,
+    deductionValue: r.deductionValue != null ? Number(r.deductionValue) : null,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };

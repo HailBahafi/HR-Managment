@@ -29,6 +29,9 @@ export interface UnifiedEmployee {
 export interface UnifiedLeaveRecord {
   id: string;
   employeeId: string;
+  employeeNameAr?: string;
+  requestTypeId?: string;
+  requestTypeNameAr?: string;
   leaveTypeId: string;
   leaveTypeName: string;
   type: UnifiedLeaveType;
@@ -39,6 +42,13 @@ export interface UnifiedLeaveRecord {
   workingDays: number;
   noteAr?: string;
   noteEn?: string;
+  subtypeSlug?: string | null;
+  subtypeNameAr?: string | null;
+  submittedAt?: string;
+  decidedAt?: string;
+  cancelledAt?: string;
+  decidedByEmployeeId?: string | null;
+  decisionNotesAr?: string;
   approvalChain: LeaveApprovalStep[];
 }
 

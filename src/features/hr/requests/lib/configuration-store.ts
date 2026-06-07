@@ -3,7 +3,7 @@ import type {
   HRDepartmentEntity, HRRequestTemplateEntity, HRRequestTypeEntity,
   HRRequestFieldDefinition, HRApprovalStage,
 } from './types';
-import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, slugify, type HRRequestTypeCategory } from './types';
+import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, normalizeRequestCategory, slugify } from './types';
 import { requestTypesApi, type ApiRequestType } from './api/request-types';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -39,7 +39,7 @@ function mapApiRequestType(r: ApiRequestType): HRRequestTypeEntity {
     slug: r.slug,
     sortOrder: r.sortOrder,
     isActive: r.isActive,
-    requestCategory: (r.requestCategory as HRRequestTypeCategory) ?? 'leave',
+    requestCategory: normalizeRequestCategory(r.requestCategory),
     approvalAssignmentTemplateId: r.approvalAssignmentTemplateId ?? null,
     approvalStages: (r.approvalStages ?? []) as unknown as HRApprovalStage[],
     subtypes: (r.subtypes ?? []).map(s => ({

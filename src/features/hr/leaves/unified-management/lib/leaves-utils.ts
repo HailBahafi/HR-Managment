@@ -33,15 +33,12 @@ export function applyStepDecision(
 }
 
 export function canActOnLeave(leave: UnifiedLeaveRecord): boolean {
-  return leave.status === 'pending' && leave.approvalChain.some((s) => s.status === 'pending');
+  return leave.status === 'pending';
 }
 
 export function getApprovalStage(leave: UnifiedLeaveRecord): 'fully_approved' | 'awaiting_first' | 'awaiting_second' | 'awaiting_third' | 'other' {
   if (leave.status === 'approved') return 'fully_approved';
-  const pendingIdx = leave.approvalChain.findIndex((s) => s.status === 'pending');
-  if (pendingIdx === 0) return 'awaiting_first';
-  if (pendingIdx === 1) return 'awaiting_second';
-  if (pendingIdx === 2) return 'awaiting_third';
+  if (leave.status === 'pending') return 'awaiting_first';
   return 'other';
 }
 

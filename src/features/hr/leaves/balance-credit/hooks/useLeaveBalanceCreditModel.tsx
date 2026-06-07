@@ -30,9 +30,6 @@ function creditRequestInDateRange(r: LeaveBalanceCreditRequest, from: string, to
 
 export function useLeaveBalanceCreditModel() {
   const [creditRequests, setCreditRequests] = React.useState<LeaveBalanceCreditRequest[]>([]);
-  const [balancesByEmployee, setBalancesByEmployee] = React.useState<
-    Record<string, { used: number; total: number }>
-  >({});
   const [employeeOptions, setEmployeeOptions] = React.useState<BalanceCreditEmployeeOption[]>([]);
   const [employeeById, setEmployeeById] = React.useState<Map<string, BalanceCreditEmployeeOption>>(
     () => new Map(),
@@ -43,7 +40,12 @@ export function useLeaveBalanceCreditModel() {
   const [deptInlineOptions, setDeptInlineOptions] = React.useState<BalanceCreditFilterOption[]>([
     { value: 'all', label: 'جميع الأقسام' },
   ]);
+  const [leaveTypes, setLeaveTypes] = React.useState<{ id: string; nameAr: string }[]>([]);
   const [defaultLeaveTypeId, setDefaultLeaveTypeId] = React.useState<string | null>(null);
+  const [defaultLeaveTypeNameAr, setDefaultLeaveTypeNameAr] = React.useState('—');
+  const [balancesByEmployeeType, setBalancesByEmployeeType] = React.useState<
+    Record<string, Record<string, { used: number; total: number }>>
+  >({});
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
@@ -56,6 +58,7 @@ export function useLeaveBalanceCreditModel() {
 
   const [addOpen, setAddOpen] = React.useState(false);
   const [employeeId, setEmployeeId] = React.useState('');
+  const [leaveTypeId, setLeaveTypeId] = React.useState('');
   const [daysAddedRaw, setDaysAddedRaw] = React.useState('');
   const [reasonAr, setReasonAr] = React.useState('');
 
@@ -65,8 +68,10 @@ export function useLeaveBalanceCreditModel() {
     try {
       const directory = await loadBalanceCreditDirectory(params);
       setCreditRequests(directory.creditRequests);
-      setBalancesByEmployee(directory.balancesByEmployee);
+      setLeaveTypes(directory.leaveTypes.map((t) => ({ id: t.id, nameAr: t.nameAr })));
       setDefaultLeaveTypeId(directory.defaultLeaveTypeId);
+      setDefaultLeaveTypeNameAr(directory.defaultLeaveTypeNameAr);
+      setBalancesByEmployeeType(directory.balancesByEmployeeType);
       setCompanyId(directory.companyId);
       setEmployeeOptions(directory.employeeOptions);
       setEmployeeById(directory.employeeById);
@@ -106,12 +111,13 @@ export function useLeaveBalanceCreditModel() {
   const baseFiltered = React.useMemo(() => {
     return creditRequests.filter((r) => {
       const emp = employeeById.get(r.employeeId);
+      if (selectedEmpIds.size > 0 && !selectedEmpIds.has(r.employeeId)) return false;
       if (branchId !== 'all' && emp?.branchId && emp.branchId !== branchId) return false;
       if (departmentId !== 'all' && emp?.departmentId && emp.departmentId !== departmentId) return false;
       if (!creditRequestInDateRange(r, dateBounds.from, dateBounds.to)) return false;
       return true;
     });
-  }, [creditRequests, branchId, departmentId, dateBounds.from, dateBounds.to, employeeById]);
+  }, [creditRequests, selectedEmpIds, branchId, departmentId, dateBounds.from, dateBounds.to, employeeById]);
 
   const statusCounts = React.useMemo(
     () => ({
@@ -133,9 +139,18 @@ export function useLeaveBalanceCreditModel() {
 
   const resetAddForm = React.useCallback(() => {
     setEmployeeId('');
+    setLeaveTypeId(defaultLeaveTypeId ?? '');
     setDaysAddedRaw('');
     setReasonAr('');
-  }, []);
+  }, [defaultLeaveTypeId]);
+
+  const openAddForEmployee = React.useCallback((id: string) => {
+    setEmployeeId(id);
+    setLeaveTypeId(defaultLeaveTypeId ?? '');
+    setDaysAddedRaw('');
+    setReasonAr('');
+    setAddOpen(true);
+  }, [defaultLeaveTypeId]);
 
   const handleDialogSubmit = React.useCallback(
     async (e: React.FormEvent) => {
@@ -144,7 +159,7 @@ export function useLeaveBalanceCreditModel() {
         toast.error('اختر الموظف.');
         return;
       }
-      if (!companyId || !defaultLeaveTypeId) {
+      if (!companyId || !leaveTypeId) {
         toast.error('تعذر تحديد الشركة أو نوع الإجازة.');
         return;
       }
@@ -157,7 +172,7 @@ export function useLeaveBalanceCreditModel() {
         await createBalanceCreditRequest({
           companyId,
           employeeId,
-          leaveTypeId: defaultLeaveTypeId,
+          leaveTypeId,
           daysAdded: days,
           reasonAr: reasonAr.trim() || null,
           status: 'pending',
@@ -171,7 +186,7 @@ export function useLeaveBalanceCreditModel() {
         toast.error(displayMessage);
       }
     },
-    [companyId, daysAddedRaw, defaultLeaveTypeId, employeeId, reasonAr, reload, resetAddForm],
+    [companyId, daysAddedRaw, employeeId, leaveTypeId, reasonAr, reload, resetAddForm],
   );
 
   const approveCreditRequest = React.useCallback(
@@ -202,15 +217,24 @@ export function useLeaveBalanceCreditModel() {
     [reload],
   );
 
-  const selectedBalance = employeeId ? balancesByEmployee[employeeId] : null;
+  const selectedBalance = employeeId && leaveTypeId
+    ? balancesByEmployeeType[employeeId]?.[leaveTypeId] ?? null
+    : null;
+
+  const selectedLeaveTypeNameAr = React.useMemo(
+    () => leaveTypes.find((t) => t.id === leaveTypeId)?.nameAr ?? defaultLeaveTypeNameAr,
+    [leaveTypes, leaveTypeId, defaultLeaveTypeNameAr],
+  );
 
   return {
     loading,
     listError,
     creditRequests,
     sortedRequests,
-    balancesByEmployee,
+    leaveTypes,
+    defaultLeaveTypeNameAr,
     selectedBalance,
+    selectedLeaveTypeNameAr,
     branchId,
     setBranchId,
     departmentId,
@@ -230,11 +254,14 @@ export function useLeaveBalanceCreditModel() {
     setAddOpen,
     employeeId,
     setEmployeeId,
+    leaveTypeId,
+    setLeaveTypeId,
     daysAddedRaw,
     setDaysAddedRaw,
     reasonAr,
     setReasonAr,
     resetAddForm,
+    openAddForEmployee,
     handleDialogSubmit,
     approveCreditRequest,
     rejectCreditRequest,

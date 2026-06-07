@@ -78,7 +78,7 @@ export function useLeaveTypesPanelModel() {
       requiresApproval: item.requiresApproval,
       maxDaysPerRequest: item.maxDaysPerRequest,
       sortOrder: item.sortOrder,
-      isActive: item.isActive,
+      isActive: true,
     });
     setError(null);
     setOpen(true);
@@ -109,7 +109,7 @@ export function useLeaveTypesPanelModel() {
           requiresApproval: draft.requiresApproval,
           maxDaysPerRequest: draft.maxDaysPerRequest,
           sortOrder: draft.sortOrder,
-          isActive: draft.isActive,
+          isActive: true,
         });
       } else {
         await createLeaveType({
@@ -122,7 +122,7 @@ export function useLeaveTypesPanelModel() {
           requiresApproval: draft.requiresApproval,
           maxDaysPerRequest: draft.maxDaysPerRequest,
           sortOrder: draft.sortOrder,
-          isActive: draft.isActive,
+          isActive: true,
         });
       }
       await reload();

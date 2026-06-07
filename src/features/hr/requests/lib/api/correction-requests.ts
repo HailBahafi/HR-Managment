@@ -58,7 +58,8 @@ export type UpdateCorrectionRequestDto = {
 
 export type CorrectionDecisionDto = {
   decision: 'approve' | 'reject';
-  decidedByEmployeeId: string;
+  /** HR employee id — not the auth user id */
+  decidedByEmployeeId?: string;
   decisionNotesAr?: string;
   updatedBy?: string;
 };
@@ -156,7 +157,8 @@ export type CreateLeaveRequestNewDto = {
 
 export type LeaveDecisionDto = {
   decision: 'approve' | 'reject';
-  decidedByEmployeeId: string;
+  /** HR employee id — not the auth user id */
+  decidedByEmployeeId?: string;
   decisionNotesAr?: string;
   updatedBy?: string;
 };

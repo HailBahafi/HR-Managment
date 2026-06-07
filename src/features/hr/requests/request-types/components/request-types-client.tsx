@@ -43,7 +43,7 @@ interface DraftForm {
 }
 
 const EMPTY: DraftForm = {
-  requestCategory: 'leave',
+  requestCategory: 'attendance',
   nameAr: '',
   sortOrder: 1,
   isActive: true,
@@ -236,14 +236,8 @@ export function RequestTypesClient() {
                     <span
                       className={cn(
                         'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium',
-                        rt.requestCategory === 'leave' && 'bg-success/15 text-success',
                         rt.requestCategory === 'attendance' && 'bg-primary/15 text-primary',
                         rt.requestCategory === 'advance' && 'bg-gold/15 text-gold',
-                        rt.requestCategory === 'document' && 'bg-blue-500/15 text-blue-600',
-                        rt.requestCategory === 'transfer' && 'bg-violet-500/15 text-violet-600',
-                        rt.requestCategory === 'resignation' && 'bg-destructive/15 text-destructive',
-                        rt.requestCategory === 'discipline' && 'bg-orange-500/15 text-orange-600',
-                        rt.requestCategory === 'other' && 'bg-muted text-muted-foreground',
                       )}
                     >
                       {HR_REQUEST_TYPE_CATEGORY_LABELS_AR[rt.requestCategory]}

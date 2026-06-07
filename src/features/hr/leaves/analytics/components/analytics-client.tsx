@@ -27,7 +27,12 @@ import {
   type EmployeeLeaveBalanceResponseDto,
   type CreateLeaveBalanceDto,
 } from '@/features/hr/leaves/lib/api/leave-balances';
-import { leaveTypesApi, type LeaveTypeResponseDto } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
+import type { LeaveTypeResponseDto } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
+import {
+  leaveTypeNameAr,
+  loadCompanyLeaveTypes,
+  resolveDefaultLeaveTypeId,
+} from '@/features/hr/leaves/lib/leave-types-utils';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -58,13 +63,23 @@ function BalanceBar({ used, total, color }: { used: number; total: number; color
 
 // ─── Create / Edit dialog ─────────────────────────────────────────────────────
 
-type DialogMode = { mode: 'create' } | { mode: 'edit'; balance: EmployeeLeaveBalanceResponseDto };
+type DialogMode =
+  | { mode: 'create'; employeeId?: string }
+  | { mode: 'edit'; balance: EmployeeLeaveBalanceResponseDto };
+
+type AnalyticsEmployeeRow = {
+  employeeId: string;
+  employeeName: string;
+  leaveTypeLabel: string;
+  balance: EmployeeLeaveBalanceResponseDto | null;
+};
 
 function BalanceFormDialog({
   open,
   dialogMode,
   employees,
   leaveTypes,
+  defaultLeaveTypeId,
   companyId,
   onClose,
   onSaved,
@@ -73,6 +88,7 @@ function BalanceFormDialog({
   dialogMode: DialogMode;
   employees: EmployeeResponseDto[];
   leaveTypes: LeaveTypeResponseDto[];
+  defaultLeaveTypeId: string | null;
   companyId: string;
   onClose: () => void;
   onSaved: (b: EmployeeLeaveBalanceResponseDto) => void;
@@ -91,12 +107,12 @@ function BalanceFormDialog({
       setTotalDays(String(dialogMode.balance.totalDays));
       setUsedDays(String(dialogMode.balance.usedDays));
     } else {
-      setEmployeeId('');
-      setLeaveTypeId('');
+      setEmployeeId(dialogMode.mode === 'create' ? (dialogMode.employeeId ?? '') : '');
+      setLeaveTypeId(defaultLeaveTypeId ?? '');
       setTotalDays('');
       setUsedDays('0');
     }
-  }, [open, dialogMode]);
+  }, [open, dialogMode, defaultLeaveTypeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,27 +313,33 @@ function StatCard({
 function EmployeeBalanceCard({
   employeeId,
   employeeName,
+  leaveTypeLabel,
   balance,
   onEdit,
   onDelete,
 }: {
   employeeId: string;
   employeeName: string;
-  balance: EmployeeLeaveBalanceResponseDto;
-  onEdit: (b: EmployeeLeaveBalanceResponseDto) => void;
+  leaveTypeLabel: string;
+  balance: EmployeeLeaveBalanceResponseDto | null;
+  onEdit: (employeeId: string, balance: EmployeeLeaveBalanceResponseDto | null) => void;
   onDelete: (b: EmployeeLeaveBalanceResponseDto) => void;
 }) {
   const initials = employeeName.split(' ').map((w) => w[0]).slice(0, 2).join('');
   const hue = ((employeeId.charCodeAt(0) ?? 0) * 47) % 360;
-  const used = balance.usedDays;
-  const total = balance.totalDays;
-  const remaining = balance.remainingDays;
-  const p = pct(used, total);
-  const danger = p >= 90;
-  const warn = p >= 70;
+  const hasBalance = balance != null;
+  const used = balance?.usedDays ?? 0;
+  const total = balance?.totalDays ?? 0;
+  const remaining = balance?.remainingDays ?? 0;
+  const p = hasBalance ? pct(used, total) : 0;
+  const danger = hasBalance && p >= 90;
+  const warn = hasBalance && p >= 70;
 
   return (
-    <div className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-shadow hover:shadow-md">
+    <div className={cn(
+      'group overflow-hidden rounded-xl border bg-card shadow-soft transition-shadow hover:shadow-md',
+      hasBalance ? 'border-border' : 'border-dashed border-border/70',
+    )}>
       {/* Header */}
       <div className="flex items-center gap-2.5 px-3.5 pt-3.5 pb-2.5">
         <div
@@ -328,15 +350,23 @@ function EmployeeBalanceCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold leading-tight">{employeeName}</p>
-          <p className="text-[10px] text-muted-foreground">إجازة سنوية</p>
+          <p className="text-[10px] text-muted-foreground">{leaveTypeLabel}</p>
         </div>
         <div className="flex shrink-0 gap-0 opacity-0 transition-opacity group-hover:opacity-100">
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" onClick={() => onEdit(balance)}>
-            <Pencil className="h-3 w-3" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-primary"
+            onClick={() => onEdit(employeeId, balance)}
+            aria-label={hasBalance ? 'تعديل الرصيد' : 'إضافة رصيد'}
+          >
+            {hasBalance ? <Pencil className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => onDelete(balance)}>
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          {hasBalance ? (
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => onDelete(balance)}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -366,7 +396,9 @@ function EmployeeBalanceCard({
             style={{ width: `${p}%` }}
           />
         </div>
-        <p className="mt-1 text-[9px] text-muted-foreground">{p}% مستخدم</p>
+        <p className="mt-1 text-[9px] text-muted-foreground">
+          {hasBalance ? `${p}% مستخدم` : 'لا يوجد رصيد مسجّل'}
+        </p>
       </div>
     </div>
   );
@@ -379,6 +411,7 @@ export function AnalyticsClient() {
 
   const [balances, setBalances] = React.useState<EmployeeLeaveBalanceResponseDto[]>([]);
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
+  const [defaultLeaveTypeId, setDefaultLeaveTypeId] = React.useState<string | null>(null);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -396,11 +429,12 @@ export function AnalyticsClient() {
       try {
         const [balRes, ltRes, empRes] = await Promise.all([
           leaveBalancesApi.getAll({ companyId, limit: 1000 }),
-          leaveTypesApi.getAll({ companyId, limit: 200 }),
-          employeesApi.getAll({ companyId, limit: 500 }),
+          loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true }),
+          employeesApi.getAll({ companyId, limit: 1000 }),
         ]);
         setBalances(balRes.items);
         setLeaveTypes(ltRes.items);
+        setDefaultLeaveTypeId(ltRes.defaultLeaveTypeId ?? resolveDefaultLeaveTypeId(ltRes.items));
         setEmployees(empRes.items);
       } catch { toast.error('فشل تحميل البيانات'); }
       finally { setLoading(false); }
@@ -414,31 +448,24 @@ export function AnalyticsClient() {
     return m;
   }, [employees]);
 
-  // Annual leave type id
-  const annualLeaveTypeId = React.useMemo(
-    () => leaveTypes.find((lt) => lt.nameAr === 'إجازة سنوية')?.id ?? null,
-    [leaveTypes],
-  );
-
-  // Filtered balances — only إجازة سنوية
-  const filteredBalances = React.useMemo(() => {
-    return balances.filter((b) => {
-      if (annualLeaveTypeId && b.leaveTypeId !== annualLeaveTypeId) return false;
-      if (employeeFilter !== 'all' && b.employeeId !== employeeFilter) return false;
-      return true;
-    });
-  }, [balances, annualLeaveTypeId, employeeFilter]);
-
-  // One balance per employee (annual leave only)
   const grouped = React.useMemo(() => {
-    return filteredBalances
-      .slice()
-      .sort((a, b) => (empMap.get(a.employeeId) ?? '').localeCompare(empMap.get(b.employeeId) ?? '', 'ar'));
-  }, [filteredBalances, empMap]);
+    let rows = balances.map((b): AnalyticsEmployeeRow => ({
+      employeeId: b.employeeId,
+      employeeName: empMap.get(b.employeeId) ?? '—',
+      leaveTypeLabel: leaveTypeNameAr(leaveTypes, b.leaveTypeId),
+      balance: b,
+    }));
 
-  // KPIs
-  const totalEmployees = grouped.length;
-  const exhausted = grouped.filter((b) => b.remainingDays <= 0).length;
+    if (employeeFilter !== 'all') {
+      rows = rows.filter((r) => r.employeeId === employeeFilter);
+    }
+
+    return rows.sort((a, b) => {
+      const byName = a.employeeName.localeCompare(b.employeeName, 'ar');
+      if (byName !== 0) return byName;
+      return a.leaveTypeLabel.localeCompare(b.leaveTypeLabel, 'ar');
+    });
+  }, [balances, empMap, leaveTypes, employeeFilter]);
 
   const handleSaved = (b: EmployeeLeaveBalanceResponseDto) => {
     setBalances((prev) => {
@@ -453,7 +480,14 @@ export function AnalyticsClient() {
   };
 
   const openCreate = React.useCallback(() => { setDialogMode({ mode: 'create' }); setFormOpen(true); }, []);
-  const openEdit = React.useCallback((b: EmployeeLeaveBalanceResponseDto) => { setDialogMode({ mode: 'edit', balance: b }); setFormOpen(true); }, []);
+  const openEdit = React.useCallback((employeeId: string, balance: EmployeeLeaveBalanceResponseDto | null) => {
+    if (balance) {
+      setDialogMode({ mode: 'edit', balance });
+    } else {
+      setDialogMode({ mode: 'create', employeeId });
+    }
+    setFormOpen(true);
+  }, []);
 
   usePageHeaderActions(
     () => (
@@ -473,8 +507,7 @@ export function AnalyticsClient() {
       { value: 'all', label: 'كل الموظفين' },
       ...employees.map((emp) => ({ value: emp.id, label: emp.nameAr })),
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [employees.length],
+    [employees],
   );
 
   useEntityFilterSlot(
@@ -493,7 +526,7 @@ export function AnalyticsClient() {
   );
 
   const deleteEmpName = deleteTarget ? (empMap.get(deleteTarget.employeeId) ?? '—') : '';
-  const deleteLtName = deleteTarget ? (leaveTypes.find((t) => t.id === deleteTarget.leaveTypeId)?.nameAr ?? '—') : '';
+  const deleteLtName = deleteTarget ? leaveTypeNameAr(leaveTypes, deleteTarget.leaveTypeId) : '';
 
   return (
     <div className="space-y-5">
@@ -505,23 +538,18 @@ export function AnalyticsClient() {
       ) : grouped.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
           <p className="text-sm text-muted-foreground">
-            {balances.length === 0 ? 'لا توجد أرصدة إجازات مسجّلة بعد' : 'لا نتائج تطابق الفلاتر الحالية'}
+            {balances.length === 0 ? 'لا توجد أرصدة إجازات مسجّلة' : 'لا نتائج تطابق الفلاتر الحالية'}
           </p>
-          {balances.length === 0 && (
-            <Button type="button" size="sm" variant="outline" onClick={openCreate} className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" />
-              أضف أول رصيد
-            </Button>
-          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {grouped.map((b) => (
+          {grouped.map((row) => (
             <EmployeeBalanceCard
-              key={b.id}
-              employeeId={b.employeeId}
-              employeeName={empMap.get(b.employeeId) ?? b.employeeId}
-              balance={b}
+              key={row.balance?.id ?? `${row.employeeId}-${row.leaveTypeLabel}`}
+              employeeId={row.employeeId}
+              employeeName={row.employeeName}
+              leaveTypeLabel={row.leaveTypeLabel}
+              balance={row.balance}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
             />
@@ -534,6 +562,7 @@ export function AnalyticsClient() {
         dialogMode={dialogMode}
         employees={employees}
         leaveTypes={leaveTypes}
+        defaultLeaveTypeId={defaultLeaveTypeId}
         companyId={companyId}
         onClose={() => setFormOpen(false)}
         onSaved={handleSaved}

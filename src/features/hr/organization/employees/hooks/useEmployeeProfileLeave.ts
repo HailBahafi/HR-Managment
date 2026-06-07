@@ -8,6 +8,22 @@ import { leaveTypesApi, type LeaveTypeResponseDto } from '@/features/hr/leaves/l
 
 export type { LeaveRequestResponseDto, EmployeeLeaveBalanceResponseDto, LeaveTypeResponseDto };
 
+export type EmployeeLeaveBalanceCard = {
+  leaveTypeId: string;
+  title: string;
+  year: number;
+  entitled: number;
+  used: number;
+  available: number;
+  yearEnd: number;
+  accent: 'success' | 'primary';
+};
+
+const ACCENT_BY_CODE: Record<string, 'success' | 'primary'> = {
+  annual: 'success',
+  sick: 'primary',
+};
+
 export function useEmployeeProfileLeave(employee: Employee) {
   const [leaveRequests, setLeaveRequests] = React.useState<LeaveRequestResponseDto[]>([]);
   const [leaveBalances, setLeaveBalances] = React.useState<EmployeeLeaveBalanceResponseDto[]>([]);
@@ -39,40 +55,29 @@ export function useEmployeeProfileLeave(employee: Employee) {
     })();
   }, [employee.id]);
 
-  const leaveBalanceDisplay = React.useMemo(() => {
+  const leaveBalanceCards = React.useMemo((): EmployeeLeaveBalanceCard[] => {
     const year = new Date().getFullYear();
-    const annual = leaveTypes.find((t) => t.code === 'annual' || t.nameAr.includes('سنوية'));
-    const sick = leaveTypes.find((t) => t.code === 'sick' || t.nameAr.includes('مرضية'));
-
-    const annualBal = annual ? leaveBalances.find((b) => b.leaveTypeId === annual.id) : null;
-    const sickBal = sick ? leaveBalances.find((b) => b.leaveTypeId === sick.id) : null;
-
-    const entitled = annual?.maxDaysPerRequest ?? annualBal?.totalDays ?? 21;
-    const annualUsed = annualBal?.usedDays ?? 0;
-    const sickUsed = sickBal?.usedDays ?? 0;
-    const sickTotal = sickBal?.totalDays ?? 21;
-
-    return {
-      year,
-      entitled,
-      annual: {
-        used: annualUsed,
-        available: annualBal?.remainingDays ?? Math.max(0, entitled - annualUsed),
-        yearEnd: annualBal?.remainingDays ?? Math.max(0, entitled - annualUsed),
-      },
-      sick: {
-        used: sickUsed,
-        available: sickBal?.remainingDays ?? Math.max(0, sickTotal - sickUsed),
-        yearEnd: sickBal?.remainingDays ?? Math.max(0, sickTotal - sickUsed),
-      },
-    };
+    return leaveBalances.map((bal) => {
+      const lt = leaveTypes.find((t) => t.id === bal.leaveTypeId);
+      const code = lt?.code ?? '';
+      return {
+        leaveTypeId: bal.leaveTypeId,
+        title: lt?.nameAr ?? 'إجازة',
+        year,
+        entitled: bal.totalDays,
+        used: bal.usedDays,
+        available: bal.remainingDays,
+        yearEnd: bal.remainingDays,
+        accent: ACCENT_BY_CODE[code] ?? 'primary',
+      };
+    });
   }, [leaveBalances, leaveTypes]);
 
   return {
     leaveRequests,
     leaveBalances,
     leaveTypes,
-    leaveBalanceDisplay,
+    leaveBalanceCards,
     leaveRequestOpen,
     setLeaveRequestOpen,
   };

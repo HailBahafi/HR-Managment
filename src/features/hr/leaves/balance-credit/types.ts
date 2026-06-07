@@ -2,6 +2,8 @@ export interface LeaveBalanceCreditRequest {
   id: string;
   employeeId: string;
   employeeNameAr: string;
+  leaveTypeId: string;
+  leaveTypeNameAr: string;
   daysAdded: number;
   reasonAr: string;
   status: 'pending' | 'approved' | 'rejected';

@@ -5,7 +5,12 @@ import {
   type CreateBalanceCreditRequestDto,
 } from '@/features/hr/leaves/balance-credit/lib/api/balance-credits';
 import { employeeLeaveBalancesApi } from '@/features/hr/leaves/balance-credit/lib/api/employee-leave-balances';
-import { leaveTypesApi } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
+import {
+  leaveTypeNameAr,
+  loadCompanyLeaveTypes,
+  resolveDefaultLeaveTypeId,
+} from '@/features/hr/leaves/lib/leave-types-utils';
+import type { LeaveTypeResponseDto } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
 import type {
   BalanceCreditEmployeeOption,
   BalanceCreditFilterOption,
@@ -26,11 +31,14 @@ export type LoadBalanceCreditParams = {
 function mapBalanceCreditResponse(
   dto: BalanceCreditRequestResponseDto,
   employeeNames: Map<string, string>,
+  leaveTypes: LeaveTypeResponseDto[],
 ): LeaveBalanceCreditRequest {
   return {
     id: dto.id,
     employeeId: dto.employeeId,
     employeeNameAr: employeeNames.get(dto.employeeId) ?? dto.employeeId,
+    leaveTypeId: dto.leaveTypeId,
+    leaveTypeNameAr: leaveTypeNameAr(leaveTypes, dto.leaveTypeId),
     daysAdded: dto.daysAdded,
     reasonAr: dto.reasonAr ?? '',
     status: dto.status,
@@ -43,12 +51,12 @@ export async function loadBalanceCreditDirectory(params?: LoadBalanceCreditParam
   const scope = await resolveOrganizationScope();
   const companyId = scope.companyId;
 
-  const listQuery = companyId ? { companyId, limit: 500 } : { limit: 500 };
+  const listQuery = companyId ? { companyId, limit: 1000 } : { limit: 1000 };
 
   const [creditsRes, typesRes, balancesRes, employeesRes, branchesRes, departmentsRes] =
     await Promise.all([
-      balanceCreditsApi.getAll({ ...(companyId ? { companyId } : {}), limit: 200, ...(params?.employeeId ? { employeeId: params.employeeId } : {}), ...(params?.status ? { status: params.status } : {}) }),
-      leaveTypesApi.getAll(companyId ? { companyId, limit: 50 } : { limit: 50 }),
+      balanceCreditsApi.getAll({ ...(companyId ? { companyId } : {}), limit: 1000, ...(params?.employeeId ? { employeeId: params.employeeId } : {}), ...(params?.status ? { status: params.status } : {}) }),
+      loadCompanyLeaveTypes(companyId ? { companyId, limit: 200, isActive: true } : { limit: 200, isActive: true }),
       employeeLeaveBalancesApi.getAll(listQuery),
       employeesApi.getAll(listQuery),
       companyId ? branchesApi.getAll({ companyId, limit: 100 }) : branchesApi.getAll({ limit: 100 }),
@@ -56,7 +64,7 @@ export async function loadBalanceCreditDirectory(params?: LoadBalanceCreditParam
     ]);
 
   const credits = ensurePaginatedResult(creditsRes);
-  const types = ensurePaginatedResult(typesRes);
+  const types = { items: typesRes.items, pagination: typesRes.pagination };
   const balances = ensurePaginatedResult(balancesRes);
   const employees = ensurePaginatedResult(employeesRes);
   const branches = ensurePaginatedResult(branchesRes);
@@ -82,24 +90,26 @@ export async function loadBalanceCreditDirectory(params?: LoadBalanceCreditParam
   ];
 
   const leaveTypes = types.items;
-  const defaultLeaveTypeId =
-    leaveTypes.find((t) => t.code === 'annual' && t.isActive)?.id ?? leaveTypes.find((t) => t.isActive)?.id ?? null;
+  const defaultLeaveTypeId = typesRes.defaultLeaveTypeId ?? resolveDefaultLeaveTypeId(leaveTypes);
 
-  const balancesByEmployee: Record<string, { used: number; total: number }> = {};
+  const balancesByEmployeeType: Record<string, Record<string, { used: number; total: number }>> = {};
   for (const row of balances.items) {
-    const annualType = leaveTypes.find((t) => t.id === row.leaveTypeId && t.code === 'annual');
-    const targetTypeId = annualType?.id ?? defaultLeaveTypeId;
-    if (targetTypeId && row.leaveTypeId === targetTypeId) {
-      balancesByEmployee[row.employeeId] = { used: row.usedDays, total: row.totalDays };
+    if (!balancesByEmployeeType[row.employeeId]) {
+      balancesByEmployeeType[row.employeeId] = {};
     }
+    balancesByEmployeeType[row.employeeId][row.leaveTypeId] = {
+      used: row.usedDays,
+      total: row.totalDays,
+    };
   }
 
   return {
     companyId,
     leaveTypes,
     defaultLeaveTypeId,
-    creditRequests: credits.items.map((row) => mapBalanceCreditResponse(row, employeeNames)),
-    balancesByEmployee,
+    defaultLeaveTypeNameAr: leaveTypeNameAr(leaveTypes, defaultLeaveTypeId),
+    creditRequests: credits.items.map((row) => mapBalanceCreditResponse(row, employeeNames, leaveTypes)),
+    balancesByEmployeeType,
     employeeOptions,
     branchOptions,
     departmentOptions,

@@ -104,19 +104,20 @@ export interface HRRequestSubtype {
 
 // ─── Request types ────────────────────────────────────────────────────────────
 
-export const HR_REQUEST_TYPE_CATEGORIES = ['leave', 'attendance', 'document', 'advance', 'transfer', 'resignation', 'discipline', 'other'] as const;
+export const HR_REQUEST_TYPE_CATEGORIES = ['attendance', 'advance'] as const;
 export type HRRequestTypeCategory = (typeof HR_REQUEST_TYPE_CATEGORIES)[number];
 
 export const HR_REQUEST_TYPE_CATEGORY_LABELS_AR: Record<HRRequestTypeCategory, string> = {
-  leave: 'الإجازات',
   attendance: 'الحضور',
-  document: 'المستندات',
   advance: 'السلف',
-  transfer: 'النقل',
-  resignation: 'الاستقالة',
-  discipline: 'الانضباط',
-  other: 'أخرى',
 };
+
+export function normalizeRequestCategory(value: string | null | undefined): HRRequestTypeCategory {
+  if (value && (HR_REQUEST_TYPE_CATEGORIES as readonly string[]).includes(value)) {
+    return value as HRRequestTypeCategory;
+  }
+  return 'attendance';
+}
 
 export interface HRRequestTypeEntity {
   id: string;
@@ -127,7 +128,7 @@ export interface HRRequestTypeEntity {
   sortOrder: number;
   isActive: boolean;
   subtypes: HRRequestSubtype[];
-  /** تصنيف الطلب ضمن الإجازات أو الحضور أو السلف */
+  /** تصنيف الطلب ضمن الحضور أو السلف */
   requestCategory: HRRequestTypeCategory;
   /** قالب «إسناد الموافقات» المرتبط — يُعرض في طلب جديد ويُنسخ إلى لقطة مسار الموافقة */
   approvalAssignmentTemplateId?: string | null;

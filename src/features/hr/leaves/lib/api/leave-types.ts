@@ -23,6 +23,7 @@ export type LeaveTypeListQuery = {
   page?: number;
   limit?: number;
   companyId?: string;
+  isActive?: boolean;
 };
 
 export const leaveTypesApi = {

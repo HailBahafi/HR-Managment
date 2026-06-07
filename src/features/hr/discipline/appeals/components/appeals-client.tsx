@@ -302,6 +302,11 @@ export function AppealsClient() {
                   <CalendarDays className="h-3 w-3 shrink-0" />{a.date}
                 </span>
               </div>
+              {a.grounds?.trim() ? (
+                <p className="line-clamp-3 text-xs text-muted-foreground text-right" title={a.grounds}>
+                  {a.grounds}
+                </p>
+              ) : null}
               <MinimalDropdown
                 value={a.status}
                 onChange={v => void handleStatusChange(a.id, v)}
@@ -324,6 +329,7 @@ export function AppealsClient() {
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الموظف</th>
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">القناة</th>
+                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">أسباب التظلم</th>
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الحالة</th>
                 <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
               </tr>
@@ -335,6 +341,9 @@ export function AppealsClient() {
                   <td className="max-w-[10rem] truncate p-3 font-medium">{a.employeeNameAr}</td>
                   <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{a.date}</td>
                   <td className="whitespace-nowrap p-3 text-xs">{APPEAL_CHANNEL_LABELS[a.channel]}</td>
+                  <td className="max-w-[16rem] p-3 text-xs text-muted-foreground">
+                    <span className="line-clamp-2" title={a.grounds ?? undefined}>{a.grounds ?? '—'}</span>
+                  </td>
                   <td className="p-3">
                     <MinimalDropdown
                       value={a.status}

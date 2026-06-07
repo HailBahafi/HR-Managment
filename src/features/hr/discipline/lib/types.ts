@@ -3,6 +3,7 @@ export type HRViolationCaseStatus = 'draft' | 'submitted' | 'under_review' | 'ap
 export type HRDisciplineNoticeKind = 'verbal' | 'first' | 'second' | 'final';
 export type HRInvestigationResult = 'proven' | 'not_proven';
 export type HRInvestigationRecommendation = 'warning' | 'deduction';
+export type HRInvestigationDeductionType = 'days' | 'hours' | 'fixed_amount';
 export type HRPenaltyType = 'reprimand' | 'warning' | 'monetary' | 'suspension' | 'termination_recommendation';
 export type HRAppealChannel = 'in_person' | 'written' | 'email' | 'phone' | 'system';
 export type HRAppealStatus = 'pending' | 'under_review' | 'accepted' | 'rejected' | 'withdrawn';
@@ -71,6 +72,8 @@ export interface HRDisciplineInvestigationRecord {
   employeeStatement: string; witnessStatement: string;
   result: HRInvestigationResult; recommendation: string;
   recommendationType: HRInvestigationRecommendation | null;
+  deductionType: HRInvestigationDeductionType | null;
+  deductionValue: number | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -158,6 +161,9 @@ export const INVESTIGATION_RESULT_LABELS: Record<HRInvestigationResult, string> 
 };
 export const INVESTIGATION_RECOMMENDATION_LABELS: Record<HRInvestigationRecommendation, string> = {
   warning: 'توجيه إنذار', deduction: 'استقطاع',
+};
+export const INVESTIGATION_DEDUCTION_TYPE_LABELS: Record<HRInvestigationDeductionType, string> = {
+  days: 'أيام', hours: 'ساعات', fixed_amount: 'مبلغ ثابت',
 };
 export const INVESTIGATION_RESULT_FILTER_ORDER: HRInvestigationResult[] = ['proven', 'not_proven'];
 export const PENALTY_TYPE_LABELS: Record<HRPenaltyType, string> = {

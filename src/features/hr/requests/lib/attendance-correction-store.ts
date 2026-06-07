@@ -161,8 +161,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
     const userId = useAuthStore.getState().user?.id ?? '';
     const updated = await correctionRequestsApi.decide(id, {
       decision: 'approve',
-      decidedByEmployeeId: userId,
-      updatedBy: userId,
+      updatedBy: userId || undefined,
     });
     set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
   },
@@ -171,8 +170,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
     const userId = useAuthStore.getState().user?.id ?? '';
     const updated = await correctionRequestsApi.decide(id, {
       decision: 'reject',
-      decidedByEmployeeId: userId,
-      updatedBy: userId,
+      updatedBy: userId || undefined,
     });
     set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
   },

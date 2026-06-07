@@ -54,21 +54,9 @@ export function LeaveTypesPanel() {
                 <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary opacity-0 blur-2xl transition-opacity group-hover:opacity-10" />
                 <div className="relative p-5">
                   <div className="flex items-start justify-between mb-4">
-                    <div className={cn(
-                      'flex h-10 w-10 items-center justify-center rounded-xl',
-                      item.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground/60',
-                    )}>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <FileCheck className="h-5 w-5" />
                     </div>
-                    <span className={cn(
-                      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                      item.isActive
-                        ? 'border-success/30 bg-success/10 text-success'
-                        : 'border-border bg-muted text-muted-foreground',
-                    )}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full', item.isActive ? 'bg-success' : 'bg-muted-foreground')} />
-                      {item.isActive ? 'نشط' : 'موقوف'}
-                    </span>
                   </div>
                   <h3 className="font-display text-base font-bold leading-snug mb-3 group-hover:text-primary transition-colors truncate">
                     {item?.nameAr ?? '—'}
@@ -129,7 +117,6 @@ export function LeaveTypesPanel() {
               {([
                 ['paid', 'إجازة مدفوعة الأجر'],
                 ['deductsFromBalance', 'يخصم من رصيد الإجازات'],
-                ['isActive', 'نشط'],
               ] as [keyof LeaveTypeDraft, string][]).map(([key, label]) => (
                 <label key={key} className={cn(
                   'flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all',

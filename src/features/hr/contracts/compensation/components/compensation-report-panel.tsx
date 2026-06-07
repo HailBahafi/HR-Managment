@@ -211,7 +211,7 @@ export function CompensationReportPanel({
       ...(absenceDays > 0 ? [{ kind: 'absence_days'      as const, value: absenceDays, note: '' }] : []),
       ...(late        > 0 ? [{ kind: 'late_minutes'      as const, value: late,        note: '' }] : []),
       ...(penalties   > 0 ? [{ kind: 'deduction_amount'  as const, value: penalties,   note: '' }] : []),
-      ...(admin       > 0 ? [{ kind: 'other'             as const, value: admin,        note: 'إداري' }] : []),
+      ...(admin       > 0 ? [{ kind: 'other'             as const, value: admin,        note: 'خصم او اضافة مباشرة' }] : []),
     ];
 
     setMonthlyInputs(periodId, lineId, inputs);
@@ -375,7 +375,7 @@ export function CompensationReportPanel({
               { k: 'colDedAbsence',   label: 'غياب' },
               { k: 'colDedLate',      label: 'تأخير' },
               { k: 'colDedPenalties', label: 'جزاءات' },
-              { k: 'colDedAdmin',     label: 'إداري' },
+              { k: 'colDedAdmin',     label: 'خصم او اضافة مباشرة' },
             ] as { k: keyof CompensationColumnVisibility; label: string }[]).map(({ k, label }) => (
               <button
                 key={k}
@@ -434,7 +434,7 @@ export function CompensationReportPanel({
                     {!embedded && cols.colDedAbsence && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-warning">غياب</th>}
                     {!embedded && cols.colDedLate    && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">تأخير</th>}
                     {!embedded && cols.colDedPenalties&&<th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">جزاءات</th>}
-                    {!embedded && cols.colDedAdmin   && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">إداري</th>}
+                    {!embedded && cols.colDedAdmin   && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">خصم او اضافة مباشرة</th>}
                     {embedded  && <th className="min-w-[5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive/80">خصومات</th>}
                     <th className="min-w-[6rem] bg-primary/6 px-3 py-3 text-center font-bold text-primary">الصافي</th>
                   </tr>
@@ -536,7 +536,7 @@ export function CompensationReportPanel({
                         {cols.colDedAbsence  && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-warning">{fmt(previews.reduce((s,r)=>s+r.dedAbsenceSar,0))}</td>}
                         {cols.colDedLate     && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(previews.reduce((s,r)=>s+r.dedLateSar,0))}</td>}
                         {cols.colDedPenalties&& <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(previews.reduce((s,r)=>s+r.dedPenaltiesSar,0))}</td>}
-                        {cols.colDedAdmin    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-muted-foreground">{fmt(0)}</td>}
+                        {cols.colDedAdmin    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-muted-foreground">{fmt(previews.reduce((s, r) => s + r.dedAdminSar, 0))}</td>}
                         <td className={cn(
                           'bg-primary/10 px-3 py-3 text-center font-mono font-extrabold tabular-nums text-sm',
                           totalNet < 0 ? 'text-destructive' : 'text-primary',

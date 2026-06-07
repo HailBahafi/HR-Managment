@@ -77,6 +77,8 @@ export function mapDisciplineInvestigationResponse(
     result: mapInvestigationResult(dto.result),
     recommendation: buildRecommendationText(dto),
     recommendationType,
+    deductionType: dto.deductionType ?? null,
+    deductionValue: dto.deductionValue != null ? Number(dto.deductionValue) : null,
     createdAt: toIso(dto.createdAt),
     updatedAt: toIso(dto.updatedAt),
   };

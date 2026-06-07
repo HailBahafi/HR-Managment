@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <AppEntityFilterRegion />
                   <AuthenticatedShell>{children}</AuthenticatedShell>
                 </main>
-                <Toaster richColors position="top-center" dir="rtl" closeButton />
+                <Toaster richColors position="top-right" dir="rtl" closeButton />
               </div>
             </PageHeaderActionsProvider>
           </EntityFilterSlotProvider>

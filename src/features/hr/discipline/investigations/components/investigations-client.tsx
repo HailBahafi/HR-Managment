@@ -17,6 +17,7 @@ import type {
   HRInvestigationResult,
 } from '@/features/hr/discipline/lib/types';
 import {
+  INVESTIGATION_DEDUCTION_TYPE_LABELS,
   INVESTIGATION_RECOMMENDATION_LABELS,
   INVESTIGATION_RESULT_LABELS,
   INVESTIGATION_RESULT_FILTER_ORDER,
@@ -390,6 +391,37 @@ export function InvestigationsClient() {
                   {inv.date}
                 </p>
               </div>
+              {inv.employeeStatement?.trim() ? (
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-medium text-muted-foreground/80">أقوال الموظف</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground text-right" title={inv.employeeStatement}>
+                    {inv.employeeStatement}
+                  </p>
+                </div>
+              ) : null}
+              {inv.witnessStatement?.trim() ? (
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-medium text-muted-foreground/80">أقوال الشهود</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground text-right" title={inv.witnessStatement}>
+                    {inv.witnessStatement}
+                  </p>
+                </div>
+              ) : null}
+              {inv.recommendationType === 'deduction' ? (
+                <div className="space-y-0.5 text-xs text-muted-foreground">
+                  <p>التوصية: {INVESTIGATION_RECOMMENDATION_LABELS.deduction}</p>
+                  {inv.deductionType ? (
+                    <p>نوع الاستقطاع: {INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType]}</p>
+                  ) : null}
+                  {inv.deductionValue != null ? (
+                    <p className="font-mono tabular-nums" dir="ltr">قيمة الاستقطاع: {inv.deductionValue}</p>
+                  ) : null}
+                </div>
+              ) : inv.recommendationType === 'warning' ? (
+                <p className="text-xs text-muted-foreground">
+                  التوصية: {INVESTIGATION_RECOMMENDATION_LABELS.warning}
+                </p>
+              ) : null}
               <div className="mt-auto flex justify-end border-t border-border pt-3">
                 <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(inv.id)}>
                   <Trash2 className="h-3.5 w-3.5" /> حذف
@@ -407,6 +439,11 @@ export function InvestigationsClient() {
               <DirectoryTableHead className="whitespace-nowrap">المحقق</DirectoryTableHead>
               <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
               <DirectoryTableHead className="whitespace-nowrap">النتيجة</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">التوصية</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">نوع الاستقطاع</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">قيمة الاستقطاع</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">أقوال الموظف</DirectoryTableHead>
+              <DirectoryTableHead className="whitespace-nowrap">أقوال الشهود</DirectoryTableHead>
               <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
             </DirectoryTableHeaderRow>
             <DirectoryTableBody>
@@ -417,6 +454,21 @@ export function InvestigationsClient() {
                   <DirectoryTableCell className="max-w-[9rem] truncate text-xs">{inv.investigatorName}</DirectoryTableCell>
                   <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{inv.date}</DirectoryTableCell>
                   <DirectoryTableCell className="whitespace-nowrap text-xs">{INVESTIGATION_RESULT_LABELS[inv.result]}</DirectoryTableCell>
+                  <DirectoryTableCell className="whitespace-nowrap text-xs">
+                    {inv.recommendationType ? INVESTIGATION_RECOMMENDATION_LABELS[inv.recommendationType] : '—'}
+                  </DirectoryTableCell>
+                  <DirectoryTableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                    {inv.deductionType ? INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType] : '—'}
+                  </DirectoryTableCell>
+                  <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground" dir="ltr">
+                    {inv.deductionValue != null ? inv.deductionValue : '—'}
+                  </DirectoryTableCell>
+                  <DirectoryTableCell className="max-w-[14rem] text-xs text-muted-foreground">
+                    <span className="line-clamp-2" title={inv.employeeStatement || undefined}>{inv.employeeStatement || '—'}</span>
+                  </DirectoryTableCell>
+                  <DirectoryTableCell className="max-w-[14rem] text-xs text-muted-foreground">
+                    <span className="line-clamp-2" title={inv.witnessStatement || undefined}>{inv.witnessStatement || '—'}</span>
+                  </DirectoryTableCell>
                   <DirectoryTableActionsCell>
                     <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(inv.id)}>
                       <Trash2 className="h-3.5 w-3.5" />

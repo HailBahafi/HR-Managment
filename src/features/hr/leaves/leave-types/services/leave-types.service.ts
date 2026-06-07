@@ -4,6 +4,7 @@ import {
   type LeaveTypeResponseDto,
   type UpdateLeaveTypeDto,
 } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
+import { loadCompanyLeaveTypes } from '@/features/hr/leaves/lib/leave-types-utils';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { HRLeaveTypeRecord } from '@/features/hr/leaves/leave-types/types';
 import { toIso } from '@/features/hr/lib/map-dto';
@@ -26,8 +27,8 @@ export function mapLeaveTypeResponse(dto: LeaveTypeResponseDto): HRLeaveTypeReco
 
 export async function loadLeaveTypes(companyId?: string | null) {
   const scope = await resolveOrganizationScope(companyId ? { companyId } : undefined);
-  const res = await leaveTypesApi.getAll(
-    scope.companyId ? { companyId: scope.companyId, limit: 200 } : { limit: 200 },
+  const res = await loadCompanyLeaveTypes(
+    scope.companyId ? { companyId: scope.companyId, limit: 200, isActive: true } : { limit: 200, isActive: true },
   );
   return {
     items: res.items.map(mapLeaveTypeResponse),

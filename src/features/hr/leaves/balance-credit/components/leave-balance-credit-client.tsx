@@ -113,6 +113,14 @@ export function LeaveBalanceCreditClient() {
         ),
       },
       {
+        key: 'leaveType',
+        title: 'نوع الإجازة',
+        hideOnMobile: true,
+        render: (r) => (
+          <span className="text-xs text-muted-foreground">{r.leaveTypeNameAr ?? '—'}</span>
+        ),
+      },
+      {
         key: 'days',
         title: 'عدد الأيام المضافة',
         render: (r) => (
@@ -267,8 +275,9 @@ export function LeaveBalanceCreditClient() {
                   </span>
                 </div>
                 <p className="text-sm font-mono tabular-nums" dir="ltr">
-                  +{toWesternDigits(String(r.daysAdded))} يوماً (سنوي)
+                  +{toWesternDigits(String(r.daysAdded))} يوماً
                 </p>
+                <p className="text-[11px] text-muted-foreground">{r.leaveTypeNameAr ?? '—'}</p>
                 {r.reasonAr ? <p className="text-[11px] text-muted-foreground line-clamp-3">{r.reasonAr}</p> : null}
                 {r.status === 'pending' ? (
                   <div className="flex gap-2 pt-1">
@@ -308,7 +317,7 @@ export function LeaveBalanceCreditClient() {
             <DialogHeader>
               <DialogTitle>طلب إضافة رصيد</DialogTitle>
               <DialogDescription>
-                عدد الأيام المضافة إلى الرصيد السنوي، والوصف أو العنوان. يُسجَّل الطلب بحالة «في الانتظار» حتى الموافقة من التقرير.
+                اختر نوع الإجازة وعدد الأيام المضافة إلى رصيد الموظف. يُسجَّل الطلب بحالة «في الانتظار» حتى الموافقة.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-2">
@@ -324,13 +333,29 @@ export function LeaveBalanceCreditClient() {
                   </SelectContent>
                 </Select>
               </FormField>
+              <FormField label="نوع الإجازة" required>
+                <Select value={m.leaveTypeId} onValueChange={m.setLeaveTypeId}>
+                  <SelectTrigger className="h-10 w-full rounded-lg border-input bg-background">
+                    <SelectValue placeholder="اختر نوع الإجازة…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {m.leaveTypes.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.nameAr}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
               {m.selectedBalance ? (
                 <p className="text-[11px] text-muted-foreground font-mono" dir="ltr">
-                  الرصيد السنوي الحالي: {toWesternDigits(String(m.selectedBalance.used))}/
+                  الرصيد الحالي ({m.selectedLeaveTypeNameAr}): {toWesternDigits(String(m.selectedBalance.used))}/
                   {toWesternDigits(String(m.selectedBalance.total))}
                 </p>
+              ) : m.employeeId && m.leaveTypeId ? (
+                <p className="text-[11px] text-muted-foreground">
+                  لا يوجد رصيد مسجّل لـ {m.selectedLeaveTypeNameAr} — سيُنشأ عند الموافقة.
+                </p>
               ) : null}
-              <FormField label="عدد الأيام المضافة إلى الرصيد (عام)">
+              <FormField label="عدد الأيام المضافة">
                 <Input
                   type="number"
                   min={1}
