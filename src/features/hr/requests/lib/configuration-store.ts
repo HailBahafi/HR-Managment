@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 import type {
   HRDepartmentEntity, HRRequestTemplateEntity, HRRequestTypeEntity,
   HRRequestFieldDefinition, HRApprovalStage,
@@ -86,9 +85,7 @@ interface HRConfigState {
   deleteDepartment: (id: string) => { ok: boolean; error?: string; affectedRequestTypes?: number };
 }
 
-export const useHRConfigurationStore = create<HRConfigState>()(
-  persist(
-    (set, get) => ({
+export const useHRConfigurationStore = create<HRConfigState>()((set, get) => ({
       departments: [],
       departmentsLoading: false,
       templates: [],
@@ -266,16 +263,4 @@ export const useHRConfigurationStore = create<HRConfigState>()(
         }));
         return { ok: true, affectedRequestTypes: affected };
       },
-    }),
-    {
-      name: 'hr-configuration-storage',
-      storage: createJSONStorage(() => localStorage),
-      version: 5,
-      partialize: (s) => ({
-        templates: s.templates,
-        // departments and requestTypes intentionally not persisted — always fetched from API
-      }),
-      migrate: () => ({}),
-    },
-  ),
-);
+}));
