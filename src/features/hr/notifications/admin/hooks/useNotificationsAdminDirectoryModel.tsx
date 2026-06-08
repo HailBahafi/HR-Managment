@@ -86,7 +86,7 @@ export function useNotificationsAdminDirectoryModel() {
         ),
       );
     } catch (e) {
-      setListError(handleApiError(e));
+      setListError(handleApiError(e).displayMessage);
     } finally {
       setLoading(false);
     }

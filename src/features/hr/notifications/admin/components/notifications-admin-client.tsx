@@ -224,7 +224,7 @@ export function NotificationsAdminClient() {
       toast.success('تم إرسال الإشعار');
       setDrawerOpen(false);
     } catch (e) {
-      setFormError(handleApiError(e));
+      setFormError(handleApiError(e).displayMessage);
     } finally {
       setSaving(false);
     }
@@ -237,7 +237,7 @@ export function NotificationsAdminClient() {
       toast.success('تم حذف الإشعار');
       setDeleteTarget(null);
     } catch (e) {
-      toast.error(handleApiError(e));
+      toast.error(handleApiError(e).displayMessage);
     }
   };
 
