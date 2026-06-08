@@ -20,8 +20,18 @@ export function NotificationBellPopover() {
 
   const { data: currentEmployee } = useCurrentEmployee();
   const uid = currentEmployee?.id ?? '';
+  const fetch = useHRNotificationsStore((s) => s.fetch);
+  const unreadCountApi = useHRNotificationsStore((s) => s.unreadTotal);
   const inbox = React.useMemo(() => selectInboxForRecipient(items, uid), [items, uid]);
-  const unread = countUnreadInbox(items, uid);
+  const unread = unreadCountApi > 0 ? unreadCountApi : countUnreadInbox(items, uid);
+
+  React.useEffect(() => {
+    if (uid) void fetch(uid);
+  }, [uid, fetch]);
+
+  React.useEffect(() => {
+    if (open && uid) void fetch(uid);
+  }, [open, uid, fetch]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

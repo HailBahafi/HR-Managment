@@ -14,6 +14,12 @@ export type NotificationCategory =
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'error';
 
+export type NotificationAudienceKind =
+  | 'employee'
+  | 'branch'
+  | 'department'
+  | 'company';
+
 export type InboxItemResponseDto = {
   recipientId: string;
   notificationId: string;
@@ -42,52 +48,163 @@ export type InboxItemResponseDto = {
   createdAt: string;
 };
 
+export type SentNotificationResponseDto = {
+  id: string;
+  companyId: string;
+  category: NotificationCategory;
+  severity: NotificationSeverity;
+  titleAr: string;
+  bodyAr: string | null;
+  titleEn: string | null;
+  bodyEn: string | null;
+  audienceKind: NotificationAudienceKind;
+  audienceSnapshot: Record<string, unknown> | null;
+  sourceKind: string | null;
+  sourceTable: string | null;
+  sourceId: string | null;
+  actionUrl: string | null;
+  actionLabelAr: string | null;
+  requiresAcknowledgment: boolean;
+  expiresAt: string | null;
+  triggeredByUserId: string | null;
+  triggeredByNameAr: string | null;
+  recipientCount: number;
+  readCount: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string | null;
+  updatedBy: string | null;
+};
+
+export type SendNotificationDto = {
+  companyId: string;
+  category: NotificationCategory;
+  severity?: NotificationSeverity;
+  titleAr: string;
+  bodyAr?: string | null;
+  titleEn?: string | null;
+  bodyEn?: string | null;
+  audienceKind: NotificationAudienceKind;
+  employeeIds?: string[];
+  branchIds?: string[];
+  departmentIds?: string[];
+  deliveryChannel?: 'in_app';
+  sourceKind?: string;
+  sourceTable?: string;
+  sourceId?: string;
+  actionUrl?: string;
+  actionLabelAr?: string;
+  requiresAcknowledgment?: boolean;
+  expiresAt?: string;
+  triggeredByUserId?: string;
+  triggeredByNameAr?: string | null;
+  audienceSnapshot?: Record<string, unknown>;
+  createdBy?: string | null;
+};
+
+export type UnreadCountResponseDto = {
+  employeeId: string;
+  unread: number;
+  byCategory: Partial<Record<NotificationCategory, number>>;
+};
+
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 export const notificationsApi = {
+  /** Admin — list sent notifications */
+  list: (params?: {
+    page?: number;
+    limit?: number;
+    companyId?: string;
+    category?: NotificationCategory;
+    severity?: NotificationSeverity;
+    sourceKind?: string;
+    sourceTable?: string;
+    sourceId?: string;
+    from?: string;
+    to?: string;
+    excludeExpired?: boolean;
+  }) =>
+    apiRequest<PaginatedResult<SentNotificationResponseDto>>('/notifications', {
+      query: params,
+    }),
+
+  getById: (id: string) =>
+    apiRequest<SentNotificationResponseDto>(`/notifications/${id}`),
+
+  send: (body: SendNotificationDto) =>
+    apiRequest<SentNotificationResponseDto>('/notifications', {
+      method: 'POST',
+      body,
+    }),
+
+  delete: (id: string) =>
+    apiRequest<void>(`/notifications/${id}`, { method: 'DELETE' }),
+
+  /** Employee inbox */
   inbox: (
     employeeId: string,
     params?: {
       companyId?: string;
+      category?: NotificationCategory;
       unreadOnly?: boolean;
       includeDismissed?: boolean;
       includeArchived?: boolean;
+      includeExpired?: boolean;
       page?: number;
       limit?: number;
     },
   ) =>
     apiRequest<PaginatedResult<InboxItemResponseDto>>(
-      `/notifications/${employeeId}/inbox`,
+      `/notifications/inbox/${employeeId}`,
       { query: params },
     ),
 
   markRead: (employeeId: string, recipientId: string) =>
     apiRequest<InboxItemResponseDto>(
-      `/notifications/${employeeId}/inbox/${recipientId}/read`,
-      { method: 'PATCH' },
+      `/notifications/inbox/${employeeId}/recipients/${recipientId}/read`,
+      { method: 'POST' },
     ),
 
   markUnread: (employeeId: string, recipientId: string) =>
     apiRequest<InboxItemResponseDto>(
-      `/notifications/${employeeId}/inbox/${recipientId}/unread`,
-      { method: 'PATCH' },
+      `/notifications/inbox/${employeeId}/recipients/${recipientId}/unread`,
+      { method: 'POST' },
     ),
 
   dismiss: (employeeId: string, recipientId: string) =>
     apiRequest<InboxItemResponseDto>(
-      `/notifications/${employeeId}/inbox/${recipientId}/dismiss`,
-      { method: 'PATCH' },
+      `/notifications/inbox/${employeeId}/recipients/${recipientId}/dismiss`,
+      { method: 'POST' },
+    ),
+
+  acknowledge: (employeeId: string, recipientId: string) =>
+    apiRequest<InboxItemResponseDto>(
+      `/notifications/inbox/${employeeId}/recipients/${recipientId}/acknowledge`,
+      { method: 'POST' },
+    ),
+
+  archive: (employeeId: string, recipientId: string) =>
+    apiRequest<InboxItemResponseDto>(
+      `/notifications/inbox/${employeeId}/recipients/${recipientId}/archive`,
+      { method: 'POST' },
+    ),
+
+  unarchive: (employeeId: string, recipientId: string) =>
+    apiRequest<InboxItemResponseDto>(
+      `/notifications/inbox/${employeeId}/recipients/${recipientId}/unarchive`,
+      { method: 'POST' },
     ),
 
   markAllRead: (employeeId: string, companyId?: string) =>
     apiRequest<{ updated: number }>(
-      `/notifications/${employeeId}/inbox/read-all`,
-      { method: 'PATCH', query: companyId ? { companyId } : undefined },
+      `/notifications/inbox/${employeeId}/mark-all-read`,
+      { method: 'POST', query: companyId ? { companyId } : undefined },
     ),
 
   unreadCount: (employeeId: string, companyId?: string) =>
-    apiRequest<{ unread: number }>(
-      `/notifications/${employeeId}/unread-count`,
+    apiRequest<UnreadCountResponseDto>(
+      `/notifications/inbox/${employeeId}/unread-count`,
       { query: companyId ? { companyId } : undefined },
     ),
 };

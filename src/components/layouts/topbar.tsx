@@ -30,6 +30,7 @@ import { Logo } from '@/components/layouts/logo';
 import { NotificationBellPopover } from '@/features/hr/notifications/components/notification-bell-popover';
 import { cn } from '@/shared/utils';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
+import { hrNotificationsNavGroups, isHrNotificationsNavPath } from '@/features/hr/notifications/constants/nav';
 import { hrPayrollNavGroups, hrContractsOnlyNavGroups, isHrPayrollNavPath, isHrContractsOnlyNavPath } from '@/features/hr/contracts/constants/nav';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
@@ -139,6 +140,20 @@ export const navConfig: NavItem[] = [
     groups: hrDisciplineNavGroups.map(g => ({
       labelAr: g.labelAr,
       items: g.items.map(item => ({ label: item.labelAr, href: `/hr/discipline/${item.slug}` })),
+    })),
+  },
+  {
+    key: 'notifications',
+    label: 'الإشعارات',
+    icon: Bell,
+    isActive: isHrNotificationsNavPath,
+    groups: hrNotificationsNavGroups.map((g) => ({
+      labelAr: g.labelAr,
+      items: g.items.map((item) => ({
+        label: item.labelAr,
+        href: item.href,
+        icon: item.icon,
+      })),
     })),
   },
   {

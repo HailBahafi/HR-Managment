@@ -35,6 +35,7 @@ interface NotificationsState {
   items: HRNotificationRecord[];
   isLoading: boolean;
   error: string | null;
+  unreadTotal: number;
   fetch: (employeeId: string) => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markUnread: (id: string) => Promise<void>;
@@ -49,17 +50,25 @@ export const useHRNotificationsStore = create<NotificationsState>()((set, get) =
   items: [],
   isLoading: false,
   error: null,
+  unreadTotal: 0,
 
   fetch: async (employeeId) => {
     const companyId = useAuthStore.getState().activeCompanyId ?? undefined;
     set({ isLoading: true, error: null });
     try {
-      const result = await notificationsApi.inbox(employeeId, {
-        companyId,
-        includeDismissed: true,
-        limit: 200,
+      const [result, unreadRes] = await Promise.all([
+        notificationsApi.inbox(employeeId, {
+          companyId,
+          includeDismissed: true,
+          limit: 200,
+        }),
+        notificationsApi.unreadCount(employeeId, companyId),
+      ]);
+      set({
+        items: result.items.map(mapApi),
+        unreadTotal: unreadRes.unread,
+        isLoading: false,
       });
-      set({ items: result.items.map(mapApi), isLoading: false });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
     }
@@ -72,6 +81,7 @@ export const useHRNotificationsStore = create<NotificationsState>()((set, get) =
       const updated = await notificationsApi.markRead(item.recipientEmployeeId, id);
       set(s => ({
         items: s.items.map(x => x.id === id ? { ...x, readAt: updated.readAt } : x),
+        unreadTotal: Math.max(0, s.unreadTotal - (item.readAt ? 0 : 1)),
       }));
     } catch {
       // optimistic fallback — update locally so UI stays responsive
@@ -107,6 +117,7 @@ export const useHRNotificationsStore = create<NotificationsState>()((set, get) =
             ? { ...x, readAt: now }
             : x,
         ),
+        unreadTotal: 0,
       }));
     } catch {
       // noop — do not mutate local state if the API call failed

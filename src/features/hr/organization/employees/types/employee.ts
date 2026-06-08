@@ -40,4 +40,6 @@ export interface Employee {
   assignedRoleId?: string | null;
   /** معرّف المستخدم المرتبط بالموظف — مطلوب لاستدعاء /users/:id/roles و /users/:id/permissions */
   userId?: string | null;
+  /** هل لدى الموظف حساب مستخدم في النظام؟ (من GET /hr/employees/:id) */
+  hasUser?: boolean;
 }

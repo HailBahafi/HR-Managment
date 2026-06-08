@@ -6,7 +6,6 @@ import { Check, Shield, Plus, X, Ban, ChevronDown, UserPlus } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
@@ -57,12 +56,7 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
     handleGrantExtra,
     handleRemoveOverlay,
     isMutating,
-    createUserEmail,
-    setCreateUserEmail,
-    createUserPassword,
-    setCreateUserPassword,
-    isCreatingUser,
-    handleCreateUser,
+    setCreateUserOpen,
   } = model;
 
   const [addingExtra, setAddingExtra] = React.useState(false);
@@ -99,48 +93,19 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
           </div>
 
           {!hasLinkedUser && (
-            <div className="rounded-xl border border-amber-300/50 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-3">
+            <div className="rounded-xl border border-amber-300/50 bg-amber-50 dark:bg-amber-950/30 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
                 <UserPlus className="h-4 w-4 shrink-0" />
                 هذا الموظف غير مرتبط بحساب مستخدم — أنشئ له حساباً لتفعيل الصلاحيات
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label className="text-xs text-amber-700 dark:text-amber-400">البريد الإلكتروني</Label>
-                  <Input
-                    type="email"
-                    dir="ltr"
-                    className="h-9 text-sm"
-                    placeholder="user@example.com"
-                    value={createUserEmail}
-                    onChange={(e) => setCreateUserEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-amber-700 dark:text-amber-400">كلمة المرور</Label>
-                  <Input
-                    type="password"
-                    dir="ltr"
-                    className="h-9 text-sm"
-                    placeholder="6 أحرف على الأقل"
-                    value={createUserPassword}
-                    onChange={(e) => setCreateUserPassword(e.target.value)}
-                  />
-                </div>
-              </div>
               <Button
                 type="button"
                 size="sm"
-                className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
-                disabled={isCreatingUser || !createUserEmail.trim() || createUserPassword.length < 6}
-                onClick={handleCreateUser}
+                className="gap-2 bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+                onClick={() => setCreateUserOpen(true)}
               >
-                {isCreatingUser ? (
-                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                  <UserPlus className="h-3.5 w-3.5" />
-                )}
-                إنشاء حساب وربطه بالموظف
+                <UserPlus className="h-3.5 w-3.5" />
+                إنشاء حساب مستخدم
               </Button>
             </div>
           )}

@@ -9,12 +9,13 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet,
-  UserCircle, Briefcase, UserPlus,
+  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Logo } from '@/components/layouts/logo';
 import { useSidebar } from '@/components/layouts/sidebar-context';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
+import { hrNotificationsNavGroups } from '@/features/hr/notifications/constants/nav';
 import { hrContractsNavGroups } from '@/features/hr/contracts/constants/nav';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
@@ -92,6 +93,18 @@ const mobileNav: MobileNavItem[] = [
         label: item.labelAr,
         href: `/hr/discipline/${item.slug}`,
       }))
+    ),
+  },
+  {
+    key: 'notifications',
+    label: 'الإشعارات',
+    icon: Bell,
+    children: hrNotificationsNavGroups.flatMap((g) =>
+      g.items.map((item) => ({
+        label: item.labelAr,
+        href: item.href,
+        icon: item.icon,
+      })),
     ),
   },
   {

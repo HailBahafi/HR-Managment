@@ -8,7 +8,6 @@ import { usePermissions } from '@/features/hr/permissions/hooks/usePermissions';
 import { rolesApi } from '@/features/hr/permissions/lib/api/roles';
 import { userRolesApi } from '@/features/hr/permissions/lib/api/user-roles';
 import { userPermissionsApi, type UserPermissionEffect } from '@/features/hr/permissions/lib/api/user-permissions';
-import { usersApi } from '@/features/hr/organization/lib/api/users';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { PermissionResponseDto } from '@/features/hr/permissions/lib/api/permissions';
@@ -25,6 +24,7 @@ export function useEmployeeProfilePermissions(employee: Employee) {
   const qc = useQueryClient();
   const companyId = useAuthStore((s) => s.activeCompanyId);
   const userId = employee.userId ?? null;
+  const hasLinkedUser = employee.hasUser ?? !!userId;
 
   // ── All roles & permissions from system ──────────────────────────────────
   const { data: rolesResult } = useRoles();
@@ -191,29 +191,7 @@ export function useEmployeeProfilePermissions(employee: Employee) {
   );
 
   // ── Create linked user account ─────────────────────────────────────────────
-  const [createUserEmail, setCreateUserEmail] = React.useState(employee.email ?? '');
-  const [createUserPassword, setCreateUserPassword] = React.useState('');
-
-  const createUserMutation = useMutation({
-    mutationFn: async () => {
-      if (!createUserEmail.trim()) throw new Error('البريد الإلكتروني مطلوب');
-      if (createUserPassword.length < 6) throw new Error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-      return usersApi.create({
-        email: createUserEmail.trim().toLowerCase(),
-        password: createUserPassword,
-        fullNameAr: employee.name ?? null,
-        fullNameEn: employee.nameEn ?? null,
-        employeeId: employee.id,
-        defaultCompanyId: companyId ?? null,
-        isActive: true,
-      });
-    },
-    onSuccess: () => {
-      toast.success('تم إنشاء حساب المستخدم بنجاح — أعد تحميل الصفحة لتفعيل الصلاحيات');
-      setCreateUserPassword('');
-    },
-    onError: (err) => handleApiError(err, 'user.create'),
-  });
+  // Handled via useEmployeeCreateUser + EmployeeCreateUserDialog (personal section)
 
   return {
     // role assignment
@@ -238,15 +216,7 @@ export function useEmployeeProfilePermissions(employee: Employee) {
     handleGrantExtra,
     handleRemoveOverlay,
     isMutating: addOverlayMutation.isPending || removeOverlayMutation.isPending,
-    // userId presence (needed to gate the UI)
-    hasLinkedUser: !!userId,
-    // create user account
-    createUserEmail,
-    setCreateUserEmail,
-    createUserPassword,
-    setCreateUserPassword,
-    isCreatingUser: createUserMutation.isPending,
-    handleCreateUser: () => createUserMutation.mutate(),
+    hasLinkedUser,
   };
 }
 

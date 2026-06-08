@@ -18,6 +18,7 @@ import { EmployeePermissionsSection } from '@/features/hr/organization/employees
 import { EmployeeSalarySection } from '@/features/hr/organization/employees/components/sections/employee-salary-section';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import { EmployeeHrPdfPrepDialog } from '@/features/hr/organization/employees/components/dialogs/employee-hr-pdf-prep-dialog';
+import { EmployeeCreateUserDialog } from '@/features/hr/organization/employees/components/dialogs/employee-create-user-dialog';
 
 export function EmployeeProfileBody({ employee, onUpdated }: { employee: Employee; onUpdated?: (updated: Employee) => void }) {
   const model = useEmployeeProfileModel(employee, onUpdated);
@@ -38,6 +39,8 @@ export function EmployeeProfileBody({ employee, onUpdated }: { employee: Employe
         {model.activeSection === 'permissions' && <EmployeePermissionsSection model={model} />}
         {model.activeSection === 'salary' && <EmployeeSalarySection model={model} />}
       </EmployeeProfileShell>
+
+      <EmployeeCreateUserDialog employee={model.employee} model={model} />
 
       <EmployeeHrPdfPrepDialog
         open={model.hrPdfPrepKind != null}

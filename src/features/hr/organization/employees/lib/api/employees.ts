@@ -30,6 +30,16 @@ export type EmployeeResponseDto = {
   role: string | null;
   assignedRoleId: string | null;
   userId: string | null;
+  hasUser?: boolean;
+  user?: {
+    id: string;
+    email: string | null;
+    phone: string | null;
+    fullNameAr: string | null;
+    fullNameEn: string | null;
+    isActive: boolean;
+    status: string;
+  } | null;
   branchId: string | null;
   branchNameAr: string | null;
   departmentId: string | null;

@@ -10,6 +10,7 @@ import { useEmployeeProfileLeave } from '@/features/hr/organization/employees/ho
 import { useEmployeeProfilePersonal } from '@/features/hr/organization/employees/hooks/useEmployeeProfilePersonal';
 import { useEmployeeProfileRosePdf } from '@/features/hr/organization/employees/hooks/useEmployeeProfileRosePdf';
 import { useEmployeeProfilePermissions } from '@/features/hr/organization/employees/hooks/useEmployeeProfilePermissions';
+import { useEmployeeCreateUser } from '@/features/hr/organization/employees/hooks/useEmployeeCreateUser';
 
 const SECTIONS = EMPLOYEE_PROFILE_SECTIONS;
 
@@ -17,12 +18,20 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
   const [activeSection, setActiveSection] = React.useState<EmployeeProfileSectionId>('personal');
   const contentRef = React.useRef<HTMLElement | null>(null);
 
+  const handleUserCreated = React.useCallback(
+    (userId: string) => {
+      onUpdated?.({ ...employee, hasUser: true, userId });
+    },
+    [employee, onUpdated],
+  );
+
   const data = useEmployeeProfileData(employee);
   const payslip = useEmployeeProfilePayslipFilter(data.employeePayslipSeries);
   const leave = useEmployeeProfileLeave(employee);
   const personal = useEmployeeProfilePersonal(employee, activeSection, onUpdated);
   const rose = useEmployeeProfileRosePdf(personal.draft);
   const permissions = useEmployeeProfilePermissions(employee);
+  const createUser = useEmployeeCreateUser(employee, handleUserCreated);
 
   React.useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -51,6 +60,7 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
     ...personal,
     ...rose,
     ...permissions,
+    ...createUser,
   };
 }
 
