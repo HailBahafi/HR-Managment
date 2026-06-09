@@ -86,7 +86,7 @@ export function SingleDatePicker({
   return (
     <div className={cn('w-full', wrapperClassName)}>
       {name ? <input type="hidden" name={name} value={value ?? ''} aria-hidden /> : null}
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={setOpen} modal={false}>
         <PopoverTrigger asChild>
           <button
             id={id}
@@ -136,6 +136,7 @@ export function SingleDatePicker({
           sideOffset={8}
           collisionPadding={16}
           container={popoverContainer ?? undefined}
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <Calendar
             mode="single"

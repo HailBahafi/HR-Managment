@@ -75,6 +75,7 @@ export function PayrollPeriodsClient() {
   }, []);
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [drawerContentEl, setDrawerContentEl] = React.useState<HTMLDivElement | null>(null);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<HRPayrollPeriodDraft>(EMPTY_DRAFT);
   const [error, setError] = React.useState<string | null>(null);
@@ -243,6 +244,7 @@ export function PayrollPeriodsClient() {
         open={drawerOpen} onOpenChange={setDrawerOpen}
         title={editId ? 'تعديل فترة الراتب' : 'فترة راتب جديدة'}
         onSave={handleSave} error={error}
+        contentRef={setDrawerContentEl}
       >
         <FormField label="الكود" required>
           <Input value={draft.code} onChange={e => set({ code: e.target.value })} placeholder="مثال: PAY-2025-01" />
@@ -258,6 +260,7 @@ export function PayrollPeriodsClient() {
             value={draft.periodStart}
             onChange={(ymd) => set({ periodStart: ymd })}
             maxDate={draft.periodEnd || undefined}
+            popoverContainer={drawerContentEl}
           />
         </FormField>
         <FormField label="نهاية الفترة" required>
@@ -265,6 +268,7 @@ export function PayrollPeriodsClient() {
             value={draft.periodEnd}
             onChange={(ymd) => set({ periodEnd: ymd })}
             minDate={draft.periodStart || undefined}
+            popoverContainer={drawerContentEl}
           />
         </FormField>
         <FormField label="ملاحظات" span2>

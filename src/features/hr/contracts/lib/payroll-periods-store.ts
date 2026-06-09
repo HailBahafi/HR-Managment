@@ -137,6 +137,7 @@ interface State {
   close: (id: string) => Promise<boolean>;
   setCompensationStatus: (id: string, s: HRPayrollCompensationReviewStatus) => boolean;
   setMonthlyInputs: (periodId: string, lineId: string, inputs: HRPayrollMonthlyInput[]) => Promise<void>;
+  refreshMonthlyInputsForPeriod: (periodId: string) => Promise<void>;
 }
 
 export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
@@ -397,6 +398,52 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       await Promise.all(creates);
     } catch {
       // Keep optimistic state on error; user sees data but it didn't persist
+    }
+  },
+
+  refreshMonthlyInputsForPeriod: async (periodId) => {
+    const companyId = useAuthStore.getState().activeCompanyId;
+    if (!companyId) return;
+
+    try {
+      const inputsResult = await monthlyInputsApi.list({
+        companyId,
+        payrollPeriodId: periodId,
+        limit: 2000,
+      });
+
+      const byEmployee: Record<string, MonthlyInputResponseDto[]> = {};
+      for (const dto of inputsResult.items) {
+        if (!byEmployee[dto.employeeId]) byEmployee[dto.employeeId] = [];
+        byEmployee[dto.employeeId].push(dto);
+      }
+
+      set((s) => {
+        const period = s.periods.find((p) => p.id === periodId);
+        if (!period) return s;
+
+        const employmentLineMonthlyInputs: Record<string, HRPayrollMonthlyInput[]> = {
+          ...period.employmentLineMonthlyInputs,
+        };
+        for (const line of period.employmentLines) {
+          const dtos = byEmployee[line.employeeId] ?? [];
+          employmentLineMonthlyInputs[line.id] = dtos.map((d) =>
+            fromBackendInput(d, line.baseSalarySnapshot),
+          );
+        }
+
+        return {
+          _rawInputs: {
+            ...s._rawInputs,
+            [periodId]: byEmployee,
+          },
+          periods: s.periods.map((p) =>
+            p.id === periodId ? { ...p, employmentLineMonthlyInputs } : p,
+          ),
+        };
+      });
+    } catch {
+      // Caller handles user-facing errors
     }
   },
 }));

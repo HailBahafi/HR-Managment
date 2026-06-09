@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { CalendarDays } from 'lucide-react';
+import type { Matcher } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -41,6 +42,11 @@ export interface DatePickerInputProps {
   disabled?: boolean;
   className?: string;
   id?: string;
+  /**
+   * When used inside a Radix Dialog, pass the dialog content element so the calendar
+   * portals there; otherwise outside clicks close the dialog before a day is selected.
+   */
+  popoverContainer?: HTMLElement | DocumentFragment | null;
 }
 
 export function DatePickerInput({
@@ -52,14 +58,23 @@ export function DatePickerInput({
   disabled,
   className,
   id,
+  popoverContainer,
 }: DatePickerInputProps) {
   const [open, setOpen] = React.useState(false);
   const selected = ymdToDate(value);
   const minD = ymdToDate(minDate ?? '');
   const maxD = ymdToDate(maxDate ?? '');
 
+  const disabledMatchers = React.useMemo((): Matcher | Matcher[] | undefined => {
+    const list: Matcher[] = [];
+    if (minD) list.push({ before: minD });
+    if (maxD) list.push({ after: maxD });
+    if (list.length === 0) return undefined;
+    return list.length === 1 ? list[0]! : list;
+  }, [minD, maxD]);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           id={id}
@@ -76,19 +91,20 @@ export function DatePickerInput({
           {selected ? formatDisplay(selected) : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent
+        className="w-auto overflow-visible p-0"
+        align="start"
+        container={popoverContainer ?? undefined}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <Calendar
           mode="single"
           selected={selected}
+          defaultMonth={selected ?? new Date()}
           onSelect={(d) => {
             if (d) { onChange(dateToYmd(d)); setOpen(false); }
           }}
-          disabled={(d) => {
-            if (minD && d < minD) return true;
-            if (maxD && d > maxD) return true;
-            return false;
-          }}
-          initialFocus
+          disabled={disabledMatchers}
         />
       </PopoverContent>
     </Popover>

@@ -46,6 +46,37 @@ export type CreateEmployeeAdvanceDto = {
 
 export type UpdateEmployeeAdvanceDto = Partial<Omit<CreateEmployeeAdvanceDto, 'companyId' | 'employeeId'>>;
 
+export type PushAdvancesToPayrollDto = {
+  payrollPeriodId: string;
+  employeeIds?: string[];
+  replaceExisting?: boolean;
+  includeApproved?: boolean;
+  createdBy?: string | null;
+};
+
+export type PushAdvancesToPayrollResponseDto = {
+  payrollPeriodId: string;
+  inputsCreated: number;
+  inputsDeleted: number;
+  advancesProcessed: number;
+  advancesFullyRepaid: number;
+  advancesSkipped: number;
+  totalDeducted: string;
+  items: Array<{
+    advanceId: string;
+    advanceNumber: string;
+    employeeId: string;
+    employeeNameAr: string | null;
+    amount: string;
+    monthlyInstallmentAmount: string;
+    alreadyRepaid: string;
+    remaining: string;
+    installmentDue: string;
+    alreadyPostedThisPeriod: boolean;
+    status: string;
+  }>;
+};
+
 export const employeeAdvancesApi = {
   list: (params?: { companyId?: string; employeeId?: string; status?: string; advanceDateFrom?: string; advanceDateTo?: string; page?: number; limit?: number }) =>
     apiRequest<PaginatedResult<EmployeeAdvanceResponseDto>>('/payroll/employee-advances', { query: params }),
@@ -57,4 +88,10 @@ export const employeeAdvancesApi = {
     apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}`, { method: 'PATCH', body }),
   delete: (id: string) =>
     apiRequest<void>(`/payroll/employee-advances/${id}`, { method: 'DELETE' }),
+
+  pushToPayroll: (body: PushAdvancesToPayrollDto) =>
+    apiRequest<PushAdvancesToPayrollResponseDto>('/payroll/employee-advances/push-to-payroll', {
+      method: 'POST',
+      body,
+    }),
 };
