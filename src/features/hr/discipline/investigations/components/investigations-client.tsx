@@ -39,10 +39,9 @@ import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xls
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import {
-  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
-  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
-} from '@/components/ui/directory-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
+import type { HRDisciplineInvestigationRecord } from '@/features/hr/discipline/lib/types';
 
 const RESULT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -96,6 +95,7 @@ export function InvestigationsClient() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
+  const [detailRow, setDetailRow] = React.useState<HRDisciplineInvestigationRecord | null>(null);
 
   const caseOptions = m.cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
   const investigatorOptions = m.employees.map((e) => ({ value: e.id, label: e.nameAr }));
@@ -203,6 +203,101 @@ export function InvestigationsClient() {
   }, [listFiltered]);
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
+
+  const columns = React.useMemo((): ColumnDef<HRDisciplineInvestigationRecord>[] => [
+    {
+      key: 'caseNumber',
+      title: 'المخالفة',
+      headerClassName: 'whitespace-nowrap',
+      className: 'font-mono text-xs font-medium tabular-nums text-muted-foreground',
+      render: (inv) => <span dir="ltr">{inv.caseNumber}</span>,
+    },
+    {
+      key: 'employee',
+      title: 'الموظف',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[10rem] truncate font-medium',
+      render: (inv) => inv.employeeNameAr,
+    },
+    {
+      key: 'investigator',
+      title: 'المحقق',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[9rem] truncate text-xs',
+      render: (inv) => inv.investigatorName,
+    },
+    {
+      key: 'date',
+      title: 'التاريخ',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap font-mono text-xs tabular-nums',
+      render: (inv) => <TableDateCell value={inv.date} />,
+    },
+    {
+      key: 'result',
+      title: 'النتيجة',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-xs',
+      render: (inv) => INVESTIGATION_RESULT_LABELS[inv.result],
+    },
+    {
+      key: 'recommendation',
+      title: 'التوصية',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-xs',
+      render: (inv) => inv.recommendationType ? INVESTIGATION_RECOMMENDATION_LABELS[inv.recommendationType] : '—',
+    },
+    {
+      key: 'deductionType',
+      title: 'نوع الاستقطاع',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-xs text-muted-foreground',
+      render: (inv) => inv.deductionType ? INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType] : '—',
+    },
+    {
+      key: 'deductionValue',
+      title: 'قيمة الاستقطاع',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground',
+      render: (inv) => <span dir="ltr">{inv.deductionValue != null ? inv.deductionValue : '—'}</span>,
+    },
+    {
+      key: 'employeeStatement',
+      title: 'أقوال الموظف',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[14rem] text-xs text-muted-foreground',
+      render: (inv) => (
+        <span className="line-clamp-2" title={inv.employeeStatement || undefined}>{inv.employeeStatement || '—'}</span>
+      ),
+    },
+    {
+      key: 'witnessStatement',
+      title: 'أقوال الشهود',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[14rem] text-xs text-muted-foreground',
+      render: (inv) => (
+        <span className="line-clamp-2" title={inv.witnessStatement || undefined}>{inv.witnessStatement || '—'}</span>
+      ),
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'whitespace-nowrap',
+      render: (inv) => (
+        <TableRowActions
+          menuItems={[
+            {
+              label: 'حذف',
+              onClick: () => setDeleteId(inv.id),
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              destructive: true,
+            },
+          ]}
+        />
+      ),
+    },
+  ], []);
 
   const handleCaseSelect = (caseId: string) => {
     const c = m.cases.find(x => x.id === caseId);
@@ -431,54 +526,15 @@ export function InvestigationsClient() {
           ))}
         </div>
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable className="min-w-[720px]">
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead className="whitespace-nowrap">المخالفة</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">الموظف</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">المحقق</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">النتيجة</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">التوصية</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">نوع الاستقطاع</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">قيمة الاستقطاع</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">أقوال الموظف</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">أقوال الشهود</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {listFiltered.map((inv) => (
-                <DirectoryTableRow key={inv.id}>
-                  <DirectoryTableCell className="font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{inv.caseNumber}</DirectoryTableCell>
-                  <DirectoryTableCell className="max-w-[10rem] truncate font-medium">{inv.employeeNameAr}</DirectoryTableCell>
-                  <DirectoryTableCell className="max-w-[9rem] truncate text-xs">{inv.investigatorName}</DirectoryTableCell>
-                  <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{inv.date}</DirectoryTableCell>
-                  <DirectoryTableCell className="whitespace-nowrap text-xs">{INVESTIGATION_RESULT_LABELS[inv.result]}</DirectoryTableCell>
-                  <DirectoryTableCell className="whitespace-nowrap text-xs">
-                    {inv.recommendationType ? INVESTIGATION_RECOMMENDATION_LABELS[inv.recommendationType] : '—'}
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                    {inv.deductionType ? INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType] : '—'}
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground" dir="ltr">
-                    {inv.deductionValue != null ? inv.deductionValue : '—'}
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="max-w-[14rem] text-xs text-muted-foreground">
-                    <span className="line-clamp-2" title={inv.employeeStatement || undefined}>{inv.employeeStatement || '—'}</span>
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="max-w-[14rem] text-xs text-muted-foreground">
-                    <span className="line-clamp-2" title={inv.witnessStatement || undefined}>{inv.witnessStatement || '—'}</span>
-                  </DirectoryTableCell>
-                  <DirectoryTableActionsCell>
-                    <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(inv.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </DirectoryTableActionsCell>
-                </DirectoryTableRow>
-              ))}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          tableClassName="min-w-[720px]"
+          columns={columns}
+          data={listFiltered}
+          keyExtractor={(inv) => inv.id}
+          onRowClick={(inv) => setDetailRow(inv)}
+        />
       )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة تحقيق" size="lg" onSave={() => void handleSave()} error={formError}>
@@ -577,6 +633,24 @@ export function InvestigationsClient() {
           })();
         }}
         title="حذف التحقيق"
+      />
+
+      <TableRowDetailDialog
+        open={detailRow != null}
+        onOpenChange={(o) => !o && setDetailRow(null)}
+        title="تفاصيل التحقيق"
+        fields={detailRow ? [
+          { label: 'المخالفة', value: detailRow.caseNumber },
+          { label: 'الموظف', value: detailRow.employeeNameAr },
+          { label: 'المحقق', value: detailRow.investigatorName },
+          { label: 'التاريخ', value: <TableDateCell value={detailRow.date} /> },
+          { label: 'النتيجة', value: INVESTIGATION_RESULT_LABELS[detailRow.result] },
+          { label: 'التوصية', value: detailRow.recommendationType ? INVESTIGATION_RECOMMENDATION_LABELS[detailRow.recommendationType] : '—' },
+          { label: 'نوع الاستقطاع', value: detailRow.deductionType ? INVESTIGATION_DEDUCTION_TYPE_LABELS[detailRow.deductionType] : '—' },
+          { label: 'قيمة الاستقطاع', value: detailRow.deductionValue != null ? detailRow.deductionValue : '—' },
+          { label: 'أقوال الموظف', value: detailRow.employeeStatement || '—' },
+          { label: 'أقوال الشهود', value: detailRow.witnessStatement || '—' },
+        ] : []}
       />
     </div>
   );

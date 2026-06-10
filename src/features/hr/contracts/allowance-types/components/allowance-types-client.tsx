@@ -28,6 +28,8 @@ import {
   type UpdateAllowanceTypeDto,
   type AllowanceCalculationType,
 } from '@/features/hr/contracts/lib/api/allowance-types';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableRowActions } from '@/components/ui/table-cells';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -298,85 +300,6 @@ function AllowanceCard({
   );
 }
 
-// ── table view ─────────────────────────────────────────────────────────────────
-
-function AllowanceTable({
-  items,
-  onEdit,
-  onDelete,
-}: {
-  items: AllowanceTypeDto[];
-  onEdit: (item: AllowanceTypeDto) => void;
-  onDelete: (item: AllowanceTypeDto) => void;
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card" dir="rtl">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/30">
-            <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">الاسم</th>
-            <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">الكود</th>
-            <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">طريقة الاحتساب</th>
-            <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">المبلغ</th>
-            <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">الحالة</th>
-            <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">إجراءات</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item, i) => (
-            <tr key={item.id} className={cn('border-b border-border/40 transition-colors hover:bg-muted/20', i === items.length - 1 && 'border-b-0')}>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2.5">
-                  <div className={cn(
-                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
-                    item.calculationType === 'percent_of_basic' ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary',
-                  )}>
-                    <Coins className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="font-medium">{item.nameAr}</span>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-mono text-xs text-muted-foreground" dir="ltr">{item.code}</span>
-              </td>
-              <td className="px-4 py-3">
-                <Badge variant="subtle" className="text-[10px]">{CALC_TYPE_LABEL[item.calculationType]}</Badge>
-              </td>
-              <td className="px-4 py-3">
-                <span className={cn(
-                  'font-mono text-sm font-semibold tabular-nums',
-                  item.calculationType === 'percent_of_basic' ? 'text-amber-600' : 'text-primary',
-                )}>
-                  {fmtAmount(item)}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                <Badge variant={item.isActive ? 'success' : 'secondary'} className="text-[9px] px-1.5 py-px">
-                  {item.isActive ? 'نشط' : 'موقوف'}
-                </Badge>
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center justify-center gap-1">
-                  <Button variant="ghost" size="sm" type="button" className="h-7 w-7 p-0" onClick={() => onEdit(item)} title="تعديل">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost" size="sm" type="button"
-                    className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => onDelete(item)} title="حذف"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 // ── main component ─────────────────────────────────────────────────────────────
 
 export function AllowanceTypesClient() {
@@ -431,6 +354,77 @@ export function AllowanceTypesClient() {
 
   const openEdit = (item: AllowanceTypeDto) => { setEditItem(item); setFormOpen(true); };
   const openAdd = () => { setEditItem(null); setFormOpen(true); };
+
+  const columns = React.useMemo((): ColumnDef<AllowanceTypeDto>[] => [
+    {
+      key: 'name',
+      title: 'الاسم',
+      render: (item) => (
+        <div className="flex items-center gap-2.5">
+          <div className={cn(
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+            item.calculationType === 'percent_of_basic' ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary',
+          )}>
+            <Coins className="h-3.5 w-3.5" />
+          </div>
+          <span className="font-medium">{item.nameAr}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'code',
+      title: 'الكود',
+      render: (item) => <span className="font-mono text-xs text-muted-foreground" dir="ltr">{item.code}</span>,
+    },
+    {
+      key: 'calcType',
+      title: 'طريقة الاحتساب',
+      render: (item) => <Badge variant="subtle" className="text-[10px]">{CALC_TYPE_LABEL[item.calculationType]}</Badge>,
+    },
+    {
+      key: 'amount',
+      title: 'المبلغ',
+      render: (item) => (
+        <span className={cn(
+          'font-mono text-sm font-semibold tabular-nums',
+          item.calculationType === 'percent_of_basic' ? 'text-amber-600' : 'text-primary',
+        )}>
+          {fmtAmount(item)}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      className: 'text-center',
+      headerClassName: 'text-center',
+      render: (item) => (
+        <Badge variant={item.isActive ? 'success' : 'secondary'} className="text-[9px] px-1.5 py-px">
+          {item.isActive ? 'نشط' : 'موقوف'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'text-center',
+      render: (item) => (
+        <TableRowActions
+          menuItems={[
+            { label: 'تعديل', onClick: () => openEdit(item), icon: <Pencil className="h-3.5 w-3.5" /> },
+            {
+              label: 'حذف',
+              onClick: () => setDeleteTarget(item),
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              destructive: true,
+              separator: true,
+            },
+          ]}
+        />
+      ),
+    },
+  ], []);
 
   usePageHeaderActions(
     () => (
@@ -495,10 +489,13 @@ export function AllowanceTypesClient() {
           ))}
         </div>
       ) : (
-        <AllowanceTable
-          items={items}
-          onEdit={openEdit}
-          onDelete={(item) => setDeleteTarget(item)}
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          columns={columns}
+          data={items}
+          keyExtractor={(item) => item.id}
+          onRowClick={(item) => openEdit(item)}
         />
       )}
 

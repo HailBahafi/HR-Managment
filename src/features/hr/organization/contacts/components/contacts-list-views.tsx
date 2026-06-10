@@ -1,9 +1,11 @@
 'use client';
 
+import * as React from 'react';
 import { UserCircle, Eye, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RowActions } from '@/components/ui/row-actions';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableRowActions } from '@/components/ui/table-cells';
 import {
   DirectoryGrid,
   DirectoryGridCard,
@@ -12,18 +14,7 @@ import {
   DirectoryGridCardMeta,
   DirectoryGridCardMetaRow,
   DirectoryGridCardTitle,
-  DirectoryResultCount,
 } from '@/components/ui/directory-grid-card';
-import {
-  DirectoryTableActionsCell,
-  DirectoryTableBody,
-  DirectoryTableCell,
-  DirectoryTableContainer,
-  DirectoryTableHead,
-  DirectoryTableHeaderRow,
-  DirectoryTableRow,
-  DirectoryTable,
-} from '@/components/ui/directory-table';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { USER_TYPE_LABELS } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 import type { UserRecord, ContactsDirectoryModel } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
@@ -37,6 +28,54 @@ function statusBadge(user: UserRecord) {
 
 export function ContactsListViews({ model }: Props) {
   const { users, loading, listError, layoutView, setViewRow, openEdit, setConfirmId } = model;
+
+  const columns = React.useMemo((): ColumnDef<UserRecord>[] => [
+    {
+      key: 'name',
+      title: 'الاسم',
+      render: (row) => <span className="font-medium">{row.fullNameAr ?? row.email}</span>,
+    },
+    {
+      key: 'email',
+      title: 'البريد الإلكتروني',
+      className: 'text-muted-foreground',
+      render: (row) => <span dir="ltr">{row.email}</span>,
+    },
+    {
+      key: 'userType',
+      title: 'نوع المستخدم',
+      render: (row) => (
+        <Badge variant="outline" className="text-[10px]">
+          {USER_TYPE_LABELS[row.userType ?? ''] ?? row.userType ?? '—'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      render: (row) => statusBadge(row),
+    },
+    {
+      key: 'phone',
+      title: 'الجوال',
+      className: 'text-muted-foreground',
+      render: (row) => <span dir="ltr">{row.phone ?? '—'}</span>,
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'text-start w-16',
+      render: (row) => (
+        <TableRowActions
+          menuItems={[
+            { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
+            { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
+          ]}
+        />
+      ),
+    },
+  ], [openEdit, setConfirmId, setViewRow]);
 
   if (loading) {
     return (
@@ -58,8 +97,6 @@ export function ContactsListViews({ model }: Props) {
 
   return (
     <>
-      <DirectoryResultCount>{users.length} مستخدم</DirectoryResultCount>
-
       {users.length === 0 ? (
         <EmptyState icon={UserCircle} title="لا توجد مستخدمون" description="أضف حسابات مستخدمي النظام." />
       ) : layoutView === 'grid' ? (
@@ -75,42 +112,14 @@ export function ContactsListViews({ model }: Props) {
           ))}
         </DirectoryGrid>
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable>
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead>الاسم</DirectoryTableHead>
-              <DirectoryTableHead>البريد الإلكتروني</DirectoryTableHead>
-              <DirectoryTableHead>نوع المستخدم</DirectoryTableHead>
-              <DirectoryTableHead>الحالة</DirectoryTableHead>
-              <DirectoryTableHead>الجوال</DirectoryTableHead>
-              <DirectoryTableHead className="text-start w-16">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {users.map((row) => (
-                <DirectoryTableRow key={row.id} interactive onClick={() => setViewRow(row)}>
-                  <DirectoryTableCell className="font-medium">{row.fullNameAr ?? row.email}</DirectoryTableCell>
-                  <DirectoryTableCell className="text-muted-foreground" dir="ltr">{row.email}</DirectoryTableCell>
-                  <DirectoryTableCell>
-                    <Badge variant="outline" className="text-[10px]">
-                      {USER_TYPE_LABELS[row.userType ?? ''] ?? row.userType ?? '—'}
-                    </Badge>
-                  </DirectoryTableCell>
-                  <DirectoryTableCell>{statusBadge(row)}</DirectoryTableCell>
-                  <DirectoryTableCell className="text-muted-foreground" dir="ltr">{row.phone ?? '—'}</DirectoryTableCell>
-                  <DirectoryTableActionsCell>
-                    <RowActions
-                      menuItems={[
-                        { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewRow(row); } },
-                        { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
-                        { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
-                      ]}
-                    />
-                  </DirectoryTableActionsCell>
-                </DirectoryTableRow>
-              ))}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          columns={columns}
+          data={users}
+          keyExtractor={(row) => row.id}
+          onRowClick={(row) => setViewRow(row)}
+        />
       )}
     </>
   );

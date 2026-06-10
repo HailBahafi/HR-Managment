@@ -3,8 +3,9 @@
 import * as React from 'react';
 import Link from 'next/link';
 import {
-  ArrowRight, Banknote, Check, FileCheck, Eye, Shield,
-  Users, Pencil, Sparkles, Upload,
+  ArrowRight, Banknote, Check, FileSpreadsheet, FileText, Gavel, Loader2,
+  Users, Pencil,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -13,10 +14,13 @@ import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { cn } from '@/shared/utils';
 import {
   useHRPayrollPeriodsStore,
-  PERIOD_STATUS_LABELS,
-  type HRPayrollCompensationReviewStatus,
+  PERIOD_STATUS_COLORS,
+  REVIEW_STAGE_LABELS,
+  buildAdminDirectInputNote,
   type HRPayrollPeriodRecord,
   type HRPayrollMonthlyInput,
+  type HRPayrollMonthlyInputKind,
+  type HRPayrollReviewStage,
 } from '@/features/hr/contracts/lib/payroll-periods-store';
 import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
 import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
@@ -25,22 +29,39 @@ import {
   parseOptionalPositiveRate,
   lineNetFromEditRow,
   editAmount,
+  editSignedAmount,
   editValuesEqual,
   type CompensationColumnVisibility,
   type CompensationEditValues,
   type CompensationAdvancesPushOptions,
+  type CompensationViolationsPushOptions,
   type CompensationPushOptions,
   type PayrollLineCompensationPreview,
+  periodToColumnVisibility,
+  COLUMN_TO_PERIOD_INCLUDE,
+  DEFAULT_COMPENSATION_COLUMN_VISIBILITY,
 } from '@/features/hr/contracts/lib/compensation-preview';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { employeeAdvancesApi } from '@/features/hr/contracts/lib/api/employee-advances';
+import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-records';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { PushFromAttendanceDialog } from '@/features/hr/contracts/compensation/components/push-from-attendance-dialog';
 import { PushFromAdvancesDialog } from '@/features/hr/contracts/compensation/components/push-from-advances-dialog';
+import { PushFromViolationsDialog } from '@/features/hr/contracts/compensation/components/push-from-violations-dialog';
 import { CompensationEditConfirmDialog } from '@/features/hr/contracts/compensation/components/compensation-edit-confirm-dialog';
+import { PayrollPeriodReviewBar } from '@/features/hr/contracts/compensation/components/payroll-period-review-bar';
+import { CompleteReviewPayslipsDialog } from '@/features/hr/contracts/compensation/components/complete-review-payslips-dialog';
+import { payslipsApi } from '@/features/hr/payroll/lib/api/payslips';
+import { PayrollPrintHtml } from '@/features/hr/contracts/reports/components/payroll-print-html';
+import {
+  buildCompensationExportLines,
+  buildPayrollPrintPayload,
+  downloadCompensationExcel,
+  downloadCompensationPdf,
+} from '@/features/hr/contracts/lib/compensation-period-export';
 
 const EDIT_FIELD_LABELS: Record<keyof CompensationEditValues, string> = {
   overtime: 'أوفر تايم',
@@ -67,8 +88,18 @@ function rowToEdits(row: PayrollLineCompensationPreview): EditRow {
   };
 }
 
+function ReadOnlyAmountCell({ amount, colorClass }: { amount: number; colorClass?: string }) {
+  return (
+    <td className="border-e border-border/40 px-3 py-2 text-center font-mono tabular-nums text-[11.5px]">
+      <span className={colorClass}>{formatLatinNumber(amount)}</span>
+    </td>
+  );
+}
+
+const EDITABLE_FIELDS = new Set<keyof EditRow>(['bonus', 'admin']);
+
 function EditCell({
-  value, baseline, onChange, onAttemptCommit, colorClass, disabled,
+  value, baseline, onChange, onAttemptCommit, colorClass, disabled, allowNegative = false,
 }: {
   value: string;
   baseline: string;
@@ -76,6 +107,7 @@ function EditCell({
   onAttemptCommit: (previousValue: string, newValue: string) => void;
   colorClass?: string;
   disabled?: boolean;
+  allowNegative?: boolean;
 }) {
   const skipBlurCommit = React.useRef(false);
 
@@ -87,7 +119,7 @@ function EditCell({
     <div className="relative flex items-center justify-center">
       <input
         type="number"
-        min={0}
+        {...(allowNegative ? {} : { min: 0 })}
         step="any"
         value={value}
         disabled={disabled}
@@ -121,41 +153,26 @@ function EditCell({
   );
 }
 
-const REVIEW_STEPS: { key: HRPayrollCompensationReviewStatus; ar: string; icon: React.ElementType }[] = [
-  { key: 'draft',        ar: 'مسودة',        icon: FileCheck },
-  { key: 'first_review', ar: 'مراجعة أولى',  icon: Eye },
-  { key: 'second_review',ar: 'مراجعة ثانية', icon: Eye },
-  { key: 'approved',     ar: 'معتمد',         icon: Shield },
-];
-
-const STATUS_IDX: Record<HRPayrollCompensationReviewStatus, number> = {
-  draft: 0, first_review: 1, second_review: 2, approved: 3,
-};
-
-const NEXT_REVIEW: Partial<Record<HRPayrollCompensationReviewStatus, HRPayrollCompensationReviewStatus>> = {
-  draft: 'first_review', first_review: 'second_review', second_review: 'approved',
-};
-
-function advanceBtnLabel(s: HRPayrollCompensationReviewStatus): string {
-  if (s === 'draft')        return 'تسجيل تمّت المراجعة الأولى';
-  if (s === 'first_review') return 'تسجيل تمّت المراجعة الثانية';
-  if (s === 'second_review')return 'تأكيد الاعتماد النهائي';
-  return '';
+function reviewAdvanceToastMessage(completedStage: HRPayrollReviewStage): string {
+  if (completedStage === 'first_review') {
+    return 'تم تسجيل المراجعة الأولى — الفترة الآن تحت المراجعة الثانية';
+  }
+  if (completedStage === 'second_review') {
+    return 'تم تسجيل المراجعة الثانية — الفترة الآن تحت المراجعة الثالثة';
+  }
+  return 'تم إتمام المراجعة الثالثة — اكتمل مسار المراجعة';
 }
 
 function normalizePeriod(row: HRPayrollPeriodRecord): HRPayrollPeriodRecord {
   return {
     ...row,
     employmentLineMonthlyInputs: row.employmentLineMonthlyInputs ?? {},
-    compensationReviewStatus: row.compensationReviewStatus ?? 'draft',
+    reviewStage: row.reviewStage ?? 'first_review',
+    isReviewCompleted: row.isReviewCompleted ?? false,
   };
 }
 
-const PERIOD_STATUS_BADGE: Record<string, string> = {
-  draft:  'bg-muted text-muted-foreground border-border',
-  open:   'bg-success/10 text-success border-success/30',
-  closed: 'bg-primary/10 text-primary border-primary/30',
-};
+const PERIOD_STATUS_BADGE: Record<string, string> = PERIOD_STATUS_COLORS;
 
 export function CompensationReportPanel({
   periodId,
@@ -170,8 +187,10 @@ export function CompensationReportPanel({
   const periods               = useHRPayrollPeriodsStore(s => s.periods);
   const fetchPeriods          = useHRPayrollPeriodsStore(s => s.fetch);
   const materialize           = useHRPayrollPeriodsStore(s => s.materializeFromContracts);
-  const setCompensationStatus = useHRPayrollPeriodsStore(s => s.setCompensationStatus);
+  const advanceReview           = useHRPayrollPeriodsStore(s => s.advanceReview);
+  const revertReview            = useHRPayrollPeriodsStore(s => s.revertReview);
   const setMonthlyInputs      = useHRPayrollPeriodsStore(s => s.setMonthlyInputs);
+  const updatePeriod          = useHRPayrollPeriodsStore(s => s.update);
   const refreshMonthlyInputs  = useHRPayrollPeriodsStore(s => s.refreshMonthlyInputsForPeriod);
   const contracts             = useHRContractsStore(s => s.contracts);
   const fetchContracts        = useHRContractsStore(s => s.fetch);
@@ -198,11 +217,16 @@ export function CompensationReportPanel({
 
   const [pushDialogOpen, setPushDialogOpen] = React.useState(false);
   const [advancesPushDialogOpen, setAdvancesPushDialogOpen] = React.useState(false);
+  const [violationsPushDialogOpen, setViolationsPushDialogOpen] = React.useState(false);
   const [pushing, setPushing] = React.useState(false);
-  const [cols, setCols] = React.useState<CompensationColumnVisibility>({
-    colOvertime: true, colBonus: true,
-    colDedAbsence: true, colDedLate: true, colDedPenalties: true, colDedAdvances: true, colDedAdmin: true,
-  });
+  const [reviewAdvancing, setReviewAdvancing] = React.useState(false);
+  const [reviewReverting, setReviewReverting] = React.useState(false);
+  const [thirdReviewConfirmOpen, setThirdReviewConfirmOpen] = React.useState(false);
+  const [excelExporting, setExcelExporting] = React.useState(false);
+  const [pdfExporting, setPdfExporting] = React.useState(false);
+  const [pdfPrintMounted, setPdfPrintMounted] = React.useState(false);
+  const payrollPrintRef = React.useRef<HTMLDivElement>(null);
+  const [togglingCol, setTogglingCol] = React.useState<keyof CompensationColumnVisibility | null>(null);
   const [edits, setEdits] = React.useState<Record<string, EditRow>>({});
   const savedBaselines = React.useRef<Record<string, EditRow>>({});
   const [pendingEdit, setPendingEdit] = React.useState<{
@@ -220,6 +244,11 @@ export function CompensationReportPanel({
   const raw    = periods.find(p => p.id === periodId);
   const period = React.useMemo(() => raw ? normalizePeriod(raw) : null, [raw]);
 
+  const cols = React.useMemo(
+    () => (period ? periodToColumnVisibility(period) : DEFAULT_COMPENSATION_COLUMN_VISIBILITY),
+    [period],
+  );
+
   const getContract = React.useCallback((id: string) => contracts.find(c => c.id === id),    [contracts]);
   const getAlloType  = React.useCallback((id: string) => allowanceTypes.find(a => a.id === id), [allowanceTypes]);
 
@@ -234,8 +263,8 @@ export function CompensationReportPanel({
     return list;
   }, [period, getContract, getAlloType, filterKey]);
 
-  /** All company employees for advances push — not limited to payroll period lines. */
-  const advancesDialogEmployees = React.useMemo(
+  /** All company employees for payroll push dialogs — not limited to period lines. */
+  const pushDialogEmployees = React.useMemo(
     () => allEmployees.map(e => ({
       id: e.id,
       name: e.nameAr?.trim() || e.nameEn?.trim() || e.bridgeId || '—',
@@ -253,34 +282,56 @@ export function CompensationReportPanel({
   const handleChange = (lineId: string, field: keyof EditRow, val: string) =>
     setEdits(e => ({ ...e, [lineId]: { ...e[lineId], [field]: val } }));
 
-  const handleSave = React.useCallback((lineId: string, baseSalary: number) => {
+  const handleSave = React.useCallback((
+    lineId: string,
+    baseSalary: number,
+    editedField?: keyof EditRow,
+    fieldNotes?: string,
+  ) => {
     const editRow = edits[lineId];
-    if (!editRow || !period) return;
+    const row = previews.find(r => r.lineId === lineId);
+    if (!editRow || !period || !row) return;
+    const locked = rowToEdits(row);
+    const existingInputs = period.employmentLineMonthlyInputs[lineId] ?? [];
+    const existingNote = (kind: HRPayrollMonthlyInputKind) =>
+      existingInputs.find(i => i.kind === kind)?.note ?? '';
+
     const p = (s: string) => Math.max(0, parseFloat(s) || 0);
-    const overtime   = p(editRow.overtime);
+    const signed = (s: string) => {
+      const n = parseFloat(s);
+      return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+    };
+    const overtime   = p(locked.overtime);
     const bonus      = p(editRow.bonus);
-    const absenceSar = p(editRow.absenceSar);
-    const late       = p(editRow.late);
-    const penalties  = p(editRow.penalties);
-    const advances   = p(editRow.advances);
-    const admin      = p(editRow.admin);
+    const absenceSar = p(locked.absenceSar);
+    const late       = p(locked.late);
+    const penalties  = p(locked.penalties);
+    const advances   = p(locked.advances);
+    const admin      = signed(editRow.admin);
+
+    const bonusNote = editedField === 'bonus'
+      ? (fieldNotes?.trim() ?? '')
+      : existingNote('allowance_amount');
+    const adminNote = editedField === 'admin'
+      ? buildAdminDirectInputNote(fieldNotes)
+      : (existingNote('other') || buildAdminDirectInputNote());
 
     const dailyRate   = baseSalary / 30;
     const absenceDays = dailyRate > 0 ? Math.round((absenceSar / dailyRate) * 1000) / 1000 : 0;
 
     const inputs: HRPayrollMonthlyInput[] = [
-      ...(overtime    > 0 ? [{ kind: 'overtime_hours'    as const, value: overtime,    note: '' }] : []),
-      ...(bonus       > 0 ? [{ kind: 'allowance_amount'  as const, value: bonus,       note: '' }] : []),
-      ...(absenceDays > 0 ? [{ kind: 'absence_days'      as const, value: absenceDays, note: '' }] : []),
-      ...(late        > 0 ? [{ kind: 'late_minutes'      as const, value: late,        note: '' }] : []),
-      ...(penalties   > 0 ? [{ kind: 'deduction_amount'  as const, value: penalties,   note: '' }] : []),
-      ...(advances    > 0 ? [{ kind: 'advance_recovery'  as const, value: advances,    note: '' }] : []),
-      ...(admin       > 0 ? [{ kind: 'other'             as const, value: admin,        note: 'خصم او اضافة مباشرة' }] : []),
+      ...(overtime    > 0 ? [{ kind: 'overtime_hours'    as const, value: overtime,    note: existingNote('overtime_hours') }] : []),
+      ...(bonus       > 0 ? [{ kind: 'allowance_amount'  as const, value: bonus,       note: bonusNote }] : []),
+      ...(absenceDays > 0 ? [{ kind: 'absence_days'      as const, value: absenceDays, note: existingNote('absence_days') }] : []),
+      ...(late        > 0 ? [{ kind: 'late_minutes'      as const, value: late,        note: existingNote('late_minutes') }] : []),
+      ...(penalties   > 0 ? [{ kind: 'deduction_amount'  as const, value: penalties,   note: existingNote('deduction_amount') }] : []),
+      ...(advances    > 0 ? [{ kind: 'advance_recovery'  as const, value: advances,    note: existingNote('advance_recovery') }] : []),
+      ...(admin       !== 0 ? [{ kind: 'other'             as const, value: admin,        note: adminNote }] : []),
     ];
 
     setMonthlyInputs(periodId, lineId, inputs);
-    savedBaselines.current[lineId] = { ...editRow };
-  }, [edits, period, periodId, setMonthlyInputs]);
+    savedBaselines.current[lineId] = { ...locked, bonus: editRow.bonus, admin: editRow.admin };
+  }, [edits, period, periodId, previews, setMonthlyInputs]);
 
   const attemptEditCommit = (
     lineId: string,
@@ -290,6 +341,7 @@ export function CompensationReportPanel({
     previousValue: string,
     newValue: string,
   ) => {
+    if (!EDITABLE_FIELDS.has(field)) return;
     if (editValuesEqual(previousValue, newValue)) return;
     if (pendingEdit) return;
     // Defer past Enter key so it cannot activate the dialog confirm button.
@@ -306,9 +358,9 @@ export function CompensationReportPanel({
     }, 50);
   };
 
-  const confirmPendingEdit = () => {
+  const confirmPendingEdit = (notes: string) => {
     if (!pendingEdit) return;
-    handleSave(pendingEdit.lineId, pendingEdit.baseSalary);
+    handleSave(pendingEdit.lineId, pendingEdit.baseSalary, pendingEdit.field, notes);
     setPendingEdit(null);
   };
 
@@ -349,35 +401,158 @@ export function CompensationReportPanel({
 
   const hasLines  = period.employmentLines.length > 0;
   const filterActive = Boolean(filterKey);
-  const compStatus = period.compensationReviewStatus;
-  const reviewIdx  = STATUS_IDX[compStatus];
-  const isApproved = compStatus === 'approved';
+  const isReviewLocked = period.isReviewCompleted;
 
   /* ── Aggregate totals ── */
   const totalBase  = previews.reduce((s, r) => s + r.baseSalary, 0);
   const totalAllowances = previews.reduce((s, r) => s + r.allowancesMonthlyTotal, 0);
   const totalEntitlements = previews.reduce((s, r) => s + r.entitlementOvertimeSar + r.entitlementBonusSar, 0);
-  const totalDed   = previews.reduce((s, r) => s + r.dedAbsenceSar + r.dedLateSar + r.dedPenaltiesSar + r.dedAdvancesSar + r.dedAdminSar, 0);
+  const totalDed   = previews.reduce((s, r) => s + r.dedAbsenceSar + r.dedLateSar + r.dedPenaltiesSar + r.dedAdvancesSar + (r.dedAdminSar < 0 ? -r.dedAdminSar : 0), 0);
   const totalNet = previews.reduce((s, r) => {
     const e = edits[r.lineId] ?? rowToEdits(r);
-    return s + lineNetFromEditRow(r.baseSalary, r.allowancesMonthlyTotal, e, cols);
+    const netEdit: CompensationEditValues = { ...rowToEdits(r), bonus: e.bonus, admin: e.admin };
+    return s + lineNetFromEditRow(r.baseSalary, r.allowancesMonthlyTotal, netEdit, cols);
   }, 0);
 
   const sumEditField = (field: keyof EditRow) =>
-    previews.reduce((s, r) => s + editAmount((edits[r.lineId] ?? rowToEdits(r))[field]), 0);
+    previews.reduce((s, r) => {
+      const raw = (edits[r.lineId] ?? rowToEdits(r))[field];
+      return s + (field === 'admin' ? editSignedAmount(raw) : editAmount(raw));
+    }, 0);
+
+  const sumPreviewField = (pick: (r: PayrollLineCompensationPreview) => number) =>
+    previews.reduce((s, r) => s + pick(r), 0);
   const totalDedNoAdmin = previews.reduce((s, r) => s + r.dedAbsenceSar + r.dedLateSar + r.dedPenaltiesSar + r.dedAdvancesSar, 0);
   const totalNetSar   = previews.reduce((s, r) => s + r.lineNetSar, 0);
 
-  const handleAdvance = () => {
-    if (!hasLines) { toast.error('تأكد من وجود سجلات في الفترة قبل تسجيل المراجعة.'); return; }
-    const next = NEXT_REVIEW[compStatus];
-    if (!next) return;
-    setCompensationStatus(period.id, next);
-    toast.success(next === 'approved' ? 'تم اعتماد المستحقات والخصومات.' : 'تم تسجيل مرحلة المراجعة.');
+  const exportLines = React.useMemo(
+    () => buildCompensationExportLines(period, previews, edits, cols),
+    [period, previews, edits, cols],
+  );
+
+  const payrollPrintData = React.useMemo(
+    () => (exportLines.length > 0 ? buildPayrollPrintPayload(period, exportLines, cols) : null),
+    [period, exportLines, cols],
+  );
+
+  const handleDownloadExcel = async () => {
+    if (!hasLines || exportLines.length === 0) {
+      toast.error('لا توجد بيانات للتصدير.');
+      return;
+    }
+    setExcelExporting(true);
+    try {
+      await downloadCompensationExcel(period, exportLines, cols);
+      toast.success('تم تحميل ملف Excel.');
+    } catch (err) {
+      console.error(err);
+      toast.error('حدث خطأ أثناء إنشاء ملف Excel.');
+    } finally {
+      setExcelExporting(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!payrollPrintData || !period) {
+      toast.error('لا توجد بيانات للتصدير.');
+      return;
+    }
+    setPdfExporting(true);
+    setPdfPrintMounted(true);
+    try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      const el = payrollPrintRef.current;
+      if (!el) {
+        toast.error('تعذر العثور على منطقة الطباعة.');
+        return;
+      }
+      await downloadCompensationPdf(el, period.code);
+      toast.success('تم تحميل ملف PDF.');
+    } catch (err) {
+      console.error(err);
+      toast.error('حدث خطأ أثناء تصدير PDF.');
+    } finally {
+      setPdfExporting(false);
+      setPdfPrintMounted(false);
+    }
+  };
+
+  const handleAdvanceReview = async () => {
+    if (!period || !hasLines) {
+      toast.error('تأكد من وجود سجلات في الفترة قبل تسجيل المراجعة.');
+      return;
+    }
+    setReviewAdvancing(true);
+    try {
+      const completedStage = period.reviewStage;
+      await advanceReview(period.id);
+      toast.success(reviewAdvanceToastMessage(completedStage));
+    } catch (err) {
+      handleApiError(err, 'compensation.review-advance');
+    } finally {
+      setReviewAdvancing(false);
+    }
+  };
+
+  const handleAdvanceReviewClick = () => {
+    if (!period || !hasLines) {
+      toast.error('تأكد من وجود سجلات في الفترة قبل تسجيل المراجعة.');
+      return;
+    }
+    if (period.reviewStage === 'third_review') {
+      setThirdReviewConfirmOpen(true);
+      return;
+    }
+    void handleAdvanceReview();
+  };
+
+  const handleConfirmThirdReviewAndGenerate = async () => {
+    if (!period) return;
+    setReviewAdvancing(true);
+    try {
+      await advanceReview(period.id);
+      const actor = useAuthStore.getState().user?.email ?? undefined;
+      const created = await payslipsApi.generate({
+        payrollPeriodId: period.id,
+        generatedBy: actor,
+      });
+      setThirdReviewConfirmOpen(false);
+      toast.success(
+        created.length > 0
+          ? `تم إتمام المراجعة الثالثة وإنشاء ${created.length} قسيمة مسودة.`
+          : 'تم إتمام المراجعة الثالثة — لم يُنشأ أي قسيمة جديدة (قد تكون موجودة مسبقاً).',
+      );
+    } catch (err) {
+      handleApiError(err, 'compensation.review-advance-generate');
+    } finally {
+      setReviewAdvancing(false);
+    }
+  };
+
+  const handleRevertReview = async () => {
+    if (!period) return;
+    setReviewReverting(true);
+    try {
+      await revertReview(period.id);
+      const updated = useHRPayrollPeriodsStore.getState().periods.find(p => p.id === period.id);
+      toast.success(
+        updated?.isReviewCompleted
+          ? 'تم التراجع — الفترة الآن تحت المراجعة الثالثة'
+          : updated
+            ? `تم التراجع — الفترة الآن تحت ${REVIEW_STAGE_LABELS[updated.reviewStage]}`
+            : 'تم التراجع عن آخر مرحلة مراجعة.',
+      );
+    } catch (err) {
+      handleApiError(err, 'compensation.review-revert');
+    } finally {
+      setReviewReverting(false);
+    }
   };
 
   const handlePushFromAttendance = async (pushOptions: CompensationPushOptions) => {
-    if (!period || isApproved) return;
+    if (!period || isReviewLocked) return;
     if (!hasLines) {
       toast.error('أضف سجلات تشغيل في الفترة قبل مزامنة الحضور.');
       return;
@@ -421,7 +596,7 @@ export function CompensationReportPanel({
   };
 
   const handlePushFromAdvances = async (pushOptions: CompensationAdvancesPushOptions) => {
-    if (!period || isApproved) return;
+    if (!period || isReviewLocked) return;
     if (!hasLines) {
       toast.error('أضف سجلات تشغيل في الفترة قبل مزامنة السلف.');
       return;
@@ -455,83 +630,128 @@ export function CompensationReportPanel({
     }
   };
 
-  const toggleCol = (k: keyof CompensationColumnVisibility) =>
-    setCols(c => ({ ...c, [k]: !c[k] }));
+  const handlePushFromViolations = async (pushOptions: CompensationViolationsPushOptions) => {
+    if (!period || isReviewLocked) return;
+    if (!hasLines) {
+      toast.error('أضف سجلات تشغيل في الفترة قبل مزامنة الجزاءات.');
+      return;
+    }
+    if (pushOptions.employeeIds.length === 0) {
+      toast.error('يرجى اختيار موظف واحد على الأقل.');
+      return;
+    }
+
+    const createdBy = useAuthStore.getState().user?.email ?? undefined;
+
+    setPushing(true);
+    try {
+      const result = await violationRecordsApi.pushToPayroll({
+        payrollPeriodId: period.id,
+        employeeIds: pushOptions.employeeIds,
+        replaceExisting: pushOptions.replaceExisting,
+        createdBy,
+      });
+
+      await refreshMonthlyInputs(period.id);
+      setViolationsPushDialogOpen(false);
+
+      toast.success(
+        `تم دفع الجزاءات: ${result.inputsCreated} مدخل جديد، ${result.inputsDeleted} محذوف، ${result.violationsProcessed} مخالفة، إجمالي ${result.totalDeducted} ر.س.`,
+      );
+    } catch (err) {
+      handleApiError(err, 'compensation.push-from-violations');
+    } finally {
+      setPushing(false);
+    }
+  };
+
+  const toggleCol = (k: keyof CompensationColumnVisibility) => {
+    if (!period || isReviewLocked || togglingCol) return;
+    const includeField = COLUMN_TO_PERIOD_INCLUDE[k];
+    const next = !cols[k];
+    setTogglingCol(k);
+    void updatePeriod(period.id, { [includeField]: next })
+      .then(ok => {
+        if (!ok) toast.error('تعذر حفظ إعدادات إظهار الأعمدة.');
+      })
+      .finally(() => setTogglingCol(null));
+  };
 
   return (
     <>
       {!embedded && <SetPageTitle titleAr={`تقرير المستحقات — ${period.nameAr || period.code}`} iconName="CalendarRange" />}
 
-      <div className={cn('space-y-5 transition-opacity duration-500', mounted ? 'opacity-100' : 'opacity-0')}>
+      <div className={cn('space-y-5 overflow-x-hidden transition-opacity duration-500', mounted ? 'opacity-100' : 'opacity-0')}>
 
         {/* ══ BACK BUTTON ══ */}
         {!embedded && (
-          <div className="flex justify-start">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             {backBtn}
+            {hasLines && previews.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 text-xs"
+                  disabled={excelExporting || pdfExporting}
+                  onClick={() => void handleDownloadExcel()}
+                >
+                  {excelExporting
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <FileSpreadsheet className="h-3.5 w-3.5" />}
+                  تحميل Excel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 text-xs"
+                  disabled={excelExporting || pdfExporting}
+                  onClick={() => void handleDownloadPdf()}
+                >
+                  {pdfExporting
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <FileText className="h-3.5 w-3.5" />}
+                  تحميل PDF
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ══ REVIEW WORKFLOW ══ */}
-        {!embedded && <Card className="overflow-hidden border-primary/20 animate-fade-in">
-          <div className="relative overflow-hidden bg-linear-to-b from-primary/6 to-card">
-            <div className="flex items-center gap-3 px-4 py-2.5">
-              <p className="shrink-0 text-xs font-bold text-foreground">مسار المراجعة</p>
-
-              {/* Steps (compact, inline) */}
-              <div className="flex flex-1 items-center min-w-0" dir="ltr">
-                {REVIEW_STEPS.map((st, i) => {
-                  const done   = i < reviewIdx || isApproved;
-                  const active = i === reviewIdx && !isApproved;
-                  const filled = i > 0 && (reviewIdx >= i || isApproved);
-                  const StepIcon = st.icon;
-                  return (
-                    <React.Fragment key={st.key}>
-                      {i > 0 && (
-                        <div className={cn(
-                          'h-[2px] min-w-2 flex-1 rounded-full transition-all duration-500',
-                          filled ? 'bg-primary' : 'bg-border',
-                        )} />
-                      )}
-                      <div
-                        title={st.ar}
-                        className={cn(
-                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition-all duration-300',
-                          done   && 'border-success/50 bg-success/10 text-success',
-                          active && 'border-primary bg-primary text-primary-foreground shadow-soft',
-                          !done && !active && 'border-border bg-muted/30 text-muted-foreground',
-                        )}
-                      >
-                        {done
-                          ? <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-                          : <StepIcon className="h-3.5 w-3.5" />
-                        }
-                      </div>
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-
-              {/* Action / status */}
-              {isApproved ? (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-success/12 border border-success/25 px-2 py-1 text-[11px] font-bold text-success">
-                  <Check className="h-3 w-3" strokeWidth={2.5} />
-                  معتمد
-                </span>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={handleAdvance}
-                  disabled={!hasLines}
-                  title={!hasLines ? 'أضف سجلات تشغيل أولاً' : undefined}
-                  className="h-7 shrink-0 gap-1 px-2.5 text-xs"
-                >
-                  <Sparkles className="h-3 w-3" />
-                  {advanceBtnLabel(compStatus)}
-                </Button>
-              )}
-            </div>
+        {pdfPrintMounted && payrollPrintData && (
+          <div
+            aria-hidden
+            className="pointer-events-none fixed start-0 top-0 -z-[9999] size-0 overflow-hidden"
+          >
+            <PayrollPrintHtml
+              ref={payrollPrintRef}
+              monthNameAr={payrollPrintData.monthNameAr}
+              branchNameAr={payrollPrintData.branchNameAr}
+              rows={payrollPrintData.rows}
+            />
           </div>
-        </Card>}
+        )}
+
+        {!embedded && (
+          <PayrollPeriodReviewBar
+            period={period}
+            hasLines={hasLines}
+            advancing={reviewAdvancing}
+            reverting={reviewReverting}
+            onAdvance={handleAdvanceReviewClick}
+            onRevert={() => void handleRevertReview()}
+          />
+        )}
+
+        <CompleteReviewPayslipsDialog
+          open={thirdReviewConfirmOpen}
+          onOpenChange={setThirdReviewConfirmOpen}
+          periodLabel={`${period.nameAr} (${period.code})`}
+          busy={reviewAdvancing}
+          onConfirm={() => void handleConfirmThirdReviewAndGenerate()}
+        />
 
         {/* ══ COLUMN TOGGLES + PUSH FROM ATTENDANCE ══ */}
         {!embedded && hasLines && (
@@ -548,6 +768,7 @@ export function CompensationReportPanel({
                 <button
                   key={k}
                   type="button"
+                  disabled={isReviewLocked || togglingCol !== null}
                   onClick={() => toggleCol(k)}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all duration-200',
@@ -573,6 +794,7 @@ export function CompensationReportPanel({
                 <button
                   key={k}
                   type="button"
+                  disabled={isReviewLocked || togglingCol !== null}
                   onClick={() => toggleCol(k)}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all duration-200',
@@ -586,12 +808,23 @@ export function CompensationReportPanel({
                 </button>
               ))}
 
-              <div className="ms-auto flex shrink-0 items-center gap-2">
+              <div className="ms-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  disabled={isApproved || pushing}
+                  disabled={isReviewLocked || pushing}
+                  onClick={() => setViolationsPushDialogOpen(true)}
+                  className="h-8 gap-1.5 border-destructive/30 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
+                >
+                  <Gavel className="h-3.5 w-3.5" />
+                  دفع الجزاءات
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isReviewLocked || pushing}
                   onClick={() => setAdvancesPushDialogOpen(true)}
                   className="h-8 gap-1.5 border-destructive/30 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
                 >
@@ -601,7 +834,7 @@ export function CompensationReportPanel({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={isApproved || pushing}
+                  disabled={isReviewLocked || pushing}
                   onClick={() => setPushDialogOpen(true)}
                   className="h-8 gap-1.5 text-xs"
                 >
@@ -615,7 +848,7 @@ export function CompensationReportPanel({
               open={pushDialogOpen}
               onOpenChange={setPushDialogOpen}
               pushing={pushing}
-              disabled={isApproved}
+              disabled={isReviewLocked}
               onConfirm={options => void handlePushFromAttendance(options)}
             />
 
@@ -623,10 +856,20 @@ export function CompensationReportPanel({
               open={advancesPushDialogOpen}
               onOpenChange={setAdvancesPushDialogOpen}
               pushing={pushing}
-              disabled={isApproved}
-              employees={advancesDialogEmployees}
+              disabled={isReviewLocked}
+              employees={pushDialogEmployees}
               defaultEmployeeIds={employeeIdsFilter}
               onConfirm={options => void handlePushFromAdvances(options)}
+            />
+
+            <PushFromViolationsDialog
+              open={violationsPushDialogOpen}
+              onOpenChange={setViolationsPushDialogOpen}
+              pushing={pushing}
+              disabled={isReviewLocked}
+              employees={pushDialogEmployees}
+              defaultEmployeeIds={employeeIdsFilter}
+              onConfirm={options => void handlePushFromViolations(options)}
             />
 
             <CompensationEditConfirmDialog
@@ -691,7 +934,12 @@ export function CompensationReportPanel({
                   {previews.map((row, i) => {
                     const e = edits[row.lineId] ?? rowToEdits(row);
                     const baseline = savedBaselines.current[row.lineId] ?? rowToEdits(row);
-                    const net = lineNetFromEditRow(row.baseSalary, row.allowancesMonthlyTotal, e, cols);
+                    const netEdit: CompensationEditValues = {
+                      ...rowToEdits(row),
+                      bonus: e.bonus,
+                      admin: e.admin,
+                    };
+                    const net = lineNetFromEditRow(row.baseSalary, row.allowancesMonthlyTotal, netEdit, cols);
                     const chg = (f: keyof EditRow) => (v: string) => handleChange(row.lineId, f, v);
                     const attempt = (f: keyof EditRow) => (prev: string, next: string) =>
                       attemptEditCommit(row.lineId, f, row.namePrimary, row.baseSalary, prev, next);
@@ -733,18 +981,18 @@ export function CompensationReportPanel({
                             {fmt(row.allowancesMonthlyTotal)}
                           </td>
                         )}
-                        {!embedded && cols.colOvertime    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.overtime} baseline={baseline.overtime} onChange={chg('overtime')} onAttemptCommit={attempt('overtime')} colorClass="text-primary" disabled={isApproved} /></td>}
-                        {!embedded && cols.colBonus       && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.bonus} baseline={baseline.bonus} onChange={chg('bonus')} onAttemptCommit={attempt('bonus')} colorClass="text-primary" disabled={isApproved} /></td>}
+                        {!embedded && cols.colOvertime    && <ReadOnlyAmountCell amount={row.entitlementOvertimeSar} colorClass="text-primary" />}
+                        {!embedded && cols.colBonus       && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.bonus} baseline={baseline.bonus} onChange={chg('bonus')} onAttemptCommit={attempt('bonus')} colorClass="text-primary" disabled={isReviewLocked} /></td>}
                         {embedded && (
                           <td className="border-e border-border/40 px-3 py-2 text-center font-mono tabular-nums text-primary">
                             {fmt(row.entitlementOvertimeSar + row.entitlementBonusSar)}
                           </td>
                         )}
-                        {!embedded && cols.colDedAdvances   && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.advances} baseline={baseline.advances} onChange={chg('advances')} onAttemptCommit={attempt('advances')} colorClass="text-destructive" disabled={isApproved} /></td>}
-                        {!embedded && cols.colDedAbsence  && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.absenceSar} baseline={baseline.absenceSar} onChange={chg('absenceSar')} onAttemptCommit={attempt('absenceSar')} colorClass="text-warning" disabled={isApproved} /></td>}
-                        {!embedded && cols.colDedLate     && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.late} baseline={baseline.late} onChange={chg('late')} onAttemptCommit={attempt('late')} colorClass="text-destructive" disabled={isApproved} /></td>}
-                        {!embedded && cols.colDedPenalties&& <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.penalties} baseline={baseline.penalties} onChange={chg('penalties')} onAttemptCommit={attempt('penalties')} colorClass="text-destructive" disabled={isApproved} /></td>}
-                        {!embedded && cols.colDedAdmin    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.admin} baseline={baseline.admin} onChange={chg('admin')} onAttemptCommit={attempt('admin')} colorClass="text-muted-foreground" disabled={isApproved} /></td>}
+                        {!embedded && cols.colDedAdvances   && <ReadOnlyAmountCell amount={row.dedAdvancesSar} colorClass="text-destructive" />}
+                        {!embedded && cols.colDedAbsence  && <ReadOnlyAmountCell amount={row.dedAbsenceSar} colorClass="text-warning" />}
+                        {!embedded && cols.colDedLate     && <ReadOnlyAmountCell amount={row.dedLateSar} colorClass="text-destructive" />}
+                        {!embedded && cols.colDedPenalties&& <ReadOnlyAmountCell amount={row.dedPenaltiesSar} colorClass="text-destructive" />}
+                        {!embedded && cols.colDedAdmin    && <td className="border-e border-border/40 px-1 py-1"><EditCell value={e.admin} baseline={baseline.admin} onChange={chg('admin')} onAttemptCommit={attempt('admin')} allowNegative colorClass={editSignedAmount(e.admin) > 0 ? 'text-primary' : editSignedAmount(e.admin) < 0 ? 'text-destructive' : 'text-muted-foreground'} disabled={isReviewLocked} /></td>}
                         {embedded && (
                           <td className="border-e border-border/40 px-3 py-2 text-center font-mono tabular-nums text-destructive">
                             {fmt(row.dedAbsenceSar + row.dedLateSar + row.dedPenaltiesSar)}
@@ -782,12 +1030,12 @@ export function CompensationReportPanel({
                         <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums">
                           {fmt(totalBase)}
                         </td>
-                        {cols.colOvertime    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-primary">{fmt(sumEditField('overtime'))}</td>}
+                        {cols.colOvertime    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-primary">{fmt(sumPreviewField(r => r.entitlementOvertimeSar))}</td>}
                         {cols.colBonus       && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-primary">{fmt(sumEditField('bonus'))}</td>}
-                        {cols.colDedAdvances   && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(sumEditField('advances'))}</td>}
-                        {cols.colDedAbsence  && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-warning">{fmt(sumEditField('absenceSar'))}</td>}
-                        {cols.colDedLate     && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(sumEditField('late'))}</td>}
-                        {cols.colDedPenalties&& <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(sumEditField('penalties'))}</td>}
+                        {cols.colDedAdvances   && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(sumPreviewField(r => r.dedAdvancesSar))}</td>}
+                        {cols.colDedAbsence  && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-warning">{fmt(sumPreviewField(r => r.dedAbsenceSar))}</td>}
+                        {cols.colDedLate     && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(sumPreviewField(r => r.dedLateSar))}</td>}
+                        {cols.colDedPenalties&& <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-destructive">{fmt(sumPreviewField(r => r.dedPenaltiesSar))}</td>}
                         {cols.colDedAdmin    && <td className="border-e border-border/60 px-3 py-3 text-center font-mono tabular-nums text-muted-foreground">{fmt(sumEditField('admin'))}</td>}
                         <td className={cn(
                           'bg-primary/10 px-3 py-3 text-center font-mono font-extrabold tabular-nums text-sm',

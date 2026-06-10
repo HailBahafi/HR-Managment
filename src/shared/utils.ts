@@ -34,42 +34,88 @@ export function formatNumber(value: number): string {
   }).format(value);
 }
 
-export function formatDate(date: string | Date | null | undefined): string {
+/** App-wide date display: `2026/05/22` */
+export function formatDisplayDate(date: string | Date | null | undefined): string {
+  if (!date) return '—';
+  if (typeof date === 'string') {
+    const ymd = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (ymd) return `${ymd[1]}/${ymd[2]}/${ymd[3]}`;
+  }
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return typeof date === 'string' ? date : '—';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day}`;
+}
+
+/** Isolate Arabic period + digits so ص/م always appear before hours:minutes in RTL UI. */
+const LRI = '\u2066';
+const PDI = '\u2069';
+
+function formatArabicTime(hours24: number, hours12: number, minutes: string): string {
+  const period = hours24 < 12 ? 'ص' : 'م';
+  return `${LRI}${period}${hours12}:${minutes}${PDI}`;
+}
+
+/** App-wide datetime display: `2026/05/22-ص9:30` (RTL: time on the left, ص/م before hours) */
+export function formatDisplayDateTime(date: string | Date | null | undefined): string {
   if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
   if (isNaN(d.getTime())) return '—';
-  const s = new Intl.DateTimeFormat('ar-SA', {
-    ...LATN,
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(d);
-  return toWesternDigits(s);
+  const hours24 = d.getHours();
+  const hours12 = hours24 % 12 || 12;
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}/${m}/${day}-${formatArabicTime(hours24, hours12, minutes)}`;
+}
+
+/** Parsed parts for structured datetime rendering (avoids bidi reordering in RTL). */
+export function getDisplayDateTimeParts(
+  date: string | Date | null | undefined,
+): { date: string; period: 'ص' | 'م'; hours: number; minutes: string } | null {
+  if (!date) return null;
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return null;
+  const hours24 = d.getHours();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return {
+    date: `${y}/${m}/${day}`,
+    period: hours24 < 12 ? 'ص' : 'م',
+    hours: hours24 % 12 || 12,
+    minutes: String(d.getMinutes()).padStart(2, '0'),
+  };
+}
+
+/** @deprecated Use formatDisplayDate */
+export const formatTableDate = formatDisplayDate;
+/** @deprecated Use formatDisplayDateTime */
+export const formatTableDateTime = formatDisplayDateTime;
+
+export function formatDate(date: string | Date | null | undefined): string {
+  return formatDisplayDate(date);
 }
 
 export function formatDateShort(date: string | Date | null | undefined): string {
-  if (!date) return '—';
-  const d = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return '—';
-  const s = new Intl.DateTimeFormat('ar-SA', {
-    ...LATN,
-    month: 'short',
-    day: 'numeric',
-  }).format(d);
-  return toWesternDigits(s);
+  return formatDisplayDate(date);
 }
 
 export function formatTime(date: string | Date | null | undefined): string {
   if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
   if (isNaN(d.getTime())) return '—';
-  const s = new Intl.DateTimeFormat('ar-SA', {
-    ...LATN,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d);
-  return toWesternDigits(s);
+  const hours24 = d.getHours();
+  const hours12 = hours24 % 12 || 12;
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return formatArabicTime(hours24, hours12, minutes);
 }
+
+/** Alias for formatDisplayDateTime — use for ISO timestamps (createdAt, submittedAt, …). */
+export const formatDateTime = formatDisplayDateTime;
 
 export function getInitials(name: string): string {
   return name

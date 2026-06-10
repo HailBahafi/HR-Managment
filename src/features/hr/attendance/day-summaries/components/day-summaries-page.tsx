@@ -1,9 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { CalendarRange, Eye } from 'lucide-react';
+import { CalendarRange } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { DataTable, AppPagination, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell } from '@/components/ui/table-cells';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
@@ -24,18 +25,6 @@ import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summ
 import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { cn } from '@/shared/utils';
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  try {
-    return new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -66,12 +55,12 @@ function DaySummaryDetailDialog({
         </DialogHeader>
         <div className="max-h-[70vh] overflow-y-auto pe-1">
           <DetailRow label="الموظف" value={row.employeeNameAr ?? '—'} />
-          <DetailRow label="اليوم" value={row.workDate} />
+          <DetailRow label="اليوم" value={<TableDateCell value={row.workDate} />} />
           <DetailRow label="الحالة" value={statusLabel} />
-          <DetailRow label="بداية متوقعة" value={formatDateTime(row.expectedStartAt)} />
-          <DetailRow label="نهاية متوقعة" value={formatDateTime(row.expectedEndAt)} />
-          <DetailRow label="تسجيل حضور" value={formatDateTime(row.actualCheckInAt)} />
-          <DetailRow label="تسجيل انصراف" value={formatDateTime(row.actualCheckOutAt)} />
+          <DetailRow label="بداية متوقعة" value={<TableDateCell value={row.expectedStartAt} mode="datetime" />} />
+          <DetailRow label="نهاية متوقعة" value={<TableDateCell value={row.expectedEndAt} mode="datetime" />} />
+          <DetailRow label="تسجيل حضور" value={<TableDateCell value={row.actualCheckInAt} mode="datetime" />} />
+          <DetailRow label="تسجيل انصراف" value={<TableDateCell value={row.actualCheckOutAt} mode="datetime" />} />
           <DetailRow label="دقائق التأخير" value={minutesToHHMM(row.lateMinutes)} />
           <DetailRow label="انصراف مبكر" value={minutesToHHMM(row.earlyLeaveMinutes)} />
           <DetailRow label="ساعات العمل" value={minutesToHHMM(row.workedMinutes)} />
@@ -79,9 +68,9 @@ function DaySummaryDetailDialog({
           <DetailRow label="تعديل يدوي" value={row.isManualOverride ? 'نعم' : 'لا'} />
           <DetailRow label="نهائي" value={row.isFinalized ? 'نعم' : 'لا'} />
           <DetailRow label="ملاحظات" value={row.notes} />
-          <DetailRow label="آخر حساب" value={formatDateTime(row.computedAt)} />
-          <DetailRow label="أُنشئ" value={formatDateTime(row.createdAt)} />
-          <DetailRow label="آخر تحديث" value={formatDateTime(row.updatedAt)} />
+          <DetailRow label="آخر حساب" value={<TableDateCell value={row.computedAt} mode="datetime" />} />
+          <DetailRow label="أُنشئ" value={<TableDateCell value={row.createdAt} mode="datetime" />} />
+          <DetailRow label="آخر تحديث" value={<TableDateCell value={row.updatedAt} mode="datetime" />} />
         </div>
       </DialogContent>
     </Dialog>
@@ -92,6 +81,11 @@ export function DaySummariesPage() {
   const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
   const model = useDaySummariesDirectoryModel();
   const [detailRow, setDetailRow] = React.useState<DaySummaryResponseDto | null>(null);
+
+  usePageHeaderActions(
+    () => <FilterToggleButton />,
+    [],
+  );
 
   const columns = React.useMemo((): ColumnDef<DaySummaryResponseDto>[] => [
     {
@@ -104,9 +98,7 @@ export function DaySummariesPage() {
     {
       key: 'workDate',
       title: 'اليوم',
-      render: (row) => (
-        <span className="font-mono tabular-nums text-xs" dir="ltr">{row.workDate}</span>
-      ),
+      render: (row) => <TableDateCell value={row.workDate} />,
     },
     {
       key: 'status',
@@ -127,13 +119,13 @@ export function DaySummariesPage() {
       key: 'checkIn',
       title: 'حضور',
       hideOnMobile: true,
-      render: (row) => formatDateTime(row.actualCheckInAt),
+      render: (row) => <TableDateCell value={row.actualCheckInAt} mode="datetime" />,
     },
     {
       key: 'checkOut',
       title: 'انصراف',
       hideOnMobile: true,
-      render: (row) => formatDateTime(row.actualCheckOutAt),
+      render: (row) => <TableDateCell value={row.actualCheckOutAt} mode="datetime" />,
     },
     {
       key: 'late',
@@ -152,22 +144,6 @@ export function DaySummariesPage() {
       hideOnMobile: true,
       render: (row) => (row.isManualOverride ? 'نعم' : '—'),
     },
-    {
-      key: 'actions',
-      title: '',
-      render: (row) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={() => setDetailRow(row)}
-          title="عرض التفاصيل"
-        >
-          <Eye className="h-3.5 w-3.5" />
-        </Button>
-      ),
-    },
   ], []);
 
   return (
@@ -177,11 +153,6 @@ export function DaySummariesPage() {
         descriptionAr="سجلات الحضور المحسوبة لكل موظف — إعادة الحساب من الأحداث والورديات."
         iconName="CalendarRange"
       />
-
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">{model.total} ملخص</p>
-        <FilterToggleButton />
-      </div>
 
       {!model.loading && model.items.length === 0 ? (
         <EmptyState

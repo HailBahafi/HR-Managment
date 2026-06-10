@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -33,10 +34,9 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { toast } from 'sonner';
-import {
-  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
-  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
-} from '@/components/ui/directory-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
+import type { HRDisciplinePayrollDeductionRecord } from '@/features/hr/discipline/lib/types';
 
 const DEDUCTION_STATUS_ORDER: readonly HRDeductionStatus[] = ['ready', 'posted', 'calculated', 'cancelled'];
 
@@ -76,6 +76,7 @@ export function DeductionsClient() {
     hasRestriction: false,
   });
   const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
+  const [detailRow, setDetailRow] = React.useState<HRDisciplinePayrollDeductionRecord | null>(null);
 
   // Backend filtering: re-fetch when employee/status/kind filters change
   React.useEffect(() => {
@@ -151,6 +152,67 @@ export function DeductionsClient() {
     [m],
   );
 
+  const columns = React.useMemo((): ColumnDef<HRDisciplinePayrollDeductionRecord>[] => [
+    {
+      key: 'caseNumber',
+      title: 'القضية',
+      className: 'font-mono text-xs text-muted-foreground',
+      render: (d) => d.caseNumber,
+    },
+    {
+      key: 'employee',
+      title: 'الموظف',
+      className: 'font-medium',
+      render: (d) => d.employeeNameAr,
+    },
+    {
+      key: 'kind',
+      title: 'النوع',
+      className: 'text-muted-foreground',
+      render: (d) => DEDUCTION_KIND_LABELS[d.deductionKind],
+    },
+    {
+      key: 'month',
+      title: 'الشهر',
+      className: 'font-mono text-xs',
+      render: (d) => d.month,
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      render: (d) => (
+        <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_COLORS[d.status])}>
+          {DEDUCTION_STATUS_LABELS[d.status]}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      title: 'المبلغ',
+      className: 'font-semibold tabular-nums',
+      render: (d) => formatNumber(d.amount),
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      render: (d) => (
+        d.status === 'ready' ? (
+          <TableRowActions
+            primaryActions={[
+              {
+                label: 'إرسال للرواتب',
+                variant: 'primary',
+                icon: <Send className="h-3.5 w-3.5" />,
+                onClick: () => void handleSendToPayroll(d.id),
+              },
+            ]}
+          />
+        ) : null
+      ),
+    },
+  ], [handleSendToPayroll]);
+
   const kindSelect = (
     <div className="flex min-w-0 items-center gap-2">
       <Label htmlFor="deduction-kind-filter" className="shrink-0 text-[11px] font-medium text-muted-foreground">
@@ -216,8 +278,6 @@ export function DeductionsClient() {
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">{listFiltered.length} استقطاع</p>
-
           {deductions.length === 0 ? (
             <EmptyState title="لا توجد استقطاعات" />
           ) : dateFiltered.length === 0 ? (
@@ -242,42 +302,15 @@ export function DeductionsClient() {
           ) : listFiltered.length === 0 ? (
             <EmptyState title="لا توجد استقطاعات مطابقة للفلاتر المحددة." />
           ) : viewMode === 'list' ? (
-            <DirectoryTableContainer>
-              <DirectoryTable className="min-w-[640px]">
-                <DirectoryTableHeaderRow>
-                  <DirectoryTableHead>القضية</DirectoryTableHead>
-                  <DirectoryTableHead>الموظف</DirectoryTableHead>
-                  <DirectoryTableHead>النوع</DirectoryTableHead>
-                  <DirectoryTableHead>الشهر</DirectoryTableHead>
-                  <DirectoryTableHead>الحالة</DirectoryTableHead>
-                  <DirectoryTableHead>المبلغ</DirectoryTableHead>
-                  <DirectoryTableHead></DirectoryTableHead>
-                </DirectoryTableHeaderRow>
-                <DirectoryTableBody>
-                  {listFiltered.map((d) => (
-                    <DirectoryTableRow key={d.id}>
-                      <DirectoryTableCell className="font-mono text-xs text-muted-foreground">{d.caseNumber}</DirectoryTableCell>
-                      <DirectoryTableCell className="font-medium">{d.employeeNameAr}</DirectoryTableCell>
-                      <DirectoryTableCell className="text-muted-foreground">{DEDUCTION_KIND_LABELS[d.deductionKind]}</DirectoryTableCell>
-                      <DirectoryTableCell className="font-mono text-xs">{d.month}</DirectoryTableCell>
-                      <DirectoryTableCell>
-                        <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_COLORS[d.status])}>
-                          {DEDUCTION_STATUS_LABELS[d.status]}
-                        </span>
-                      </DirectoryTableCell>
-                      <DirectoryTableCell className="font-semibold tabular-nums">{formatNumber(d.amount)}</DirectoryTableCell>
-                      <DirectoryTableActionsCell>
-                        {d.status === 'ready' ? (
-                          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => handleSendToPayroll(d.id)}>
-                            إرسال للرواتب
-                          </Button>
-                        ) : null}
-                      </DirectoryTableActionsCell>
-                    </DirectoryTableRow>
-                  ))}
-                </DirectoryTableBody>
-              </DirectoryTable>
-            </DirectoryTableContainer>
+            <DataTable
+              variant="directory"
+              alwaysShowTable
+              tableClassName="min-w-[640px]"
+              columns={columns}
+              data={listFiltered}
+              keyExtractor={(d) => d.id}
+              onRowClick={(d) => setDetailRow(d)}
+            />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {listFiltered.map((d) => (
@@ -317,6 +350,23 @@ export function DeductionsClient() {
           )}
         </>
       )}
+
+      <TableRowDetailDialog
+        open={detailRow != null}
+        onOpenChange={(o) => !o && setDetailRow(null)}
+        title="تفاصيل الاستقطاع"
+        fields={detailRow ? [
+          { label: 'القضية', value: detailRow.caseNumber },
+          { label: 'الموظف', value: detailRow.employeeNameAr },
+          { label: 'النوع', value: DEDUCTION_KIND_LABELS[detailRow.deductionKind] },
+          { label: 'الشهر', value: detailRow.month },
+          { label: 'الحالة', value: DEDUCTION_STATUS_LABELS[detailRow.status] },
+          { label: 'المبلغ', value: formatNumber(detailRow.amount) },
+          { label: 'السبب', value: detailRow.reasonAr || '—' },
+          { label: 'تاريخ التسجيل', value: <TableDateCell value={detailRow.createdAt} mode="datetime" /> },
+          { label: 'آخر تحديث', value: <TableDateCell value={detailRow.updatedAt} mode="datetime" /> },
+        ] : []}
+      />
     </div>
   );
 }

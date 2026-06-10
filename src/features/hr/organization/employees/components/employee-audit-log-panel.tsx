@@ -8,7 +8,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { cn, formatDate, formatTime } from '@/shared/utils';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell } from '@/components/ui/table-cells';
+import { cn } from '@/shared/utils';
 import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
 import { useEmployeeAuditLogStore, EMPTY_EMPLOYEE_AUDIT_LOG } from '@/features/hr/organization/employees/lib/employee-audit-log/store';
 import { useEmployeeAuditActorStore, AUDIT_ACTOR_SYSTEM } from '@/features/hr/organization/employees/lib/employee-audit-log/actor-store';
@@ -81,7 +83,73 @@ export function EmployeeAuditLogPanel({ targetEmployeeId }: Props) {
     });
   }, [entries, q, from, to, scope, action, actorFilter]);
 
-  const fmtAt = (iso: string) => `${formatDate(iso)} · ${formatTime(iso)}`;
+  const columns = React.useMemo((): ColumnDef<EmployeeAuditEntry>[] => [
+    {
+      key: 'at',
+      title: 'التاريخ والوقت',
+      className: 'whitespace-nowrap align-top',
+      headerClassName: 'whitespace-nowrap',
+      render: (e) => <TableDateCell value={e.at} mode="datetime" />,
+    },
+    {
+      key: 'actor',
+      title: 'الفاعل',
+      className: 'text-xs align-top',
+      headerClassName: 'whitespace-nowrap',
+      render: (e) => e.actorNameAr,
+    },
+    {
+      key: 'action',
+      title: 'الإجراء',
+      className: 'align-top',
+      headerClassName: 'whitespace-nowrap',
+      render: (e) => (
+        <Badge variant={actionBadgeVariant(e.action)} className="text-[10px] font-medium">
+          {EMPLOYEE_AUDIT_ACTION_LABELS[e.action]}
+        </Badge>
+      ),
+    },
+    {
+      key: 'scope',
+      title: 'النطاق',
+      className: 'text-xs text-muted-foreground align-top',
+      headerClassName: 'whitespace-nowrap',
+      render: (e) => EMPLOYEE_AUDIT_SCOPE_LABELS[e.scope],
+    },
+    {
+      key: 'field',
+      title: 'الحقل',
+      className: 'align-top',
+      render: (e) => (
+        <>
+          <div className="font-medium text-foreground text-xs">{e.labelAr}</div>
+          <div className="text-[10px] text-muted-foreground font-mono mt-0.5" dir="ltr">{e.fieldKey}</div>
+        </>
+      ),
+    },
+    {
+      key: 'oldValue',
+      title: 'القيمة القديمة',
+      className: cn('text-xs break-words max-w-[280px] align-top'),
+      headerClassName: 'min-w-[140px]',
+      render: (e) => (
+        <span className={e.oldValue ? 'text-foreground' : 'text-muted-foreground/50'}>
+          {e.oldValue || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'newValue',
+      title: 'القيمة الجديدة',
+      className: cn('text-xs break-words max-w-[280px] align-top'),
+      headerClassName: 'min-w-[140px]',
+      render: (e) => (
+        <span className={e.newValue ? 'text-foreground' : 'text-muted-foreground/50'}>
+          {e.newValue || '—'}
+        </span>
+      ),
+    },
+  ], []);
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card shadow-soft">
@@ -175,61 +243,14 @@ export function EmployeeAuditLogPanel({ targetEmployeeId }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>إجمالي السجلات: {entries.length}</span>
-          <span>بعد التصفية: {filtered.length}</span>
-        </div>
-
-        <div className="overflow-x-auto rounded-xl border border-border/60">
-          {filtered.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">لا توجد سجلات مطابقة للفلتر.</div>
-          ) : (
-            <table className="w-full min-w-[920px] text-right text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="px-3 py-2.5 font-medium whitespace-nowrap">التاريخ والوقت</th>
-                  <th className="px-3 py-2.5 font-medium whitespace-nowrap">الفاعل</th>
-                  <th className="px-3 py-2.5 font-medium whitespace-nowrap">الإجراء</th>
-                  <th className="px-3 py-2.5 font-medium whitespace-nowrap">النطاق</th>
-                  <th className="px-3 py-2.5 font-medium">الحقل</th>
-                  <th className="px-3 py-2.5 font-medium min-w-[140px]">القيمة القديمة</th>
-                  <th className="px-3 py-2.5 font-medium min-w-[140px]">القيمة الجديدة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((e) => (
-                  <AuditRow key={e.id} e={e} fmtAt={fmtAt} />
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyExtractor={(e) => e.id}
+          emptyText="لا توجد سجلات مطابقة للفلتر."
+          tableClassName="min-w-[920px] text-right"
+        />
       </div>
     </div>
-  );
-}
-
-function AuditRow({ e, fmtAt }: { e: EmployeeAuditEntry; fmtAt: (iso: string) => string }) {
-  return (
-    <tr className="border-b border-border/50 align-top hover:bg-muted/20 transition-colors">
-      <td className="px-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground tabular-nums">{fmtAt(e.at)}</td>
-      <td className="px-3 py-2.5 text-xs">{e.actorNameAr}</td>
-      <td className="px-3 py-2.5">
-        <Badge variant={actionBadgeVariant(e.action)} className="text-[10px] font-medium">
-          {EMPLOYEE_AUDIT_ACTION_LABELS[e.action]}
-        </Badge>
-      </td>
-      <td className="px-3 py-2.5 text-xs text-muted-foreground">{EMPLOYEE_AUDIT_SCOPE_LABELS[e.scope]}</td>
-      <td className="px-3 py-2.5">
-        <div className="font-medium text-foreground text-xs">{e.labelAr}</div>
-        <div className="text-[10px] text-muted-foreground font-mono mt-0.5" dir="ltr">{e.fieldKey}</div>
-      </td>
-      <td className={cn('px-3 py-2.5 text-xs break-words max-w-[280px]', e.oldValue ? 'text-foreground' : 'text-muted-foreground/50')}>
-        {e.oldValue || '—'}
-      </td>
-      <td className={cn('px-3 py-2.5 text-xs break-words max-w-[280px]', e.newValue ? 'text-foreground' : 'text-muted-foreground/50')}>
-        {e.newValue || '—'}
-      </td>
-    </tr>
   );
 }

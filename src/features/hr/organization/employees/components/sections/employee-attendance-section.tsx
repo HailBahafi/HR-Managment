@@ -95,11 +95,6 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
             </button>
           )}
         </div>
-        {(attFrom || attTo) && (
-          <span className="text-[11px] font-medium text-primary shrink-0 sm:ms-auto">
-            {employeeSummaries.length} سجل
-          </span>
-        )}
       </div>
 
       <EmployeeAttendanceStatsGrid

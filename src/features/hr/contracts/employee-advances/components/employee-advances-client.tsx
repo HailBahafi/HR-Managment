@@ -153,8 +153,6 @@ export function EmployeeAdvancesClient() {
     [items],
   );
 
-  const total = filtered.length;
-
   const runAction = async (id: string, action: () => Promise<void>, successMessage: string) => {
     setActionLoadingId(id);
     try {
@@ -366,8 +364,6 @@ export function EmployeeAdvancesClient() {
       />
 
       <SetPageTitle titleAr="سلف الموظفين" descriptionAr="تسجيل وإدارة سلف الموظفين واعتمادها." iconName="Banknote" />
-
-      <p className="text-sm text-muted-foreground">{total} سلفة</p>
 
       {filtered.length === 0 ? (
         <EmptyState icon={Banknote} title="لا توجد سلف" description="أضف سلفة جديدة لموظف للبدء." />

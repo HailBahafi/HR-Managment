@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  Trash2, CalendarDays, Eye, CheckCircle2, XCircle, Edit3,
+  Trash2, CalendarDays, CheckCircle2, XCircle, Edit3,
   FileDown, FileSpreadsheet, Plus, AlertTriangle, Scale, Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -44,10 +44,8 @@ import { disciplineNoticesApi } from '@/features/hr/discipline/lib/api/disciplin
 import { disciplineInvestigationsApi } from '@/features/hr/discipline/lib/api/discipline-investigations';
 import { disciplineAppealsApi } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
-import {
-  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
-  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
-} from '@/components/ui/directory-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -627,6 +625,100 @@ export function ViolationCasesClient() {
   // Get the type info for a given case (from violationTypes list)
   const typeFor = (c: ViolationCaseRecord) => violationTypes.find((t) => t.id === c.violationTypeId);
 
+  const columns = React.useMemo((): ColumnDef<ViolationCaseRecord>[] => [
+    {
+      key: 'caseNumber',
+      title: 'الرقم',
+      headerClassName: 'whitespace-nowrap',
+      className: 'font-mono text-xs font-medium tabular-nums text-muted-foreground',
+      render: (c) => <span dir="ltr">{c.caseNumber}</span>,
+    },
+    {
+      key: 'employee',
+      title: 'الموظف',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[10rem] truncate font-medium',
+      render: (c) => c.employeeNameAr,
+    },
+    {
+      key: 'type',
+      title: 'نوع المخالفة',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[9rem] truncate text-xs text-muted-foreground',
+      render: (c) => c.typeNameAr,
+    },
+    {
+      key: 'date',
+      title: 'التاريخ',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap font-mono text-xs tabular-nums',
+      render: (c) => <TableDateCell value={c.date} />,
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      headerClassName: 'whitespace-nowrap',
+      render: (c) => (
+        <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium', STATUS_COLORS[c.status])}>
+          {STATUS_LABELS[c.status]}
+        </span>
+      ),
+    },
+    {
+      key: 'requirements',
+      title: 'المتطلبات',
+      headerClassName: 'whitespace-nowrap',
+      render: (c) => {
+        const type = typeFor(c);
+        return (
+          <div className="flex flex-wrap gap-1">
+            {type?.needsInvestigation && (
+              <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-[9px] text-blue-700 dark:text-blue-400">تحقيق</Badge>
+            )}
+            {type?.needsWarning && (
+              <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[9px] text-amber-700 dark:text-amber-400">إنذار</Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'whitespace-nowrap',
+      render: (c) => {
+        const type = typeFor(c);
+        const menuItems = [
+          { label: 'تعديل', onClick: () => openEdit(c), icon: <Edit3 className="h-3.5 w-3.5" /> },
+          ...(type?.needsWarning
+            ? [{ label: 'إنذار', onClick: () => setNoticeCase(c), icon: <AlertTriangle className="h-3.5 w-3.5" /> }]
+            : []),
+          ...(type?.needsInvestigation
+            ? [{ label: 'تحقيق', onClick: () => setInvestigationCase(c), icon: <Search className="h-3.5 w-3.5" /> }]
+            : []),
+          { label: 'تظلم', onClick: () => setAppealCase(c), icon: <Scale className="h-3.5 w-3.5" /> },
+          {
+            label: 'حذف',
+            onClick: () => setDeleteId(c.id),
+            icon: <Trash2 className="h-3.5 w-3.5" />,
+            destructive: true,
+            separator: true,
+          },
+        ];
+        return (
+          <TableRowActions
+            primaryActions={[
+              { label: 'موافقة', variant: 'success', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onClick: () => void handleApprove(c) },
+              { label: 'رفض', variant: 'destructive', icon: <XCircle className="h-3.5 w-3.5" />, onClick: () => { setRejectNote(''); setRejectCase(c); } },
+            ]}
+            menuItems={menuItems}
+          />
+        );
+      },
+    },
+  ], [violationTypes]);
+
   useEntityFilterSlot(
     () => (
       <DisciplineFilterToolbar
@@ -696,15 +788,17 @@ export function ViolationCasesClient() {
             return (
               <div key={c.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-mono text-[10px] font-bold text-muted-foreground" dir="ltr">{c.caseNumber}</p>
-                    <p className="mt-0.5 truncate font-semibold">{c.employeeNameAr}</p>
+                <button type="button" className="text-right" onClick={() => setViewCase(c)}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-mono text-[10px] font-bold text-muted-foreground" dir="ltr">{c.caseNumber}</p>
+                      <p className="mt-0.5 truncate font-semibold">{c.employeeNameAr}</p>
+                    </div>
+                    <span className={cn('inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[c.status])}>
+                      {STATUS_LABELS[c.status]}
+                    </span>
                   </div>
-                  <span className={cn('inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[c.status])}>
-                    {STATUS_LABELS[c.status]}
-                  </span>
-                </div>
+                </button>
 
                 {/* Type chip + date + requirement badges */}
                 <div className="space-y-1.5">
@@ -723,9 +817,6 @@ export function ViolationCasesClient() {
 
                 {/* Action buttons */}
                 <div className="grid grid-cols-2 gap-1 rounded-lg border border-border/60 bg-muted/20 p-1">
-                  <Button variant="ghost" size="sm" type="button" className="h-8 gap-1 px-2 text-xs" onClick={() => setViewCase(c)}>
-                    <Eye className="h-3.5 w-3.5" /> عرض
-                  </Button>
                   <Button variant="ghost" size="sm" type="button"
                     className="h-8 gap-1 px-2 text-xs text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
                     onClick={() => void handleApprove(c)}>
@@ -777,79 +868,15 @@ export function ViolationCasesClient() {
           })}
         </div>
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable className="min-w-[900px]">
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead className="whitespace-nowrap">الرقم</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">الموظف</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">نوع المخالفة</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">الحالة</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">المتطلبات</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {listFiltered.map((c) => {
-                const type = typeFor(c);
-                return (
-                  <DirectoryTableRow key={c.id}>
-                    <DirectoryTableCell className="font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{c.caseNumber}</DirectoryTableCell>
-                    <DirectoryTableCell className="max-w-[10rem] truncate font-medium">{c.employeeNameAr}</DirectoryTableCell>
-                    <DirectoryTableCell className="max-w-[9rem] truncate text-xs text-muted-foreground">{c.typeNameAr}</DirectoryTableCell>
-                    <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{c.date}</DirectoryTableCell>
-                    <DirectoryTableCell>
-                      <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium', STATUS_COLORS[c.status])}>
-                        {STATUS_LABELS[c.status]}
-                      </span>
-                    </DirectoryTableCell>
-                    <DirectoryTableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {type?.needsInvestigation && (
-                          <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-[9px] text-blue-700 dark:text-blue-400">تحقيق</Badge>
-                        )}
-                        {type?.needsWarning && (
-                          <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[9px] text-amber-700 dark:text-amber-400">إنذار</Badge>
-                        )}
-                      </div>
-                    </DirectoryTableCell>
-                    <DirectoryTableActionsCell>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" type="button" onClick={() => setViewCase(c)}>
-                          <Eye className="h-3.5 w-3.5" /> عرض
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-emerald-700 hover:bg-emerald-500/10" type="button" onClick={() => void handleApprove(c)}>
-                          <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10" type="button" onClick={() => { setRejectNote(''); setRejectCase(c); }}>
-                          <XCircle className="h-3.5 w-3.5" /> رفض
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-amber-700 hover:bg-amber-500/10" type="button" onClick={() => openEdit(c)}>
-                          <Edit3 className="h-3.5 w-3.5" /> تعديل
-                        </Button>
-                        {type?.needsWarning && (
-                          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px] text-amber-700 hover:bg-amber-500/10" type="button" onClick={() => setNoticeCase(c)}>
-                            <AlertTriangle className="h-3 w-3" /> إنذار
-                          </Button>
-                        )}
-                        {type?.needsInvestigation && (
-                          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px] text-blue-700 hover:bg-blue-500/10" type="button" onClick={() => setInvestigationCase(c)}>
-                            <Search className="h-3 w-3" /> تحقيق
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px] text-violet-700 hover:bg-violet-500/10" type="button" onClick={() => setAppealCase(c)}>
-                          <Scale className="h-3 w-3" /> تظلم
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(c.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </DirectoryTableActionsCell>
-                  </DirectoryTableRow>
-                );
-              })}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          tableClassName="min-w-[900px]"
+          columns={columns}
+          data={listFiltered}
+          keyExtractor={(c) => c.id}
+          onRowClick={(c) => setViewCase(c)}
+        />
       )}
 
       {/* ── Create Drawer ── */}

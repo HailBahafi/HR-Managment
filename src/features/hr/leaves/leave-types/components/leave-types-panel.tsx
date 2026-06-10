@@ -94,7 +94,6 @@ export function LeaveTypesPanel() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">{m.sorted.length} نوع</p>
         </>
       )}
 

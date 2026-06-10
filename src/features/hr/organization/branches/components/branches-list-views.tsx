@@ -1,8 +1,10 @@
 'use client';
 
+import * as React from 'react';
 import { Building2, Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { RowActions } from '@/components/ui/row-actions';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableRowActions } from '@/components/ui/table-cells';
 import {
   DirectoryGrid,
   DirectoryGridCard,
@@ -11,28 +13,44 @@ import {
   DirectoryGridCardMeta,
   DirectoryGridCardMetaRow,
   DirectoryGridCardTitle,
-  DirectoryResultCount,
 } from '@/components/ui/directory-grid-card';
-import {
-  DirectoryTableActionsCell,
-  DirectoryTableBody,
-  DirectoryTableCell,
-  DirectoryTableContainer,
-  DirectoryTableHead,
-  DirectoryTableHeaderRow,
-  DirectoryTableRow,
-  DirectoryTable,
-} from '@/components/ui/directory-table';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import type { BranchesDirectoryModel } from '@/features/hr/organization/branches/hooks/useBranchesDirectoryModel';
+import type { BranchRow } from '@/features/hr/organization/branches/constants/branches-directory';
 
 export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) {
   const { filtered, layoutView, setViewBranch, openEdit, setConfirmId } = model;
 
+  const columns = React.useMemo((): ColumnDef<BranchRow>[] => [
+    {
+      key: 'name',
+      title: 'الفرع',
+      render: (b) => <span className="font-medium">{b.name}</span>,
+    },
+    {
+      key: 'city',
+      title: 'المدينة',
+      className: 'text-muted-foreground',
+      render: (b) => b.city,
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'text-start w-16',
+      render: (b) => (
+        <TableRowActions
+          menuItems={[
+            { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(b); } },
+            { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(b.id); }, destructive: true, separator: true },
+          ]}
+        />
+      ),
+    },
+  ], [openEdit, setConfirmId, setViewBranch]);
+
   return (
     <>
-      <DirectoryResultCount>{model.branches.length} فرع</DirectoryResultCount>
-
       {filtered.length === 0 ? (
         <EmptyState icon={Building2} title="لا توجد فروع" description="لا توجد فروع في القائمة." />
       ) : layoutView === 'grid' ? (
@@ -57,32 +75,14 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
           ))}
         </DirectoryGrid>
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable>
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead>الفرع</DirectoryTableHead>
-              <DirectoryTableHead>المدينة</DirectoryTableHead>
-              <DirectoryTableHead className="text-start w-16">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {filtered.map((b) => (
-                <DirectoryTableRow key={b.id} interactive onClick={() => setViewBranch(b)}>
-                  <DirectoryTableCell className="font-medium">{b.name}</DirectoryTableCell>
-                  <DirectoryTableCell className="text-muted-foreground">{b.city}</DirectoryTableCell>
-                  <DirectoryTableActionsCell>
-                    <RowActions
-                      menuItems={[
-                        { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewBranch(b); } },
-                        { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(b); } },
-                        { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(b.id); }, destructive: true, separator: true },
-                      ]}
-                    />
-                  </DirectoryTableActionsCell>
-                </DirectoryTableRow>
-              ))}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          columns={columns}
+          data={filtered}
+          keyExtractor={(b) => b.id}
+          onRowClick={(b) => setViewBranch(b)}
+        />
       )}
     </>
   );

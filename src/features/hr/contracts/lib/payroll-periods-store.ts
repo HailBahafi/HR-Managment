@@ -9,8 +9,16 @@ import {
 } from './api/monthly-inputs';
 import type { HRContractRecord } from './contracts-store';
 
-export type HRPayrollPeriodStatus = 'draft' | 'open' | 'closed';
-export type HRPayrollCompensationReviewStatus = 'draft' | 'first_review' | 'second_review' | 'approved';
+export type HRPayrollPeriodStatus = 'draft' | 'open' | 'locked' | 'closed' | 'cancelled';
+
+export const PERIOD_STATUS_ORDER: HRPayrollPeriodStatus[] = [
+  'draft',
+  'open',
+  'locked',
+  'closed',
+  'cancelled',
+];
+export type HRPayrollReviewStage = 'first_review' | 'second_review' | 'third_review';
 
 export type HRPayrollMonthlyInputKind =
   | 'absence_days'
@@ -41,6 +49,16 @@ export type HRPayrollEmploymentLine = {
   capturedAt: string;
 };
 
+export type HRPayrollPeriodIncludeFlags = {
+  includeOvertime: boolean;
+  includeBonuses: boolean;
+  includeAdvances: boolean;
+  includeAbsence: boolean;
+  includeLateness: boolean;
+  includePenalties: boolean;
+  includeManualInputs: boolean;
+};
+
 export type HRPayrollPeriodRecord = {
   id: string;
   code: string;
@@ -49,7 +67,15 @@ export type HRPayrollPeriodRecord = {
   periodStart: string;
   periodEnd: string;
   status: HRPayrollPeriodStatus;
-  compensationReviewStatus: HRPayrollCompensationReviewStatus;
+  reviewStage: HRPayrollReviewStage;
+  isReviewCompleted: boolean;
+  reviewNotes: string | null;
+  firstReviewedBy: string | null;
+  firstReviewedAt: string | null;
+  secondReviewedBy: string | null;
+  secondReviewedAt: string | null;
+  thirdReviewedBy: string | null;
+  thirdReviewedAt: string | null;
   snapshotContractIds: string[];
   employmentLines: HRPayrollEmploymentLine[];
   linesMaterializedAt: string | null;
@@ -57,7 +83,7 @@ export type HRPayrollPeriodRecord = {
   notes: string;
   createdAt: string;
   updatedAt: string;
-};
+} & HRPayrollPeriodIncludeFlags;
 
 export type HRPayrollPeriodDraft = Omit<HRPayrollPeriodRecord, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -67,14 +93,27 @@ const MONTH_NAMES_EN = ['January','February','March','April','May','June','July'
 const STATUS_MAP: Record<string, HRPayrollPeriodStatus> = {
   draft: 'draft',
   open: 'open',
-  locked: 'open',
+  locked: 'locked',
   closed: 'closed',
-  cancelled: 'closed',
+  cancelled: 'cancelled',
 };
+
+function defaultIncludeFlags(): HRPayrollPeriodIncludeFlags {
+  return {
+    includeOvertime: true,
+    includeBonuses: true,
+    includeAdvances: true,
+    includeAbsence: true,
+    includeLateness: true,
+    includePenalties: true,
+    includeManualInputs: true,
+  };
+}
 
 function mapApi(r: PayrollPeriodResponseDto): HRPayrollPeriodRecord {
   const m = r.periodMonth;
   const y = r.periodYear;
+  const includes = defaultIncludeFlags();
   return {
     id: r.id,
     code: `PAY-${y}-${String(m).padStart(2, '0')}`,
@@ -83,19 +122,61 @@ function mapApi(r: PayrollPeriodResponseDto): HRPayrollPeriodRecord {
     periodStart: r.startDate,
     periodEnd: r.endDate,
     status: STATUS_MAP[r.status] ?? 'draft',
-    compensationReviewStatus: 'draft',
+    reviewStage: r.reviewStage ?? 'first_review',
+    isReviewCompleted: r.isReviewCompleted ?? false,
+    reviewNotes: r.reviewNotes ?? null,
+    firstReviewedBy: r.firstReviewedBy ?? null,
+    firstReviewedAt: r.firstReviewedAt ?? null,
+    secondReviewedBy: r.secondReviewedBy ?? null,
+    secondReviewedAt: r.secondReviewedAt ?? null,
+    thirdReviewedBy: r.thirdReviewedBy ?? null,
+    thirdReviewedAt: r.thirdReviewedAt ?? null,
     snapshotContractIds: [],
     employmentLines: [],
     linesMaterializedAt: null,
     employmentLineMonthlyInputs: {},
     notes: r.notes ?? '',
+    includeOvertime: r.includeOvertime ?? includes.includeOvertime,
+    includeBonuses: r.includeBonuses ?? includes.includeBonuses,
+    includeAdvances: r.includeAdvances ?? includes.includeAdvances,
+    includeAbsence: r.includeAbsence ?? includes.includeAbsence,
+    includeLateness: r.includeLateness ?? includes.includeLateness,
+    includePenalties: r.includePenalties ?? includes.includePenalties,
+    includeManualInputs: r.includeManualInputs ?? includes.includeManualInputs,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };
 }
 
+function mergePeriodFromApi(
+  existing: HRPayrollPeriodRecord,
+  mapped: HRPayrollPeriodRecord,
+): HRPayrollPeriodRecord {
+  return {
+    ...mapped,
+    snapshotContractIds: existing.snapshotContractIds,
+    employmentLines: existing.employmentLines,
+    linesMaterializedAt: existing.linesMaterializedAt,
+    employmentLineMonthlyInputs: existing.employmentLineMonthlyInputs,
+  };
+}
+
 // Map a backend MonthlyInputResponseDto to a frontend HRPayrollMonthlyInput.
 // baseSalarySnapshot is required to convert absence SAR → days correctly.
+const ADMIN_DIRECT_NOTE = 'خصم او اضافة مباشرة';
+
+export function buildAdminDirectInputNote(userNote?: string): string {
+  const trimmed = userNote?.trim() ?? '';
+  return trimmed ? `${ADMIN_DIRECT_NOTE}: ${trimmed}` : ADMIN_DIRECT_NOTE;
+}
+
+function isAdminDirectMonthlyInput(dto: MonthlyInputResponseDto): boolean {
+  return dto.note === ADMIN_DIRECT_NOTE
+    || (dto.note?.startsWith(`${ADMIN_DIRECT_NOTE}:`) ?? false)
+    || (dto.sourceTable === 'frontend_compensation_panel'
+      && (dto.inputKind === 'other_addition' || dto.inputKind === 'other_deduction'));
+}
+
 function fromBackendInput(dto: MonthlyInputResponseDto, baseSalarySnapshot = 0): HRPayrollMonthlyInput {
   const amount = parseFloat(String(dto.amount)) || 0;
   switch (dto.inputKind) {
@@ -115,7 +196,13 @@ function fromBackendInput(dto: MonthlyInputResponseDto, baseSalarySnapshot = 0):
     case 'loan_installment':
       return { kind: 'advance_recovery', value: amount, note: dto.note ?? '' };
     case 'discipline_deduction':
+      return { kind: 'deduction_amount', value: amount, note: dto.note ?? '' };
+    case 'other_addition':
+      return { kind: 'other', value: amount, note: dto.note ?? '' };
     case 'other_deduction':
+      if (isAdminDirectMonthlyInput(dto)) {
+        return { kind: 'other', value: -amount, note: dto.note ?? '' };
+      }
       return { kind: 'deduction_amount', value: amount, note: dto.note ?? '' };
     default:
       return { kind: 'other', value: amount, note: dto.note ?? '' };
@@ -135,7 +222,8 @@ interface State {
   remove: (id: string) => Promise<boolean>;
   open: (id: string) => Promise<boolean>;
   close: (id: string) => Promise<boolean>;
-  setCompensationStatus: (id: string, s: HRPayrollCompensationReviewStatus) => boolean;
+  advanceReview: (id: string, notes?: string) => Promise<void>;
+  revertReview: (id: string, notes?: string) => Promise<void>;
   setMonthlyInputs: (periodId: string, lineId: string, inputs: HRPayrollMonthlyInput[]) => Promise<void>;
   refreshMonthlyInputsForPeriod: (periodId: string) => Promise<void>;
 }
@@ -239,7 +327,9 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       startDate: data.periodStart,
       endDate: data.periodEnd,
       payrollDate: data.periodEnd,
-      status: data.status === 'open' ? 'open' : data.status === 'closed' ? 'closed' : 'draft',
+      status: (['draft', 'open', 'locked', 'closed', 'cancelled'].includes(data.status)
+        ? data.status
+        : 'draft') as PayrollPeriodResponseDto['status'],
       notes: data.notes || undefined,
     });
     const mapped = mapApi(created);
@@ -256,19 +346,25 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
         updateBody.payrollDate = patch.periodEnd;
       }
       if (patch.notes !== undefined) updateBody.notes = patch.notes;
+      if (patch.includeOvertime !== undefined) updateBody.includeOvertime = patch.includeOvertime;
+      if (patch.includeBonuses !== undefined) updateBody.includeBonuses = patch.includeBonuses;
+      if (patch.includeAdvances !== undefined) updateBody.includeAdvances = patch.includeAdvances;
+      if (patch.includeAbsence !== undefined) updateBody.includeAbsence = patch.includeAbsence;
+      if (patch.includeLateness !== undefined) updateBody.includeLateness = patch.includeLateness;
+      if (patch.includePenalties !== undefined) updateBody.includePenalties = patch.includePenalties;
+      if (patch.includeManualInputs !== undefined) updateBody.includeManualInputs = patch.includeManualInputs;
       const updated = await payrollPeriodsApi.update(id, updateBody);
       set(s => ({
         periods: s.periods.map(p => {
           if (p.id !== id) return p;
           const base = mapApi(updated);
-          return {
+          return mergePeriodFromApi(p, {
             ...base,
-            compensationReviewStatus: patch.compensationReviewStatus ?? p.compensationReviewStatus,
             snapshotContractIds: patch.snapshotContractIds ?? p.snapshotContractIds,
             employmentLines: patch.employmentLines ?? p.employmentLines,
             linesMaterializedAt: patch.linesMaterializedAt !== undefined ? patch.linesMaterializedAt : p.linesMaterializedAt,
             employmentLineMonthlyInputs: patch.employmentLineMonthlyInputs ?? p.employmentLineMonthlyInputs,
-          };
+          });
         }),
       }));
       return true;
@@ -291,7 +387,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     try {
       const updated = await payrollPeriodsApi.update(id, { status: 'open' });
       set(s => ({
-        periods: s.periods.map(p => p.id === id ? { ...p, ...mapApi(updated) } : p),
+        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
       }));
       return true;
     } catch {
@@ -303,7 +399,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     try {
       const updated = await payrollPeriodsApi.update(id, { status: 'closed' });
       set(s => ({
-        periods: s.periods.map(p => p.id === id ? { ...p, ...mapApi(updated) } : p),
+        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
       }));
       return true;
     } catch {
@@ -311,13 +407,20 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     }
   },
 
-  setCompensationStatus: (id, s) => {
-    const row = get().periods.find(p => p.id === id);
-    if (!row) return false;
-    set(st => ({
-      periods: st.periods.map(p => p.id === id ? { ...p, compensationReviewStatus: s } : p),
+  advanceReview: async (id, notes) => {
+    const reviewedBy = useAuthStore.getState().user?.email ?? undefined;
+    const updated = await payrollPeriodsApi.advanceReview(id, { reviewedBy, notes });
+    set(s => ({
+      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
     }));
-    return true;
+  },
+
+  revertReview: async (id, notes) => {
+    const reviewedBy = useAuthStore.getState().user?.email ?? undefined;
+    const updated = await payrollPeriodsApi.revertReview(id, { reviewedBy, notes });
+    set(s => ({
+      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+    }));
   },
 
   setMonthlyInputs: async (periodId, lineId, inputs) => {
@@ -356,7 +459,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       // Create new inputs
       const baseSalary = line.baseSalarySnapshot;
       const creates = inputs
-        .filter(i => i.value > 0)
+        .filter(i => (i.kind === 'other' ? i.value !== 0 : i.value > 0))
         .map(i => {
           let inputKind: MonthlyInputKindDto;
           let direction: MonthlyInputDirectionDto;
@@ -378,7 +481,12 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
               inputKind = 'advance_installment'; direction = 'deduction'; amount = i.value; break;
             case 'other':
             default:
-              inputKind = 'other_deduction'; direction = 'deduction'; amount = i.value; break;
+              if (i.value > 0) {
+                inputKind = 'other_addition'; direction = 'addition'; amount = i.value;
+              } else {
+                inputKind = 'other_deduction'; direction = 'deduction'; amount = Math.abs(i.value);
+              }
+              break;
           }
 
           return monthlyInputsApi.create({
@@ -450,22 +558,43 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
 
 export const PERIOD_STATUS_LABELS: Record<HRPayrollPeriodStatus, string> = {
   draft: 'مسودة',
-  open: 'جاهزة للتشغيل',
+  open: 'مفتوحة',
+  locked: 'مقفلة',
   closed: 'مغلقة',
+  cancelled: 'ملغاة',
 };
 
 export const PERIOD_STATUS_COLORS: Record<HRPayrollPeriodStatus, string> = {
   draft: 'text-muted-foreground border-border bg-muted/40',
   open: 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30',
+  locked: 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/30',
   closed: 'text-slate-600 border-slate-200 bg-slate-50 dark:text-slate-400 dark:border-slate-700 dark:bg-slate-900/30',
+  cancelled: 'text-destructive border-destructive/30 bg-destructive/5',
 };
 
-export const COMPENSATION_STATUS_LABELS: Record<HRPayrollCompensationReviewStatus, string> = {
-  draft: 'مسودة',
-  first_review: 'مراجعة أولى',
-  second_review: 'مراجعة ثانية',
-  approved: 'معتمدة',
+/** Periods that allow editing metadata from the UI (matches backend rules). */
+export function isPayrollPeriodEditable(status: HRPayrollPeriodStatus): boolean {
+  return status === 'draft' || status === 'open';
+}
+
+export const REVIEW_STAGE_LABELS: Record<HRPayrollReviewStage, string> = {
+  first_review: 'المراجعة الأولى',
+  second_review: 'المراجعة الثانية',
+  third_review: 'المراجعة الثالثة',
 };
+
+export const REVIEW_STAGE_BADGE: Record<HRPayrollReviewStage, string> = {
+  first_review: 'bg-warning/10 text-warning border-warning/25',
+  second_review: 'bg-gold/10 text-gold border-gold/25',
+  third_review: 'bg-primary/10 text-primary border-primary/25',
+};
+
+export const REVIEW_COMPLETED_LABEL = 'مكتملة';
+
+/** Periods that allow advancing/reverting the review workflow (matches backend). */
+export function isPayrollPeriodReviewable(status: HRPayrollPeriodStatus): boolean {
+  return status === 'draft' || status === 'open';
+}
 
 export const MONTHLY_INPUT_KIND_LABELS: Record<HRPayrollMonthlyInputKind, string> = {
   absence_days: 'أيام غياب',

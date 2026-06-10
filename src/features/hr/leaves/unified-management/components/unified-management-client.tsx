@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
@@ -150,26 +151,23 @@ function LeaveDecisionCell({
 
   if (canAct) {
     return (
-      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-success hover:bg-success/10 hover:text-success"
-          onClick={(e) => { e.stopPropagation(); onApprove(leave); }}
-          aria-label="موافقة"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          onClick={(e) => { e.stopPropagation(); onReject(leave); }}
-          aria-label="رفض"
-        >
-          <XCircle className="h-4 w-4" />
-        </Button>
-      </div>
+      <TableRowActions
+        primaryActions={[
+          {
+            label: 'موافقة',
+            variant: 'success',
+            icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+            onClick: (e) => { e.stopPropagation(); onApprove(leave); },
+          },
+          {
+            label: 'رفض',
+            variant: 'destructive',
+            icon: <XCircle className="h-3.5 w-3.5" />,
+            onClick: (e) => { e.stopPropagation(); onReject(leave); },
+          },
+        ]}
+        menuItems={[]}
+      />
     );
   }
 
@@ -575,12 +573,12 @@ function LeaveTable({ leaves, employees, branches, onDetail, onApprove, onReject
     {
       key: 'start',
       title: 'من',
-      render: (l) => <span className="font-mono text-xs" dir="ltr">{l.start}</span>,
+      render: (l) => <TableDateCell value={l.start} />,
     },
     {
       key: 'end',
       title: 'إلى',
-      render: (l) => <span className="font-mono text-xs" dir="ltr">{l.end}</span>,
+      render: (l) => <TableDateCell value={l.end} />,
     },
     {
       key: 'days',

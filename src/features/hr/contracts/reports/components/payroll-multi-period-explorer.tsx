@@ -8,7 +8,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { EmployeePicker } from '@/components/ui/employee-picker';
-import { useHRPayrollPeriodsStore } from '@/features/hr/contracts/lib/payroll-periods-store';
+import { useHRPayrollPeriodsStore, PERIOD_STATUS_LABELS } from '@/features/hr/contracts/lib/payroll-periods-store';
 import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
 import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
 import {
@@ -20,11 +20,7 @@ import { MinimalDropdown } from '@/features/hr/requests/components/shared-ui';
 import { PayrollPrintHtml } from './payroll-print-html';
 import { exportDomToPdf } from '@/components/pdf/lib/exportDomToPdf';
 
-const PERIOD_STATUS_LABEL: Record<string, string> = {
-  draft:  'مسودة',
-  open:   'مفتوحة',
-  closed: 'مغلقة',
-};
+const PERIOD_STATUS_LABEL = PERIOD_STATUS_LABELS;
 
 export function PayrollMultiPeriodExplorer() {
   const { periods } = useHRPayrollPeriodsStore();
@@ -37,6 +33,7 @@ export function PayrollMultiPeriodExplorer() {
   const [empFilter, setEmpFilter] = React.useState<Set<string>>(() => new Set());
   const [downloading, setDownloading] = React.useState(false);
   const [pdfExporting, setPdfExporting] = React.useState(false);
+  const [pdfPrintMounted, setPdfPrintMounted] = React.useState(false);
   const payrollPrintRef = React.useRef<HTMLDivElement>(null);
 
   const selectedPeriod = React.useMemo(
@@ -93,19 +90,24 @@ export function PayrollMultiPeriodExplorer() {
       alert('لا توجد بيانات للتصدير');
       return;
     }
-    const el = payrollPrintRef.current;
-    if (!el) {
-      alert('تعذر العثور على منطقة الطباعة');
-      return;
-    }
     setPdfExporting(true);
+    setPdfPrintMounted(true);
     try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      const el = payrollPrintRef.current;
+      if (!el) {
+        alert('تعذر العثور على منطقة الطباعة');
+        return;
+      }
       await exportDomToPdf(el, `payroll-${selectedPeriod.code}.pdf`);
     } catch (err) {
       console.error(err);
       alert('حدث خطأ أثناء تصدير PDF');
     } finally {
       setPdfExporting(false);
+      setPdfPrintMounted(false);
     }
   }, [payrollPrintData, selectedPeriod]);
 
@@ -248,18 +250,20 @@ export function PayrollMultiPeriodExplorer() {
         </div>
       </div>
 
-      {/* ── Content ── */}
-      {/* Hidden PDF print area */}
-      <div style={{ position: 'absolute', left: -9999, top: 0 }}>
-        {payrollPrintData && (
+      {/* Hidden PDF print area — mounted only during export to avoid page scroll bleed */}
+      {pdfPrintMounted && payrollPrintData && (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed start-0 top-0 -z-[9999] size-0 overflow-hidden"
+        >
           <PayrollPrintHtml
             ref={payrollPrintRef}
             monthNameAr={payrollPrintData.monthNameAr}
             branchNameAr={payrollPrintData.branchNameAr}
             rows={payrollPrintData.rows}
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {!selectedPeriod ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 px-6 py-20 text-center">

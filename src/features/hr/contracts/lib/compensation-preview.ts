@@ -1,4 +1,4 @@
-import type { HRPayrollPeriodRecord, HRPayrollMonthlyInput } from './payroll-periods-store';
+import type { HRPayrollPeriodRecord, HRPayrollPeriodIncludeFlags, HRPayrollMonthlyInput } from './payroll-periods-store';
 import type { HRContractRecord } from './contracts-store';
 import type { HRAllowanceTypeRecord } from './allowance-types-store';
 
@@ -41,6 +41,53 @@ export type CompensationColumnVisibility = {
   colDedAdmin: boolean;
 };
 
+export const DEFAULT_COMPENSATION_COLUMN_VISIBILITY: CompensationColumnVisibility = {
+  colOvertime: true,
+  colBonus: true,
+  colDedAbsence: true,
+  colDedLate: true,
+  colDedPenalties: true,
+  colDedAdvances: true,
+  colDedAdmin: true,
+};
+
+/** Maps GET /payroll/periods include* flags → compensation table columns. */
+export function periodToColumnVisibility(
+  period: Pick<
+    HRPayrollPeriodRecord,
+    | 'includeOvertime'
+    | 'includeBonuses'
+    | 'includeAdvances'
+    | 'includeAbsence'
+    | 'includeLateness'
+    | 'includePenalties'
+    | 'includeManualInputs'
+  >,
+): CompensationColumnVisibility {
+  return {
+    colOvertime: period.includeOvertime,
+    colBonus: period.includeBonuses,
+    colDedAbsence: period.includeAbsence,
+    colDedLate: period.includeLateness,
+    colDedPenalties: period.includePenalties,
+    colDedAdvances: period.includeAdvances,
+    colDedAdmin: period.includeManualInputs,
+  };
+}
+
+export const COLUMN_TO_PERIOD_INCLUDE: Record<
+  keyof CompensationColumnVisibility,
+  keyof HRPayrollPeriodIncludeFlags
+> = {
+  colOvertime: 'includeOvertime',
+  colBonus: 'includeBonuses',
+  colDedAdvances: 'includeAdvances',
+  colDedAbsence: 'includeAbsence',
+  colDedLate: 'includeLateness',
+  colDedPenalties: 'includePenalties',
+  colDedAdmin: 'includeManualInputs',
+};
+
 /** Controls POST /attendance/day-summaries/push-to-payroll and table column visibility for attendance-sourced fields. */
 export type CompensationPushOptions = {
   replaceExisting: boolean;
@@ -69,6 +116,17 @@ export type CompensationAdvancesPushOptions = {
 };
 
 export const DEFAULT_COMPENSATION_ADVANCES_PUSH_OPTIONS: CompensationAdvancesPushOptions = {
+  replaceExisting: true,
+  employeeIds: [],
+};
+
+/** Controls POST /discipline/violation-records/push-to-payroll */
+export type CompensationViolationsPushOptions = {
+  replaceExisting: boolean;
+  employeeIds: string[];
+};
+
+export const DEFAULT_COMPENSATION_VIOLATIONS_PUSH_OPTIONS: CompensationViolationsPushOptions = {
   replaceExisting: true,
   employeeIds: [],
 };
@@ -106,7 +164,7 @@ export function lineNetFromVisibleColumns(
   if (v.colDedLate) t -= row.dedLateSar;
   if (v.colDedPenalties) t -= row.dedPenaltiesSar;
   if (v.colDedAdvances) t -= row.dedAdvancesSar;
-  if (v.colDedAdmin) t -= row.dedAdminSar;
+  if (v.colDedAdmin) t += row.dedAdminSar;
   return round2(t);
 }
 
@@ -124,6 +182,16 @@ function parseEditAmount(raw: string): number {
   return Math.max(0, parseFloat(raw) || 0);
 }
 
+function parseSignedEditAmount(raw: string): number {
+  const n = parseFloat(raw);
+  return round2(Number.isFinite(n) ? n : 0);
+}
+
+/** Signed amount for خصم او اضافة مباشرة (+ addition, − deduction). */
+export function editSignedAmount(raw: string): number {
+  return parseSignedEditAmount(raw);
+}
+
 /** Net salary from live edit inputs + visible columns (respects hidden columns in totals). */
 export function lineNetFromEditRow(
   baseSalary: number,
@@ -138,7 +206,7 @@ export function lineNetFromEditRow(
   if (v.colDedLate) t -= parseEditAmount(edit.late);
   if (v.colDedPenalties) t -= parseEditAmount(edit.penalties);
   if (v.colDedAdvances) t -= parseEditAmount(edit.advances);
-  if (v.colDedAdmin) t -= parseEditAmount(edit.admin);
+  if (v.colDedAdmin) t += parseSignedEditAmount(edit.admin);
   return round2(t);
 }
 
@@ -147,7 +215,7 @@ export function editAmount(raw: string): number {
 }
 
 export function editValuesEqual(a: string, b: string): boolean {
-  return round2(parseEditAmount(a)) === round2(parseEditAmount(b));
+  return parseSignedEditAmount(a) === parseSignedEditAmount(b);
 }
 
 export function buildCompensationPreviews(
@@ -181,7 +249,7 @@ export function buildCompensationPreviews(
     const dedAdminSar     = round2(sum('other'));
     const lineNetSar = round2(
       line.baseSalarySnapshot + allowancesMonthlyTotal + entitlementOvertimeSar + entitlementBonusSar
-      - dedAbsenceSar - dedLateSar - dedPenaltiesSar - dedAdvancesSar - dedAdminSar,
+      - dedAbsenceSar - dedLateSar - dedPenaltiesSar - dedAdvancesSar + dedAdminSar,
     );
 
     return {

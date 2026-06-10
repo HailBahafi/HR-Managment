@@ -5,7 +5,7 @@ import { useEmployeeProfileAttendance } from '@/features/hr/organization/employe
 import { violationRecordsApi, type ViolationRecordResponseDto } from '@/features/hr/discipline/lib/api/violation-records';
 import { leaveRequestsApi, type LeaveRequestResponseDto } from '@/features/hr/leaves/lib/api/leave-requests';
 import { employeeContractsApi } from '@/features/hr/contracts/lib/contracts-api';
-import type { HRContractRecord } from '@/features/hr/contracts/lib/contracts-store';
+import { mapEmployeeContractFromApi, type HRContractRecord } from '@/features/hr/contracts/lib/contracts-store';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
@@ -15,7 +15,10 @@ const PAYSLIP_MONTHS_AR = ['يناير','فبراير','مارس','أبريل','
 
 export type { ViolationRecordResponseDto, LeaveRequestResponseDto };
 
+const EMPTY_PAGINATION = { page: 1, limit: 100, total: 0, totalPages: 0 };
+
 export function useEmployeeProfileData(employee: Employee) {
+  const companyId = useAuthStore(s => s.activeCompanyId);
   const [violations, setViolations] = React.useState<ViolationRecordResponseDto[]>([]);
   const [leaveRequests, setLeaveRequests] = React.useState<LeaveRequestResponseDto[]>([]);
   const [employeeContracts, setEmployeeContracts] = React.useState<HRContractRecord[]>([]);
@@ -25,22 +28,35 @@ export function useEmployeeProfileData(employee: Employee) {
 
   React.useEffect(() => {
     if (!employee.id) return;
-    const companyId = useAuthStore.getState().activeCompanyId;
+    let cancelled = false;
+
     void (async () => {
-      try {
-        const [vRes, lRes, cRes, psRes] = await Promise.all([
-          violationRecordsApi.getAll({ employeeId: employee.id, limit: 100 }),
-          leaveRequestsApi.getAll({ employeeId: employee.id, limit: 100 }),
-          companyId
-            ? employeeContractsApi.list({ companyId, employeeId: employee.id, limit: 100 })
-            : Promise.resolve({ items: [], pagination: { page: 1, limit: 100, total: 0, totalPages: 0 } }),
-          companyId
-            ? payslipsApi.list({ companyId, employeeId: employee.id, limit: 200 })
-            : Promise.resolve({ items: [], total: 0, page: 1, limit: 200 }),
-        ]);
-        setViolations(vRes.items);
-        setLeaveRequests(lRes.items);
-        setEmployeePayslipSeries(psRes.items.map(p => ({
+      const [vRes, lRes, cRes, psRes] = await Promise.allSettled([
+        violationRecordsApi.getAll({ employeeId: employee.id, limit: 100 }),
+        leaveRequestsApi.getAll({ employeeId: employee.id, limit: 100 }),
+        companyId
+          ? employeeContractsApi.list({ companyId, employeeId: employee.id, limit: 100 })
+          : Promise.resolve({ items: [], pagination: EMPTY_PAGINATION }),
+        companyId
+          ? payslipsApi.list({ companyId, employeeId: employee.id, limit: 200 })
+          : Promise.resolve({ items: [], pagination: { ...EMPTY_PAGINATION, limit: 200 } }),
+      ]);
+
+      if (cancelled) return;
+
+      if (vRes.status === 'fulfilled') {
+        setViolations(vRes.value.items);
+      }
+      if (lRes.status === 'fulfilled') {
+        setLeaveRequests(lRes.value.items);
+      }
+      if (cRes.status === 'fulfilled') {
+        setEmployeeContracts(cRes.value.items.map(mapEmployeeContractFromApi));
+      } else {
+        setEmployeeContracts([]);
+      }
+      if (psRes.status === 'fulfilled') {
+        setEmployeePayslipSeries(psRes.value.items.map(p => ({
           id: p.id,
           employeeId: p.employeeId,
           month: p.periodMonth != null ? PAYSLIP_MONTHS_AR[(p.periodMonth - 1) % 12] ?? '' : '',
@@ -62,42 +78,13 @@ export function useEmployeeProfileData(employee: Employee) {
           absentDays: p.absentDays ?? 0,
           lateDays: p.lateDays ?? 0,
         })));
-        setEmployeeContracts(cRes.items.map(c => ({
-          id: c.id,
-          employeeId: c.employeeId,
-          employeeNameAr: c.employeeNameAr ?? '',
-          branchNameAr: c.branchNameAr ?? '',
-          contractNumber: c.contractNumber,
-          contractType: c.contractNature as HRContractRecord['contractType'],
-          workArrangement: c.workArrangement as HRContractRecord['workArrangement'],
-          startDate: c.startDate,
-          endDate: c.endDate ?? '',
-          probationDays: c.probationDays ?? null,
-          baseSalary: Number(c.baseSalary) || 0,
-          currency: c.currency,
-          status: c.status as HRContractRecord['status'],
-          templateId: c.contractTemplateId ?? null,
-          allowanceLines: (c.allowanceLines ?? []).map((l, i) => ({
-            allowanceTypeId: l.allowanceTypeId,
-            allowanceTypeNameAr: l.allowanceTypeNameAr ?? '',
-            allowanceTypeCode: l.allowanceTypeCode ?? '',
-            amount: Number(l.amount) || 0,
-            sortOrder: l.sortOrder ?? i,
-          })),
-          allowancesNote: c.allowancesNote ?? '',
-          deductionsNote: c.deductionsNote ?? '',
-          amendsContractId: c.amendsContractId ?? null,
-          supersededByContractId: c.supersededByContractId ?? null,
-          earlyTerminationReason: c.earlyTerminationReason ?? null,
-          articleIds: (c.articles ?? []).map(a => a.contractArticleId),
-          annualLeaveDays: c.annualLeaveDays ?? null,
-          updatedAt: c.updatedAt,
-        })));
-      } catch {
-        // silently ignore — sections show empty state
+      } else {
+        setEmployeePayslipSeries([]);
       }
     })();
-  }, [employee.id]);
+
+    return () => { cancelled = true; };
+  }, [employee.id, companyId]);
 
   const attendance = useEmployeeProfileAttendance(employee);
 

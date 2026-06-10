@@ -30,10 +30,8 @@ import {
   HR_REQUEST_TYPE_CATEGORY_LABELS_AR,
 } from '@/features/hr/requests/lib/types';
 import { cn } from '@/shared/utils';
-import {
-  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
-  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
-} from '@/components/ui/directory-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableRowActions } from '@/components/ui/table-cells';
 
 interface DraftForm {
   requestCategory: HRRequestTypeCategory;
@@ -144,6 +142,46 @@ export function RequestTypesClient() {
     if (id === HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID) return 'جميع الأقسام';
     return activeDepts.find(d => d.id === id)?.nameAr ?? '—';
   };
+
+  const columns = React.useMemo((): ColumnDef<HRRequestTypeEntity>[] => [
+    {
+      key: 'department',
+      title: 'القسم',
+      className: 'text-muted-foreground',
+      render: (rt) => getDeptLabel(rt.departmentId),
+    },
+    {
+      key: 'name',
+      title: 'النوع',
+      className: 'font-medium',
+      render: (rt) => rt.nameAr,
+    },
+    {
+      key: 'category',
+      title: 'التصنيف',
+      className: 'text-muted-foreground',
+      render: (rt) => HR_REQUEST_TYPE_CATEGORY_LABELS_AR[rt.requestCategory],
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      render: (rt) => <ActiveBadge active={rt.isActive} />,
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'w-28',
+      render: (rt) => (
+        <TableRowActions
+          menuItems={[
+            { label: 'تعديل', icon: <Pencil className="h-3.5 w-3.5" />, onClick: (e) => { e.stopPropagation(); openEdit(rt); } },
+            { label: 'حذف', icon: <Trash2 className="h-3.5 w-3.5" />, onClick: (e) => { e.stopPropagation(); setDeleteId(rt.id); }, destructive: true, separator: true },
+          ]}
+        />
+      ),
+    },
+  ], [activeDepts]);
 
   const activeFilterCount = React.useMemo(() => {
     let count = 0;
@@ -260,43 +298,14 @@ export function RequestTypesClient() {
           </div>
         </>
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable>
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead>القسم</DirectoryTableHead>
-              <DirectoryTableHead>النوع</DirectoryTableHead>
-              <DirectoryTableHead>التصنيف</DirectoryTableHead>
-              <DirectoryTableHead>الحالة</DirectoryTableHead>
-              <DirectoryTableHead className="w-28">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {filtered.map((rt) => {
-                return (
-                  <DirectoryTableRow
-                    key={rt.id}
-                    interactive
-                    onClick={() => openEdit(rt)}
-                  >
-                    <DirectoryTableCell className="text-muted-foreground">{getDeptLabel(rt.departmentId)}</DirectoryTableCell>
-                    <DirectoryTableCell className="font-medium">{rt.nameAr}</DirectoryTableCell>
-                    <DirectoryTableCell className="text-muted-foreground">{HR_REQUEST_TYPE_CATEGORY_LABELS_AR[rt.requestCategory]}</DirectoryTableCell>
-                    <DirectoryTableCell><ActiveBadge active={rt.isActive} /></DirectoryTableCell>
-                    <DirectoryTableActionsCell>
-                      <div className="flex justify-start gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(rt)} aria-label="تعديل">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(rt.id)} aria-label="حذف">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </DirectoryTableActionsCell>
-                  </DirectoryTableRow>
-                );
-              })}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          columns={columns}
+          data={filtered}
+          keyExtractor={(rt) => rt.id}
+          onRowClick={openEdit}
+        />
       )}
 
       {/* Create / Edit dialog */}

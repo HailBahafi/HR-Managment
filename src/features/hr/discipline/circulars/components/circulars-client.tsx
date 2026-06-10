@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, Megaphone, Send, Search, Plus, Eye } from 'lucide-react';
+import { Trash2, CalendarDays, Megaphone, Send, Search, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,10 +33,8 @@ import {
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { tryBuildCircularAudienceSnapshot } from '@/features/hr/discipline/circulars/utils/build-circular-audience-summary';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
-  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
-} from '@/components/ui/directory-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 
 const AUDIENCE_OPTIONS = (Object.entries(CIRCULAR_AUDIENCE_LABELS) as [HRDisciplineCircularAudience, string][]).map(
   ([v, l]) => ({ value: v, label: l }),
@@ -259,6 +257,86 @@ export function CircularsClient() {
 
   const set = (patch: Partial<DraftForm>) => setDraft((d) => ({ ...d, ...patch }));
 
+  const handleMarkSent = React.useCallback(async (id: string) => {
+    try {
+      await m.markSent(id);
+      toast.success('تم إرسال التعميم');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-circulars.send');
+      toast.error(displayMessage);
+    }
+  }, [m]);
+
+  const columns = React.useMemo((): ColumnDef<HRDisciplineCircularRecord>[] => [
+    {
+      key: 'title',
+      title: 'العنوان',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[12rem] truncate font-medium',
+      render: (c) => c.titleAr || '—',
+    },
+    {
+      key: 'audience',
+      title: 'النطاق',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[14rem] whitespace-normal text-xs',
+      render: (c) => c.audienceSummaryAr,
+    },
+    {
+      key: 'date',
+      title: 'التاريخ',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap font-mono text-xs tabular-nums',
+      render: (c) => <TableDateCell value={c.date} />,
+    },
+    {
+      key: 'body',
+      title: 'النص',
+      className: 'max-w-[24rem] truncate text-xs text-muted-foreground',
+      render: (c) => c.bodyAr,
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'whitespace-nowrap',
+      render: (c) => (
+        c.sentAt ? (
+          <TableRowActions
+            menuItems={[
+              {
+                label: 'حذف',
+                onClick: () => setDeleteId(c.id),
+                icon: <Trash2 className="h-3.5 w-3.5" />,
+                destructive: true,
+              },
+            ]}
+          />
+        ) : (
+          <TableRowActions
+            primaryActions={[
+              {
+                label: 'إرسال',
+                variant: 'primary',
+                icon: <Send className="h-3.5 w-3.5" />,
+                onClick: () => void handleMarkSent(c.id),
+              },
+            ]}
+            menuItems={[
+              {
+                label: 'حذف',
+                onClick: () => setDeleteId(c.id),
+                icon: <Trash2 className="h-3.5 w-3.5" />,
+                destructive: true,
+                separator: true,
+              },
+            ]}
+          />
+        )
+      ),
+    },
+  ], [handleMarkSent]);
+
   const handleSave = async () => {
     setFormError(null);
     if (!draft.bodyAr.trim()) { setFormError('نص التعميم مطلوب'); return; }
@@ -411,9 +489,6 @@ export function CircularsClient() {
                 <p className="mt-2 line-clamp-3 text-xs text-muted-foreground text-right">{c.bodyAr}</p>
               </button>
               <div className="mt-auto flex flex-wrap justify-end gap-2 border-t border-border pt-3">
-                <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => setDetailCircular(c)}>
-                  <Eye className="h-3.5 w-3.5" /> 
-                </Button>
                 {!c.sentAt ? (
                   <Button
                     variant="secondary"
@@ -443,59 +518,15 @@ export function CircularsClient() {
           ))}
         </div>
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable className="min-w-[880px]">
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead className="whitespace-nowrap">العنوان</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">النطاق</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">الإرسال</DirectoryTableHead>
-              <DirectoryTableHead>النص</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {listFiltered.map((c) => (
-                <DirectoryTableRow key={c.id} interactive onClick={() => setDetailCircular(c)}>
-                  <DirectoryTableCell className="max-w-[12rem] truncate font-medium">{c.titleAr || '—'}</DirectoryTableCell>
-                  <DirectoryTableCell className="max-w-[14rem] whitespace-normal text-xs">{c.audienceSummaryAr}</DirectoryTableCell>
-                  <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{c.date}</DirectoryTableCell>
-                  <DirectoryTableActionsCell>
-                    {c.sentAt ? (
-                      <span className="text-xs text-muted-foreground">مُرسل</span>
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="h-8 gap-1 text-xs"
-                        type="button"
-                        onClick={() => {
-                          void (async () => {
-                            try {
-                              await m.markSent(c.id);
-                              toast.success('تم إرسال التعميم');
-                            } catch (err) {
-                              const { displayMessage } = handleApiError(err, 'discipline-circulars.send');
-                              toast.error(displayMessage);
-                            }
-                          })();
-                        }}
-                      >
-                        <Send className="h-3 w-3" />
-                        إرسال التعميم
-                      </Button>
-                    )}
-                  </DirectoryTableActionsCell>
-                  <DirectoryTableCell className="max-w-[24rem] truncate text-xs text-muted-foreground">{c.bodyAr}</DirectoryTableCell>
-                  <DirectoryTableActionsCell>
-                    <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(c.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </DirectoryTableActionsCell>
-                </DirectoryTableRow>
-              ))}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          tableClassName="min-w-[880px]"
+          columns={columns}
+          data={listFiltered}
+          keyExtractor={(c) => c.id}
+          onRowClick={(c) => setDetailCircular(c)}
+        />
       )}
 
       <HRSettingsFormDrawer

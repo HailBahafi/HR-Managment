@@ -1,10 +1,12 @@
 'use client';
 
+import * as React from 'react';
 import { Building2, Mail, Eye, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ContractTypeLabel } from '@/components/shared/status-badge';
 import { Button } from '@/components/ui/button';
-import { RowActions } from '@/components/ui/row-actions';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 import {
   DirectoryGrid,
   DirectoryGridCard,
@@ -13,23 +15,12 @@ import {
   DirectoryGridCardMeta,
   DirectoryGridCardMetaRow,
   DirectoryGridCardTitle,
-  DirectoryResultCount,
 } from '@/components/ui/directory-grid-card';
-import {
-  DirectoryTable,
-  DirectoryTableActionsCell,
-  DirectoryTableBody,
-  DirectoryTableCell,
-  DirectoryTableContainer,
-  DirectoryTableHead,
-  DirectoryTableHeaderRow,
-  DirectoryTableRow,
-} from '@/components/ui/directory-table';
 import { NewEmployeeDrawer } from '@/features/hr/organization/employees/components/new-employee-drawer';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
-import { formatCurrency, formatDateShort, getInitials } from '@/shared/utils';
+import { formatCurrency, getInitials } from '@/shared/utils';
 import type { EmployeesListModel } from '@/features/hr/organization/employees/hooks/useEmployeesListModel';
 import { hrOrganizationRoutes } from '@/features/hr/organization/constants/routes';
 
@@ -43,6 +34,67 @@ export function EmployeesListViews({ model }: Props) {
     employeesPrintable, reloadEmployees,
     deleteId, setDeleteId, handleDelete,
   } = model;
+
+  const columns = React.useMemo((): ColumnDef<FilteredRow>[] => [
+    {
+      key: 'employee',
+      title: 'الموظف',
+      render: (emp) => (
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8 ring-1 ring-border shrink-0">
+            <AvatarImage src={emp.avatar ?? undefined} />
+            <AvatarFallback className="text-xs">{getInitials(emp.nameAr)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{emp.nameAr}</p>
+            <p className="text-xs text-muted-foreground truncate">{emp.employeeCode} · {emp.position ?? '—'}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'department',
+      title: 'القسم / الفرع',
+      className: 'text-muted-foreground',
+      render: (emp) => emp.departmentNameAr ?? emp.branchNameAr ?? '—',
+    },
+    {
+      key: 'contractType',
+      title: 'نوع العقد',
+      render: (emp) => <ContractTypeLabel type={emp.contractType ?? ''} />,
+    },
+    {
+      key: 'startDate',
+      title: 'تاريخ الالتحاق',
+      className: 'text-muted-foreground',
+      render: (emp) => <TableDateCell value={emp.startDate} />,
+    },
+    {
+      key: 'baseSalary',
+      title: 'الراتب الأساسي',
+      className: 'font-semibold number-ar',
+      render: (emp) => emp.baseSalary ? formatCurrency(parseFloat(emp.baseSalary)) : '—',
+    },
+    {
+      key: 'nationality',
+      title: 'الجنسية',
+      className: 'text-muted-foreground',
+      render: (emp) => emp.nationality ?? '—',
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'text-start w-16',
+      render: (emp) => (
+        <TableRowActions
+          menuItems={[
+            { label: 'حذف', onClick: (e) => { e.stopPropagation(); setDeleteId(emp.id); }, destructive: true },
+          ]}
+        />
+      ),
+    },
+  ], [setDeleteId]);
 
   if (loading) {
     return (
@@ -83,71 +135,17 @@ export function EmployeesListViews({ model }: Props) {
         onConfirm={handleDelete}
       />
 
-      <DirectoryResultCount>
-        {filtered.length} من {employees.length} موظف
-      </DirectoryResultCount>
-
       {filtered.length === 0 ? (
         <EmptyState title="لا توجد نتائج — جرّب تعديل الفلاتر" />
       ) : view === 'table' ? (
-        <DirectoryTableContainer>
-          <DirectoryTable>
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead>الموظف</DirectoryTableHead>
-              <DirectoryTableHead>القسم / الفرع</DirectoryTableHead>
-              <DirectoryTableHead>نوع العقد</DirectoryTableHead>
-              <DirectoryTableHead>تاريخ الالتحاق</DirectoryTableHead>
-              <DirectoryTableHead>الراتب الأساسي</DirectoryTableHead>
-              <DirectoryTableHead>الجنسية</DirectoryTableHead>
-              <DirectoryTableHead className="text-start w-16">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {filtered.map((emp) => (
-                <DirectoryTableRow
-                  key={emp.id}
-                  interactive
-                  onClick={() => router.push(hrOrganizationRoutes.employee(emp.id))}
-                >
-                  <DirectoryTableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8 ring-1 ring-border shrink-0">
-                        <AvatarImage src={emp.avatar ?? undefined} />
-                        <AvatarFallback className="text-xs">{getInitials(emp.nameAr)}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">{emp.nameAr}</p>
-                        <p className="text-xs text-muted-foreground truncate">{emp.employeeCode} · {emp.position ?? '—'}</p>
-                      </div>
-                    </div>
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="text-muted-foreground">
-                    {emp.departmentNameAr ?? emp.branchNameAr ?? '—'}
-                  </DirectoryTableCell>
-                  <DirectoryTableCell>
-                    <ContractTypeLabel type={emp.contractType ?? ''} />
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="text-muted-foreground">
-                    {emp.startDate ? formatDateShort(emp.startDate) : '—'}
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="font-semibold number-ar">
-                    {emp.baseSalary ? formatCurrency(parseFloat(emp.baseSalary)) : '—'}
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="text-muted-foreground">
-                    {emp.nationality ?? '—'}
-                  </DirectoryTableCell>
-                  <DirectoryTableActionsCell>
-                    <RowActions
-                      menuItems={[
-                        { label: 'عرض', href: hrOrganizationRoutes.employee(emp.id) },
-                        { label: 'حذف', onClick: (e) => { e.stopPropagation(); setDeleteId(emp.id); }, destructive: true, separator: true },
-                      ]}
-                    />
-                  </DirectoryTableActionsCell>
-                </DirectoryTableRow>
-              ))}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          columns={columns}
+          data={filtered}
+          keyExtractor={(emp) => emp.id}
+          onRowClick={(emp) => router.push(hrOrganizationRoutes.employee(emp.id))}
+        />
       ) : (
         <DirectoryGrid>
           {filtered.map((emp) => (

@@ -89,6 +89,33 @@ export type CreateViolationRecordDto = {
   createdBy?: string | null;
 };
 
+export type PushViolationsToPayrollDto = {
+  payrollPeriodId: string;
+  employeeIds?: string[];
+  replaceExisting?: boolean;
+  createdBy?: string | null;
+};
+
+export type PushViolationsToPayrollResponseDto = {
+  payrollPeriodId: string;
+  inputsCreated: number;
+  inputsDeleted: number;
+  violationsProcessed: number;
+  violationsSkipped: number;
+  totalDeducted: string;
+  items: Array<{
+    violationRecordId: string;
+    recordNumber: string;
+    employeeId: string;
+    employeeNameAr: string;
+    source: 'investigation' | 'violation_type';
+    basis: 'days' | 'hours' | 'fixed';
+    basisValue: string;
+    amount: string;
+    skippedReason: string | null;
+  }>;
+};
+
 export const violationRecordsApi = {
   getAll(query?: ViolationRecordListQuery) {
     return apiRequest<PaginatedResult<ViolationRecordResponseDto>>('/discipline/violation-records', { query });
@@ -108,4 +135,10 @@ export const violationRecordsApi = {
   remove(id: string) {
     return apiRequest<void>(`/discipline/violation-records/${id}`, { method: 'DELETE' });
   },
+
+  pushToPayroll: (body: PushViolationsToPayrollDto) =>
+    apiRequest<PushViolationsToPayrollResponseDto>('/discipline/violation-records/push-to-payroll', {
+      method: 'POST',
+      body,
+    }),
 };

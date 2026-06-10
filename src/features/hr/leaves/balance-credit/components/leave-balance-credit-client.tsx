@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
 import { FormField, EmptyState } from '@/features/hr/requests/components/shared-ui';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -41,6 +42,7 @@ function statusLabelAr(status: LeaveBalanceCreditRequest['status']) {
 
 export function LeaveBalanceCreditClient() {
   const m = useLeaveBalanceCreditModel();
+  const [detailRow, setDetailRow] = React.useState<LeaveBalanceCreditRequest | null>(null);
 
   const activeFilterCount = (m.branchId !== 'all' ? 1 : 0) + (m.departmentId !== 'all' ? 1 : 0) + (m.statusFilter !== 'all' ? 1 : 0) + (m.selectedEmpIds.size > 0 ? 1 : 0);
 
@@ -166,11 +168,7 @@ export function LeaveBalanceCreditClient() {
         title: 'التاريخ',
         className: 'align-top',
         hideOnMobile: true,
-        render: (r) => (
-          <span className="font-mono text-xs text-muted-foreground whitespace-nowrap" dir="ltr">
-            {r.createdAt.slice(0, 16).replace('T', ' ')}
-          </span>
-        ),
+        render: (r) => <TableDateCell value={r.createdAt} mode="datetime" />,
       },
       {
         key: 'actions',
@@ -178,43 +176,25 @@ export function LeaveBalanceCreditClient() {
         isActions: true,
         render: (r) => {
           if (r.status !== 'pending') {
-            return (
-              <span className="text-[10px] font-mono text-muted-foreground" dir="ltr">
-                {r.decidedAt ? r.decidedAt.slice(0, 10) : '—'}
-              </span>
-            );
+            return <TableDateCell value={r.decidedAt} mode="datetime" />;
           }
           return (
-            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-success hover:bg-success/10 hover:text-success"
-                aria-label="موافقة"
-                title="موافقة"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void m.approveCreditRequest(r.id);
-                }}
-              >
-                <CheckCircle2 className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                aria-label="رفض"
-                title="رفض"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void m.rejectCreditRequest(r.id);
-                }}
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </div>
+            <TableRowActions
+              primaryActions={[
+                {
+                  label: 'موافقة',
+                  variant: 'success',
+                  icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+                  onClick: () => void m.approveCreditRequest(r.id),
+                },
+                {
+                  label: 'رفض',
+                  variant: 'destructive',
+                  icon: <XCircle className="h-3.5 w-3.5" />,
+                  onClick: () => void m.rejectCreditRequest(r.id),
+                },
+              ]}
+            />
           );
         },
       },
@@ -241,6 +221,7 @@ export function LeaveBalanceCreditClient() {
             data={m.sortedRequests}
             keyExtractor={(r) => r.id}
             emptyText="لا توجد طلبات"
+            onRowClick={(r) => setDetailRow(r)}
             mobileCard={(r) => (
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
@@ -389,6 +370,21 @@ export function LeaveBalanceCreditClient() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <TableRowDetailDialog
+        open={detailRow != null}
+        onOpenChange={(o) => !o && setDetailRow(null)}
+        title="تفاصيل طلب إضافة الرصيد"
+        fields={detailRow ? [
+          { label: 'الموظف', value: detailRow.employeeNameAr },
+          { label: 'نوع الإجازة', value: detailRow.leaveTypeNameAr ?? '—' },
+          { label: 'عدد الأيام', value: `+${toWesternDigits(String(detailRow.daysAdded))}` },
+          { label: 'الوصف', value: detailRow.reasonAr || '—' },
+          { label: 'الحالة', value: statusLabelAr(detailRow.status) },
+          { label: 'تاريخ الطلب', value: <TableDateCell value={detailRow.createdAt} mode="datetime" /> },
+          { label: 'تاريخ القرار', value: <TableDateCell value={detailRow.decidedAt} mode="datetime" /> },
+        ] : []}
+      />
     </div>
   );
 }

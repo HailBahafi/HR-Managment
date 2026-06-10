@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
@@ -105,6 +106,7 @@ export function AttendanceCorrectionRequestsClient() {
   const [formCorrIn, setFormCorrIn] = React.useState('');
   const [formCorrOut, setFormCorrOut] = React.useState('');
   const [formReason, setFormReason] = React.useState('');
+  const [detailRow, setDetailRow] = React.useState<AttendanceCorrectionRequest | null>(null);
 
   const deptOptions = React.useMemo(
     () => [{ value: 'all', label: 'جميع الأقسام' }, ...departments.filter((d) => d.isActive).map((d) => ({ value: d.id, label: d.nameAr }))],
@@ -317,7 +319,7 @@ export function AttendanceCorrectionRequestsClient() {
       {
         key: 'workDate',
         title: 'تاريخ التصحيح',
-        render: (r) => <span className="font-mono text-xs" dir="ltr">{r.workDate}</span>,
+        render: (r) => <TableDateCell value={r.workDate} />,
       },
       {
         key: 'actions',
@@ -325,20 +327,33 @@ export function AttendanceCorrectionRequestsClient() {
         isActions: true,
         render: (r) => {
           if (r.status !== 'pending') {
-            return <span className="text-[10px] font-mono text-muted-foreground" dir="ltr">{r.decidedAt?.slice(0, 10) ?? '—'}</span>;
+            return <TableDateCell value={r.decidedAt} mode="datetime" />;
           }
           return (
-            <div className="flex gap-1" onClick={(ev) => ev.stopPropagation()}>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:bg-emerald-500/10" title="موافقة" aria-label="موافقة" onClick={async () => { await approve(r.id); toast.success('تم اعتماد طلب التصحيح.'); }}>
-                <CheckCircle2 className="h-4 w-4" />
-              </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" title="رفض" aria-label="رفض" onClick={async () => { await reject(r.id); toast.message('تم رفض الطلب.'); }}>
-                <XCircle className="h-4 w-4" />
-              </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-amber-600 hover:bg-amber-500/10" title="إلغاء" aria-label="إلغاء" onClick={async (ev) => { ev.stopPropagation(); await cancel(r.id); toast.message('تم سحب الطلب.'); }}>
-                <Ban className="h-4 w-4" />
-              </Button>
-            </div>
+            <TableRowActions
+              primaryActions={[
+                {
+                  label: 'موافقة',
+                  variant: 'success',
+                  icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+                  onClick: () => void approve(r.id).then(() => toast.success('تم اعتماد طلب التصحيح.')),
+                },
+                {
+                  label: 'رفض',
+                  variant: 'destructive',
+                  icon: <XCircle className="h-3.5 w-3.5" />,
+                  onClick: () => void reject(r.id).then(() => toast.message('تم رفض الطلب.')),
+                },
+              ]}
+              menuItems={[
+                {
+                  label: 'إلغاء',
+                  onClick: () => void cancel(r.id).then(() => toast.message('تم سحب الطلب.')),
+                  icon: <Ban className="h-3.5 w-3.5" />,
+                  separator: true,
+                },
+              ]}
+            />
           );
         },
       },
@@ -357,6 +372,7 @@ export function AttendanceCorrectionRequestsClient() {
             data={sorted}
             keyExtractor={(r) => r.id}
             emptyText="لا توجد طلبات"
+            onRowClick={(r) => setDetailRow(r)}
             mobileCard={(r) => (
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between gap-2">
@@ -441,6 +457,28 @@ export function AttendanceCorrectionRequestsClient() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <TableRowDetailDialog
+        open={detailRow != null}
+        onOpenChange={(o) => !o && setDetailRow(null)}
+        title="تفاصيل طلب تصحيح الحضور"
+        fields={detailRow ? [
+          { label: 'الموظف', value: detailRow.employeeNameAr },
+          { label: 'القسم', value: detailRow.departmentNameAr || '—' },
+          { label: 'نوع الطلب', value: detailRow.requestTypeNameAr },
+          { label: 'تاريخ التصحيح', value: <TableDateCell value={detailRow.workDate} /> },
+          { label: 'الحالة السابقة', value: detailRow.previousStatusAr },
+          { label: 'حالة الطلب', value: attendanceCorrectionStatusLabelAr(detailRow.status) },
+          { label: 'حضور سابق', value: to12h(detailRow.previousCheckIn) },
+          { label: 'انصراف سابق', value: to12h(detailRow.previousCheckOut) },
+          { label: 'حضور مصحح', value: to12h(detailRow.correctedCheckIn) },
+          { label: 'انصراف مصحح', value: to12h(detailRow.correctedCheckOut) },
+          { label: 'السبب', value: detailRow.reasonAr || '—' },
+          { label: 'ملاحظات القرار', value: detailRow.decisionNotesAr || '—' },
+          { label: 'تاريخ التقديم', value: <TableDateCell value={detailRow.createdAt} mode="datetime" /> },
+          { label: 'تاريخ القرار', value: <TableDateCell value={detailRow.decidedAt} mode="datetime" /> },
+        ] : []}
+      />
     </div>
   );
 }

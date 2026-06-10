@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import {
-  Eye,
   Plus,
   Search,
   Trash2,
@@ -12,8 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useSetPageTitle } from '@/components/layouts/page-title-context';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import {
+  EntityFilterToolbar,
+  type EntityFilterInlineSelect,
+} from '@/components/ui/entity-filter-toolbar';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ConfirmationModal,
@@ -24,16 +29,8 @@ import {
 } from '@/features/hr/requests/components/shared-ui';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  DirectoryTable,
-  DirectoryTableBody,
-  DirectoryTableCell,
-  DirectoryTableContainer,
-  DirectoryTableHead,
-  DirectoryTableHeaderRow,
-  DirectoryTableRow,
-  DirectoryTableActionsCell,
-} from '@/components/ui/directory-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 import { useNotificationsAdminDirectoryModel } from '@/features/hr/notifications/admin/hooks/useNotificationsAdminDirectoryModel';
 import {
   NOTIFICATION_AUDIENCE_LABELS,
@@ -48,9 +45,9 @@ import type {
   NotificationSeverity,
   SendNotificationDto,
 } from '@/features/hr/notifications/lib/api/notifications';
-import { formatDate } from '@/shared/utils';
 
 type CategoryFilter = 'all' | NotificationCategory;
+type SeverityFilter = 'all' | NotificationSeverity;
 
 interface SendForm {
   titleAr: string;
@@ -79,6 +76,8 @@ const EMPTY_FORM: SendForm = {
   actionUrl: '',
   actionLabelAr: 'عرض التفاصيل',
 };
+
+const SEVERITY_FILTER_ORDER: SeverityFilter[] = ['all', 'info', 'success', 'warning', 'error'];
 
 function severityBadgeClass(severity: NotificationSeverity): string {
   switch (severity) {
@@ -124,15 +123,10 @@ function IdCheckboxList({
 }
 
 export function NotificationsAdminClient() {
-  useSetPageTitle({
-    titleAr: 'إدارة الإشعارات',
-    descriptionAr: 'إرسال إشعارات للموظفين ومتابعة التسليم والقراءة',
-    iconName: 'Bell',
-  });
-
   const m = useNotificationsAdminDirectoryModel();
   const [q, setQ] = React.useState('');
   const [categoryFilter, setCategoryFilter] = React.useState<CategoryFilter>('all');
+  const [severityFilter, setSeverityFilter] = React.useState<SeverityFilter>('all');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [form, setForm] = React.useState<SendForm>(EMPTY_FORM);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -140,35 +134,96 @@ export function NotificationsAdminClient() {
   const [detail, setDetail] = React.useState<HRAdminNotificationRecord | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<HRAdminNotificationRecord | null>(null);
 
+  const activeFilterCount =
+    (categoryFilter !== 'all' ? 1 : 0)
+    + (severityFilter !== 'all' ? 1 : 0)
+    + (q.trim() ? 1 : 0);
+
+  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+    {
+      id: 'category',
+      value: categoryFilter,
+      onChange: (v) => setCategoryFilter((v || 'all') as CategoryFilter),
+      placeholder: 'التصنيف',
+      className: 'w-[9rem]',
+      options: [
+        { value: 'all', label: 'كل التصنيفات' },
+        ...NOTIFICATION_CATEGORY_FILTER_ORDER.map((cat) => ({
+          value: cat,
+          label: NOTIFICATION_CATEGORY_LABELS[cat],
+        })),
+      ],
+    },
+    {
+      id: 'severity',
+      value: severityFilter,
+      onChange: (v) => setSeverityFilter((v || 'all') as SeverityFilter),
+      placeholder: 'الأولوية',
+      className: 'w-[8rem]',
+      options: SEVERITY_FILTER_ORDER.map((s) => ({
+        value: s,
+        label: s === 'all' ? 'كل الأولويات' : NOTIFICATION_SEVERITY_LABELS[s],
+      })),
+    },
+  ], [categoryFilter, severityFilter]);
+
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showDateSection={false}
+        showStatusSection={false}
+        showEmployeePicker={false}
+        inlineSelects={inlineSelects}
+        leadingFilters={(
+          <div className="relative w-full min-w-[10rem] sm:w-[11rem] shrink-0">
+            <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="بحث…"
+              className="h-8 ps-8 text-xs"
+            />
+          </div>
+        )}
+        onDateBoundsChange={() => {}}
+      />
+    ),
+    [inlineSelects, q],
+  );
+
   usePageHeaderActions(
     () => (
-      <Button
-        type="button"
-        size="sm"
-        variant="luxe"
-        className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
-        onClick={() => {
-          setForm({
-            ...EMPTY_FORM,
-            employeeIds: new Set(),
-            branchIds: new Set(),
-            departmentIds: new Set(),
-          });
-          setFormError(null);
-          setDrawerOpen(true);
-        }}
-      >
-        <Plus className="h-3.5 w-3.5" />
-        إرسال إشعار
-      </Button>
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button
+          type="button"
+          size="sm"
+          variant="luxe"
+          className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => {
+            setForm({
+              ...EMPTY_FORM,
+              employeeIds: new Set(),
+              branchIds: new Set(),
+              departmentIds: new Set(),
+            });
+            setFormError(null);
+            setDrawerOpen(true);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          إرسال إشعار
+        </Button>
+      </div>
     ),
-    [],
+    [activeFilterCount],
   );
 
   const filtered = React.useMemo(() => {
     const query = q.trim().toLowerCase();
     return m.notifications.filter((n) => {
       if (categoryFilter !== 'all' && n.category !== categoryFilter) return false;
+      if (severityFilter !== 'all' && n.severity !== severityFilter) return false;
       if (!query) return true;
       return (
         n.titleAr.toLowerCase().includes(query) ||
@@ -176,7 +231,76 @@ export function NotificationsAdminClient() {
         n.audienceSummaryAr.toLowerCase().includes(query)
       );
     });
-  }, [m.notifications, q, categoryFilter]);
+  }, [m.notifications, q, categoryFilter, severityFilter]);
+
+  const columns = React.useMemo((): ColumnDef<HRAdminNotificationRecord>[] => [
+    {
+      key: 'title',
+      title: 'العنوان',
+      render: (n) => (
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{n.titleAr}</span>
+            <Badge variant="outline" className={severityBadgeClass(n.severity)}>
+              {NOTIFICATION_SEVERITY_LABELS[n.severity]}
+            </Badge>
+            {n.sourceKind && n.sourceKind !== 'manual' ? (
+              <Badge variant="outline" className="text-[10px] font-normal">
+                {n.sourceKind}
+              </Badge>
+            ) : null}
+          </div>
+          {n.bodyAr ? (
+            <p className="line-clamp-1 text-xs text-muted-foreground">{n.bodyAr}</p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      title: 'التصنيف',
+      render: (n) => <Badge variant="secondary">{NOTIFICATION_CATEGORY_LABELS[n.category]}</Badge>,
+    },
+    {
+      key: 'audience',
+      title: 'الجمهور',
+      className: 'text-sm text-muted-foreground',
+      render: (n) => n.audienceSummaryAr,
+    },
+    {
+      key: 'recipients',
+      title: 'المستلمون',
+      render: (n) => (
+        <span className="tabular-nums text-sm">
+          {n.readCount}/{n.recipientCount}
+        </span>
+      ),
+    },
+    {
+      key: 'date',
+      title: 'التاريخ',
+      className: 'text-xs text-muted-foreground tabular-nums',
+      render: (n) => <TableDateCell value={n.createdAt} mode="datetime" />,
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'w-24',
+      render: (n) => (
+        <TableRowActions
+          menuItems={[
+            {
+              label: 'حذف',
+              onClick: () => setDeleteTarget(n),
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              destructive: true,
+            },
+          ]}
+        />
+      ),
+    },
+  ], []);
 
   const submitSend = async () => {
     if (!m.companyId) {
@@ -243,125 +367,53 @@ export function NotificationsAdminClient() {
 
   if (m.loading) {
     return (
-      <div className="flex min-h-[240px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
+      <>
+        <SetPageTitle
+          titleAr="إدارة الإشعارات"
+          descriptionAr="إرسال إشعارات للموظفين ومتابعة التسليم والقراءة"
+          iconName="Bell"
+        />
+        <div className="space-y-2 pt-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-14 animate-pulse rounded-xl bg-muted/50" />
+          ))}
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <SetPageTitle
+        titleAr="إدارة الإشعارات"
+        descriptionAr="إرسال إشعارات للموظفين ومتابعة التسليم والقراءة"
+        iconName="Bell"
+      />
+
       {m.listError ? (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {m.listError}
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4 shadow-soft lg:flex-row lg:items-center">
-        <div className="relative min-w-0 flex-1">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="بحث في الإشعارات..."
-            className="h-10 rounded-xl ps-9"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={categoryFilter === 'all' ? 'default' : 'outline'}
-            className="rounded-xl"
-            onClick={() => setCategoryFilter('all')}
-          >
-            الكل
-          </Button>
-          {NOTIFICATION_CATEGORY_FILTER_ORDER.map((cat) => (
-            <Button
-              key={cat}
-              type="button"
-              size="sm"
-              variant={categoryFilter === cat ? 'default' : 'outline'}
-              className="rounded-xl"
-              onClick={() => setCategoryFilter(cat)}
-            >
-              {NOTIFICATION_CATEGORY_LABELS[cat]}
-            </Button>
-          ))}
-        </div>
-      </div>
-
       {filtered.length === 0 ? (
         <EmptyState
           title="لا توجد إشعارات"
-          description="أرسل أول إشعار للموظفين من زر «إرسال إشعار»."
+          description={
+            activeFilterCount > 0
+              ? 'جرّب تغيير الفلاتر أو مسحها.'
+              : 'أرسل أول إشعار للموظفين من زر «إرسال إشعار».'
+          }
         />
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable>
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead>العنوان</DirectoryTableHead>
-              <DirectoryTableHead>التصنيف</DirectoryTableHead>
-              <DirectoryTableHead>الجمهور</DirectoryTableHead>
-              <DirectoryTableHead>المستلمون</DirectoryTableHead>
-              <DirectoryTableHead>التاريخ</DirectoryTableHead>
-              <DirectoryTableHead className="w-24">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {filtered.map((n) => (
-                <DirectoryTableRow key={n.id}>
-                  <DirectoryTableCell>
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium">{n.titleAr}</span>
-                        <Badge variant="outline" className={severityBadgeClass(n.severity)}>
-                          {NOTIFICATION_SEVERITY_LABELS[n.severity]}
-                        </Badge>
-                        {n.sourceKind && n.sourceKind !== 'manual' ? (
-                          <Badge variant="outline" className="text-[10px] font-normal">
-                            {n.sourceKind}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      {n.bodyAr ? (
-                        <p className="line-clamp-1 text-xs text-muted-foreground">{n.bodyAr}</p>
-                      ) : null}
-                    </div>
-                  </DirectoryTableCell>
-                  <DirectoryTableCell>
-                    <Badge variant="secondary">{NOTIFICATION_CATEGORY_LABELS[n.category]}</Badge>
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="text-sm text-muted-foreground">
-                    {n.audienceSummaryAr}
-                  </DirectoryTableCell>
-                  <DirectoryTableCell>
-                    <span className="tabular-nums text-sm">
-                      {n.readCount}/{n.recipientCount}
-                    </span>
-                  </DirectoryTableCell>
-                  <DirectoryTableCell className="text-xs text-muted-foreground tabular-nums" dir="ltr">
-                    {formatDate(n.createdAt)}
-                  </DirectoryTableCell>
-                  <DirectoryTableActionsCell>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setDetail(n)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDeleteTarget(n)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </DirectoryTableActionsCell>
-                </DirectoryTableRow>
-              ))}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          columns={columns}
+          data={filtered}
+          keyExtractor={(n) => n.id}
+          onRowClick={(n) => setDetail(n)}
+        />
       )}
 
       <HRSettingsFormDrawer
@@ -463,7 +515,7 @@ export function NotificationsAdminClient() {
             <Input
               value={form.actionUrl}
               onChange={(e) => setForm((f) => ({ ...f, actionUrl: e.target.value }))}
-              placeholder="/hr/notifications"
+              placeholder="/hr/dashboard"
               dir="ltr"
             />
           </FormField>
@@ -508,7 +560,7 @@ export function NotificationsAdminClient() {
         confirmLabel="حذف"
         variant="destructive"
       />
-    </div>
+    </>
   );
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Banknote, Loader2 } from 'lucide-react';
+import { Gavel, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { EmployeePicker } from '@/components/ui/employee-picker';
-import type { CompensationAdvancesPushOptions } from '@/features/hr/contracts/lib/compensation-preview';
+import type { CompensationViolationsPushOptions } from '@/features/hr/contracts/lib/compensation-preview';
 
 type EmployeeScope = 'all' | 'selected';
 
@@ -33,7 +33,7 @@ type Props = {
   disabled?: boolean;
   employees: { id: string; name: string }[];
   defaultEmployeeIds?: string[];
-  onConfirm: (options: CompensationAdvancesPushOptions) => void;
+  onConfirm: (options: CompensationViolationsPushOptions) => void;
 };
 
 function InlineSwitchRow({
@@ -65,7 +65,7 @@ function InlineSwitchRow({
   );
 }
 
-export function PushFromAdvancesDialog({
+export function PushFromViolationsDialog({
   open,
   onOpenChange,
   pushing,
@@ -133,14 +133,14 @@ export function PushFromAdvancesDialog({
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
                 <DialogTitle className="font-display text-lg leading-tight">
-                  دفع السلف إلى المدخلات الشهرية
+                  دفع الجزاءات إلى المدخلات الشهرية
                 </DialogTitle>
                 <DialogDescription className="text-xs leading-relaxed text-muted-foreground">
-                  يُنشئ خصم قسط السلفة لكل سلفة مؤهلة في فترة الراتب، ويحدّث المبلغ المسدّد وحالة السلفة.
+                  يُنشئ خصم جزاء (discipline_deduction) لكل مخالفة معتمدة ضمن فترة الراتب، من التحقيق أو نوع المخالفة.
                 </DialogDescription>
               </div>
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-destructive/20 bg-destructive/10 text-destructive">
-                <Banknote className="h-4 w-4" />
+                <Gavel className="h-4 w-4" />
               </span>
             </div>
           </DialogHeader>
@@ -191,7 +191,7 @@ export function PushFromAdvancesDialog({
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    يُرحَّل قسط السلفة لكل موظف له سلفة مؤهلة ضمن الموظفين المحددين.
+                    تُرحَّل جزاءات المخالفات المعتمدة التي يقع تاريخها داخل فترة الراتب للموظفين المحددين.
                   </p>
                 )}
               </div>
@@ -204,7 +204,7 @@ export function PushFromAdvancesDialog({
               <div className="divide-y divide-border/50 px-4">
                 <InlineSwitchRow
                   label="استبدال المدخلات السابقة"
-                  hint="إعادة احتساب أقساط السلف المُرحّلة سابقاً لنفس الفترة"
+                  hint="إعادة احتساب جزاءات المخالفات المُرحّلة سابقاً لنفس الفترة"
                   checked={replaceExisting}
                   disabled={fieldDisabled}
                   onCheckedChange={setReplaceExisting}

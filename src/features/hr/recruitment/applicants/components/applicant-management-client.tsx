@@ -13,7 +13,7 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { ApplicantDetailDialog } from './applicant-detail-dialog';
 import type { RecruitmentApplicant, RecruitmentForm } from '@/features/hr/recruitment/lib/types';
-import { formatDate } from '@/shared/utils';
+import { DisplayDate } from '@/components/ui/table-cells';
 import Link from 'next/link';
 
 export function ApplicantManagementClient() {
@@ -103,10 +103,6 @@ export function ApplicantManagementClient() {
         </Link>
       </div>
 
-      <div className="text-sm text-muted-foreground">
-        عدد المتقدمين: {filtered.length}
-      </div>
-
       {selectedForm && (
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-2 text-sm">
           <span className="text-muted-foreground">النموذج المحدد:</span>{' '}
@@ -139,7 +135,7 @@ export function ApplicantManagementClient() {
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{form?.title ?? '—'}</span>
                     <span>·</span>
-                    <span>{formatDate(applicant.submittedAt)}</span>
+                    <DisplayDate value={applicant.submittedAt} mode="datetime" />
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

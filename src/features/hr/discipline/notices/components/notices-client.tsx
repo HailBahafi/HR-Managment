@@ -10,7 +10,7 @@ import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/features/hr/requests/components/shared-ui';
-import { useDisciplineNoticesDirectoryModel } from '@/features/hr/discipline/notices/hooks/useDisciplineNoticesDirectoryModel';
+import { useDisciplineNoticesDirectoryModel, type NoticeRecord } from '@/features/hr/discipline/notices/hooks/useDisciplineNoticesDirectoryModel';
 import type { HRDisciplineNoticeKind } from '@/features/hr/discipline/lib/types';
 import { NOTICE_KIND_LABELS, NOTICE_KIND_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
@@ -27,10 +27,8 @@ import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xls
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import {
-  DirectoryTableContainer, DirectoryTable, DirectoryTableHeaderRow, DirectoryTableHead,
-  DirectoryTableBody, DirectoryTableRow, DirectoryTableCell, DirectoryTableActionsCell,
-} from '@/components/ui/directory-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
 
 const KIND_OPTIONS = (Object.entries(NOTICE_KIND_LABELS) as [HRDisciplineNoticeKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -84,6 +82,7 @@ export function NoticesClient() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
+  const [detailRow, setDetailRow] = React.useState<NoticeRecord | null>(null);
 
   const empOptions = employees.map(e => ({ value: e.id, label: e.nameAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
@@ -166,6 +165,54 @@ export function NoticesClient() {
   }, [listFiltered]);
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
+
+  const columns = React.useMemo((): ColumnDef<NoticeRecord>[] => [
+    {
+      key: 'employee',
+      title: 'الموظف',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[12rem] truncate font-medium',
+      render: (n) => n.employeeNameAr,
+    },
+    {
+      key: 'kind',
+      title: 'نوع الإنذار',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap text-xs',
+      render: (n) => NOTICE_KIND_LABELS[n.kind],
+    },
+    {
+      key: 'date',
+      title: 'التاريخ',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap font-mono text-xs tabular-nums',
+      render: (n) => <TableDateCell value={n.date} />,
+    },
+    {
+      key: 'reason',
+      title: 'السبب',
+      className: 'max-w-[20rem] truncate text-xs text-muted-foreground',
+      render: (n) => n.reasonAr,
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'whitespace-nowrap',
+      render: (n) => (
+        <TableRowActions
+          menuItems={[
+            {
+              label: 'حذف',
+              onClick: () => setDeleteId(n.id),
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              destructive: true,
+            },
+          ]}
+        />
+      ),
+    },
+  ], []);
 
   const handleSave = async () => {
     setFormError(null);
@@ -301,32 +348,15 @@ export function NoticesClient() {
           ))}
         </div>
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable className="min-w-[640px]">
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead className="whitespace-nowrap">الموظف</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">نوع الإنذار</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">التاريخ</DirectoryTableHead>
-              <DirectoryTableHead>السبب</DirectoryTableHead>
-              <DirectoryTableHead className="whitespace-nowrap">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {listFiltered.map((n) => (
-                <DirectoryTableRow key={n.id}>
-                  <DirectoryTableCell className="max-w-[12rem] truncate font-medium">{n.employeeNameAr}</DirectoryTableCell>
-                  <DirectoryTableCell className="whitespace-nowrap text-xs">{NOTICE_KIND_LABELS[n.kind]}</DirectoryTableCell>
-                  <DirectoryTableCell className="whitespace-nowrap font-mono text-xs tabular-nums" dir="ltr">{n.date}</DirectoryTableCell>
-                  <DirectoryTableCell className="max-w-[20rem] truncate text-xs text-muted-foreground">{n.reasonAr}</DirectoryTableCell>
-                  <DirectoryTableActionsCell>
-                    <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(n.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </DirectoryTableActionsCell>
-                </DirectoryTableRow>
-              ))}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          tableClassName="min-w-[640px]"
+          columns={columns}
+          data={listFiltered}
+          keyExtractor={(n) => n.id}
+          onRowClick={(n) => setDetailRow(n)}
+        />
       )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة إنذار" size="lg" onSave={() => void handleSave()} saveDisabled={saving} error={formError}>
@@ -360,6 +390,21 @@ export function NoticesClient() {
           }
         }}
         title="حذف الإنذار"
+      />
+
+      <TableRowDetailDialog
+        open={detailRow != null}
+        onOpenChange={(o) => !o && setDetailRow(null)}
+        title="تفاصيل الإنذار"
+        fields={detailRow ? [
+          { label: 'الموظف', value: detailRow.employeeNameAr },
+          { label: 'نوع الإنذار', value: NOTICE_KIND_LABELS[detailRow.kind] },
+          { label: 'التاريخ', value: <TableDateCell value={detailRow.date} /> },
+          { label: 'السبب', value: detailRow.reasonAr },
+          { label: 'مخالفة مرتبطة', value: detailRow.linkedCaseNumber ?? '—' },
+          { label: 'ملاحظة المرفقات', value: detailRow.attachmentsNote ?? '—' },
+          { label: 'أُنشئ', value: <TableDateCell value={detailRow.createdAt} mode="datetime" /> },
+        ] : []}
       />
     </div>
   );

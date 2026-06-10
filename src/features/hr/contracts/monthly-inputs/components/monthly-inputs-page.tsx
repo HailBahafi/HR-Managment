@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Receipt, Eye } from 'lucide-react';
+import { Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
 import { DataTable, AppPagination, type ColumnDef } from '@/components/ui/data-table';
@@ -25,18 +26,8 @@ import {
   formatPayrollPeriodLabel,
 } from '@/features/hr/contracts/monthly-inputs/constants/monthly-input-labels';
 import { useMonthlyInputsDirectoryModel } from '@/features/hr/contracts/monthly-inputs/hooks/useMonthlyInputsDirectoryModel';
+import { TableDateCell } from '@/components/ui/table-cells';
 import { cn } from '@/shared/utils';
-
-function formatDateTime(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -72,8 +63,8 @@ function MonthlyInputDetailDialog({
           <DetailRow label="معرّف المصدر" value={row.sourceId} />
           <DetailRow label="يؤثر على الراتب" value={row.affectsSalary ? 'نعم' : 'لا'} />
           <DetailRow label="ملاحظة" value={row.note} />
-          <DetailRow label="أُنشئ" value={formatDateTime(row.createdAt)} />
-          <DetailRow label="آخر تحديث" value={formatDateTime(row.updatedAt)} />
+          <DetailRow label="أُنشئ" value={<TableDateCell value={row.createdAt} mode="datetime" />} />
+          <DetailRow label="آخر تحديث" value={<TableDateCell value={row.updatedAt} mode="datetime" />} />
           <DetailRow label="أنشأه" value={row.createdBy} />
           <DetailRow label="حدّثه" value={row.updatedBy} />
         </div>
@@ -176,6 +167,11 @@ export function MonthlyInputsPage() {
     [inlineSelects, empPickerList, selectedEmpIds, setSelectedEmpIds],
   );
 
+  usePageHeaderActions(
+    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
+    [activeFilterCount],
+  );
+
   const columns = React.useMemo((): ColumnDef<MonthlyInputResponseDto>[] => [
     {
       key: 'employee',
@@ -248,23 +244,6 @@ export function MonthlyInputsPage() {
         <span className="line-clamp-2 text-muted-foreground text-xs">{row.note ?? '—'}</span>
       ),
     },
-    {
-      key: 'actions',
-      title: '',
-      isActions: true,
-      render: (row) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          aria-label="عرض التفاصيل"
-          onClick={(e) => { e.stopPropagation(); setDetailRow(row); }}
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
-      ),
-    },
   ], []);
 
   return (
@@ -274,11 +253,6 @@ export function MonthlyInputsPage() {
         descriptionAr="إضافات وخصومات شهرية مجمّعة لكل موظف ضمن فترة الراتب — عرض فقط."
         iconName="Receipt"
       />
-
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">{total} مدخل</p>
-        <FilterToggleButton activeFilterCount={activeFilterCount} />
-      </div>
 
       {activeFilterCount > 0 && (
         <div className="mb-3">

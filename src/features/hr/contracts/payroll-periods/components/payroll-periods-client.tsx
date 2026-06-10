@@ -22,8 +22,10 @@ import {
 } from '@/features/hr/requests/components/shared-ui';
 import {
   useHRPayrollPeriodsStore,
-  PERIOD_STATUS_LABELS, PERIOD_STATUS_COLORS, COMPENSATION_STATUS_LABELS,
-  type HRPayrollPeriodDraft, type HRPayrollPeriodStatus, type HRPayrollCompensationReviewStatus,
+  PERIOD_STATUS_LABELS, PERIOD_STATUS_COLORS, PERIOD_STATUS_ORDER,
+  REVIEW_STAGE_LABELS, REVIEW_STAGE_BADGE, REVIEW_COMPLETED_LABEL,
+  isPayrollPeriodEditable,
+  type HRPayrollPeriodDraft, type HRPayrollPeriodStatus,
 } from '@/features/hr/contracts/lib/payroll-periods-store';
 import { hrContractsPeriodCompensationHref } from '@/features/hr/contracts/constants/routes';
 import { cn } from '@/shared/utils';
@@ -33,22 +35,31 @@ type StatusFilter = 'all' | HRPayrollPeriodStatus;
 const EMPTY_DRAFT: HRPayrollPeriodDraft = {
   code: '', nameAr: '', nameEn: '',
   periodStart: '', periodEnd: '',
-  status: 'draft', compensationReviewStatus: 'draft',
+  status: 'draft',
+  reviewStage: 'first_review',
+  isReviewCompleted: false,
+  reviewNotes: null,
+  firstReviewedBy: null,
+  firstReviewedAt: null,
+  secondReviewedBy: null,
+  secondReviewedAt: null,
+  thirdReviewedBy: null,
+  thirdReviewedAt: null,
   snapshotContractIds: [], employmentLines: [],
   linesMaterializedAt: null, employmentLineMonthlyInputs: {}, notes: '',
-};
-
-const COMP_STATUS_BADGE: Record<HRPayrollCompensationReviewStatus, string> = {
-  draft:         'bg-muted text-muted-foreground border-border',
-  first_review:  'bg-warning/10 text-warning border-warning/25',
-  second_review: 'bg-gold/10 text-gold border-gold/25',
-  approved:      'bg-success/10 text-success border-success/25',
+  includeOvertime: true,
+  includeBonuses: true,
+  includeAdvances: true,
+  includeAbsence: true,
+  includeLateness: true,
+  includePenalties: true,
+  includeManualInputs: true,
 };
 
 export function PayrollPeriodsClient() {
   const {
     periods, add, update, remove,
-    open: openPeriod, close: closePeriod, setCompensationStatus,
+    open: openPeriod, close: closePeriod,
     fetch: fetchPeriods,
   } = useHRPayrollPeriodsStore();
 
@@ -59,11 +70,10 @@ export function PayrollPeriodsClient() {
   const { values, setValue } = usePageFilters([
     {
       key: 'status', label: 'الحالة', type: 'select',
-      options: [
-        { value: 'draft', label: PERIOD_STATUS_LABELS.draft },
-        { value: 'open', label: PERIOD_STATUS_LABELS.open },
-        { value: 'closed', label: PERIOD_STATUS_LABELS.closed },
-      ],
+      options: PERIOD_STATUS_ORDER.map(value => ({
+        value,
+        label: PERIOD_STATUS_LABELS[value],
+      })),
     },
   ]);
 
@@ -90,12 +100,10 @@ export function PayrollPeriodsClient() {
   );
 
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = {
-      all: narrowedByDate.length,
-      draft: 0,
-      open: 0,
-      closed: 0,
-    };
+    const counts: Record<string, number> = { all: narrowedByDate.length };
+    for (const status of PERIOD_STATUS_ORDER) {
+      counts[status] = 0;
+    }
     for (const p of narrowedByDate) {
       counts[p.status] = (counts[p.status] ?? 0) + 1;
     }
@@ -135,10 +143,26 @@ export function PayrollPeriodsClient() {
     setDraft({
       code: p.code, nameAr: p.nameAr, nameEn: p.nameEn,
       periodStart: p.periodStart, periodEnd: p.periodEnd,
-      status: p.status, compensationReviewStatus: p.compensationReviewStatus,
+      status: p.status,
+      reviewStage: p.reviewStage,
+      isReviewCompleted: p.isReviewCompleted,
+      reviewNotes: p.reviewNotes,
+      firstReviewedBy: p.firstReviewedBy,
+      firstReviewedAt: p.firstReviewedAt,
+      secondReviewedBy: p.secondReviewedBy,
+      secondReviewedAt: p.secondReviewedAt,
+      thirdReviewedBy: p.thirdReviewedBy,
+      thirdReviewedAt: p.thirdReviewedAt,
       snapshotContractIds: p.snapshotContractIds, employmentLines: p.employmentLines,
       linesMaterializedAt: p.linesMaterializedAt, employmentLineMonthlyInputs: p.employmentLineMonthlyInputs,
       notes: p.notes,
+      includeOvertime: p.includeOvertime,
+      includeBonuses: p.includeBonuses,
+      includeAdvances: p.includeAdvances,
+      includeAbsence: p.includeAbsence,
+      includeLateness: p.includeLateness,
+      includePenalties: p.includePenalties,
+      includeManualInputs: p.includeManualInputs,
     });
     setError(null); setDrawerOpen(true);
   };
@@ -159,12 +183,8 @@ export function PayrollPeriodsClient() {
         showEmployeePicker={false}
         statusFilter={statusFilter}
         onStatusFilterChange={(v) => setValue('status', v)}
-        statusOrder={['draft', 'open', 'closed']}
-        statusLabels={{
-          draft: PERIOD_STATUS_LABELS.draft,
-          open: PERIOD_STATUS_LABELS.open,
-          closed: PERIOD_STATUS_LABELS.closed,
-        }}
+        statusOrder={PERIOD_STATUS_ORDER}
+        statusLabels={PERIOD_STATUS_LABELS}
         statusCounts={statusCounts}
         onDateBoundsChange={onDateBoundsChange}
         trailingActions={undefined}
@@ -173,9 +193,7 @@ export function PayrollPeriodsClient() {
     [
       statusFilter,
       statusCounts.all,
-      statusCounts.draft,
-      statusCounts.open,
-      statusCounts.closed,
+      ...PERIOD_STATUS_ORDER.map(s => statusCounts[s]),
       dateBounds.from,
       dateBounds.to,
       total,
@@ -191,7 +209,7 @@ export function PayrollPeriodsClient() {
       </Link>
       {p.status === 'draft' && <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => openPeriod(p.id)}>فتح</Button>}
       {p.status === 'open'  && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => closePeriod(p.id)}>إغلاق</Button>}
-      {p.status !== 'closed'&& <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(p.id)}>تعديل</Button>}
+      {isPayrollPeriodEditable(p.status) && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(p.id)}>تعديل</Button>}
       {p.status === 'draft' && <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => setConfirmId(p.id)}>حذف</Button>}
     </div>
   );
@@ -207,8 +225,11 @@ export function PayrollPeriodsClient() {
           {filtered.map(p => (
             <div
               key={p.id}
-              className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col cursor-pointer"
-              onClick={() => openEdit(p.id)}
+              className={cn(
+                'rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col',
+                isPayrollPeriodEditable(p.status) ? 'cursor-pointer' : '',
+              )}
+              onClick={() => { if (isPayrollPeriodEditable(p.status)) openEdit(p.id); }}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -227,9 +248,14 @@ export function PayrollPeriodsClient() {
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] text-muted-foreground">حالة المراجعة</span>
-                <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold', COMP_STATUS_BADGE[p.compensationReviewStatus])}>
-                  {p.compensationReviewStatus === 'approved' && <CheckCircle2 className="h-3 w-3" />}
-                  {COMPENSATION_STATUS_LABELS[p.compensationReviewStatus]}
+                <span className={cn(
+                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                  p.isReviewCompleted
+                    ? 'bg-success/10 text-success border-success/25'
+                    : REVIEW_STAGE_BADGE[p.reviewStage],
+                )}>
+                  {p.isReviewCompleted && <CheckCircle2 className="h-3 w-3" />}
+                  {p.isReviewCompleted ? REVIEW_COMPLETED_LABEL : REVIEW_STAGE_LABELS[p.reviewStage]}
                 </span>
               </div>
               <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>

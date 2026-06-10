@@ -114,7 +114,6 @@ export function PublicHolidaysPanel() {
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground">{m.sorted.length} من {m.items.length} عطلة</p>
         </>
       )}
 

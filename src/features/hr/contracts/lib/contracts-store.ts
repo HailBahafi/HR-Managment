@@ -56,7 +56,7 @@ export type ActivateResult = { ok: true } | { ok: false; message: string };
 
 // ─── Mapping ──────────────────────────────────────────────────────────────────
 
-function mapApiContract(c: ApiEmployeeContract): HRContractRecord {
+export function mapEmployeeContractFromApi(c: ApiEmployeeContract): HRContractRecord {
   return {
     id: c.id,
     employeeId: c.employeeId,
@@ -118,7 +118,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const result = await employeeContractsApi.list({ companyId, limit: 500, ...params });
-      set({ contracts: result.items.map(mapApiContract), isLoading: false });
+      set({ contracts: result.items.map(mapEmployeeContractFromApi), isLoading: false });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
     }
@@ -149,7 +149,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
         .filter(l => l.allowanceTypeId)
         .map((l, i) => ({ allowanceTypeId: l.allowanceTypeId, amount: l.amount, sortOrder: i })),
     });
-    const row = mapApiContract(created);
+    const row = mapEmployeeContractFromApi(created);
     set(s => ({ contracts: [row, ...s.contracts] }));
     return created.id;
   },
@@ -174,7 +174,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
           ?.filter(l => l.allowanceTypeId)
           .map((l, i) => ({ allowanceTypeId: l.allowanceTypeId, amount: l.amount, sortOrder: i })),
       });
-      const row = mapApiContract(updated);
+      const row = mapEmployeeContractFromApi(updated);
       set(s => ({ contracts: s.contracts.map(c => c.id === id ? row : c) }));
       return true;
     } catch {
@@ -197,7 +197,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
     if (!c || c.status !== 'draft') return { ok: false, message: 'يمكن تفعيل المسودات فقط.' };
     try {
       const updated = await employeeContractsApi.update(id, { status: 'active' });
-      const row = mapApiContract(updated);
+      const row = mapEmployeeContractFromApi(updated);
       set(s => ({ contracts: s.contracts.map(x => x.id === id ? row : x) }));
       return { ok: true };
     } catch (e) {
@@ -213,7 +213,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
         status: 'terminated',
         earlyTerminationReason: reason.trim() || 'إنهاء مبكر',
       });
-      const row = mapApiContract(updated);
+      const row = mapEmployeeContractFromApi(updated);
       set(s => ({ contracts: s.contracts.map(x => x.id === id ? row : x) }));
       return { ok: true };
     } catch (e) {
@@ -227,7 +227,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
       return { ok: false, message: 'يمكن إلغاء العقود المنتهية أو المُنهية فقط.' };
     try {
       const updated = await employeeContractsApi.update(id, { status: 'cancelled' });
-      const row = mapApiContract(updated);
+      const row = mapEmployeeContractFromApi(updated);
       set(s => ({ contracts: s.contracts.map(x => x.id === id ? row : x) }));
       return { ok: true };
     } catch (e) {
@@ -262,7 +262,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
         allowancesNote: parent.allowancesNote || undefined,
         deductionsNote: parent.deductionsNote || undefined,
       });
-      const row = mapApiContract(created);
+      const row = mapEmployeeContractFromApi(created);
       set(s => ({ contracts: [row, ...s.contracts] }));
       return { ok: true, id: created.id };
     } catch (e) {

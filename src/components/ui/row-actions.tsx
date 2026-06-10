@@ -15,8 +15,9 @@ import { cn } from '@/shared/utils';
 export type RowPrimaryAction = {
   label: string;
   onClick: (e: React.MouseEvent) => void;
-  variant?: 'success' | 'destructive' | 'default';
+  variant?: 'success' | 'destructive' | 'default' | 'warning' | 'primary';
   icon?: React.ReactNode;
+  disabled?: boolean;
 };
 
 export type RowMenuItem = {
@@ -40,6 +41,8 @@ const PRIMARY_VARIANT_CLASS: Record<NonNullable<RowPrimaryAction['variant']>, st
   success: 'border-success/40 bg-success/10 text-success hover:bg-success/20',
   destructive: 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20',
   default: 'border-border bg-muted/60 text-foreground hover:bg-muted',
+  warning: 'border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400',
+  primary: 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/20',
 };
 
 export function RowActions({ primaryActions, menuItems, className }: RowActionsProps) {
@@ -51,9 +54,10 @@ export function RowActions({ primaryActions, menuItems, className }: RowActionsP
         <button
           key={i}
           type="button"
+          disabled={action.disabled}
           onClick={(e) => { e.stopPropagation(); action.onClick(e); }}
           className={cn(
-            'inline-flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors',
+            'inline-flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors disabled:opacity-50',
             PRIMARY_VARIANT_CLASS[action.variant ?? 'default'],
           )}
         >

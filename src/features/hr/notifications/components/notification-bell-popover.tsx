@@ -1,17 +1,18 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
-import { Bell, Check, CheckCheck, ListX, CheckCircle2, Circle, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, ListX, Circle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn, formatDate } from '@/shared/utils';
+import { cn } from '@/shared/utils';
+import { DisplayDate } from '@/components/ui/table-cells';
 import {
   useHRNotificationsStore,
   selectInboxForRecipient,
   countUnreadInbox,
 } from '@/features/hr/notifications/lib/notifications-store';
 import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
+import { EmployeePendingPayslipsSection } from '@/features/hr/payroll/components/employee-pending-payslips-section';
 
 export function NotificationBellPopover() {
   const { items, markRead, markUnread, markAllReadForRecipient, dismissFromInbox, dismissAllVisibleForRecipient } =
@@ -84,6 +85,8 @@ export function NotificationBellPopover() {
           إزالة الكل تخفي التنبيهات من القائمة فقط ولا تحذفها من النظام.
         </p>
 
+        <EmployeePendingPayslipsSection />
+
         <div className="max-h-[min(60vh,320px)] overflow-y-auto">
           {inbox.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">لا توجد تنبيهات في صندوقك</div>
@@ -117,23 +120,12 @@ export function NotificationBellPopover() {
                       </button>
                     </div>
                     {n.bodyAr ? <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">{n.bodyAr}</p> : null}
-                    <p className="mt-1 font-mono text-[10px] text-muted-foreground tabular-nums" dir="ltr">
-                      {formatDate(n.createdAt)}
-                    </p>
+                    <DisplayDate value={n.createdAt} mode="datetime" className="mt-1 text-[10px]" />
                   </div>
                 </li>
               ))}
             </ul>
           )}
-        </div>
-
-        <div className="border-t border-border p-2">
-          <Button variant="secondary" size="sm" className="h-9 w-full rounded-lg text-xs" asChild onClick={() => setOpen(false)}>
-            <Link href="/hr/notifications" className="inline-flex items-center justify-center gap-2">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              عرض جميع التنبيهات
-            </Link>
-          </Button>
         </div>
       </PopoverContent>
     </Popover>

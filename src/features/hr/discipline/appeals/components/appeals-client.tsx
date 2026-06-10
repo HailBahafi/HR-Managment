@@ -4,12 +4,14 @@ import * as React from 'react';
 import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
 import { Input } from '@/components/ui/input';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/features/hr/requests/components/shared-ui';
-import { useDisciplineAppealsDirectoryModel } from '@/features/hr/discipline/appeals/hooks/useDisciplineAppealsDirectoryModel';
+import { useDisciplineAppealsDirectoryModel, type AppealRecord } from '@/features/hr/discipline/appeals/hooks/useDisciplineAppealsDirectoryModel';
 import type { HRAppealChannel, HRAppealStatus } from '@/features/hr/discipline/lib/types';
 import { APPEAL_CHANNEL_LABELS, APPEAL_STATUS_LABELS, APPEAL_STATUS_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
 import type { AppealChannelDto, AppealStatusDto } from '@/features/hr/discipline/lib/api/discipline-appeals';
@@ -84,6 +86,7 @@ export function AppealsClient() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
+  const [detailRow, setDetailRow] = React.useState<AppealRecord | null>(null);
 
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
@@ -201,6 +204,68 @@ export function AppealsClient() {
       toast.error('فشل تحديث الحالة');
     }
   };
+
+  const columns = React.useMemo((): ColumnDef<AppealRecord>[] => [
+    {
+      key: 'caseNumber',
+      title: 'المخالفة',
+      className: 'font-mono text-xs font-medium tabular-nums text-muted-foreground',
+      render: (a) => <span dir="ltr">{a.caseNumber}</span>,
+    },
+    {
+      key: 'employee',
+      title: 'الموظف',
+      className: 'max-w-[10rem] truncate font-medium',
+      render: (a) => a.employeeNameAr,
+    },
+    {
+      key: 'date',
+      title: 'التاريخ',
+      className: 'whitespace-nowrap font-mono text-xs tabular-nums',
+      render: (a) => <TableDateCell value={a.date} />,
+    },
+    {
+      key: 'channel',
+      title: 'القناة',
+      className: 'whitespace-nowrap text-xs',
+      render: (a) => APPEAL_CHANNEL_LABELS[a.channel],
+    },
+    {
+      key: 'grounds',
+      title: 'أسباب التظلم',
+      className: 'max-w-[16rem] text-xs text-muted-foreground',
+      render: (a) => <span className="line-clamp-2" title={a.grounds ?? undefined}>{a.grounds ?? '—'}</span>,
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      isInteractive: true,
+      render: (a) => (
+        <MinimalDropdown
+          value={a.status}
+          onChange={v => void handleStatusChange(a.id, v)}
+          options={STATUS_OPTIONS}
+        />
+      ),
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      render: (a) => (
+        <TableRowActions
+          menuItems={[
+            {
+              label: 'حذف',
+              onClick: () => setDeleteId(a.id),
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              destructive: true,
+            },
+          ]}
+        />
+      ),
+    },
+  ], [handleStatusChange]);
 
   useEntityFilterSlot(
     () => (
@@ -321,46 +386,15 @@ export function AppealsClient() {
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
-          <table className="w-full min-w-[800px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50 text-right">
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">المخالفة</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الموظف</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">التاريخ</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">القناة</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">أسباب التظلم</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">الحالة</th>
-                <th className="whitespace-nowrap p-3 text-xs font-semibold text-muted-foreground">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {listFiltered.map((a) => (
-                <tr key={a.id} className="border-b border-border/70 transition-colors hover:bg-muted/25">
-                  <td className="p-3 font-mono text-xs font-medium tabular-nums text-muted-foreground" dir="ltr">{a.caseNumber}</td>
-                  <td className="max-w-[10rem] truncate p-3 font-medium">{a.employeeNameAr}</td>
-                  <td className="whitespace-nowrap p-3 font-mono text-xs tabular-nums" dir="ltr">{a.date}</td>
-                  <td className="whitespace-nowrap p-3 text-xs">{APPEAL_CHANNEL_LABELS[a.channel]}</td>
-                  <td className="max-w-[16rem] p-3 text-xs text-muted-foreground">
-                    <span className="line-clamp-2" title={a.grounds ?? undefined}>{a.grounds ?? '—'}</span>
-                  </td>
-                  <td className="p-3">
-                    <MinimalDropdown
-                      value={a.status}
-                      onChange={v => void handleStatusChange(a.id, v)}
-                      options={STATUS_OPTIONS}
-                    />
-                  </td>
-                  <td className="p-2">
-                    <Button variant="ghost" size="sm" className="h-8 text-destructive hover:text-destructive" type="button" onClick={() => setDeleteId(a.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          tableClassName="min-w-[800px]"
+          columns={columns}
+          data={listFiltered}
+          keyExtractor={(a) => a.id}
+          onRowClick={(a) => setDetailRow(a)}
+        />
       )}
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="تقديم تظلم" size="lg" onSave={() => void handleSave()} saveDisabled={saving} error={formError}>
@@ -391,6 +425,20 @@ export function AppealsClient() {
           }
         }}
         title="حذف التظلم"
+      />
+
+      <TableRowDetailDialog
+        open={detailRow != null}
+        onOpenChange={(o) => !o && setDetailRow(null)}
+        title="تفاصيل التظلم"
+        fields={detailRow ? [
+          { label: 'المخالفة', value: detailRow.caseNumber },
+          { label: 'الموظف', value: detailRow.employeeNameAr },
+          { label: 'التاريخ', value: <TableDateCell value={detailRow.date} /> },
+          { label: 'القناة', value: APPEAL_CHANNEL_LABELS[detailRow.channel] },
+          { label: 'الحالة', value: APPEAL_STATUS_LABELS[detailRow.status] },
+          { label: 'أسباب التظلم', value: detailRow.grounds || '—' },
+        ] : []}
       />
     </div>
   );

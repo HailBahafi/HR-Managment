@@ -14,7 +14,7 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
-import { formatDate } from '@/shared/utils';
+import { DisplayDate } from '@/components/ui/table-cells';
 
 /* ─── Stage config ────────────────────────────────────────────── */
 type StageTab = AtsPipelineStage | 'all';
@@ -187,7 +187,7 @@ export function ApplicantsListClient() {
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {formatDate(app.submittedAt)}
+                      <DisplayDate value={app.submittedAt} mode="datetime" className="text-[11px]" />
                     </div>
                     {app.score ? (
                       <ScoreBar score={app.score.finalScore} />

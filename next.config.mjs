@@ -53,7 +53,8 @@ const nextConfig = {
       { source: '/organization', destination: '/hr/organization/chart', permanent: true },
       { source: '/permissions', destination: '/hr/permissions', permanent: true },
       { source: '/settings', destination: '/hr/settings', permanent: true },
-      { source: '/notifications', destination: '/hr/notifications', permanent: true },
+      { source: '/notifications', destination: '/hr/dashboard', permanent: true },
+      { source: '/hr/notifications', destination: '/hr/dashboard', permanent: true },
     ];
   },
 };

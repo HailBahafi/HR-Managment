@@ -3,6 +3,7 @@
 import { FileText } from 'lucide-react';
 import { StatusBadge, RequestTypeLabel } from '@/components/shared/status-badge';
 import { formatDate, cn } from '@/shared/utils';
+import { DisplayDate } from '@/components/ui/table-cells';
 import { Empty, SectionH } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 
@@ -48,7 +49,7 @@ export function EmployeeRequestsSection({ model }: { model: EmployeeProfileModel
                       <span className="text-muted-foreground/80">{req.title}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {formatDate(req.submittedAt)}
+                      <DisplayDate value={req.submittedAt} mode="datetime" />
                       {req.requestNumber && (
                         <>
                           <span className="mx-1.5 text-muted-foreground/40">·</span>

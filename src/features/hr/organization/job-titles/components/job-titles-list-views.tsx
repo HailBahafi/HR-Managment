@@ -1,36 +1,63 @@
 'use client';
 
+import * as React from 'react';
 import { Briefcase, Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { RowActions } from '@/components/ui/row-actions';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableRowActions } from '@/components/ui/table-cells';
 import {
   DirectoryGrid,
   DirectoryGridCard,
   DirectoryGridCardFooter,
   DirectoryGridCardHeader,
   DirectoryGridCardTitle,
-  DirectoryResultCount,
 } from '@/components/ui/directory-grid-card';
-import {
-  DirectoryTableActionsCell,
-  DirectoryTableBody,
-  DirectoryTableCell,
-  DirectoryTableContainer,
-  DirectoryTableHead,
-  DirectoryTableHeaderRow,
-  DirectoryTableRow,
-  DirectoryTable,
-} from '@/components/ui/directory-table';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import type { JobTitlesDirectoryModel } from '@/features/hr/organization/job-titles/hooks/useJobTitlesDirectoryModel';
+import type { JobTitleTemplateRecord } from '@/features/hr/organization/job-titles/services/job-titles.service';
 
 export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }) {
   const { templates, layoutView, setViewRow, openEdit, setConfirmId, getDepartmentName } = model;
 
+  const columns = React.useMemo((): ColumnDef<JobTitleTemplateRecord>[] => [
+    {
+      key: 'titleAr',
+      title: 'المسمى الوظيفي',
+      render: (row) => <span className="font-medium">{row.titleAr}</span>,
+    },
+    {
+      key: 'department',
+      title: 'القسم المقترح',
+      className: 'text-muted-foreground',
+      render: (row) => {
+        const deptName = row.defaultDepartmentId ? getDepartmentName(row.defaultDepartmentId) : undefined;
+        return deptName ?? '—';
+      },
+    },
+    {
+      key: 'description',
+      title: 'وصف',
+      className: 'max-w-[240px] truncate text-muted-foreground',
+      render: (row) => row.descriptionAr ?? '—',
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'text-start w-16',
+      render: (row) => (
+        <TableRowActions
+          menuItems={[
+            { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
+            { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
+          ]}
+        />
+      ),
+    },
+  ], [getDepartmentName, openEdit, setConfirmId, setViewRow]);
+
   return (
     <>
-      <DirectoryResultCount>{templates.length} قالب مسمى</DirectoryResultCount>
-
       {templates.length === 0 ? (
         <EmptyState icon={Briefcase} title="لا توجد قوالب" description="أضف مسميات وظيفية شائعة في شركتك لاستخدامها عند إضافة موظف." />
       ) : layoutView === 'grid' ? (
@@ -54,37 +81,14 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
           })}
         </DirectoryGrid>
       ) : (
-        <DirectoryTableContainer>
-          <DirectoryTable>
-            <DirectoryTableHeaderRow>
-              <DirectoryTableHead>المسمى الوظيفي</DirectoryTableHead>
-              <DirectoryTableHead>القسم المقترح</DirectoryTableHead>
-              <DirectoryTableHead>وصف</DirectoryTableHead>
-              <DirectoryTableHead className="text-start w-16">إجراءات</DirectoryTableHead>
-            </DirectoryTableHeaderRow>
-            <DirectoryTableBody>
-              {templates.map((row) => {
-                const deptName = row.defaultDepartmentId ? getDepartmentName(row.defaultDepartmentId) : undefined;
-                return (
-                  <DirectoryTableRow key={row.id} interactive onClick={() => setViewRow(row)}>
-                    <DirectoryTableCell className="font-medium">{row.titleAr}</DirectoryTableCell>
-                    <DirectoryTableCell className="text-muted-foreground">{deptName ?? '—'}</DirectoryTableCell>
-                    <DirectoryTableCell className="max-w-[240px] truncate text-muted-foreground">{row.descriptionAr ?? '—'}</DirectoryTableCell>
-                    <DirectoryTableActionsCell>
-                      <RowActions
-                        menuItems={[
-                          { label: 'عرض', onClick: (e) => { e.stopPropagation(); setViewRow(row); } },
-                          { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
-                          { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
-                        ]}
-                      />
-                    </DirectoryTableActionsCell>
-                  </DirectoryTableRow>
-                );
-              })}
-            </DirectoryTableBody>
-          </DirectoryTable>
-        </DirectoryTableContainer>
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          columns={columns}
+          data={templates}
+          keyExtractor={(row) => row.id}
+          onRowClick={(row) => setViewRow(row)}
+        />
       )}
     </>
   );

@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { Button } from '@/components/ui/button';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { TableDateCell } from '@/components/ui/table-cells';
 import { cn } from '@/shared/utils';
 import { companiesApi } from '@/features/hr/lib/api/companies';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
@@ -63,6 +65,8 @@ function mapAction(action: string): HRDisciplineAuditAction {
 function mapCategory(entityName: string): HRDisciplineAuditCategory {
   return ENTITY_TO_CATEGORY[entityName] ?? 'violation_case';
 }
+
+type AuditLogEntry = ReturnType<typeof dtoToEntry>;
 
 function dtoToEntry(dto: AuditLogResponseDto) {
   const prev = dto.oldValues ? JSON.stringify(dto.oldValues, null, 2) : '';
@@ -292,7 +296,63 @@ export function DisciplineAuditLogClient() {
     </div>
   );
 
-  const renderEntryCard = (e: ReturnType<typeof dtoToEntry>) => {
+  const columns = React.useMemo((): ColumnDef<AuditLogEntry>[] => [
+    {
+      key: 'occurredAt',
+      title: 'التاريخ والوقت',
+      className: 'text-xs whitespace-nowrap',
+      render: (e) => <TableDateCell value={e.occurredAt} mode="datetime" />,
+    },
+    {
+      key: 'actor',
+      title: 'المُعدّل',
+      className: 'text-xs font-medium max-w-[140px] truncate',
+      render: (e) => <span title={e.actorNameAr}>{e.actorNameAr}</span>,
+    },
+    {
+      key: 'category',
+      title: 'الفئة',
+      className: 'text-[11px]',
+      render: (e) => AUDIT_CATEGORY_LABELS_AR[e.category],
+    },
+    {
+      key: 'action',
+      title: 'العملية',
+      className: 'text-[11px] text-primary font-medium',
+      render: (e) => AUDIT_ACTION_LABELS_AR[e.actionType],
+    },
+    {
+      key: 'recordRef',
+      title: 'المرجع',
+      className: 'font-mono text-[11px]',
+      render: (e) => e.recordRefAr,
+    },
+    {
+      key: 'statusAfter',
+      title: 'الحالة بعد العملية',
+      className: 'text-xs text-muted-foreground max-w-[220px]',
+      render: (e) => <span className="line-clamp-2" title={e.recordStatusAfterAr}>{e.recordStatusAfterAr}</span>,
+    },
+    {
+      key: 'compare',
+      title: 'المقارنة',
+      className: 'whitespace-nowrap',
+      headerClassName: 'w-[140px]',
+      render: (e) => {
+        const expanded = expandedSnapshots.has(e.id);
+        return (
+          <div className="space-y-2">
+            <CompareToggle compact expanded={expanded} onToggle={() => toggleSnapshot(e.id)} />
+            {expanded ? (
+              <SnapshotComparisonTable previousSnapshotAr={e.previousSnapshotAr} currentSnapshotAr={e.currentSnapshotAr} />
+            ) : null}
+          </div>
+        );
+      },
+    },
+  ], [expandedSnapshots, toggleSnapshot]);
+
+  const renderEntryCard = (e: AuditLogEntry) => {
     const expanded = expandedSnapshots.has(e.id);
     return (
       <article key={e.id} className="rounded-xl border border-border bg-card p-4 shadow-soft space-y-3">
@@ -324,34 +384,6 @@ export function DisciplineAuditLogClient() {
           </p>
         )}
       </article>
-    );
-  };
-
-  const renderEntryList = (e: ReturnType<typeof dtoToEntry>) => {
-    const expanded = expandedSnapshots.has(e.id);
-    return (
-      <React.Fragment key={e.id}>
-        <tr className="border-b border-border/80 hover:bg-muted/25 transition-colors">
-          <td className="p-2.5 align-middle text-xs whitespace-nowrap">{formatOccurred(e.occurredAt)}</td>
-          <td className="p-2.5 align-middle text-xs font-medium max-w-[140px] truncate" title={e.actorNameAr}>{e.actorNameAr}</td>
-          <td className="p-2.5 align-middle text-[11px]">{AUDIT_CATEGORY_LABELS_AR[e.category]}</td>
-          <td className="p-2.5 align-middle text-[11px] text-primary font-medium">{AUDIT_ACTION_LABELS_AR[e.actionType]}</td>
-          <td className="p-2.5 align-middle font-mono text-[11px]">{e.recordRefAr}</td>
-          <td className="p-2.5 align-middle text-xs text-muted-foreground max-w-[220px]">
-            <span className="line-clamp-2" title={e.recordStatusAfterAr}>{e.recordStatusAfterAr}</span>
-          </td>
-          <td className="p-2 align-middle whitespace-nowrap">
-            <CompareToggle compact expanded={expanded} onToggle={() => toggleSnapshot(e.id)} />
-          </td>
-        </tr>
-        {expanded ? (
-          <tr className="border-b border-border bg-muted/15">
-            <td colSpan={7} className="p-3">
-              <SnapshotComparisonTable previousSnapshotAr={e.previousSnapshotAr} currentSnapshotAr={e.currentSnapshotAr} />
-            </td>
-          </tr>
-        ) : null}
-      </React.Fragment>
     );
   };
 
@@ -421,22 +453,14 @@ export function DisciplineAuditLogClient() {
               {listFiltered.map(renderEntryCard)}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-soft">
-              <table className="w-full min-w-[860px] border-collapse text-sm" dir="rtl">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
-                    <th className="p-2.5 text-right font-semibold">التاريخ والوقت</th>
-                    <th className="p-2.5 text-right font-semibold">المُعدّل</th>
-                    <th className="p-2.5 text-right font-semibold">الفئة</th>
-                    <th className="p-2.5 text-right font-semibold">العملية</th>
-                    <th className="p-2.5 text-right font-semibold">المرجع</th>
-                    <th className="p-2.5 text-right font-semibold">الحالة بعد العملية</th>
-                    <th className="p-2.5 text-right font-semibold w-[140px]">المقارنة</th>
-                  </tr>
-                </thead>
-                <tbody>{listFiltered.map(renderEntryList)}</tbody>
-              </table>
-            </div>
+            <DataTable
+              variant="directory"
+              alwaysShowTable
+              tableClassName="min-w-[860px]"
+              columns={columns}
+              data={listFiltered}
+              keyExtractor={(e) => e.id}
+            />
           )}
         </>
       )}
