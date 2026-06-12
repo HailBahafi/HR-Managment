@@ -4,7 +4,6 @@ import {
   resolveEmployeeUserAccountCompanyId,
 } from '@/features/hr/organization/employees/services/employee-user-account.service';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
-import { employeeAssignmentsApi } from '@/features/hr/organization/employees/lib/api/employee-assignments';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 
 jest.mock('@/features/hr/organization/employees/lib/api/employees', () => ({
@@ -13,14 +12,15 @@ jest.mock('@/features/hr/organization/employees/lib/api/employees', () => ({
   },
 }));
 
-jest.mock('@/features/hr/organization/employees/lib/api/employee-assignments', () => ({
-  employeeAssignmentsApi: {
-    getAll: jest.fn(),
-  },
+jest.mock('@/features/hr/organization/employees/services/employee-company.service', () => ({
+  resolveEmployeeCompanyId: jest.fn(),
 }));
 
+import { resolveEmployeeCompanyId } from '@/features/hr/organization/employees/services/employee-company.service';
+
+const resolveEmployeeCompanyIdMock = resolveEmployeeCompanyId as jest.Mock;
+
 const createUserAccount = employeesApi.createUserAccount as jest.Mock;
-const getAssignments = employeeAssignmentsApi.getAll as jest.Mock;
 
 const companyA = '4002cca8-64fe-428c-9946-c42676dfc0a2';
 const companyB = '11111111-1111-4111-8111-111111111111';
@@ -40,23 +40,19 @@ describe('employee-user-account.service', () => {
   });
 
   it('prefers the employee primary assignment company when the user is linked to it', async () => {
-    getAssignments.mockResolvedValue([
-      { id: 'asg-1', employeeId: 'emp-1', companyId: companyA, isPrimary: true, status: 'active' },
-    ]);
+    resolveEmployeeCompanyIdMock.mockResolvedValue(companyA);
 
     await expect(resolveEmployeeUserAccountCompanyId('emp-1')).resolves.toBe(companyA);
   });
 
   it('falls back to active company when employee has no assignments', async () => {
-    getAssignments.mockResolvedValue([]);
+    resolveEmployeeCompanyIdMock.mockRejectedValue(new Error('no assignment'));
 
     await expect(resolveEmployeeUserAccountCompanyId('emp-1')).resolves.toBe(companyA);
   });
 
   it('rejects when employee assignment company is not linked to the current user', async () => {
-    getAssignments.mockResolvedValue([
-      { id: 'asg-1', employeeId: 'emp-1', companyId: companyB, isPrimary: true, status: 'active' },
-    ]);
+    resolveEmployeeCompanyIdMock.mockResolvedValue(companyB);
 
     await expect(resolveEmployeeUserAccountCompanyId('emp-1')).rejects.toThrow(
       'الموظف معيّن لشركة لا يمكنك إدارتها',

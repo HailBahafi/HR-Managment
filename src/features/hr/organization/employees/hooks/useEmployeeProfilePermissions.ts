@@ -8,8 +8,8 @@ import { usePermissions } from '@/features/hr/permissions/hooks/usePermissions';
 import { rolesApi } from '@/features/hr/permissions/lib/api/roles';
 import { userRolesApi } from '@/features/hr/permissions/lib/api/user-roles';
 import { userPermissionsApi, type UserPermissionEffect } from '@/features/hr/permissions/lib/api/user-permissions';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveEmployeeCompanyId } from '@/features/hr/organization/employees/services/employee-company.service';
 import type { PermissionResponseDto } from '@/features/hr/permissions/lib/api/permissions';
 import type { Employee } from '@/features/hr/organization/employees/types';
 
@@ -22,7 +22,6 @@ export type PermissionOverlay = {
 
 export function useEmployeeProfilePermissions(employee: Employee) {
   const qc = useQueryClient();
-  const companyId = useAuthStore((s) => s.activeCompanyId);
   const userId = employee.userId ?? null;
   const hasLinkedUser = employee.hasUser ?? !!userId;
 
@@ -105,7 +104,7 @@ export function useEmployeeProfilePermissions(employee: Employee) {
   // ── Mutations ─────────────────────────────────────────────────────────────
   const assignRoleMutation = useMutation({
     mutationFn: async (newRoleId: string) => {
-      if (!userId || !companyId) throw new Error('no userId or companyId');
+      if (!userId) throw new Error('هذا الموظف غير مرتبط بحساب مستخدم');
       // Revoke existing assignment first
       if (activeAssignment) {
         await userRolesApi.revoke(activeAssignment.id);
@@ -122,8 +121,9 @@ export function useEmployeeProfilePermissions(employee: Employee) {
   });
 
   const addOverlayMutation = useMutation({
-    mutationFn: (args: { permissionId: string; effect: UserPermissionEffect; reason?: string }) => {
-      if (!userId || !companyId) throw new Error('no userId or companyId');
+    mutationFn: async (args: { permissionId: string; effect: UserPermissionEffect; reason?: string }) => {
+      if (!userId) throw new Error('هذا الموظف غير مرتبط بحساب مستخدم');
+      const companyId = await resolveEmployeeCompanyId(employee.id);
       return userPermissionsApi.assign(userId, {
         permissionId: args.permissionId,
         companyId,
@@ -136,7 +136,10 @@ export function useEmployeeProfilePermissions(employee: Employee) {
       toast.success(label);
       void qc.invalidateQueries({ queryKey: ['user-permissions', userId] });
     },
-    onError: (err) => handleApiError(err, 'userPermission.assign'),
+    onError: (err) => {
+      const { displayMessage } = handleApiError(err, 'userPermission.assign');
+      toast.error(displayMessage);
+    },
   });
 
   const removeOverlayMutation = useMutation({

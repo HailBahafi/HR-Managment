@@ -1,10 +1,10 @@
 import { useAuthStore } from '@/features/auth/lib/auth-store';
-import { employeeAssignmentsApi } from '@/features/hr/organization/employees/lib/api/employee-assignments';
 import {
   employeesApi,
   type CreateEmployeeUserAccountDto,
   type EmployeeResponseDto,
 } from '@/features/hr/organization/employees/lib/api/employees';
+import { resolveEmployeeCompanyId } from '@/features/hr/organization/employees/services/employee-company.service';
 import {
   linkedCompanyIdSet,
   pickLinkedCompanyId,
@@ -16,13 +16,7 @@ export async function resolveEmployeeUserAccountCompanyId(employeeId: string): P
 
   let assignmentCompanyId: string | null = null;
   try {
-    const assignments = await employeeAssignmentsApi.getAll(employeeId);
-    const list = Array.isArray(assignments) ? assignments : [];
-    const primary =
-      list.find((a) => a.isPrimary && a.status === 'active') ??
-      list.find((a) => a.status === 'active') ??
-      list[0];
-    assignmentCompanyId = primary?.companyId ?? null;
+    assignmentCompanyId = await resolveEmployeeCompanyId(employeeId);
   } catch {
     assignmentCompanyId = null;
   }
