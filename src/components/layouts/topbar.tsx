@@ -31,7 +31,9 @@ import { NotificationBellPopover } from '@/features/hr/notifications/components/
 import { cn } from '@/shared/utils';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrNotificationsNavGroups, isHrNotificationsNavPath } from '@/features/hr/notifications/constants/nav';
-import { hrPayrollNavGroups, hrContractsOnlyNavGroups, isHrPayrollNavPath, isHrContractsOnlyNavPath } from '@/features/hr/contracts/constants/nav';
+import { hrPayrollNavGroups, isHrPayrollNavPath } from '@/features/hr/payroll/constants/nav';
+import { hrContractsOnlyNavGroups, isHrContractsOnlyNavPath } from '@/features/hr/contracts/constants/nav';
+import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsNavGroups, isHrPermissionsNavPath } from '@/features/hr/permissions/constants/nav';
 import { useLogout } from '@/features/auth/hooks/use-logout';
@@ -58,7 +60,18 @@ type NavItem  = {
   isActive?: (pathname: string) => boolean;
 };
 
-function mapContractsNavGroups(groups: typeof hrPayrollNavGroups): NavGroup[] {
+function mapPayrollNavGroups(groups: typeof hrPayrollNavGroups): NavGroup[] {
+  return groups.map((g) => ({
+    labelAr: g.labelAr,
+    items: g.items.map((item) => ({
+      label: item.labelAr,
+      href: hrPayrollSectionHref(item.slug),
+      icon: item.icon,
+    })),
+  }));
+}
+
+function mapContractsOnlyNavGroups(groups: typeof hrContractsOnlyNavGroups): NavGroup[] {
   return groups.map((g) => ({
     labelAr: g.labelAr,
     items: g.items.map((item) => ({
@@ -164,14 +177,14 @@ export const navConfig: NavItem[] = [
     label: 'الرواتب',
     icon: Wallet,
     isActive: isHrPayrollNavPath,
-    groups: mapContractsNavGroups(hrPayrollNavGroups),
+    groups: mapPayrollNavGroups(hrPayrollNavGroups),
   },
   {
     key: 'contracts',
     label: 'العقود',
     icon: FileSignature,
     isActive: isHrContractsOnlyNavPath,
-    groups: mapContractsNavGroups(hrContractsOnlyNavGroups),
+    groups: mapContractsOnlyNavGroups(hrContractsOnlyNavGroups),
   },
   {
     key: 'permissions',

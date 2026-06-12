@@ -8,7 +8,7 @@ import {
   ShieldAlert, Wallet, BarChart3, Building2, Shield,
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
-  ChevronDown, X, LifeBuoy, FileSpreadsheet,
+  ChevronDown, X, LifeBuoy, FileSpreadsheet, FileSignature,
   UserCircle, Briefcase, UserPlus, Bell, Send, Inbox, KeyRound,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
@@ -16,7 +16,9 @@ import { Logo } from '@/components/layouts/logo';
 import { useSidebar } from '@/components/layouts/sidebar-context';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrNotificationsNavGroups } from '@/features/hr/notifications/constants/nav';
-import { hrContractsNavGroups } from '@/features/hr/contracts/constants/nav';
+import { hrPayrollNavGroups } from '@/features/hr/payroll/constants/nav';
+import { hrContractsOnlyNavGroups } from '@/features/hr/contracts/constants/nav';
+import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsNavGroups } from '@/features/hr/permissions/constants/nav';
 
@@ -109,17 +111,24 @@ const mobileNav: MobileNavItem[] = [
     ),
   },
   {
-    key: 'contracts', label: 'الراتب والعقود', icon: Wallet,
-    children: [
-      ...hrContractsNavGroups.flatMap((g) =>
-        g.items.map((item) => ({
-          label: item.labelAr,
-          href: hrContractsSectionHref(item.slug),
-          icon: item.icon,
-        })),
-      ),
-      { label: 'إيصالات الرواتب', href: '/payroll/receipt', icon: FileSpreadsheet },
-    ],
+    key: 'payroll', label: 'الرواتب', icon: Wallet,
+    children: hrPayrollNavGroups.flatMap((g) =>
+      g.items.map((item) => ({
+        label: item.labelAr,
+        href: hrPayrollSectionHref(item.slug),
+        icon: item.icon,
+      })),
+    ),
+  },
+  {
+    key: 'contracts', label: 'العقود', icon: FileSignature,
+    children: hrContractsOnlyNavGroups.flatMap((g) =>
+      g.items.map((item) => ({
+        label: item.labelAr,
+        href: hrContractsSectionHref(item.slug),
+        icon: item.icon,
+      })),
+    ),
   },
   {
     key: 'permissions',

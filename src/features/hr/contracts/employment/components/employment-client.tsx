@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, Copy, FileDown } from 'lucide-react';
+import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, Copy, FileDown, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +62,9 @@ import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dial
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
 import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { sendEmploymentContractCreatedNotification } from '@/features/hr/contracts/employment/services/contract-created-notification.service';
 
 type FormValues = EmploymentContractFormValues;
 const emptyForm = emptyEmploymentContractForm;
@@ -342,8 +345,33 @@ export function EmploymentContractsClient() {
     }
     try {
       if (panelMode === 'create') {
-        await add(formToDraft(form, 'draft'));
-        toast.success('تم إنشاء العقد كمسودة.');
+        const contractId = await add(formToDraft(form, 'draft'));
+        const companyId = useAuthStore.getState().activeCompanyId ?? '';
+        const actor = useAuthStore.getState().user?.email ?? undefined;
+
+        let notificationSent = false;
+        if (companyId && form.employeeId) {
+          try {
+            await sendEmploymentContractCreatedNotification({
+              companyId,
+              contractId,
+              employeeId: form.employeeId,
+              contractNumber: form.contractNumber.trim(),
+              startDate: form.startDate,
+              createdBy: actor,
+            });
+            notificationSent = true;
+          } catch (notifErr) {
+            const { displayMessage } = handleApiError(notifErr, 'employment-contract.notification');
+            toast.error(`تم إنشاء العقد لكن فشل إرسال الإشعار: ${displayMessage}`);
+          }
+        }
+
+        toast.success(
+          notificationSent
+            ? `تم إنشاء العقد كمسودة — وتم إرسال إشعار إلى ${getEmpName(form.employeeId)}.`
+            : 'تم إنشاء العقد كمسودة.',
+        );
       } else if (panelMode === 'edit' && selected) {
         const ok = await update(selected.id, formToDraft(form, selected.status));
         if (!ok) { setError('لا يمكن تعديل عقد غير مسودة'); return; }
@@ -619,6 +647,22 @@ export function EmploymentContractsClient() {
             <SearchableDropdown value={form.employeeId} onChange={v => patch({ employeeId: v })} options={empOptions} placeholder="اختر الموظف…" />
           )}
         </FormField>
+
+        {!readOnly && panelMode === 'create' ? (
+          <FormField label="إشعار الموظف" span2>
+            <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
+              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div className="space-y-1 text-xs leading-relaxed text-muted-foreground">
+                <p className="font-medium text-foreground">إشعار تلقائي بعد الحفظ</p>
+                <p>
+                  {form.employeeId
+                    ? `بعد حفظ العقد سيتم إنشاء وإرسال إشعار داخل النظام إلى ${getEmpName(form.employeeId)} لإعلامه بإنشاء عقد العمل وطلب مراجعته.`
+                    : 'بعد اختيار الموظف وحفظ العقد سيتم إنشاء وإرسال إشعار داخل النظام له لإعلامه بإنشاء عقد العمل.'}
+                </p>
+              </div>
+            </div>
+          </FormField>
+        ) : null}
 
         {!readOnly && panelMode === 'create' && (
           <FormField label="نسخ من عقد موظف آخر" span2>

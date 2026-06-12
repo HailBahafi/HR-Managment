@@ -14,6 +14,7 @@ import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation
 import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
 import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
+import { hrPayrollRoutes } from '@/features/hr/payroll/constants/routes';
 
 /* ─── Sparkline ──────────────────────────────────────────────────────────────── */
 function Sparkline({ values, color }: { values: number[]; color: string }) {
@@ -393,7 +394,7 @@ export function DashboardPage() {
           {[
             { label: 'موظف جديد',       icon: UserPlus,     href: '/hr/organization/employees',   color: 'text-primary',                              bg: 'bg-primary/10',                              hoverBg: 'hover:bg-primary/15' },
             { label: 'طلب إجازة',        icon: CalendarDays, href: '/hr/leaves/leave-types',   color: 'text-primary',                              bg: 'bg-primary/10',                              hoverBg: 'hover:bg-primary/15' },
-            { label: 'الرواتب',          icon: Wallet,       href: hrContractsRoutes.root,             color: 'text-gold dark:text-gold',    bg: 'bg-gold/10 dark:bg-gold/15',      hoverBg: 'hover:bg-gold/20 dark:hover:bg-gold/25' },
+            { label: 'الرواتب',          icon: Wallet,       href: hrPayrollRoutes.root,             color: 'text-gold dark:text-gold',    bg: 'bg-gold/10 dark:bg-gold/15',      hoverBg: 'hover:bg-gold/20 dark:hover:bg-gold/25' },
             { label: 'تقرير حضور',       icon: Clock,        href: '/hr/attendance/daily', color: 'text-warning dark:text-warning',        bg: 'bg-warning/12 dark:bg-warning/18',          hoverBg: 'hover:bg-warning/20 dark:hover:bg-warning/25' },
             { label: 'هيكل تنظيمي',      icon: Building2,    href: '/hr/organization/chart',       color: 'text-primary',                              bg: 'bg-primary/10',                              hoverBg: 'hover:bg-primary/15' },
             { label: 'تحليل الإجازات',   icon: TrendingUp,   href: '/hr/leaves/analytics',      color: 'text-destructive dark:text-destructive',          bg: 'bg-destructive/10 dark:bg-destructive/15',            hoverBg: 'hover:bg-destructive/15 dark:hover:bg-destructive/20' },

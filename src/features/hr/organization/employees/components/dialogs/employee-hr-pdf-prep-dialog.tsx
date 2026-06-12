@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { MinimalDropdown } from '@/features/hr/requests/components/shared-ui';
-import { REASON_LABELS, type CashReceiptReason } from '@/features/hr/contracts/reports/components/pdf-cash-receipt-print-html';
+import { REASON_LABELS, type CashReceiptReason } from '@/features/hr/payroll/reports/components/pdf-cash-receipt-print-html';
 
 type Props = {
   open: boolean;

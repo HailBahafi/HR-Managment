@@ -14,7 +14,7 @@ import {
   PAYSLIP_STATUS_COLORS,
   PAYSLIP_STATUS_LABELS,
 } from '@/features/hr/payroll/lib/api/payslips';
-import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
+import { hrPayrollRoutes } from '@/features/hr/payroll/constants/routes';
 
 type Props = {
   employeePayslipSeries: Payslip[];
@@ -101,7 +101,7 @@ export function EmployeeSalaryPayslipCards({
                 </Select>
               </div>
               <Button variant="outline" size="sm" className="h-10 w-full rounded-xl gap-2 border-border bg-background/80 shadow-xs lg:w-auto" asChild>
-                <Link href={hrContractsRoutes.payrollPeriods} className="inline-flex items-center justify-center">
+                <Link href={hrPayrollRoutes.payrollPeriods} className="inline-flex items-center justify-center">
                   <ExternalLink className="h-3.5 w-3.5" />
                   صفحة الرواتب
                 </Link>

@@ -13,7 +13,7 @@ import {
   RoseFinalSettlementFormPrintHtml,
   RoseResignationFormPrintHtml,
 } from '@/components/pdf/rose-trading/rose-trading-hr-forms-print-html';
-import { CashReceiptPrintHtml, type CashReceiptReason } from '@/features/hr/contracts/reports/components/pdf-cash-receipt-print-html';
+import { CashReceiptPrintHtml, type CashReceiptReason } from '@/features/hr/payroll/reports/components/pdf-cash-receipt-print-html';
 import type { EmployeeProfileDraft } from '@/features/hr/organization/employees/components/employee-profile-field';
 
 export type EmployeeHrPdfPrepKind = 'resignation' | 'clearance' | 'cash-receipt' | 'experience' | null;

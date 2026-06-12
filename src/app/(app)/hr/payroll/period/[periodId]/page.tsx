@@ -3,7 +3,7 @@ import { hrPayrollPeriodCompensationHref } from '@/features/hr/payroll/constants
 
 interface Props { params: Promise<{ periodId: string }> }
 
-export default async function LegacyContractsPeriodRootRedirectPage({ params }: Props) {
+export default async function PayrollPeriodRootPage({ params }: Props) {
   const { periodId } = await params;
   redirect(hrPayrollPeriodCompensationHref(periodId));
 }
