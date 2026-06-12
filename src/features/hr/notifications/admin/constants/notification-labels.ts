@@ -1,9 +1,17 @@
 import type {
+  NotificationAudienceEmployeeDto,
   NotificationAudienceKind,
   NotificationCategory,
   NotificationSeverity,
   SentNotificationResponseDto,
 } from '@/features/hr/notifications/lib/api/notifications';
+
+export type NotificationAudienceEmployee = {
+  employeeId: string;
+  employeeCode: string;
+  nameAr: string;
+  nameEn: string | null;
+};
 
 export type HRAdminNotificationRecord = {
   id: string;
@@ -14,6 +22,7 @@ export type HRAdminNotificationRecord = {
   bodyAr: string;
   audienceKind: NotificationAudienceKind;
   audienceSummaryAr: string;
+  audienceEmployees: NotificationAudienceEmployee[];
   sourceKind: string | null;
   actionUrl: string | null;
   actionLabelAr: string | null;
@@ -60,6 +69,22 @@ export const NOTIFICATION_CATEGORY_FILTER_ORDER: NotificationCategory[] = [
   'system',
 ];
 
+function mapAudienceEmployee(row: NotificationAudienceEmployeeDto): NotificationAudienceEmployee {
+  return {
+    employeeId: row.employeeId,
+    employeeCode: row.employeeCode,
+    nameAr: row.nameAr,
+    nameEn: row.nameEn,
+  };
+}
+
+export function formatAudienceEmployeesLabel(employees: NotificationAudienceEmployee[]): string {
+  if (employees.length === 0) return '';
+  return employees
+    .map((e) => `${e.nameAr ?? '—'} (${e.employeeCode ?? '—'})`)
+    .join('، ');
+}
+
 export function mapSentNotification(
   row: SentNotificationResponseDto,
   audienceSummaryAr: string,
@@ -73,6 +98,7 @@ export function mapSentNotification(
     bodyAr: row.bodyAr ?? '',
     audienceKind: row.audienceKind,
     audienceSummaryAr,
+    audienceEmployees: (row.audienceEmployees ?? []).map(mapAudienceEmployee),
     sourceKind: row.sourceKind,
     actionUrl: row.actionUrl,
     actionLabelAr: row.actionLabelAr,

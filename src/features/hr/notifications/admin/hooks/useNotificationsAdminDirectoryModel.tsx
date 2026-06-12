@@ -5,9 +5,12 @@ import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
 import {
   notificationsApi,
+  type NotificationCategory,
+  type NotificationSeverity,
   type SendNotificationDto,
 } from '@/features/hr/notifications/lib/api/notifications';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
+import { companiesApi } from '@/features/hr/organization/lib/api/companies';
 import { branchesApi } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi } from '@/features/hr/organization/lib/api/departments';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
@@ -18,7 +21,28 @@ import {
 } from '@/features/hr/notifications/admin/constants/notification-labels';
 import type { NotificationAudienceKind } from '@/features/hr/notifications/lib/api/notifications';
 
-const PAGE_LIMIT = 200;
+const REFERENCE_LIMIT = 200;
+const DEFAULT_LIMIT = 20;
+
+export type NotificationsAdminFilters = {
+  companyId: string;
+  category: 'all' | NotificationCategory;
+  severity: 'all' | NotificationSeverity;
+  excludeExpired: boolean;
+  sourceKind: string;
+  sourceTable: string;
+  sourceId: string;
+};
+
+const DEFAULT_FILTERS: NotificationsAdminFilters = {
+  companyId: 'all',
+  category: 'all',
+  severity: 'all',
+  excludeExpired: true,
+  sourceKind: '',
+  sourceTable: '',
+  sourceId: '',
+};
 
 function audienceSummaryFromSnapshot(
   kind: NotificationAudienceKind,
@@ -30,40 +54,68 @@ function audienceSummaryFromSnapshot(
   return NOTIFICATION_AUDIENCE_LABELS[kind] ?? kind;
 }
 
+function buildListParams(
+  filters: NotificationsAdminFilters,
+  dateBounds: { from: string; to: string },
+  page: number,
+  limit: number,
+) {
+  return {
+    page,
+    limit,
+    ...(filters.companyId !== 'all' ? { companyId: filters.companyId } : {}),
+    ...(filters.category !== 'all' ? { category: filters.category } : {}),
+    ...(filters.severity !== 'all' ? { severity: filters.severity } : {}),
+    ...(dateBounds.from ? { from: dateBounds.from } : {}),
+    ...(dateBounds.to ? { to: dateBounds.to } : {}),
+    ...(filters.excludeExpired ? { excludeExpired: true } : {}),
+    ...(filters.sourceKind.trim() ? { sourceKind: filters.sourceKind.trim() } : {}),
+    ...(filters.sourceTable.trim() ? { sourceTable: filters.sourceTable.trim() } : {}),
+    ...(filters.sourceId.trim() ? { sourceId: filters.sourceId.trim() } : {}),
+  };
+}
+
 export function useNotificationsAdminDirectoryModel() {
   const [notifications, setNotifications] = React.useState<HRAdminNotificationRecord[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(DEFAULT_LIMIT);
+  const [filters, setFilters] = React.useState<NotificationsAdminFilters>(DEFAULT_FILTERS);
+  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
   const [companyId, setCompanyId] = React.useState<string | null>(null);
+  const [companyOptions, setCompanyOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [branchOptions, setBranchOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [departmentOptions, setDepartmentOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [employeeOptions, setEmployeeOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [referenceLoaded, setReferenceLoaded] = React.useState(false);
 
-  const reload = React.useCallback(async () => {
-    setLoading(true);
-    setListError(null);
+  const loadReferenceData = React.useCallback(async () => {
     try {
       const scope = await resolveOrganizationScope();
       const resolvedCompanyId = scope.companyId ?? null;
       setCompanyId(resolvedCompanyId);
 
-      const [branchesRes, departmentsRes, employeesRes, notifRes] = await Promise.all([
+      const [companiesRes, branchesRes, departmentsRes, employeesRes] = await Promise.all([
+        companiesApi.getAll({ limit: REFERENCE_LIMIT }),
         branchesApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: REFERENCE_LIMIT } : { limit: REFERENCE_LIMIT },
         ),
         departmentsApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: REFERENCE_LIMIT } : { limit: REFERENCE_LIMIT },
         ),
         employeesApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: REFERENCE_LIMIT } : { limit: REFERENCE_LIMIT },
         ),
-        notificationsApi.list({
-          companyId: resolvedCompanyId ?? undefined,
-          limit: PAGE_LIMIT,
-          excludeExpired: true,
-        }),
       ]);
 
+      setCompanyOptions(
+        ensurePaginatedResult(companiesRes).items.map((c) => ({
+          value: c.id,
+          label: c.nameAr ?? c.nameEn ?? c.code,
+        })),
+      );
       setBranchOptions(
         ensurePaginatedResult(branchesRes).items.map((b) => ({ value: b.id, label: b.nameAr })),
       );
@@ -76,25 +128,74 @@ export function useNotificationsAdminDirectoryModel() {
           label: e.nameAr ?? e.nameEn ?? e.id,
         })),
       );
+      setReferenceLoaded(true);
+    } catch (e) {
+      setListError(handleApiError(e).displayMessage);
+      setReferenceLoaded(true);
+    }
+  }, []);
 
+  const loadList = React.useCallback(async () => {
+    setLoading(true);
+    setListError(null);
+    try {
+      const notifRes = await notificationsApi.list(
+        buildListParams(filters, dateBounds, page, limit),
+      );
+      const paginated = ensurePaginatedResult(notifRes);
       setNotifications(
-        ensurePaginatedResult(notifRes).items.map((row) =>
+        paginated.items.map((row) =>
           mapSentNotification(
             row,
             audienceSummaryFromSnapshot(row.audienceKind, row.audienceSnapshot),
           ),
         ),
       );
+      setTotal(paginated.pagination.total);
     } catch (e) {
       setListError(handleApiError(e).displayMessage);
+      setNotifications([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateBounds, filters, limit, page]);
 
   React.useEffect(() => {
-    void reload();
-  }, [reload]);
+    void loadReferenceData();
+  }, [loadReferenceData]);
+
+  React.useEffect(() => {
+    if (!referenceLoaded) return;
+    void loadList();
+  }, [loadList, referenceLoaded]);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [filters, dateBounds, limit]);
+
+  const patchFilters = React.useCallback((patch: Partial<NotificationsAdminFilters>) => {
+    setFilters((f) => ({ ...f, ...patch }));
+  }, []);
+
+  const activeFilterCount =
+    (filters.companyId !== 'all' ? 1 : 0)
+    + (filters.category !== 'all' ? 1 : 0)
+    + (filters.severity !== 'all' ? 1 : 0)
+    + (dateBounds.from || dateBounds.to ? 1 : 0)
+    + (!filters.excludeExpired ? 1 : 0)
+    + (filters.sourceKind.trim() ? 1 : 0)
+    + (filters.sourceTable.trim() ? 1 : 0)
+    + (filters.sourceId.trim() ? 1 : 0);
+
+  const clearFilters = React.useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setDateBounds({ from: '', to: '' });
+  }, []);
+
+  const reload = React.useCallback(async () => {
+    await loadList();
+  }, [loadList]);
 
   const sendNotification = React.useCallback(
     async (dto: SendNotificationDto) => {
@@ -114,6 +215,18 @@ export function useNotificationsAdminDirectoryModel() {
 
   return {
     notifications,
+    total,
+    page,
+    setPage,
+    limit,
+    setLimit,
+    filters,
+    patchFilters,
+    dateBounds,
+    setDateBounds,
+    companyOptions,
+    activeFilterCount,
+    clearFilters,
     companyId,
     branchOptions,
     departmentOptions,

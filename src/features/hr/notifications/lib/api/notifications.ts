@@ -48,6 +48,13 @@ export type InboxItemResponseDto = {
   createdAt: string;
 };
 
+export type NotificationAudienceEmployeeDto = {
+  employeeId: string;
+  employeeCode: string;
+  nameAr: string;
+  nameEn: string | null;
+};
+
 export type SentNotificationResponseDto = {
   id: string;
   companyId: string;
@@ -59,6 +66,7 @@ export type SentNotificationResponseDto = {
   bodyEn: string | null;
   audienceKind: NotificationAudienceKind;
   audienceSnapshot: Record<string, unknown> | null;
+  audienceEmployees?: NotificationAudienceEmployeeDto[];
   sourceKind: string | null;
   sourceTable: string | null;
   sourceId: string | null;
