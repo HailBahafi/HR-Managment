@@ -29,10 +29,17 @@ import {
   INVESTIGATION_RESULT_FILTER_ORDER,
 } from '@/features/hr/discipline/lib/types';
 import {
-  toInvestigationRecommendationDto,
-  toInvestigationResultDto,
   canMutateInvestigationRecord,
 } from '@/features/hr/discipline/investigations/services/discipline-investigations.service';
+import { InvestigationResultsFormFields } from '@/features/hr/discipline/investigations/components/investigation-results-form-fields';
+import {
+  INVESTIGATION_RESULTS_EMPTY,
+  type InvestigationResultsDraftForm,
+} from '@/features/hr/discipline/investigations/constants/investigation-form';
+import {
+  buildSubmitInvestigationResultsDto,
+  validateInvestigationResultsDraft,
+} from '@/features/hr/discipline/investigations/services/submit-violation-investigation';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
@@ -50,42 +57,28 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
 import type { HRDisciplineInvestigationRecord } from '@/features/hr/discipline/lib/types';
 
-const RESULT_SUBMIT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][])
-  .filter(([value]) => value !== 'pending')
-  .map(([value, label]) => ({ value, label }));
-
 type ResultFilter = 'all' | HRInvestigationResult;
 
 type RecommendationFilter = 'all' | HRInvestigationRecommendation;
 
 interface OpenDraftForm {
-  caseId: string; caseNumber: string; employeeId: string; employeeNameAr: string;
-  investigatorEmployeeId: string; investigatorName: string; date: string;
-}
-
-interface ResultsDraftForm {
+  caseId: string;
+  caseNumber: string;
+  employeeId: string;
+  employeeNameAr: string;
   investigatorEmployeeId: string;
-  employeeStatement: string;
-  witnessStatement: string;
-  result: 'proven' | 'not_proven';
-  recommendationType: RecommendationFilter;
-  deductionType: 'days' | 'hours' | 'fixed_amount';
-  deductionValue: string;
+  investigatorName: string;
+  date: string;
 }
 
 const OPEN_EMPTY: OpenDraftForm = {
-  caseId: '', caseNumber: '', employeeId: '', employeeNameAr: '',
-  investigatorEmployeeId: '', investigatorName: '', date: '',
-};
-
-const RESULTS_EMPTY: ResultsDraftForm = {
+  caseId: '',
+  caseNumber: '',
+  employeeId: '',
+  employeeNameAr: '',
   investigatorEmployeeId: '',
-  employeeStatement: '',
-  witnessStatement: '',
-  result: 'proven',
-  recommendationType: 'all',
-  deductionType: 'days',
-  deductionValue: '',
+  investigatorName: '',
+  date: '',
 };
 
 export function InvestigationsClient() {
@@ -118,7 +111,7 @@ export function InvestigationsClient() {
   const [openDraft, setOpenDraft] = React.useState<OpenDraftForm>(OPEN_EMPTY);
   const [openFormError, setOpenFormError] = React.useState<string | null>(null);
   const [resultsTarget, setResultsTarget] = React.useState<HRDisciplineInvestigationRecord | null>(null);
-  const [resultsDraft, setResultsDraft] = React.useState<ResultsDraftForm>(RESULTS_EMPTY);
+  const [resultsDraft, setResultsDraft] = React.useState<InvestigationResultsDraftForm>(INVESTIGATION_RESULTS_EMPTY);
   const [resultsFormError, setResultsFormError] = React.useState<string | null>(null);
   const [resultsSaving, setResultsSaving] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
@@ -231,11 +224,12 @@ export function InvestigationsClient() {
   }, [listFiltered]);
 
   const setOpen = (patch: Partial<OpenDraftForm>) => setOpenDraft((d) => ({ ...d, ...patch }));
-  const setResults = (patch: Partial<ResultsDraftForm>) => setResultsDraft((d) => ({ ...d, ...patch }));
+  const setResults = (patch: Partial<InvestigationResultsDraftForm>) => setResultsDraft((d) => ({ ...d, ...patch }));
 
   const openResultsDrawer = React.useCallback((inv: HRDisciplineInvestigationRecord) => {
     setResultsTarget(inv);
     setResultsDraft({
+      investigationDate: inv.date,
       investigatorEmployeeId: inv.investigatorEmployeeId ?? '',
       employeeStatement: inv.employeeStatement ?? '',
       witnessStatement: inv.witnessStatement ?? '',
@@ -387,42 +381,27 @@ export function InvestigationsClient() {
   const handleResultsSave = async () => {
     if (!resultsTarget) return;
     setResultsFormError(null);
-    if (!resultsDraft.investigatorEmployeeId && !resultsTarget.investigatorEmployeeId) {
-      setResultsFormError('المحقق مطلوب');
-      return;
-    }
 
-    const recommendation = resultsDraft.recommendationType === 'all'
-      ? null
-      : toInvestigationRecommendationDto(resultsDraft.recommendationType);
+    const mergedDraft: InvestigationResultsDraftForm = {
+      ...resultsDraft,
+      investigatorEmployeeId:
+        resultsDraft.investigatorEmployeeId || resultsTarget.investigatorEmployeeId || '',
+    };
 
-    const deductionValue = recommendation === 'deduction'
-      ? Number(resultsDraft.deductionValue)
-      : undefined;
-
-    if (recommendation === 'deduction' && (!resultsDraft.deductionValue || Number.isNaN(deductionValue))) {
-      setResultsFormError('قيمة الاستقطاع مطلوبة');
+    const validationError = validateInvestigationResultsDraft(mergedDraft, {
+      requireInvestigationDate: false,
+    });
+    if (validationError) {
+      setResultsFormError(validationError);
       return;
     }
 
     setResultsSaving(true);
     try {
-      await m.submitResults(resultsTarget.id, {
-        ...(resultsDraft.investigatorEmployeeId
-          ? { investigatorEmployeeId: resultsDraft.investigatorEmployeeId }
-          : resultsTarget.investigatorEmployeeId
-            ? { investigatorEmployeeId: resultsTarget.investigatorEmployeeId }
-            : {}),
-        employeeStatement: resultsDraft.employeeStatement || null,
-        witnessStatement: resultsDraft.witnessStatement || null,
-        result: toInvestigationResultDto(resultsDraft.result),
-        recommendation,
-        deductionType: recommendation === 'deduction' ? resultsDraft.deductionType : undefined,
-        deductionValue: recommendation === 'deduction' ? deductionValue : undefined,
-      });
+      await m.submitResults(resultsTarget.id, buildSubmitInvestigationResultsDto(mergedDraft));
       toast.success('تم إدخال نتائج التحقيق');
       setResultsTarget(null);
-      setResultsDraft(RESULTS_EMPTY);
+      setResultsDraft(INVESTIGATION_RESULTS_EMPTY);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'discipline-investigations.submit-results');
       setResultsFormError(displayMessage);
@@ -666,7 +645,7 @@ export function InvestigationsClient() {
 
       <HRSettingsFormDrawer
         open={resultsTarget != null}
-        onOpenChange={(o) => { if (!o) { setResultsTarget(null); setResultsDraft(RESULTS_EMPTY); setResultsFormError(null); } }}
+        onOpenChange={(o) => { if (!o) { setResultsTarget(null); setResultsDraft(INVESTIGATION_RESULTS_EMPTY); setResultsFormError(null); } }}
         title={resultsTarget ? `إدخال نتائج التحقيق — ${resultsTarget.caseNumber}` : 'إدخال نتائج التحقيق'}
         size="lg"
         onSave={() => void handleResultsSave()}
@@ -678,72 +657,12 @@ export function InvestigationsClient() {
             <span className="text-muted-foreground">الموظف: </span>{resultsTarget.employeeNameAr ?? '—'}
           </div>
         ) : null}
-        <FormField label="المحقق" required>
-          <SearchableDropdown
-            value={resultsDraft.investigatorEmployeeId}
-            onChange={(v) => setResults({ investigatorEmployeeId: v })}
-            options={investigatorOptions}
-            placeholder="اختر المحقق…"
-          />
-        </FormField>
-        <FormField label="أقوال الموظف">
-          <textarea value={resultsDraft.employeeStatement} onChange={e => setResults({ employeeStatement: e.target.value })} placeholder="ما قاله الموظف في التحقيق…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-        </FormField>
-        <FormField label="أقوال الشهود">
-          <textarea value={resultsDraft.witnessStatement} onChange={e => setResults({ witnessStatement: e.target.value })} placeholder="شهادة الشهود…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-        </FormField>
-        <FormField label="نتيجة التحقيق" required>
-          <MinimalDropdown value={resultsDraft.result} onChange={v => setResults({ result: v as ResultsDraftForm['result'] })} options={RESULT_SUBMIT_OPTIONS} />
-        </FormField>
-        <FormField label="التوصية">
-          <MinimalDropdown
-            value={resultsDraft.recommendationType}
-            onChange={(v) => {
-              const next = v as RecommendationFilter;
-              setResults({
-                recommendationType: next,
-                deductionValue: next === 'deduction' ? resultsDraft.deductionValue : '',
-              });
-            }}
-            options={[
-              { value: 'all', label: 'بدون توصية' },
-              ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({
-                value,
-                label,
-              })),
-            ]}
-          />
-        </FormField>
-        {resultsDraft.recommendationType === 'deduction' ? (
-          <>
-            <FormField label="نوع الاستقطاع" required>
-              <MinimalDropdown
-                value={resultsDraft.deductionType}
-                onChange={(v) => setResults({ deductionType: v as ResultsDraftForm['deductionType'] })}
-                options={[
-                  { value: 'days', label: 'أيام' },
-                  { value: 'hours', label: 'ساعات' },
-                  { value: 'fixed_amount', label: 'مبلغ ثابت' },
-                ]}
-              />
-            </FormField>
-            <FormField label="قيمة الاستقطاع" required>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={resultsDraft.deductionValue}
-                onChange={(e) => setResults({ deductionValue: e.target.value })}
-                placeholder="أدخل القيمة…"
-              />
-            </FormField>
-          </>
-        ) : null}
-        {resultsDraft.recommendationType === 'warning' ? (
-          <p className="text-xs text-muted-foreground">
-            عند اختيار «توجيه إنذار» يُنشئ النظام إنذاراً تلقائياً للموظف.
-          </p>
-        ) : null}
+        <InvestigationResultsFormFields
+          draft={resultsDraft}
+          onChange={setResults}
+          investigatorOptions={investigatorOptions}
+          showInvestigationDate={false}
+        />
       </HRSettingsFormDrawer>
 
       <ConfirmationModal

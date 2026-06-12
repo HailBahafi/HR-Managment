@@ -54,8 +54,9 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { disciplineNoticesApi } from '@/features/hr/discipline/lib/api/discipline-notices';
-import { disciplineInvestigationsApi } from '@/features/hr/discipline/lib/api/discipline-investigations';
+import { ViolationInvestigationDrawer } from '@/features/hr/discipline/investigations/dialogs/violation-investigation-drawer';
 import { disciplineAppealsApi } from '@/features/hr/discipline/lib/api/discipline-appeals';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
@@ -173,102 +174,6 @@ function NoticeDialog({
           <Button onClick={handleSave} disabled={saving} className="flex-1 gap-1.5">
             {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
             إصدار الإنذار
-          </Button>
-          <Button variant="outline" onClick={onClose}>إلغاء</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Investigation dialog (تحقيق) ────────────────────────────────────────────
-
-function InvestigationDialog({
-  open, onClose, violationCase, companyId, employees,
-}: {
-  open: boolean; onClose: () => void;
-  violationCase: ViolationCaseRecord | null;
-  companyId: string;
-  employees: { id: string; nameAr: string }[];
-}) {
-  const [investigatorId, setInvestigatorId] = React.useState('');
-  const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [statement, setStatement] = React.useState('');
-  const [result, setResult] = React.useState<'proven' | 'not_proven'>('proven');
-  const [saving, setSaving] = React.useState(false);
-
-  React.useEffect(() => {
-    if (open) { setInvestigatorId(''); setDate(new Date().toISOString().slice(0, 10)); setStatement(''); setResult('proven'); }
-  }, [open]);
-
-  const empOptions = employees.map((e) => ({ value: e.id, label: e.nameAr }));
-
-  const handleSave = async () => {
-    if (!violationCase || !companyId || !investigatorId) {
-      toast.error('يرجى اختيار المحقق');
-      return;
-    }
-    setSaving(true);
-    try {
-      const created = await disciplineInvestigationsApi.create({
-        companyId,
-        violationRecordId: violationCase.id,
-        investigatorEmployeeId: investigatorId,
-        investigationDate: date,
-        result: 'pending',
-      });
-      await disciplineInvestigationsApi.submitResults(created.id, {
-        investigatorEmployeeId: investigatorId,
-        employeeStatement: statement.trim() || null,
-        result,
-      });
-      toast.success('تم إنشاء التحقيق');
-      onClose();
-    } catch { toast.error('فشل إنشاء التحقيق'); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-right text-base">
-            <Search className="h-4 w-4 text-primary" />
-            فتح تحقيق
-          </DialogTitle>
-          <DialogDescription className="text-right text-xs text-muted-foreground">
-            {violationCase?.caseNumber} · {violationCase?.employeeNameAr}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-1">
-          <FormField label="المحقق" required>
-            <SearchableDropdown value={investigatorId} onChange={setInvestigatorId} options={empOptions} placeholder="اختر المحقق…" />
-          </FormField>
-          <FormField label="تاريخ التحقيق" required>
-            <DatePickerInput value={date} onChange={setDate} />
-          </FormField>
-          <FormField label="نتيجة التحقيق" required>
-            <Select value={result} onValueChange={(v) => setResult(v as 'proven' | 'not_proven')}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="proven">ثابتة</SelectItem>
-                <SelectItem value="not_proven">غير ثابتة</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormField>
-          <FormField label="أقوال الموظف">
-            <textarea
-              value={statement}
-              onChange={(e) => setStatement(e.target.value)}
-              placeholder="اختياري…"
-              className="flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </FormField>
-        </div>
-        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
-          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-1.5">
-            {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
-            فتح التحقيق
           </Button>
           <Button variant="outline" onClick={onClose}>إلغاء</Button>
         </DialogFooter>
@@ -636,8 +541,13 @@ export function ViolationCasesClient() {
   };
 
   const handleApprove = async (c: ViolationCaseRecord) => {
-    try { await decideCase(c.id, { decision: 'approve' }); toast.success(`تمت الموافقة على ${c.caseNumber}`); }
-    catch { toast.error('فشلت الموافقة'); }
+    try {
+      await decideCase(c.id, { decision: 'approve' });
+      toast.success(`تمت الموافقة على ${c.caseNumber}`);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'violation-records.decide.approve');
+      toast.error(displayMessage);
+    }
   };
 
   const handleReject = async () => {
@@ -645,7 +555,10 @@ export function ViolationCasesClient() {
     try {
       await decideCase(rejectCase.id, { decision: 'reject', notes: rejectNote.trim() || null });
       toast.success('تم رفض المخالفة');
-    } catch { toast.error('فشل الرفض'); }
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'violation-records.decide.reject');
+      toast.error(displayMessage);
+    }
     setRejectCase(null);
     setRejectNote('');
   };
@@ -1137,12 +1050,13 @@ export function ViolationCasesClient() {
         violationCase={noticeCase}
         companyId={companyId}
       />
-      <InvestigationDialog
+      <ViolationInvestigationDrawer
         open={!!investigationCase}
-        onClose={() => setInvestigationCase(null)}
+        onOpenChange={(open) => { if (!open) setInvestigationCase(null); }}
         violationCase={investigationCase}
         companyId={companyId}
         employees={employees}
+        onSuccess={() => void reload()}
       />
       <AppealDialog
         open={!!appealCase}

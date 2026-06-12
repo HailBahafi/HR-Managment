@@ -5,8 +5,10 @@ import { isApiErrorEnvelope } from '@/features/hr/lib/api/types';
 import { toast } from 'sonner';
 
 export type ApiErrorHandleResult = {
-  /** Text for inline UI (empty states, drawers). In dev: full backend JSON. */
+  /** Human-readable backend message for toasts and inline UI. */
   displayMessage: string;
+  /** Full backend envelope JSON (dev console / debug panels only). */
+  debugPayload: string | null;
   envelope: ApiErrorEnvelope | null;
   status: number;
 };
@@ -46,7 +48,7 @@ export function handleApiError(error: unknown, context?: string): ApiErrorHandle
   if (!(error instanceof ApiError)) {
     const displayMessage = error instanceof Error ? error.message : String(error);
     console.error(context ? `[API Error] ${context}` : '[API Error]', error);
-    return { displayMessage, envelope: null, status: 0 };
+    return { displayMessage, debugPayload: null, envelope: null, status: 0 };
   }
 
   logApiError(error, context);
@@ -62,11 +64,10 @@ export function handleApiError(error: unknown, context?: string): ApiErrorHandle
     toast.error(envelope?.message ?? 'خطأ في الخادم');
   }
 
-  const displayMessage = isDevEnv()
-    ? formatApiErrorForDisplay(error)
-    : (envelope?.message ?? error.message);
+  const displayMessage = envelope?.message?.trim() || error.message;
+  const debugPayload = isDevEnv() ? formatApiErrorForDisplay(error) : null;
 
-  return { displayMessage, envelope, status };
+  return { displayMessage, debugPayload, envelope, status };
 }
 
 export function toApiErrorEnvelope(payload: unknown, status: number, fallbackMessage: string): ApiErrorEnvelope {
