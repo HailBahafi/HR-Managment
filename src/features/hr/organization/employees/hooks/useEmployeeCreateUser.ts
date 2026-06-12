@@ -3,12 +3,12 @@
 import * as React from 'react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import {
   createEmployeeUserAccount,
   resolveCreatedUserId,
+  resolveEmployeeUserAccountCompanyId,
 } from '@/features/hr/organization/employees/services/employee-user-account.service';
 
 export function useEmployeeCreateUser(
@@ -16,7 +16,6 @@ export function useEmployeeCreateUser(
   onUserCreated?: (userId: string) => void,
 ) {
   const qc = useQueryClient();
-  const companyId = useAuthStore((s) => s.activeCompanyId);
   const [createUserOpen, setCreateUserOpen] = React.useState(false);
   const [createUserEmail, setCreateUserEmail] = React.useState(employee.email ?? '');
   const [createUserPassword, setCreateUserPassword] = React.useState('');
@@ -31,9 +30,10 @@ export function useEmployeeCreateUser(
   const createUserMutation = useMutation({
     mutationFn: async () => {
       if (!employee.employeeCode?.trim()) throw new Error('رقم الموظف غير متوفر');
-      if (!companyId) throw new Error('لم يتم تحديد الشركة النشطة — اختر شركة من القائمة العلوية');
       if (!createUserEmail.trim()) throw new Error('البريد الإلكتروني مطلوب');
       if (createUserPassword.length < 6) throw new Error('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+
+      const companyId = await resolveEmployeeUserAccountCompanyId(employee.id);
 
       return createEmployeeUserAccount({
         employeeCode: employee.employeeCode.trim(),
@@ -57,7 +57,10 @@ export function useEmployeeCreateUser(
       void qc.invalidateQueries({ queryKey: ['user-roles', userId] });
       void qc.invalidateQueries({ queryKey: ['user-permissions', userId] });
     },
-    onError: (err) => handleApiError(err, 'employee.createUserAccount'),
+    onError: (err) => {
+      const { displayMessage } = handleApiError(err, 'employee.createUserAccount');
+      toast.error(displayMessage);
+    },
   });
 
   return {
