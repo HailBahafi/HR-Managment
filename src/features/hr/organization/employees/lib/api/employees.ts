@@ -88,6 +88,13 @@ export type EmployeeListQuery = {
   startDateTo?: string;
 };
 
+export type CreateEmployeeUserAccountDto = {
+  employeeCode: string;
+  companyId: string;
+  email: string;
+  password: string;
+};
+
 export const employeesApi = {
   getAll(query?: EmployeeListQuery) {
     return apiRequest<PaginatedResult<EmployeeResponseDto>>('/hr/employees', { query });
@@ -103,5 +110,11 @@ export const employeesApi = {
   },
   remove(id: string) {
     return apiRequest<void>(`/hr/employees/${id}`, { method: 'DELETE' });
+  },
+  createUserAccount(payload: CreateEmployeeUserAccountDto) {
+    return apiRequest<EmployeeResponseDto>('/hr/employees/user-account', {
+      method: 'POST',
+      body: payload,
+    });
   },
 };
