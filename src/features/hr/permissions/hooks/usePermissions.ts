@@ -2,48 +2,55 @@
 
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
-import { permissionsApi, type PermissionResponseDto } from '@/features/hr/permissions/lib/api/permissions';
+import type { PermissionResponseDto } from '@/features/hr/permissions/lib/api/permissions';
+import { loadAllPermissions } from '@/features/hr/permissions/services/permissions.service';
 
 function hasAuthToken(): boolean {
   if (typeof document === 'undefined') return false;
   return document.cookie.split('; ').some((c) => c.startsWith('access_token='));
 }
 
-/** Keeps HR catalog from GET /permissions; ignores a mismatched application hint. */
-export function scopeToHrApplication(all: PermissionResponseDto[], applicationIdHint?: string) {
-  let items = all.filter((p) => p.code.toLowerCase().startsWith('hr.'));
-  if (items.length === 0 && all.length > 0) {
-    items = all;
-  }
-
-  if (applicationIdHint) {
-    const scoped = items.filter((p) => p.applicationId === applicationIdHint);
-    if (scoped.length > 0) items = scoped;
-  }
-
-  const resolvedApplicationId =
-    items.find((p) => p.code.toLowerCase().startsWith('hr.'))?.applicationId ??
-    items[0]?.applicationId ??
+/** Resolves HR application id from catalog root (`hr.module`) or first hr.* node. */
+export function resolveHrApplicationId(
+  all: PermissionResponseDto[],
+  applicationIdHint?: string,
+): string {
+  return (
+    all.find((p) => p.code.toLowerCase() === 'hr.module')?.applicationId ??
+    all.find((p) => p.code.toLowerCase().startsWith('hr.'))?.applicationId ??
     applicationIdHint ??
-    '';
+    ''
+  );
+}
+
+/** Keeps all permission nodes for the HR application (GROUP + ACTION). */
+export function scopeToHrApplication(all: PermissionResponseDto[], applicationIdHint?: string) {
+  const resolvedApplicationId = resolveHrApplicationId(all, applicationIdHint);
+
+  let items: PermissionResponseDto[];
+  if (resolvedApplicationId) {
+    items = all.filter((p) => p.applicationId === resolvedApplicationId);
+  } else {
+    items = all.filter((p) => p.code.toLowerCase().startsWith('hr.'));
+    if (items.length === 0 && all.length > 0) items = all;
+  }
 
   return { items, resolvedApplicationId };
 }
 
-/** Fetches GET /permissions and scopes results to the HR application. */
-export function usePermissions(applicationIdHint?: string) {
+/** Fetches GET /permissions (no applicationId query param) and scopes to HR client-side. */
+export function usePermissions(hrApplicationId?: string) {
   const query = useQuery({
-    queryKey: ['permissions', { limit: 500 }],
-    queryFn: async () =>
-      ensurePaginatedResult(await permissionsApi.getAll({ limit: 500 })),
-    staleTime: 30 * 60 * 1000,
+    queryKey: ['permissions', 'all-pages'],
+    queryFn: loadAllPermissions,
+    staleTime: 60 * 1000,
+    refetchOnMount: 'always',
     enabled: hasAuthToken(),
   });
 
   const catalog = React.useMemo(
-    () => scopeToHrApplication(query.data?.items ?? [], applicationIdHint || undefined),
-    [query.data, applicationIdHint],
+    () => scopeToHrApplication(query.data?.items ?? [], hrApplicationId || undefined),
+    [query.data, hrApplicationId],
   );
 
   return {

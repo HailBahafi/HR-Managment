@@ -16,7 +16,6 @@ export type PermissionResponseDto = {
 };
 
 export type PermissionListQuery = {
-  applicationId?: string;
   limit?: number;
   page?: number;
 };

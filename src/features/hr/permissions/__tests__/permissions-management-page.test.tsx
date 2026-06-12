@@ -66,6 +66,7 @@ jest.mock('@/features/hr/permissions/hooks/usePermissions', () => ({
     data: { items: mockPermissions, applicationId: 'app-1' },
     isLoading: false,
     isError: false,
+    refetch: jest.fn(),
   }),
 }));
 
@@ -172,7 +173,7 @@ describe('PermissionsManagementPage', () => {
     });
 
     await userEvent.type(screen.getByPlaceholderText('مثال: مشرف الفرع'), 'مشرف الفرع');
-    await userEvent.click(screen.getByTitle('عرض'));
+    await userEvent.click(screen.getByRole('button', { name: 'عرض الموظفين' }));
     await userEvent.click(screen.getByRole('button', { name: /حفظ التغييرات/i }));
 
     await waitFor(() => {

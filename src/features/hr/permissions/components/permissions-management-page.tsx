@@ -29,6 +29,7 @@ export function PermissionsManagementPage() {
     data: permissionsResult,
     isLoading: permissionsLoading,
     isError: permissionsError,
+    refetch: refetchPermissions,
   } = usePermissions(appFromApi);
 
   const applicationId = permissionsResult?.applicationId ?? appFromApi;
@@ -50,12 +51,14 @@ export function PermissionsManagementPage() {
   const isCatalogReady = !permissionsLoading && !permissionsError;
 
   function openCreate() {
+    void refetchPermissions();
     setEditingRole(null);
     setInitialValues(null);
     setPanelOpen(true);
   }
 
   async function openEdit(role: RoleResponseDto) {
+    void refetchPermissions();
     setEditingRole(role);
     setInitialValues(null);
     setPanelOpen(true);

@@ -1,4 +1,5 @@
 import {
+  resolveHrApplicationId,
   scopeToHrApplication,
 } from '@/features/hr/permissions/hooks/usePermissions';
 import type { PermissionResponseDto } from '@/features/hr/permissions/lib/api/permissions';
@@ -24,30 +25,55 @@ function makePerm(
   };
 }
 
+function makeGroup(id: string, code: string, applicationId: string): PermissionResponseDto {
+  return {
+    ...makePerm(id, code, applicationId),
+    nodeType: 'GROUP',
+    action: null,
+    resource: null,
+  };
+}
+
+describe('resolveHrApplicationId', () => {
+  const hrAppId = '4002cca8-64fe-428c-9946-c42676dfc0a2';
+  const wrongAppId = '00000000-0000-4000-8000-000000000001';
+
+  it('prefers hr.module applicationId over a mismatched hint', () => {
+    const all = [
+      makeGroup('root', 'hr.module', hrAppId),
+      makePerm('p1', 'hr.employees.read', hrAppId),
+    ];
+
+    expect(resolveHrApplicationId(all, wrongAppId)).toBe(hrAppId);
+  });
+});
+
 describe('scopeToHrApplication', () => {
   const hrAppId = '4002cca8-64fe-428c-9946-c42676dfc0a2';
   const wrongAppId = '00000000-0000-4000-8000-000000000001';
 
-  it('returns hr.* permissions even when application hint does not match', () => {
+  it('returns all nodes for hr.module application even when hint does not match', () => {
     const all = [
+      makeGroup('root', 'hr.module', hrAppId),
       makePerm('p1', 'hr.employees.read', hrAppId),
       makePerm('p2', 'other.app.read', wrongAppId),
     ];
 
     const { items, resolvedApplicationId } = scopeToHrApplication(all, wrongAppId);
 
-    expect(items).toHaveLength(1);
-    expect(items[0].id).toBe('p1');
+    expect(items).toHaveLength(2);
+    expect(items.map((p) => p.id).sort()).toEqual(['p1', 'root']);
     expect(resolvedApplicationId).toBe(hrAppId);
   });
 
-  it('narrows to application hint when it matches hr permissions', () => {
+  it('includes GROUP and ACTION nodes for the HR application', () => {
     const all = [
+      makeGroup('root', 'hr.module', hrAppId),
       makePerm('p1', 'hr.employees.read', hrAppId),
       makePerm('p2', 'hr.companies.read', hrAppId),
     ];
 
     const { items } = scopeToHrApplication(all, hrAppId);
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
   });
 });

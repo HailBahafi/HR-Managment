@@ -8,6 +8,10 @@ import { cn } from '@/shared/utils';
 import { usePermissions } from '@/features/hr/permissions/hooks/usePermissions';
 import { useApplicationId } from '@/features/hr/permissions/hooks/useApplicationId';
 import type { PermissionResponseDto } from '@/features/hr/permissions/lib/api/permissions';
+import {
+  buildPermissionTree,
+  type PermissionTreeNode,
+} from '@/features/hr/permissions/utils/permission-tree';
 
 const ACTION_AR: Record<string, string> = {
   read: 'عرض',
@@ -18,33 +22,7 @@ const ACTION_AR: Record<string, string> = {
   export: 'تصدير',
 };
 
-type TreeNode = PermissionResponseDto & { children: TreeNode[] };
-
-function buildPermissionTree(items: PermissionResponseDto[]): TreeNode[] {
-  const nodes = new Map<string, TreeNode>();
-  for (const item of items) {
-    nodes.set(item.id, { ...item, children: [] });
-  }
-
-  const roots: TreeNode[] = [];
-  for (const item of items) {
-    const node = nodes.get(item.id)!;
-    if (item.parentId && nodes.has(item.parentId)) {
-      nodes.get(item.parentId)!.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  const sortNodes = (list: TreeNode[]) => {
-    list.sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
-    list.forEach((n) => sortNodes(n.children));
-  };
-  sortNodes(roots);
-  return roots;
-}
-
-function PermissionTreeRow({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
+function PermissionTreeRow({ node, depth = 0 }: { node: PermissionTreeNode; depth?: number }) {
   const [open, setOpen] = React.useState(depth < 2);
   const isGroup = node.nodeType === 'GROUP';
   const hasChildren = node.children.length > 0;
