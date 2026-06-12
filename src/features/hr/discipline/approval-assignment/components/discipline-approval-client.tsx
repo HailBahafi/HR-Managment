@@ -1,7 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Pencil, Trash2, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, X, ChevronUp, ChevronDown } from 'lucide-react';
+import {
+  EntityActionCard,
+  EntityActionCardGrid,
+  EntityActionCardGridSkeleton,
+} from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -133,13 +138,7 @@ export function DisciplineApprovalClient() {
   };
 
   if (loading) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-48 animate-pulse rounded-xl border border-border bg-muted/30" />
-        ))}
-      </div>
-    );
+    return <EntityActionCardGridSkeleton count={4} />;
   }
 
   if (listError) {
@@ -157,20 +156,26 @@ export function DisciplineApprovalClient() {
       {templates.length === 0 ? (
         <EmptyState title="لا توجد إسنادات" description="اربط أنواع المخالفات بمعتمدين." />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <EntityActionCardGrid>
           {templates.map((t) => (
-            <div key={t.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 space-y-2">
-                  <ol className="list-decimal space-y-1 pr-4 text-sm marker:text-muted-foreground">
-                    {t.violationTypes.sort((a, b) => a.sortOrder - b.sortOrder).map((vt) => (
-                      <li key={vt.id} className="font-medium leading-snug">{vt.violationTypeNameAr}</li>
-                    ))}
-                  </ol>
-                  {t.violationTypes.length === 0 && <p className="text-xs text-muted-foreground">لا أنواع مرتبطة</p>}
-                </div>
-                <ActiveBadge active={t.isActive} />
-              </div>
+            <EntityActionCard
+              key={t.id}
+              title={t.violationTypes.length > 0 ? t.violationTypes[0]?.violationTypeNameAr ?? 'إسناد موافقات' : 'إسناد موافقات'}
+              subtitle={t.violationTypes.length > 1 ? `+${t.violationTypes.length - 1} أنواع أخرى` : undefined}
+              status={{ label: t.isActive ? 'نشط' : 'غير نشط', tone: t.isActive ? 'approved' : 'muted' }}
+              onClick={() => openEdit(t)}
+              onEdit={() => openEdit(t)}
+              onDelete={() => setDeleteId(t.id)}
+            >
+              {t.violationTypes.length > 0 ? (
+                <ol className="list-decimal space-y-1 pr-4 text-sm marker:text-muted-foreground">
+                  {t.violationTypes.sort((a, b) => a.sortOrder - b.sortOrder).map((vt) => (
+                    <li key={vt.id} className="font-medium leading-snug">{vt.violationTypeNameAr}</li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-xs text-muted-foreground">لا أنواع مرتبطة</p>
+              )}
               <div className="rounded-lg border border-border/70 bg-muted/25 p-3 space-y-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {modeLabelAr(t.approvalMode)}
@@ -180,20 +185,12 @@ export function DisciplineApprovalClient() {
                     {[...t.approvers].sort((a, b) => a.sortOrder - b.sortOrder).map((a) => a.employeeNameAr).join('، ')}
                   </p>
                 ) : (
-                  <p className="text-[11px] text-amber-700 dark:text-amber-300">لا معتمدين في هذا الإسناد</p>
+                  <p className="text-[11px] text-warning">لا معتمدين في هذا الإسناد</p>
                 )}
               </div>
-              <div className="mt-auto flex items-center gap-1.5 border-t border-border pt-2">
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => openEdit(t)}>
-                  <Pencil className="h-3.5 w-3.5" />تعديل
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(t.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
+            </EntityActionCard>
           ))}
-        </div>
+        </EntityActionCardGrid>
       )}
 
       <HRSettingsFormDrawer

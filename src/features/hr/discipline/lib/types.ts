@@ -1,7 +1,7 @@
 export type HRViolationDeductionKind = 'none' | 'amount' | 'hours' | 'day';
 export type HRViolationCaseStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'executed' | 'closed';
 export type HRDisciplineNoticeKind = 'verbal' | 'first' | 'second' | 'final';
-export type HRInvestigationResult = 'proven' | 'not_proven';
+export type HRInvestigationResult = 'pending' | 'proven' | 'not_proven';
 export type HRInvestigationRecommendation = 'warning' | 'deduction';
 export type HRInvestigationDeductionType = 'days' | 'hours' | 'fixed_amount';
 export type HRPenaltyType = 'reprimand' | 'warning' | 'monetary' | 'suspension' | 'termination_recommendation';
@@ -68,6 +68,7 @@ export interface HRDisciplineCircularRecord {
 export interface HRDisciplineInvestigationRecord {
   id: string; caseId: string; caseNumber: string;
   employeeId: string; employeeNameAr: string;
+  investigatorEmployeeId: string | null;
   investigatorName: string; date: string;
   employeeStatement: string; witnessStatement: string;
   result: HRInvestigationResult; recommendation: string;
@@ -157,7 +158,7 @@ export const CIRCULAR_AUDIENCE_LABELS: Record<HRDisciplineCircularAudience, stri
 export const CIRCULAR_AUDIENCE_FILTER_ORDER: HRDisciplineCircularAudience[] = ['all', 'employees', 'branch', 'department'];
 
 export const INVESTIGATION_RESULT_LABELS: Record<HRInvestigationResult, string> = {
-  proven: 'ثبتت المخالفة', not_proven: 'لم تثبت',
+  pending: 'قيد التحقيق', proven: 'ثبتت المخالفة', not_proven: 'لم تثبت',
 };
 export const INVESTIGATION_RECOMMENDATION_LABELS: Record<HRInvestigationRecommendation, string> = {
   warning: 'توجيه إنذار', deduction: 'استقطاع',
@@ -165,7 +166,7 @@ export const INVESTIGATION_RECOMMENDATION_LABELS: Record<HRInvestigationRecommen
 export const INVESTIGATION_DEDUCTION_TYPE_LABELS: Record<HRInvestigationDeductionType, string> = {
   days: 'أيام', hours: 'ساعات', fixed_amount: 'مبلغ ثابت',
 };
-export const INVESTIGATION_RESULT_FILTER_ORDER: HRInvestigationResult[] = ['proven', 'not_proven'];
+export const INVESTIGATION_RESULT_FILTER_ORDER: HRInvestigationResult[] = ['pending', 'proven', 'not_proven'];
 export const PENALTY_TYPE_LABELS: Record<HRPenaltyType, string> = {
   reprimand: 'توبيخ', warning: 'إنذار رسمي', monetary: 'غرامة مالية',
   suspension: 'إيقاف عن العمل', termination_recommendation: 'توصية بالإنهاء',
@@ -174,7 +175,7 @@ export const APPEAL_CHANNEL_LABELS: Record<HRAppealChannel, string> = {
   in_person: 'حضوري', written: 'مكتوب', email: 'بريد إلكتروني', phone: 'هاتفي', system: 'النظام',
 };
 export const APPEAL_STATUS_LABELS: Record<HRAppealStatus, string> = {
-  pending: 'قيد الانتظار', under_review: 'قيد المراجعة', accepted: 'مقبول', rejected: 'مرفوض', withdrawn: 'مسحوب',
+  pending: 'قيد الانتظار', under_review: 'قيد المراجعة', accepted: 'مقبول', rejected: 'مرفوض', withdrawn: 'متراجع عنه',
 };
 export const APPEAL_STATUS_FILTER_ORDER: HRAppealStatus[] = ['pending', 'under_review', 'accepted', 'rejected', 'withdrawn'];
 /** تسميات عربية لمسارات الإنظباط الإداري: مسودة → تقديم → سلسلة الموافقات → قرار → تنفيذ/إغلاق. */

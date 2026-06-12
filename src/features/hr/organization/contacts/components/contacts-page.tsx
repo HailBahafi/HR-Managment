@@ -18,9 +18,12 @@ import {
 import {
   useContactsDirectoryModel,
   USER_TYPE_OPTIONS,
+  USER_STATUS_OPTIONS,
+  LANGUAGE_OPTIONS,
+  TIMEZONE_OPTIONS,
 } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 import { ContactsListViews } from '@/features/hr/organization/contacts/components/contacts-list-views';
-import { ExternalContactDetailDialog } from '@/features/hr/organization/contacts/dialogs/external-contact-detail-dialog';
+import { UserDetailDialog } from '@/features/hr/organization/contacts/dialogs/user-detail-dialog';
 
 export default function ContactsPage() {
   const model = useContactsDirectoryModel();
@@ -37,18 +40,18 @@ export default function ContactsPage() {
         saveDisabled={model.saving}
         error={model.error}
       >
-        <FormField label="البريد الإلكتروني" required>
-          <Input
-            dir="ltr"
-            type="email"
-            value={model.form.email}
-            onChange={(e) => model.patch({ email: e.target.value })}
-            placeholder="user@example.com"
-          />
-        </FormField>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="البريد الإلكتروني" required span2>
+            <Input
+              dir="ltr"
+              type="email"
+              value={model.form.email}
+              onChange={(e) => model.patch({ email: e.target.value })}
+              placeholder="user@example.com"
+            />
+          </FormField>
 
-        {!model.editId && (
-          <FormField label="كلمة المرور" required>
+          <FormField label={model.editId ? 'كلمة مرور جديدة (اختياري)' : 'كلمة المرور'} required={!model.editId} span2>
             <Input
               dir="ltr"
               type="password"
@@ -57,75 +60,149 @@ export default function ContactsPage() {
               placeholder="••••••••"
             />
           </FormField>
-        )}
 
-        <FormField label="الاسم بالعربية">
-          <Input
-            value={model.form.fullNameAr}
-            onChange={(e) => model.patch({ fullNameAr: e.target.value })}
-            placeholder="أحمد محمد"
-          />
-        </FormField>
+          <FormField label="الاسم بالعربية">
+            <Input
+              value={model.form.fullNameAr}
+              onChange={(e) => model.patch({ fullNameAr: e.target.value })}
+            />
+          </FormField>
 
-        <FormField label="الاسم بالإنجليزية">
-          <Input
-            dir="ltr"
-            value={model.form.fullNameEn}
-            onChange={(e) => model.patch({ fullNameEn: e.target.value })}
-            placeholder="Ahmed Mohammed"
-          />
-        </FormField>
+          <FormField label="الاسم بالإنجليزية">
+            <Input
+              dir="ltr"
+              value={model.form.fullNameEn}
+              onChange={(e) => model.patch({ fullNameEn: e.target.value })}
+            />
+          </FormField>
 
-        <FormField label="رقم الجوال">
-          <Input
-            dir="ltr"
-            value={model.form.phone}
-            onChange={(e) => model.patch({ phone: e.target.value })}
-            placeholder="+966 …"
-          />
-        </FormField>
+          <FormField label="رقم الجوال">
+            <Input
+              dir="ltr"
+              value={model.form.phone}
+              onChange={(e) => model.patch({ phone: e.target.value })}
+              placeholder="+966 …"
+            />
+          </FormField>
 
-        <FormField label="نوع المستخدم">
-          <Select
-            value={model.form.userType}
-            onValueChange={(v) => model.patch({ userType: v })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="اختر نوع المستخدم" />
-            </SelectTrigger>
-            <SelectContent>
-              {USER_TYPE_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormField>
+          <FormField label="نوع المستخدم">
+            <Select value={model.form.userType} onValueChange={(v) => model.patch({ userType: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {USER_TYPE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
 
-        <FormField label="ملاحظات">
-          <Textarea
-            value={model.form.notes}
-            onChange={(e) => model.patch({ notes: e.target.value })}
-            placeholder="ملاحظات داخلية…"
-            rows={3}
-          />
-        </FormField>
+          <FormField label="الشركة الافتراضية">
+            <Select
+              value={model.form.defaultCompanyId || '_none'}
+              onValueChange={(v) => model.patch({
+                defaultCompanyId: v === '_none' ? '' : v,
+                defaultBranchId: '',
+              })}
+            >
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— بدون —</SelectItem>
+                {model.companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.nameAr}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
 
-        <div className="flex items-center justify-between rounded-xl border border-border p-4">
-          <span className="text-sm">نشط</span>
-          <Switch
-            checked={model.form.isActive}
-            onCheckedChange={(v) => model.patch({ isActive: v })}
-          />
+          <FormField label="الفرع الافتراضي">
+            <Select
+              value={model.form.defaultBranchId || '_none'}
+              onValueChange={(v) => model.patch({ defaultBranchId: v === '_none' ? '' : v })}
+            >
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— بدون —</SelectItem>
+                {model.branchesForDefault.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="معرّف الموظف">
+            <Input
+              dir="ltr"
+              value={model.form.employeeId}
+              onChange={(e) => model.patch({ employeeId: e.target.value })}
+            />
+          </FormField>
+
+          <FormField label="رابط الصورة">
+            <Input
+              dir="ltr"
+              value={model.form.avatarUrl}
+              onChange={(e) => model.patch({ avatarUrl: e.target.value })}
+              placeholder="https://…"
+            />
+          </FormField>
+
+          <FormField label="الحالة">
+            <Select value={model.form.status} onValueChange={(v) => model.patch({ status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {USER_STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="اللغة">
+            <Select value={model.form.languageCode} onValueChange={(v) => model.patch({ languageCode: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LANGUAGE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="المنطقة الزمنية" span2>
+            <Select value={model.form.timezone} onValueChange={(v) => model.patch({ timezone: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {TIMEZONE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="ملاحظات" span2>
+            <Textarea
+              value={model.form.notes}
+              onChange={(e) => model.patch({ notes: e.target.value })}
+              rows={3}
+            />
+          </FormField>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between rounded-xl border border-border p-4">
+            <span className="text-sm">نشط</span>
+            <Switch checked={model.form.isActive} onCheckedChange={(v) => model.patch({ isActive: v })} />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border p-4">
+            <span className="text-sm">موثّق</span>
+            <Switch checked={model.form.isVerified} onCheckedChange={(v) => model.patch({ isVerified: v })} />
+          </div>
         </div>
       </HRSettingsFormDrawer>
 
       <ConfirmationModal
         open={!!model.confirmId}
-        onOpenChange={(v) => {
-          if (!v) model.setConfirmId(null);
-        }}
+        onOpenChange={(v) => { if (!v) model.setConfirmId(null); }}
         title="حذف المستخدم"
         description="هل أنت متأكد من حذف هذا الحساب؟ لا يمكن التراجع عن هذا الإجراء."
         confirmLabel="حذف"
@@ -133,12 +210,13 @@ export default function ContactsPage() {
         onConfirm={model.handleDelete}
       />
 
-      <ExternalContactDetailDialog
-        row={model.viewRow}
-        onOpenChange={(open) => {
-          if (!open) model.setViewRow(null);
-        }}
+      <UserDetailDialog
+        user={model.viewRow}
+        companies={model.companies}
+        branches={model.branches}
+        onOpenChange={(open) => { if (!open) model.setViewRow(null); }}
         onEdit={model.openEdit}
+        onUserUpdated={model.patchUserInList}
       />
     </div>
   );

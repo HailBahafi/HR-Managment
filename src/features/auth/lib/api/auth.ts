@@ -8,7 +8,9 @@ export type LoginPayload = {
 
 export type LoginResult = {
   access_token: string;
+  userId: string;
   user: AuthUser;
+  accessProfile: AccessProfile;
 };
 
 export const authApi = {

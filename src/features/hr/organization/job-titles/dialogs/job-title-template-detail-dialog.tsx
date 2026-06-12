@@ -1,6 +1,7 @@
 'use client';
 
 import { Briefcase, Pencil } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,16 +10,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { DetailField } from '@/components/shared/detail-field';
 import type { JobTitleTemplateRecord } from '@/features/hr/organization/job-titles/services/job-titles.service';
 
 type Props = {
   row: JobTitleTemplateRecord | null;
   onOpenChange: (open: boolean) => void;
   onEdit: (row: JobTitleTemplateRecord) => void;
-  getDepartmentName: (id?: string | null) => string | undefined;
 };
 
-export function JobTitleTemplateDetailDialog({ row, onOpenChange, onEdit, getDepartmentName }: Props) {
+export function JobTitleTemplateDetailDialog({ row, onOpenChange, onEdit }: Props) {
   return (
     <Dialog open={!!row} onOpenChange={(v) => !v && onOpenChange(false)}>
       <DialogContent className="border-border sm:max-w-md">
@@ -29,25 +30,21 @@ export function JobTitleTemplateDetailDialog({ row, onOpenChange, onEdit, getDep
           </DialogTitle>
         </DialogHeader>
         {row && (
-          <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4 text-sm">
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">القسم المقترج</span>
-              <span className="font-medium">
-                {row.defaultDepartmentId ? getDepartmentName(row.defaultDepartmentId) ?? '—' : '—'}
-              </span>
-            </div>
-            {row.descriptionAr && (
-              <div className="border-t border-border pt-3">
-                <p className="text-muted-foreground">الوصف</p>
-                <p className="mt-1 leading-relaxed">{row.descriptionAr}</p>
-              </div>
+          <div className="space-y-1 rounded-xl border border-border bg-muted/20 p-4 text-sm">
+            {row.isActive ? (
+              <Badge variant="outline" className="mb-2 text-[10px] border-success/40 text-success">نشط</Badge>
+            ) : (
+              <Badge variant="outline" className="mb-2 text-[10px] border-destructive/40 text-destructive">غير نشط</Badge>
             )}
+            <DetailField label="الرمز" value={row.code} dir="ltr" />
+            <DetailField label="الاسم (EN)" value={row.titleEn} dir="ltr" />
+            <DetailField label="الوصف" value={row.descriptionAr} />
+            <DetailField label="ملاحظات" value={row.notes} />
+            <DetailField label="آخر تحديث" value={new Date(row.updatedAt).toLocaleString('ar-SA')} dir="ltr" />
           </div>
         )}
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            إغلاق
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
           <Button
             onClick={() => {
               if (row) {

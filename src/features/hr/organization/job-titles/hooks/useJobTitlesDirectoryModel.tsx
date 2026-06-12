@@ -8,18 +8,18 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { CreateJobTitleDto, UpdateJobTitleDto } from '@/features/hr/organization/lib/api/jobTitles';
-import type { DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import {
   createJobTitle,
   deleteJobTitle,
   loadJobTitlesDirectory,
   updateJobTitle,
+  type JobTitleTemplateRecord,
 } from '@/features/hr/organization/job-titles/services/job-titles.service';
 import { slugify } from '@/features/hr/requests/lib/types';
-import type { JobTitleTemplateRecord } from '@/features/hr/organization/job-titles/services/job-titles.service';
 import {
   JOB_TITLE_EMPTY_FORM,
   type JobTitleDraftForm,
@@ -33,7 +33,6 @@ export function useJobTitlesDirectoryModel() {
   });
 
   const [templates, setTemplates] = React.useState<JobTitleTemplateRecord[]>([]);
-  const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [defaultCompanyId, setDefaultCompanyId] = React.useState<string | null>(null);
@@ -52,7 +51,6 @@ export function useJobTitlesDirectoryModel() {
     try {
       const data = await loadJobTitlesDirectory();
       setTemplates(data.templates);
-      setDepartments(data.departments);
       setDefaultCompanyId(data.scope.companyId);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'job-titles.load');
@@ -81,8 +79,10 @@ export function useJobTitlesDirectoryModel() {
     setEditId(row.id);
     setForm({
       titleAr: row.titleAr,
+      titleEn: row.titleEn ?? '',
       descriptionAr: row.descriptionAr ?? '',
-      defaultDepartmentId: row.defaultDepartmentId ?? '',
+      notes: row.notes ?? '',
+      isActive: row.isActive,
     });
     setError(null);
     setDrawerOpen(true);
@@ -105,7 +105,10 @@ export function useJobTitlesDirectoryModel() {
         const payload: UpdateJobTitleDto = {
           code: slugify(titleAr),
           nameAr: titleAr,
+          nameEn: form.titleEn.trim() || null,
           description: descriptionAr ?? null,
+          notes: form.notes.trim() || null,
+          isActive: form.isActive,
         };
         await updateJobTitle(editId, payload);
       } else {
@@ -113,7 +116,10 @@ export function useJobTitlesDirectoryModel() {
           companyId: defaultCompanyId,
           code: slugify(titleAr),
           nameAr: titleAr,
+          nameEn: form.titleEn.trim() || null,
           description: descriptionAr ?? null,
+          notes: form.notes.trim() || null,
+          isActive: form.isActive,
         };
         await createJobTitle(payload);
       }
@@ -125,7 +131,7 @@ export function useJobTitlesDirectoryModel() {
       const { displayMessage } = handleApiError(err, 'job-titles.save');
       setError(displayMessage);
     }
-  }, [defaultCompanyId, editId, form.descriptionAr, form.titleAr, loadData]);
+  }, [defaultCompanyId, editId, form.descriptionAr, form.isActive, form.notes, form.titleAr, form.titleEn, loadData]);
 
   const handleDelete = React.useCallback(async () => {
     if (!confirmId) return;
@@ -140,18 +146,15 @@ export function useJobTitlesDirectoryModel() {
     }
   }, [confirmId, loadData]);
 
-  const getDepartmentName = React.useCallback(
-    (id?: string | null) => departments.find((d) => d.id === id)?.nameAr,
-    [departments],
-  );
-
   usePageHeaderActions(
     () => (
       <div className="flex items-center gap-2">
         <FilterToggleButton />
-        <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> قالب جديد
-        </Button>
+        <PermissionGate permission="hr.employees.create">
+          <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> قالب جديد
+          </Button>
+        </PermissionGate>
       </div>
     ),
     [openCreate],
@@ -179,8 +182,6 @@ export function useJobTitlesDirectoryModel() {
 
   return {
     templates,
-    departments,
-    getDepartmentName,
     loading,
     listError,
     layoutView,

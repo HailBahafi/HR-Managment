@@ -8,7 +8,7 @@ export type ViolationTypeSummaryDto = {
   nameAr: string;
   nameEn: string | null;
   hasDeduction: boolean;
-  deductionKind: 'amount' | 'hours' | 'days' | null;
+  deductionKind: 'amount' | 'hours' | 'day' | 'days' | 'none' | null;
   deductionValue: string | null;
   needsWarning: boolean;
   needsInvestigation: boolean;
@@ -20,14 +20,16 @@ export type ViolationInvestigationDto = {
   violationRecordId: string;
   linkedViolationRecordNumber: string | null;
   subjectEmployeeId: string;
-  investigatorEmployeeId: string;
+  investigatorEmployeeId: string | null;
   investigationDate: string;
   employeeStatement: string | null;
   witnessStatement: string | null;
-  result: 'proven' | 'not_proven' | null;
+  result: 'pending' | 'proven' | 'not_proven';
   recommendation: 'warning' | 'deduction' | null;
-  deductionType: 'amount' | 'hours' | 'days' | null;
+  deductionType: 'days' | 'hours' | 'fixed_amount' | null;
   deductionValue: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ViolationRecordResponseDto = {
@@ -130,7 +132,10 @@ export const violationRecordsApi = {
     return apiRequest<ViolationRecordResponseDto>(`/discipline/violation-records/${id}`, { method: 'PATCH', body: payload });
   },
   decide(id: string, payload: DecideViolationRecordDto) {
-    return apiRequest<ViolationRecordResponseDto>(`/discipline/violation-records/${id}/decision`, { method: 'PATCH', body: payload });
+    return apiRequest<ViolationRecordResponseDto>(`/discipline/violation-records/${id}/decision`, {
+      method: 'POST',
+      body: payload,
+    });
   },
   remove(id: string) {
     return apiRequest<void>(`/discipline/violation-records/${id}`, { method: 'DELETE' });

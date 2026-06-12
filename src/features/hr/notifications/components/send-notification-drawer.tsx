@@ -295,7 +295,7 @@ export function SendNotificationDrawer({
             setForm((f) => ({ ...f, requiresAcknowledgment: v === true }))
           }
         />
-        يتطلب إقراراً من المستلم
+        يتطلب الموافقة من المستلم
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormField label="رابط الإجراء (اختياري)">

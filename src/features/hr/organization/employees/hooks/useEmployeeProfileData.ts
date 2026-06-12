@@ -8,6 +8,7 @@ import { employeeContractsApi } from '@/features/hr/contracts/lib/contracts-api'
 import { mapEmployeeContractFromApi, type HRContractRecord } from '@/features/hr/contracts/lib/contracts-store';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import type { Employee } from '@/features/hr/organization/employees/types';
+import type { EmployeeProfileSectionId } from '@/features/hr/organization/employees/constants/EmployeeProfileSections';
 import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 import { payslipsApi } from '@/features/hr/payroll/lib/api/payslips';
 import type { Payslip } from '@/features/hr/payroll/types';
@@ -28,81 +29,105 @@ export type { ViolationRecordResponseDto, LeaveRequestResponseDto };
 
 const EMPTY_PAGINATION = { page: 1, limit: 100, total: 0, totalPages: 0 };
 
-export function useEmployeeProfileData(employee: Employee) {
-  const companyId = useAuthStore(s => s.activeCompanyId);
+export function useEmployeeProfileData(
+  employee: Employee,
+  activeSection: EmployeeProfileSectionId,
+) {
+  const companyId = useAuthStore((s) => s.activeCompanyId);
   const [violations, setViolations] = React.useState<ViolationRecordResponseDto[]>([]);
-  const [leaveRequests, setLeaveRequests] = React.useState<LeaveRequestResponseDto[]>([]);
+  const [requestLeaveRows, setRequestLeaveRows] = React.useState<LeaveRequestResponseDto[]>([]);
   const [employeeContracts, setEmployeeContracts] = React.useState<HRContractRecord[]>([]);
   const [employeePayslipSeries, setEmployeePayslipSeries] = React.useState<Payslip[]>([]);
   const [payslipCounts, setPayslipCounts] = React.useState<EmployeePayslipCounts | null>(null);
   const [activityLogCount] = React.useState(0);
   const [roseFormsCount] = React.useState(0);
 
+  const attendance = useEmployeeProfileAttendance(
+    employee,
+    activeSection === 'attendance',
+  );
+
   React.useEffect(() => {
-    if (!employee.id) return;
+    if (!employee.id || activeSection !== 'violations') return;
+    let cancelled = false;
+    void violationRecordsApi
+      .getAll({ employeeId: employee.id, limit: 100 })
+      .then((res) => {
+        if (!cancelled) setViolations(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setViolations([]);
+      });
+    return () => { cancelled = true; };
+  }, [employee.id, activeSection]);
+
+  React.useEffect(() => {
+    if (!employee.id || activeSection !== 'requests') return;
+    let cancelled = false;
+    void leaveRequestsApi
+      .getAll({ employeeId: employee.id, limit: 100 })
+      .then((res) => {
+        if (!cancelled) setRequestLeaveRows(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setRequestLeaveRows([]);
+      });
+    return () => { cancelled = true; };
+  }, [employee.id, activeSection]);
+
+  React.useEffect(() => {
+    if (!employee.id || activeSection !== 'contracts' || !companyId) return;
+    let cancelled = false;
+    void employeeContractsApi
+      .list({ companyId, employeeId: employee.id, limit: 100 })
+      .then((res) => {
+        if (!cancelled) {
+          setEmployeeContracts(res.items.map(mapEmployeeContractFromApi));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setEmployeeContracts([]);
+      });
+    return () => { cancelled = true; };
+  }, [employee.id, activeSection, companyId]);
+
+  React.useEffect(() => {
+    if (!employee.id || activeSection !== 'salary' || !companyId) return;
     let cancelled = false;
 
     void (async () => {
-      const [vRes, lRes, cRes, psRes] = await Promise.allSettled([
-        violationRecordsApi.getAll({ employeeId: employee.id, limit: 100 }),
-        leaveRequestsApi.getAll({ employeeId: employee.id, limit: 100 }),
-        companyId
-          ? employeeContractsApi.list({ companyId, employeeId: employee.id, limit: 100 })
-          : Promise.resolve({ items: [], pagination: EMPTY_PAGINATION }),
-        companyId
-          ? payslipsApi.list({ companyId, employeeId: employee.id, limit: 200 })
-          : Promise.resolve({ items: [], pagination: { ...EMPTY_PAGINATION, limit: 200 } }),
-      ]);
-
-      if (cancelled) return;
-
-      if (vRes.status === 'fulfilled') {
-        setViolations(vRes.value.items);
-      }
-      if (lRes.status === 'fulfilled') {
-        setLeaveRequests(lRes.value.items);
-      }
-      if (cRes.status === 'fulfilled') {
-        setEmployeeContracts(cRes.value.items.map(mapEmployeeContractFromApi));
-      } else {
-        setEmployeeContracts([]);
-      }
-      if (companyId) {
+      try {
+        const history = await employeePayslipsApi.getHistory(employee.id, { companyId });
+        if (cancelled) return;
+        setEmployeePayslipSeries(
+          history.payslipsHistory.map((item) => mapEmployeePayslipHistoryItem(item, employee.id)),
+        );
+        setPayslipCounts(history.counts);
+      } catch {
+        if (cancelled) return;
         try {
-          const history = await employeePayslipsApi.getHistory(employee.id, { companyId });
-          if (!cancelled) {
-            setEmployeePayslipSeries(
-              history.payslipsHistory.map((item) => mapEmployeePayslipHistoryItem(item, employee.id)),
-            );
-            setPayslipCounts(history.counts);
-          }
+          const psRes = await payslipsApi.list({ companyId, employeeId: employee.id, limit: 200 });
+          if (cancelled) return;
+          const items = psRes.items.map(mapPayslipListItem);
+          setEmployeePayslipSeries(items);
+          setPayslipCounts({
+            totalPayslips: items.length,
+            draft: items.filter((p) => p.status === 'draft').length,
+            approved: items.filter((p) => p.status === 'approved').length,
+            paid: items.filter((p) => p.status === 'paid').length,
+          });
         } catch {
-          if (!cancelled && psRes.status === 'fulfilled') {
-            const items = psRes.value.items.map(mapPayslipListItem);
-            setEmployeePayslipSeries(items);
-            setPayslipCounts({
-              totalPayslips: items.length,
-              draft: items.filter((p) => p.status === 'draft').length,
-              approved: items.filter((p) => p.status === 'approved').length,
-              paid: items.filter((p) => p.status === 'paid').length,
-            });
-          } else if (!cancelled) {
+          if (!cancelled) {
             setEmployeePayslipSeries([]);
             setPayslipCounts(null);
           }
         }
-      } else if (!cancelled) {
-        setEmployeePayslipSeries([]);
-        setPayslipCounts(null);
       }
     })();
 
     return () => { cancelled = true; };
-  }, [employee.id, companyId]);
+  }, [employee.id, activeSection, companyId]);
 
-  const attendance = useEmployeeProfileAttendance(employee);
-
-  // Map real ShiftAssignmentResponseDto → shape the attendance section UI expects
   const employeeAssignments = React.useMemo(
     () =>
       attendance.shiftAssignments.map((a) => ({
@@ -118,7 +143,6 @@ export function useEmployeeProfileData(employee: Employee) {
     [attendance.shiftAssignments, employee.name],
   );
 
-  // Map real ShiftTemplateResponseDto → shape the attendance dialogs expect
   const shiftTemplates = React.useMemo(
     () =>
       attendance.shiftTemplates.map((t) => ({
@@ -133,7 +157,6 @@ export function useEmployeeProfileData(employee: Employee) {
     [attendance.shiftTemplates],
   );
 
-  // Map real DaySummaryResponseDto → shape the daily view expects
   const allEmployeeSummaries = React.useMemo(
     () =>
       attendance.daySummaries.map((s) => ({
@@ -192,7 +215,7 @@ export function useEmployeeProfileData(employee: Employee) {
 
   const employeeRequests = React.useMemo(
     () =>
-      leaveRequests.map((r) => ({
+      requestLeaveRows.map((r) => ({
         id: r.id,
         employeeId: r.employeeId,
         type: 'leave' as const,
@@ -203,16 +226,14 @@ export function useEmployeeProfileData(employee: Employee) {
         toDate: r.endDate ?? undefined,
         requestNumber: undefined as string | undefined,
       })),
-    [leaveRequests],
+    [requestLeaveRows],
   );
 
   return {
     branch: null as { id: string; name: string } | null,
     department: null as { id: string; name: string } | null,
     manager: null as { id: string; name: string } | null,
-    // attendance spread (still needed for dialog handlers)
     ...attendance,
-    // overridden with mapped shapes
     allEmployeeEvents,
     allEmployeeSummaries,
     employeeAssignments,

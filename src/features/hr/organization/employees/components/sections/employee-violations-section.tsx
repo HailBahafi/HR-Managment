@@ -10,9 +10,9 @@ import type { EmployeeProfileModel } from '@/features/hr/organization/employees/
 
 const STATUS_META: Record<string, { label: string; cls: string; dot: string }> = {
   pending: { label: 'قيد المراجعة', cls: 'border-gold/30 bg-gold/10 text-gold', dot: 'bg-gold' },
-  approved: { label: 'معتمد', cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700', dot: 'bg-emerald-500' },
+  approved: { label: 'معتمد', cls: 'border-success/30 bg-success/10 text-success', dot: 'bg-success' },
   rejected: { label: 'مرفوض', cls: 'border-destructive/30 bg-destructive/10 text-destructive', dot: 'bg-destructive' },
-  needs_edit: { label: 'يحتاج تعديل', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-700', dot: 'bg-amber-500' },
+  needs_edit: { label: 'يحتاج تعديل', cls: 'border-warning/30 bg-warning/10 text-warning', dot: 'bg-warning' },
 };
 
 function deductionLabel(value: number, kind: 'amount' | 'hours' | 'day'): string {
@@ -133,7 +133,7 @@ export function EmployeeViolationsSection({ model }: { model: EmployeeProfileMod
                                     'rounded-full border px-2 py-0.5 text-[10px] font-medium',
                                     inv.result === 'proven'
                                       ? 'border-destructive/30 bg-destructive/10 text-destructive'
-                                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700',
+                                      : 'border-success/30 bg-success/10 text-success',
                                   )}>
                                     {RESULT_LABELS[inv.result] ?? inv.result}
                                   </span>

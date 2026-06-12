@@ -15,6 +15,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/shared/utils';
+import {
+  filterTabTriggerClass,
+  STATUS_COUNT_BADGE,
+  STATUS_FILTER_TAB_TONES,
+} from '@/shared/status-pill-classes';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   effectiveDateRange,
@@ -27,108 +32,21 @@ import { DateRangePicker } from '@/components/ui/DateRangePicker';
 export const DATE_TAB_BASE =
   'discipline-tab-trigger shrink-0 gap-1 px-3 text-[11px] transition-all duration-150 border';
 
-const TAB_ACTIVE_SHELL =
-  'data-[state=active]:!font-semibold data-[state=active]:!shadow-md data-[state=active]:ring-2 data-[state=active]:ring-offset-2 data-[state=active]:ring-offset-background data-[state=active]:border data-[state=active]:z-[1]';
-
 export const DATE_TAB_TRIGGER_CLASS: Record<DateFilterTab, string> = {
-  all: cn(
-    DATE_TAB_BASE,
-    'border-transparent bg-slate-100/85 text-slate-700 dark:bg-slate-800/55 dark:text-slate-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-white data-[state=active]:!text-slate-950 data-[state=active]:border-slate-400/90 data-[state=active]:ring-slate-400/65',
-    'dark:data-[state=active]:!bg-slate-600 dark:data-[state=active]:!text-white dark:data-[state=active]:border-slate-500 dark:data-[state=active]:ring-slate-400/45',
-  ),
-  today: cn(
-    DATE_TAB_BASE,
-    'border-transparent bg-sky-50 text-sky-800 dark:bg-sky-950/35 dark:text-sky-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-sky-100 data-[state=active]:!text-sky-950 data-[state=active]:border-sky-400/75 data-[state=active]:ring-sky-400/55',
-    'dark:data-[state=active]:!bg-sky-900/70 dark:data-[state=active]:!text-sky-50 dark:data-[state=active]:border-sky-500 dark:data-[state=active]:ring-sky-400/40',
-  ),
-  week: cn(
-    DATE_TAB_BASE,
-    'border-transparent bg-violet-50 text-violet-800 dark:bg-violet-950/35 dark:text-violet-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-violet-100 data-[state=active]:!text-violet-950 data-[state=active]:border-violet-400/75 data-[state=active]:ring-violet-400/55',
-    'dark:data-[state=active]:!bg-violet-900/65 dark:data-[state=active]:!text-violet-50 dark:data-[state=active]:border-violet-500 dark:data-[state=active]:ring-violet-400/40',
-  ),
-  month: cn(
-    DATE_TAB_BASE,
-    'border-transparent bg-teal-50 text-teal-800 dark:bg-teal-950/35 dark:text-teal-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-teal-100 data-[state=active]:!text-teal-950 data-[state=active]:border-teal-400/75 data-[state=active]:ring-teal-400/55',
-    'dark:data-[state=active]:!bg-teal-900/65 dark:data-[state=active]:!text-teal-50 dark:data-[state=active]:border-teal-500 dark:data-[state=active]:ring-teal-400/40',
-  ),
-  custom: cn(
-    DATE_TAB_BASE,
-    'border-transparent bg-amber-50 text-amber-900 dark:bg-amber-950/35 dark:text-amber-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-amber-100 data-[state=active]:!text-amber-950 data-[state=active]:border-amber-400/80 data-[state=active]:ring-amber-400/55',
-    'dark:data-[state=active]:!bg-amber-900/65 dark:data-[state=active]:!text-amber-50 dark:data-[state=active]:border-amber-500 dark:data-[state=active]:ring-amber-400/40',
-  ),
+  all: filterTabTriggerClass('muted'),
+  today: filterTabTriggerClass('primary'),
+  week: filterTabTriggerClass('accent'),
+  month: filterTabTriggerClass('success'),
+  custom: filterTabTriggerClass('gold'),
 };
 
-export const STATUS_COUNT_BADGE =
-  'me-1.5 rounded-md bg-white/65 px-1.5 py-0.5 font-mono text-[10px] tabular-nums dark:bg-black/25 group-data-[state=active]:bg-white/95 group-data-[state=active]:shadow-sm dark:group-data-[state=active]:bg-black/45';
+export { STATUS_COUNT_BADGE };
 
-export const STATUS_ALL_TRIGGER_CLASS = cn(
-  DATE_TAB_BASE,
-  'group border-transparent bg-slate-100/85 text-slate-700 dark:bg-slate-800/55 dark:text-slate-200',
-  TAB_ACTIVE_SHELL,
-  'data-[state=active]:!bg-white data-[state=active]:!text-slate-950 data-[state=active]:border-slate-400/90 data-[state=active]:ring-slate-400/65',
-  'dark:data-[state=active]:!bg-slate-600 dark:data-[state=active]:!text-white dark:data-[state=active]:border-slate-500 dark:data-[state=active]:ring-slate-400/45',
+export const STATUS_ALL_TRIGGER_CLASS = filterTabTriggerClass('muted');
+
+export const STATUS_CYCLE_TRIGGER_CLASSES = STATUS_FILTER_TAB_TONES.map((tone) =>
+  filterTabTriggerClass(tone),
 );
-
-export const STATUS_CYCLE_TRIGGER_CLASSES = [
-  cn(
-    'border-transparent bg-sky-50 text-sky-800 dark:bg-sky-950/35 dark:text-sky-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-sky-100 data-[state=active]:!text-sky-950 data-[state=active]:border-sky-400/75 data-[state=active]:ring-sky-400/55',
-    'dark:data-[state=active]:!bg-sky-900/70 dark:data-[state=active]:!text-sky-50 dark:data-[state=active]:border-sky-500 dark:data-[state=active]:ring-sky-400/40',
-  ),
-  cn(
-    'border-transparent bg-emerald-50 text-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-emerald-100 data-[state=active]:!text-emerald-950 data-[state=active]:border-emerald-400/75 data-[state=active]:ring-emerald-400/55',
-    'dark:data-[state=active]:!bg-emerald-900/65 dark:data-[state=active]:!text-emerald-50 dark:data-[state=active]:border-emerald-500 dark:data-[state=active]:ring-emerald-400/40',
-  ),
-  cn(
-    'border-transparent bg-violet-50 text-violet-800 dark:bg-violet-950/35 dark:text-violet-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-violet-100 data-[state=active]:!text-violet-950 data-[state=active]:border-violet-400/75 data-[state=active]:ring-violet-400/55',
-    'dark:data-[state=active]:!bg-violet-900/65 dark:data-[state=active]:!text-violet-50 dark:data-[state=active]:border-violet-500 dark:data-[state=active]:ring-violet-400/40',
-  ),
-  cn(
-    'border-transparent bg-amber-50 text-amber-900 dark:bg-amber-950/35 dark:text-amber-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-amber-100 data-[state=active]:!text-amber-950 data-[state=active]:border-amber-400/80 data-[state=active]:ring-amber-400/55',
-    'dark:data-[state=active]:!bg-amber-900/65 dark:data-[state=active]:!text-amber-50 dark:data-[state=active]:border-amber-500 dark:data-[state=active]:ring-amber-400/40',
-  ),
-  cn(
-    'border-transparent bg-rose-50 text-rose-800 dark:bg-rose-950/35 dark:text-rose-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-rose-100 data-[state=active]:!text-rose-950 data-[state=active]:border-rose-400/75 data-[state=active]:ring-rose-400/55',
-    'dark:data-[state=active]:!bg-rose-900/65 dark:data-[state=active]:!text-rose-50 dark:data-[state=active]:border-rose-500 dark:data-[state=active]:ring-rose-400/40',
-  ),
-  cn(
-    'border-transparent bg-cyan-50 text-cyan-800 dark:bg-cyan-950/35 dark:text-cyan-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-cyan-100 data-[state=active]:!text-cyan-950 data-[state=active]:border-cyan-400/75 data-[state=active]:ring-cyan-400/55',
-    'dark:data-[state=active]:!bg-cyan-900/65 dark:data-[state=active]:!text-cyan-50 dark:data-[state=active]:border-cyan-500 dark:data-[state=active]:ring-cyan-400/40',
-  ),
-  cn(
-    'border-transparent bg-indigo-50 text-indigo-800 dark:bg-indigo-950/35 dark:text-indigo-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-indigo-100 data-[state=active]:!text-indigo-950 data-[state=active]:border-indigo-400/75 data-[state=active]:ring-indigo-400/55',
-    'dark:data-[state=active]:!bg-indigo-900/65 dark:data-[state=active]:!text-indigo-50 dark:data-[state=active]:border-indigo-500 dark:data-[state=active]:ring-indigo-400/40',
-  ),
-  cn(
-    'border-transparent bg-orange-50 text-orange-900 dark:bg-orange-950/35 dark:text-orange-200',
-    TAB_ACTIVE_SHELL,
-    'data-[state=active]:!bg-orange-100 data-[state=active]:!text-orange-950 data-[state=active]:border-orange-400/75 data-[state=active]:ring-orange-400/55',
-    'dark:data-[state=active]:!bg-orange-900/65 dark:data-[state=active]:!text-orange-50 dark:data-[state=active]:border-orange-500 dark:data-[state=active]:ring-orange-400/40',
-  ),
-];
 
 export type EntityFilterToolbarHandle = {
   resetDateFilter: () => void;

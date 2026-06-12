@@ -32,18 +32,19 @@ import {
 } from '@/features/hr/contracts/lib/employee-advances-store';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { cn, formatNumber } from '@/shared/utils';
+import { STATUS_PILL } from '@/shared/status-pill-classes';
 
 type StatusFilter = 'all' | HREmployeeAdvanceStatus;
 
 const STATUS_COLORS: Record<HREmployeeAdvanceStatus, string> = {
-  draft: 'text-muted-foreground border-border bg-muted/40',
-  pending_approval: 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/30',
-  approved: 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30',
-  rejected: 'text-destructive border-destructive/30 bg-destructive/5',
-  disbursed: 'text-primary border-primary/25 bg-primary/5',
-  repaying: 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/30',
-  fully_repaid: 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30',
-  cancelled: 'text-muted-foreground border-border bg-muted/40',
+  draft: STATUS_PILL.muted,
+  pending_approval: STATUS_PILL.pending,
+  approved: STATUS_PILL.approved,
+  rejected: STATUS_PILL.rejected,
+  disbursed: STATUS_PILL.info,
+  repaying: STATUS_PILL.warning,
+  fully_repaid: STATUS_PILL.approved,
+  cancelled: STATUS_PILL.cancelled,
 };
 
 type DraftForm = {
@@ -431,7 +432,7 @@ export function EmployeeAdvancesClient() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 text-xs text-emerald-600 hover:text-emerald-600 hover:bg-emerald-500/10"
+                        className="h-7 text-xs text-success hover:text-success hover:bg-success/10"
                         disabled={loading}
                         title="موافقة"
                         onClick={() => void runAction(x.id, () => approve(x.id), 'تم اعتماد السلفة.')}

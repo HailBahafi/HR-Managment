@@ -86,7 +86,14 @@ export function useNotificationsAdminDirectoryModel() {
   const [companyOptions, setCompanyOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [branchOptions, setBranchOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [departmentOptions, setDepartmentOptions] = React.useState<{ value: string; label: string }[]>([]);
-  const [employeeOptions, setEmployeeOptions] = React.useState<{ value: string; label: string }[]>([]);
+  const [employeeOptions, setEmployeeOptions] = React.useState<{
+    value: string;
+    label: string;
+    branchId?: string;
+    branchNameAr?: string;
+    departmentId?: string;
+    departmentNameAr?: string;
+  }[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [referenceLoaded, setReferenceLoaded] = React.useState(false);
@@ -126,6 +133,10 @@ export function useNotificationsAdminDirectoryModel() {
         ensurePaginatedResult(employeesRes).items.map((e) => ({
           value: e.id,
           label: e.nameAr ?? e.nameEn ?? e.id,
+          branchId: e.branchId ?? undefined,
+          branchNameAr: e.branchNameAr ?? undefined,
+          departmentId: e.departmentId ?? undefined,
+          departmentNameAr: e.departmentNameAr ?? undefined,
         })),
       );
       setReferenceLoaded(true);

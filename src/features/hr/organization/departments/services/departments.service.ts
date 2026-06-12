@@ -13,14 +13,14 @@ export type DepartmentsDirectoryData = {
 };
 
 export async function loadDepartmentsDirectory(filters?: { isActive?: boolean }): Promise<DepartmentsDirectoryData> {
-  const query: Parameters<typeof departmentsApi.getAll>[0] = {};
+  const scope = await resolveOrganizationScope();
+  const query: Parameters<typeof departmentsApi.getAll>[0] = {
+    companyId: scope.companyId ?? undefined,
+    branchId: scope.branchId ?? undefined,
+  };
   if (filters?.isActive !== undefined) query.isActive = filters.isActive;
 
   const res = await departmentsApi.getAll(query);
-  const scope = await resolveOrganizationScope({
-    companyId: res.items[0]?.companyId,
-    branchId: res.items[0]?.branchId,
-  });
 
   return {
     departments: res.items.map(mapDepartmentResponse),

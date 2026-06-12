@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { STATUS_PILL } from '@/shared/status-pill-classes';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { payrollPeriodsApi, type PayrollPeriodResponseDto } from './api/payroll-periods';
 import {
@@ -565,11 +566,11 @@ export const PERIOD_STATUS_LABELS: Record<HRPayrollPeriodStatus, string> = {
 };
 
 export const PERIOD_STATUS_COLORS: Record<HRPayrollPeriodStatus, string> = {
-  draft: 'text-muted-foreground border-border bg-muted/40',
-  open: 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30',
-  locked: 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/30',
-  closed: 'text-slate-600 border-slate-200 bg-slate-50 dark:text-slate-400 dark:border-slate-700 dark:bg-slate-900/30',
-  cancelled: 'text-destructive border-destructive/30 bg-destructive/5',
+  draft: STATUS_PILL.muted,
+  open: STATUS_PILL.approved,
+  locked: STATUS_PILL.warning,
+  closed: STATUS_PILL.muted,
+  cancelled: STATUS_PILL.rejected,
 };
 
 /** Periods that allow editing metadata from the UI (matches backend rules). */

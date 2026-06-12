@@ -8,8 +8,8 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import type { CreateBranchDto, UpdateBranchDto } from '@/features/hr/organization/lib/api/branches';
 import {
   createBranch,
   deleteBranch,
@@ -19,6 +19,9 @@ import {
 import { slugify } from '@/features/hr/requests/lib/types';
 import {
   BRANCH_EMPTY_FORM,
+  branchRowToDraftForm,
+  draftFormToCreatePayload,
+  draftFormToUpdatePayload,
   type BranchDraftForm,
   type BranchRow,
 } from '@/features/hr/organization/branches/constants/branches-directory';
@@ -72,7 +75,7 @@ export function useBranchesDirectoryModel() {
 
   const openEdit = React.useCallback((b: BranchRow) => {
     setEditId(b.id);
-    setForm({ name: b.name, city: b.city });
+    setForm(branchRowToDraftForm(b));
     setError(null);
     setDrawerOpen(true);
   }, []);
@@ -94,19 +97,9 @@ export function useBranchesDirectoryModel() {
     setError(null);
     try {
       if (editId) {
-        const payload: UpdateBranchDto = {
-          nameAr: form.name.trim(),
-          city: form.city.trim(),
-        };
-        await updateBranch(editId, payload);
+        await updateBranch(editId, draftFormToUpdatePayload(form));
       } else {
-        const payload: CreateBranchDto = {
-          companyId: defaultCompanyId,
-          code: slugify(form.name),
-          nameAr: form.name.trim(),
-          city: form.city.trim(),
-        };
-        await createBranch(payload);
+        await createBranch(draftFormToCreatePayload(form, defaultCompanyId, slugify(form.name)));
       }
       await loadBranches();
       setDrawerOpen(false);
@@ -133,9 +126,11 @@ export function useBranchesDirectoryModel() {
     () => (
       <div className="flex items-center gap-2">
         <FilterToggleButton />
-        <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
-          <Plus className="h-4 w-4" /> فرع جديد
-        </Button>
+        <PermissionGate permission="hr.employees.create">
+          <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
+            <Plus className="h-4 w-4" /> فرع جديد
+          </Button>
+        </PermissionGate>
       </div>
     ),
     [openCreate],

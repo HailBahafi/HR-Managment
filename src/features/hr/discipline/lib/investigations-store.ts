@@ -12,7 +12,8 @@ function mapApi(r: DisciplineInvestigationResponseDto): HRDisciplineInvestigatio
     caseNumber: r.linkedViolationRecordNumber,
     employeeId: r.subjectEmployeeId,
     employeeNameAr: '',
-    investigatorName: r.investigatorEmployeeId,
+    investigatorEmployeeId: r.investigatorEmployeeId,
+    investigatorName: r.investigatorEmployeeId ?? '',
     date: r.investigationDate,
     employeeStatement: r.employeeStatement ?? '',
     witnessStatement: r.witnessStatement ?? '',
@@ -58,24 +59,32 @@ export const useHRDisciplineInvestigationsStore = create<InvestigationsState>()(
     const created = await disciplineInvestigationsApi.create({
       companyId,
       violationRecordId: d.caseId || undefined,
+    investigatorEmployeeId: d.investigatorName,
+    investigationDate: d.date,
+    result: 'pending',
+  });
+    const updated = await disciplineInvestigationsApi.submitResults(created.id, {
       investigatorEmployeeId: d.investigatorName,
-      investigationDate: d.date,
       employeeStatement: d.employeeStatement || null,
       witnessStatement: d.witnessStatement || null,
-      result: d.result,
+      result: d.result === 'pending' ? 'proven' : d.result,
       recommendation: d.recommendationType ?? null,
+      ...(d.recommendationType === 'deduction' && d.deductionType
+        ? { deductionType: d.deductionType, deductionValue: d.deductionValue ?? undefined }
+        : {}),
     });
-    set((s) => ({ investigations: [...s.investigations, mapApi(created)] }));
+    set((s) => ({ investigations: [...s.investigations, mapApi(updated)] }));
   },
 
   update: async (id, patch) => {
-    const updated = await disciplineInvestigationsApi.update(id, {
-      ...(patch.investigatorName != null ? { investigatorEmployeeId: patch.investigatorName } : {}),
-      ...(patch.date != null ? { investigationDate: patch.date } : {}),
-      ...(patch.employeeStatement != null ? { employeeStatement: patch.employeeStatement } : {}),
-      ...(patch.witnessStatement != null ? { witnessStatement: patch.witnessStatement } : {}),
-      ...(patch.result != null ? { result: patch.result } : {}),
-      ...(patch.recommendationType !== undefined ? { recommendation: patch.recommendationType } : {}),
+    const existing = useHRDisciplineInvestigationsStore.getState().investigations.find((i) => i.id === id);
+    if (!existing) return;
+    const updated = await disciplineInvestigationsApi.submitResults(id, {
+      investigatorEmployeeId: patch.investigatorName ?? existing.investigatorName,
+      employeeStatement: patch.employeeStatement ?? existing.employeeStatement,
+      witnessStatement: patch.witnessStatement ?? existing.witnessStatement,
+      result: (patch.result ?? existing.result) === 'pending' ? 'proven' : (patch.result ?? existing.result) as 'proven' | 'not_proven',
+      recommendation: patch.recommendationType !== undefined ? patch.recommendationType : existing.recommendationType,
     });
     set((s) => ({ investigations: s.investigations.map((i) => (i.id === id ? mapApi(updated) : i)) }));
   },

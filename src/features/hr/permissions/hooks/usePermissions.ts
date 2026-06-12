@@ -39,13 +39,13 @@ export function scopeToHrApplication(all: PermissionResponseDto[], applicationId
 }
 
 /** Fetches GET /permissions (no applicationId query param) and scopes to HR client-side. */
-export function usePermissions(hrApplicationId?: string) {
+export function usePermissions(hrApplicationId?: string, queryEnabled = true) {
   const query = useQuery({
     queryKey: ['permissions', 'all-pages'],
     queryFn: loadAllPermissions,
     staleTime: 60 * 1000,
     refetchOnMount: 'always',
-    enabled: hasAuthToken(),
+    enabled: queryEnabled && hasAuthToken(),
   });
 
   const catalog = React.useMemo(

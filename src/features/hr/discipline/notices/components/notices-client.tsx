@@ -2,6 +2,12 @@
 
 import * as React from 'react';
 import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus } from 'lucide-react';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+  EntityActionCardGridSkeleton,
+} from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -282,13 +288,7 @@ export function NoticesClient() {
   );
 
   if (loading) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" />
-        ))}
-      </div>
-    );
+    return <EntityActionCardGridSkeleton count={6} />;
   }
 
   if (listError) {
@@ -324,29 +324,26 @@ export function NoticesClient() {
           <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>عرض الكل</Button>
         </div>
       ) : viewMode === 'cards' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {listFiltered.map(n => (
-            <div key={n.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{n.employeeNameAr}</p>
-                  <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground" dir="ltr">
-                    <CalendarDays className="h-3 w-3 shrink-0" />{n.date}
-                  </p>
-                </div>
-                <span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
-                  {NOTICE_KIND_LABELS[n.kind]}
-                </span>
-              </div>
-              <p className="line-clamp-3 text-xs text-muted-foreground">{n.reasonAr}</p>
-              <div className="mt-auto flex justify-end border-t border-border pt-3">
-                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(n.id)}>
-                  <Trash2 className="h-3.5 w-3.5" /> حذف
-                </Button>
-              </div>
-            </div>
+        <EntityActionCardGrid>
+          {listFiltered.map((n) => (
+            <EntityActionCard
+              key={n.id}
+              title={n.employeeNameAr ?? '—'}
+              status={{ label: NOTICE_KIND_LABELS[n.kind], tone: 'primary' }}
+              chips={
+                <EntityActionCardChip className="font-mono tabular-nums">
+                  <span className="inline-flex items-center gap-1" dir="ltr">
+                    <CalendarDays className="h-3 w-3 shrink-0" />
+                    {n.date}
+                  </span>
+                </EntityActionCardChip>
+              }
+              description={n.reasonAr}
+              onClick={() => setDetailRow(n)}
+              onDelete={() => setDeleteId(n.id)}
+            />
           ))}
-        </div>
+        </EntityActionCardGrid>
       ) : (
         <DataTable
           variant="directory"

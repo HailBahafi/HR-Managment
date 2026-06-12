@@ -21,9 +21,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Topbar />
                 <Sidebar />
                 <FilterPanel />
-                <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4">
+                <main className="flex flex-1 flex-col min-h-0 min-w-0 overflow-hidden p-4">
                   <AppEntityFilterRegion />
-                  <AuthenticatedShell>{children}</AuthenticatedShell>
+                  <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+                    <AuthenticatedShell>{children}</AuthenticatedShell>
+                  </div>
                 </main>
                 <Toaster richColors position="top-right" dir="rtl" closeButton />
               </div>

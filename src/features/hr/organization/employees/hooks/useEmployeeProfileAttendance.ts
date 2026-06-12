@@ -9,7 +9,7 @@ import { shiftAssignmentsApi, type ShiftAssignmentResponseDto } from '@/features
 
 export type { DaySummaryResponseDto, AttendanceEventResponseDto, ShiftTemplateResponseDto, ShiftAssignmentResponseDto };
 
-export function useEmployeeProfileAttendance(employee: Employee) {
+export function useEmployeeProfileAttendance(employee: Employee, enabled = true) {
   const [daySummaries, setDaySummaries] = React.useState<DaySummaryResponseDto[]>([]);
   const [events, setEvents] = React.useState<AttendanceEventResponseDto[]>([]);
   const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplateResponseDto[]>([]);
@@ -19,7 +19,7 @@ export function useEmployeeProfileAttendance(employee: Employee) {
   const [attTo, setAttTo] = React.useState('');
 
   React.useEffect(() => {
-    if (!employee.id) return;
+    if (!employee.id || !enabled) return;
     void (async () => {
       try {
         const [summRes, evtRes, tmplRes, assignRes] = await Promise.all([
@@ -36,7 +36,7 @@ export function useEmployeeProfileAttendance(employee: Employee) {
         // silently ignore
       }
     })();
-  }, [employee.id, attFrom, attTo]);
+  }, [employee.id, attFrom, attTo, enabled]);
 
   const employeeSummaries = React.useMemo(
     () => daySummaries.filter(

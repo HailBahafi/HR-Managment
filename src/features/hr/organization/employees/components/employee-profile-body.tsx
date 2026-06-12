@@ -19,12 +19,15 @@ import { EmployeeSalarySection } from '@/features/hr/organization/employees/comp
 import type { Employee } from '@/features/hr/organization/employees/types';
 import { EmployeeHrPdfPrepDialog } from '@/features/hr/organization/employees/components/dialogs/employee-hr-pdf-prep-dialog';
 import { EmployeeCreateUserDialog } from '@/features/hr/organization/employees/components/dialogs/employee-create-user-dialog';
+import { EmployeeAssignmentDialog } from '@/features/hr/organization/employees/components/dialogs/employee-assignment-dialog';
+import { EmployeeAssignmentEditDialog } from '@/features/hr/organization/employees/components/dialogs/employee-assignment-edit-dialog';
+import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
 
 export function EmployeeProfileBody({ employee, onUpdated }: { employee: Employee; onUpdated?: (updated: Employee) => void }) {
   const model = useEmployeeProfileModel(employee, onUpdated);
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <EmployeeProfileShell model={model}>
         {model.activeSection === 'personal' && <EmployeePersonalSection model={model} />}
         {model.activeSection === 'employment' && <EmployeeEmploymentSection model={model} />}
@@ -41,6 +44,17 @@ export function EmployeeProfileBody({ employee, onUpdated }: { employee: Employe
       </EmployeeProfileShell>
 
       <EmployeeCreateUserDialog employee={model.employee} model={model} />
+      <EmployeeAssignmentDialog employee={model.employee} model={model} />
+      <EmployeeAssignmentEditDialog model={model} />
+      <ConfirmationModal
+        open={model.deleteAssignmentTarget != null}
+        onOpenChange={(o) => !o && model.setDeleteAssignmentTarget(null)}
+        onConfirm={() => void model.confirmDeleteAssignment()}
+        title="حذف الإسناد"
+        description="سيُزال هذا الإسناد من سجل الموظف. لا يمكن التراجع."
+        confirmLabel="حذف"
+        variant="destructive"
+      />
 
       <EmployeeHrPdfPrepDialog
         open={model.hrPdfPrepKind != null}
@@ -70,6 +84,6 @@ export function EmployeeProfileBody({ employee, onUpdated }: { employee: Employe
         onOpenChange={model.setLeaveRequestOpen}
         initialType="leave"
       />
-    </>
+    </div>
   );
 }

@@ -29,6 +29,7 @@ export default function DepartmentsPage() {
         <DepartmentsListGrid
           departments={model.departments}
           filtered={model.filtered}
+          branchLabel={model.branchLabel}
           onEdit={model.openEdit}
           onDelete={model.confirmDelete}
         />

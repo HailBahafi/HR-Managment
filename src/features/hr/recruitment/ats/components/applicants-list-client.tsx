@@ -14,36 +14,18 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
+import { ATS_STAGE_BADGE, ATS_STAGE_TABS, scoreBarTone, type AtsStageTab } from '@/features/hr/recruitment/lib/ats/stage-styles';
 import { DisplayDate } from '@/components/ui/table-cells';
 
 /* ─── Stage config ────────────────────────────────────────────── */
-type StageTab = AtsPipelineStage | 'all';
+type StageTab = AtsStageTab;
 
-const STAGES: { key: StageTab; label: string; pill: string; dot: string }[] = [
-  { key: 'all',       label: 'الكل',         pill: 'bg-slate-100/85 text-slate-700 data-[active=true]:bg-white data-[active=true]:border-slate-400/90 data-[active=true]:shadow-md',  dot: 'bg-slate-400' },
-  { key: 'applied',   label: 'تم التقديم',   pill: 'bg-sky-50 text-sky-800 data-[active=true]:bg-sky-100 data-[active=true]:border-sky-400/75 data-[active=true]:shadow-md',           dot: 'bg-sky-400' },
-  { key: 'screening', label: 'الفرز',        pill: 'bg-violet-50 text-violet-800 data-[active=true]:bg-violet-100 data-[active=true]:border-violet-400/75 data-[active=true]:shadow-md', dot: 'bg-violet-400' },
-  { key: 'interview', label: 'المقابلة',     pill: 'bg-amber-50 text-amber-900 data-[active=true]:bg-amber-100 data-[active=true]:border-amber-400/80 data-[active=true]:shadow-md',    dot: 'bg-amber-400' },
-  { key: 'technical', label: 'تقني',         pill: 'bg-purple-50 text-purple-800 data-[active=true]:bg-purple-100 data-[active=true]:border-purple-400/75 data-[active=true]:shadow-md', dot: 'bg-purple-400' },
-  { key: 'offer',     label: 'العرض',        pill: 'bg-teal-50 text-teal-800 data-[active=true]:bg-teal-100 data-[active=true]:border-teal-400/75 data-[active=true]:shadow-md',        dot: 'bg-teal-400' },
-  { key: 'hired',     label: 'تم التعيين',   pill: 'bg-emerald-50 text-emerald-800 data-[active=true]:bg-emerald-100 data-[active=true]:border-emerald-400/75 data-[active=true]:shadow-md', dot: 'bg-emerald-500' },
-  { key: 'rejected',  label: 'مرفوض',        pill: 'bg-rose-50 text-rose-800 data-[active=true]:bg-rose-100 data-[active=true]:border-rose-400/80 data-[active=true]:shadow-md',        dot: 'bg-rose-400' },
-];
-
-const STAGE_BADGE: Record<AtsPipelineStage, string> = {
-  applied:   'bg-sky-50 text-sky-700 border-sky-200',
-  screening: 'bg-violet-50 text-violet-700 border-violet-200',
-  interview: 'bg-amber-50 text-amber-700 border-amber-200',
-  technical: 'bg-purple-50 text-purple-700 border-purple-200',
-  offer:     'bg-teal-50 text-teal-700 border-teal-200',
-  hired:     'bg-emerald-50 text-emerald-700 border-emerald-200',
-  rejected:  'bg-rose-50 text-rose-700 border-rose-200',
-};
+const STAGES = ATS_STAGE_TABS;
+const STAGE_BADGE = ATS_STAGE_BADGE;
 
 /* ─── Score bar ───────────────────────────────────────────────── */
 function ScoreBar({ score }: { score: number }) {
-  const bar = score >= 75 ? 'bg-emerald-400' : score >= 50 ? 'bg-amber-400' : 'bg-rose-400';
-  const text = score >= 75 ? 'text-emerald-600' : score >= 50 ? 'text-amber-600' : 'text-rose-500';
+  const { bar, text } = scoreBarTone(score);
   return (
     <div className="flex items-center gap-1.5">
       <div className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
@@ -128,7 +110,7 @@ export function ApplicantsListClient() {
             </SelectContent>
           </Select>
           <div className="relative w-full sm:w-24">
-            <Star className="absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-amber-500" />
+            <Star className="absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gold" />
             <Input type="number" min={0} max={100} placeholder="نقاط ≥" value={minScore} onChange={(e) => setMinScore(e.target.value)} className="h-8 pr-7 text-xs" />
           </div>
           {hasActiveFilter && (

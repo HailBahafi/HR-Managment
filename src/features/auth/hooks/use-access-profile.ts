@@ -7,6 +7,7 @@ export const ACCESS_PROFILE_KEY = ['auth', 'access-profile'] as const;
 
 export function useAccessProfile() {
   const user = useAuthStore((s) => s.user);
+  const accessProfile = useAuthStore((s) => s.accessProfile);
   const setAccessProfile = useAuthStore((s) => s.setAccessProfile);
 
   return useQuery({
@@ -16,7 +17,7 @@ export function useAccessProfile() {
       setAccessProfile(profile);
       return profile;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !accessProfile,
     staleTime: Infinity,
     gcTime: Infinity,
   });

@@ -13,6 +13,8 @@ export interface Employee {
   position: string;
   departmentId: string;
   branchId: string;
+  branchNameAr?: string;
+  departmentNameAr?: string;
   managerId: string | null;
   contractType: ContractType;
   contractStatus: ContractStatus;

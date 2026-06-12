@@ -159,7 +159,7 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
                   ? `${rolePermissions.length} صلاحية من الدور`
                   : 'لم يُعيَّن دور بعد'}
                 {extraAllowPermissions.length > 0 && (
-                  <span className="text-emerald-600 dark:text-emerald-400">
+                  <span className="text-success">
                     {' '}+ {extraAllowPermissions.length} صلاحية إضافية
                   </span>
                 )}
@@ -202,7 +202,7 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
                     {isDenied ? (
                       <Ban className="h-3.5 w-3.5 shrink-0 text-destructive" />
                     ) : (
-                      <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                      <Check className="h-3.5 w-3.5 shrink-0 text-success" />
                     )}
                     <span className={`text-sm leading-snug ${isDenied ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                       {permLabel(p)}
@@ -217,7 +217,7 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
                     size="sm"
                     className={`h-7 shrink-0 text-xs gap-1 ${
                       isDenied
-                        ? 'border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                        ? 'border-success/30 text-success hover:bg-success/10'
                         : 'text-destructive hover:bg-destructive/10'
                     }`}
                     disabled={!hasLinkedUser || isMutating}
@@ -240,7 +240,7 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
       <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-soft">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Plus className="h-4 w-4 text-emerald-500 shrink-0" />
+            <Plus className="h-4 w-4 text-success shrink-0" />
             صلاحيات إضافية
             {extraAllowPermissions.length > 0 && (
               <Badge variant="subtle" className="text-[10px]">{extraAllowPermissions.length}</Badge>
@@ -305,10 +305,10 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
               return (
                 <li
                   key={p.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200/60 bg-emerald-50/30 dark:border-emerald-800/40 dark:bg-emerald-950/20 px-3 py-2.5"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-success/25 bg-success/5 px-3 py-2.5"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    <Check className="h-3.5 w-3.5 shrink-0 text-success" />
                     <span className="text-sm text-foreground leading-snug">{permLabel(p)}</span>
                     <code className="text-[10px] text-muted-foreground font-mono hidden sm:block" dir="ltr">
                       {p.code}

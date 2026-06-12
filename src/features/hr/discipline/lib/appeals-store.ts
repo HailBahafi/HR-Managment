@@ -62,12 +62,13 @@ export const useHRDisciplineAppealsStore = create<AppealsState>()((set) => ({
   },
 
   update: async (id, patch) => {
+    const updatedBy = useAuthStore.getState().user?.email ?? useAuthStore.getState().user?.id ?? undefined;
     const updated = await disciplineAppealsApi.update(id, {
       appealDate: patch.date,
       groundsAr: patch.grounds,
-      status: patch.status,
       channel: patch.channel,
       responseNote: patch.responseNote,
+      updatedBy,
     });
     set((s) => ({ appeals: s.appeals.map((a) => (a.id === id ? mapApi(updated) : a)) }));
   },

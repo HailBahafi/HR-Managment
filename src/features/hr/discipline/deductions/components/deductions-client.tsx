@@ -2,6 +2,15 @@
 
 import * as React from 'react';
 import { Send } from 'lucide-react';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+  EntityActionCardMetric,
+  EntityActionCardMetricDivider,
+  EntityActionCardMetricsRow,
+  type WorkflowStatusTone,
+} from '@/components/ui/entity-action-card';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -24,6 +33,7 @@ import type { HRDeductionStatus, HRViolationDeductionKind } from '@/features/hr/
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { dateToYMD, matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { cn, formatNumber } from '@/shared/utils';
+import { STATUS_PILL } from '@/shared/status-pill-classes';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -56,10 +66,17 @@ function createdAtToYmd(iso: string): string {
 }
 
 const STATUS_COLORS: Record<HRDeductionStatus, string> = {
-  ready: 'text-blue-700 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/30',
-  posted: 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30',
-  calculated: 'text-purple-700 border-purple-200 bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:bg-purple-950/30',
-  cancelled: 'text-muted-foreground border-border bg-muted/30',
+  ready: STATUS_PILL.info,
+  posted: STATUS_PILL.approved,
+  calculated: STATUS_PILL.calculated,
+  cancelled: STATUS_PILL.cancelled,
+};
+
+const DEDUCTION_STATUS_TONE: Record<HRDeductionStatus, WorkflowStatusTone> = {
+  ready: 'info',
+  posted: 'approved',
+  calculated: 'warning',
+  cancelled: 'muted',
 };
 
 export function DeductionsClient() {
@@ -312,41 +329,42 @@ export function DeductionsClient() {
               onRowClick={(d) => setDetailRow(d)}
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <EntityActionCardGrid>
               {listFiltered.map((d) => (
-                <div key={d.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-mono text-[10px] font-bold text-muted-foreground">{d.caseNumber}</p>
-                      <p className="font-semibold truncate mt-0.5">{d.employeeNameAr}</p>
-                    </div>
-                    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium shrink-0', STATUS_COLORS[d.status])}>
-                      {DEDUCTION_STATUS_LABELS[d.status]}
-                    </span>
-                  </div>
-                  {d.reasonAr && <p className="text-xs text-muted-foreground line-clamp-2">{d.reasonAr}</p>}
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                      {DEDUCTION_KIND_LABELS[d.deductionKind]}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                      {d.month}
-                    </span>
-                  </div>
-                  <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
-                    <span className="text-[10px] text-muted-foreground">المبلغ</span>
-                    <span className="font-semibold">{formatNumber(d.amount)}</span>
-                  </div>
-                  {d.status === 'ready' ? (
-                    <div className="pt-1">
-                      <Button size="sm" variant="outline" className="w-full h-7 text-[11px]" onClick={() => handleSendToPayroll(d.id)}>
+                <EntityActionCard
+                  key={d.id}
+                  reference={d.caseNumber}
+                  title={d.employeeNameAr ?? '—'}
+                  status={{
+                    label: DEDUCTION_STATUS_LABELS[d.status],
+                    tone: DEDUCTION_STATUS_TONE[d.status],
+                  }}
+                  description={d.reasonAr}
+                  chips={
+                    <>
+                      <EntityActionCardChip>{DEDUCTION_KIND_LABELS[d.deductionKind]}</EntityActionCardChip>
+                      <EntityActionCardChip className="font-mono tabular-nums">{d.month}</EntityActionCardChip>
+                    </>
+                  }
+                  metrics={
+                    <EntityActionCardMetricsRow>
+                      <EntityActionCardMetric label="المبلغ" value={formatNumber(d.amount)} />
+                      <EntityActionCardMetricDivider />
+                      <EntityActionCardMetric label="الشهر" value={d.month} dir="ltr" />
+                    </EntityActionCardMetricsRow>
+                  }
+                  onClick={() => setDetailRow(d)}
+                  extraFooter={
+                    d.status === 'ready' ? (
+                      <Button size="sm" variant="outline" className="h-7 w-full text-[11px]" onClick={() => handleSendToPayroll(d.id)}>
+                        <Send className="h-3.5 w-3.5 me-1" />
                         إرسال للرواتب
                       </Button>
-                    </div>
-                  ) : null}
-                </div>
+                    ) : undefined
+                  }
+                />
               ))}
-            </div>
+            </EntityActionCardGrid>
           )}
         </>
       )}

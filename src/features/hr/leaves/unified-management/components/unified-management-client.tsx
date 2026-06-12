@@ -40,6 +40,16 @@ import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { cn } from '@/shared/utils';
 import { toast } from 'sonner';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+  EntityActionCardMetric,
+  EntityActionCardMetricDivider,
+  EntityActionCardMetricsRow,
+  EntityActionCardStatusBlock,
+  type WorkflowStatusTone,
+} from '@/components/ui/entity-action-card';
 
 // ─── Style config ─────────────────────────────────────────────────────────────
 
@@ -51,11 +61,18 @@ const TYPE_STYLE: Record<UnifiedLeaveType, { color: string; dot: string }> = {
   emergency: { color: 'bg-destructive/10 text-destructive border-destructive/30', dot: 'bg-destructive' },
 };
 
-const STATUS_STYLE: Record<LeaveStatus, { color: string; dot: string; label: string }> = {
-  pending:   { color: 'bg-gold/10 text-gold border-gold/30', dot: 'bg-gold', label: 'قيد الانتظار' },
-  approved:  { color: 'bg-success/10 text-success border-success/30', dot: 'bg-success', label: 'موافق عليه' },
-  rejected:  { color: 'bg-destructive/10 text-destructive border-destructive/30', dot: 'bg-destructive', label: 'مرفوض' },
-  cancelled: { color: 'bg-muted text-muted-foreground border-border', dot: 'bg-muted-foreground', label: 'ملغاة' },
+const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
+  pending: 'قيد الانتظار',
+  approved: 'موافق عليه',
+  rejected: 'مرفوض',
+  cancelled: 'ملغاة',
+};
+
+const LEAVE_STATUS_TONE: Record<LeaveStatus, WorkflowStatusTone> = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  cancelled: 'muted',
 };
 
 // ─── Default filter state ─────────────────────────────────────────────────────
@@ -106,34 +123,33 @@ function leaveStatusMeta(l: UnifiedLeaveRecord): { dateLabel?: string; dateValue
 }
 
 function LeaveStatusBadge({ leave }: { leave: UnifiedLeaveRecord }) {
-  const statusCfg = STATUS_STYLE[leave.status];
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium', statusCfg.color)}>
-      <span className={cn('h-1.5 w-1.5 rounded-full', statusCfg.dot)} />
-      {statusCfg.label}
-    </span>
+    <EntityActionCardStatusBlock
+      status={{
+        label: LEAVE_STATUS_LABELS[leave.status],
+        tone: LEAVE_STATUS_TONE[leave.status],
+      }}
+    />
   );
 }
 
 function LeaveStatusBlock({ leave, compact = false }: { leave: UnifiedLeaveRecord; compact?: boolean }) {
   const meta = leaveStatusMeta(leave);
   return (
-    <div className={cn('space-y-0.5', compact ? 'min-w-0' : '')}>
-      <LeaveStatusBadge leave={leave} />
-      {meta.dateValue ? (
-        <p className={cn('text-muted-foreground', compact ? 'text-[10px]' : 'text-[11px]')}>
-          {meta.dateLabel}: <span className="font-mono text-foreground" dir="ltr">{meta.dateValue}</span>
-        </p>
-      ) : null}
-      {leave.decisionNotesAr?.trim() ? (
-        <p
-          className={cn('line-clamp-2 text-muted-foreground', compact ? 'text-[10px]' : 'text-[11px]')}
-          title={leave.decisionNotesAr}
-        >
-          {leave.decisionNotesAr}
-        </p>
-      ) : null}
-    </div>
+    <EntityActionCardStatusBlock
+      status={{
+        label: LEAVE_STATUS_LABELS[leave.status],
+        tone: LEAVE_STATUS_TONE[leave.status],
+        meta: meta.dateValue ? (
+          <>
+            {meta.dateLabel}: <span className="font-mono text-foreground" dir="ltr">{meta.dateValue}</span>
+          </>
+        ) : leave.decisionNotesAr?.trim() ? (
+          <span className="line-clamp-2" title={leave.decisionNotesAr}>{leave.decisionNotesAr}</span>
+        ) : undefined,
+      }}
+      compact={compact}
+    />
   );
 }
 
@@ -181,7 +197,7 @@ function LeaveDecisionCell({
           </p>
         </>
       ) : (
-        <p className="text-muted-foreground">{STATUS_STYLE[leave.status].label}</p>
+        <p className="text-muted-foreground">{LEAVE_STATUS_LABELS[leave.status]}</p>
       )}
       {leave.decisionNotesAr?.trim() ? (
         <p className="line-clamp-2 text-muted-foreground" title={leave.decisionNotesAr}>
@@ -228,10 +244,10 @@ function leaveOverlapsYmdRange(leave: UnifiedLeaveRecord, from: string, to: stri
 const LEAVE_STATUS_TOOLBAR_ORDER: LeaveStatus[] = ['pending', 'approved', 'rejected', 'cancelled'];
 
 const LEAVE_STATUS_LABELS_FOR_TOOLBAR: Record<string, string> = {
-  pending: STATUS_STYLE.pending.label,
-  approved: STATUS_STYLE.approved.label,
-  rejected: STATUS_STYLE.rejected.label,
-  cancelled: STATUS_STYLE.cancelled.label,
+  pending: LEAVE_STATUS_LABELS.pending,
+  approved: LEAVE_STATUS_LABELS.approved,
+  rejected: LEAVE_STATUS_LABELS.rejected,
+  cancelled: LEAVE_STATUS_LABELS.cancelled,
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -683,82 +699,57 @@ function LeaveCardGrid({ leaves, employees, onDetail, onApprove, onReject }: {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <EntityActionCardGrid>
       {leaves.map((l) => {
         const name = employeeDisplayName(l, employees);
         const typeCfg = TYPE_STYLE[l.type];
         const canAct = canActOnLeave(l);
+        const meta = leaveStatusMeta(l);
         return (
-          <div
+          <EntityActionCard
             key={l.id}
             onClick={() => onDetail(l)}
-            className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md"
-          >
-            <div className="h-0.5 w-full shrink-0 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
-
-            <div className="flex flex-1 flex-col gap-2.5 p-3.5">
-              {/* Employee row */}
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                  {name.charAt(0) ?? '?'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold leading-tight transition-colors group-hover:text-primary">
-                    {name}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">{leaveTypeDisplayLabel(l)}</p>
-                </div>
-                <LeaveStatusBlock leave={l} compact />
-              </div>
-
-              {/* Type badge */}
-              <span className={cn('inline-flex w-fit items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium', typeCfg.color)}>
+            title={name}
+            subtitle={leaveTypeDisplayLabel(l)}
+            avatarLetter={name}
+            status={{
+              label: LEAVE_STATUS_LABELS[l.status],
+              tone: LEAVE_STATUS_TONE[l.status],
+              meta: meta.dateValue ? (
+                <>
+                  {meta.dateLabel}: <span className="font-mono text-foreground" dir="ltr">{meta.dateValue}</span>
+                </>
+              ) : undefined,
+            }}
+            chips={
+              <EntityActionCardChip className={typeCfg.color}>
                 <span className={cn('h-1.5 w-1.5 rounded-full', typeCfg.dot)} />
                 {leaveTypeDisplayLabel(l)}
-              </span>
-
-              {/* Dates row */}
-              <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                <div className="text-center">
-                  <p className="text-[9px] text-muted-foreground">من</p>
-                  <p className="font-mono text-xs font-bold" dir="ltr">{l.start}</p>
-                </div>
-                <div className="h-4 w-px bg-border/60" />
-                <div className="text-center">
-                  <p className="text-[9px] text-muted-foreground">إلى</p>
-                  <p className="font-mono text-xs font-bold" dir="ltr">{l.end}</p>
-                </div>
-                <div className="h-4 w-px bg-border/60" />
-                <div className="text-center">
-                  <p className="text-[9px] text-muted-foreground">أيام</p>
-                  <p className="text-xs font-bold number-ar">{l.workingDays}</p>
-                </div>
-              </div>
-
-              {l.noteAr?.trim() ? (
-                <p className="line-clamp-2 text-xs text-muted-foreground text-right" title={l.noteAr}>
-                  {l.noteAr}
-                </p>
-              ) : null}
-            </div>
-
-            {/* Action footer */}
-            {canAct && (
-              <div className="flex items-center gap-1 border-t border-border/50 bg-muted/10 px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="sm" className="h-7 flex-1 gap-1 px-2 text-xs text-success hover:bg-success/10 hover:text-success"
-                  onClick={(e) => { e.stopPropagation(); onApprove(l); }}>
-                  <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                </Button>
-                <Button variant="ghost" size="sm" className="h-7 flex-1 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={(e) => { e.stopPropagation(); onReject(l); }}>
-                  <XCircle className="h-3.5 w-3.5" /> رفض
-                </Button>
-              </div>
-            )}
-          </div>
+              </EntityActionCardChip>
+            }
+            metrics={
+              <EntityActionCardMetricsRow>
+                <EntityActionCardMetric label="من" value={l.start} dir="ltr" />
+                <EntityActionCardMetricDivider />
+                <EntityActionCardMetric label="إلى" value={l.end} dir="ltr" />
+                <EntityActionCardMetricDivider />
+                <EntityActionCardMetric label="أيام" value={l.workingDays} />
+              </EntityActionCardMetricsRow>
+            }
+            description={l.noteAr}
+            workflow={
+              canAct
+                ? {
+                    showApproveReject: true,
+                    onApprove: () => onApprove(l),
+                    onReject: () => onReject(l),
+                  }
+                : undefined
+            }
+          />
         );
       })}
-    </div>
+    </EntityActionCardGrid>
   );
 }
 

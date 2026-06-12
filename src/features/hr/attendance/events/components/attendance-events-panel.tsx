@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
+import { STATUS_PILL, statusDotClass } from '@/shared/status-pill-classes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -24,10 +25,10 @@ import { attendanceEventsApi, type AttendanceEventResponseDto, type AttendanceEv
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 const EVENT_TYPE_META: Record<AttendanceEventType, { label: string; icon: React.ElementType; color: string; dot: string }> = {
-  check_in:    { label: 'دخول',           icon: LogIn,   color: 'text-emerald-700 bg-emerald-500/12 border-emerald-500/30', dot: 'bg-emerald-500' },
-  check_out:   { label: 'خروج',           icon: LogOut,  color: 'text-sky-700 bg-sky-500/12 border-sky-500/30',           dot: 'bg-sky-500'     },
-  break_start: { label: 'بداية استراحة',  icon: Coffee,  color: 'text-amber-700 bg-amber-500/12 border-amber-500/30',     dot: 'bg-amber-500'   },
-  break_end:   { label: 'نهاية استراحة',  icon: Coffee,  color: 'text-orange-700 bg-orange-500/12 border-orange-500/30',  dot: 'bg-orange-500'  },
+  check_in:    { label: 'دخول',           icon: LogIn,   color: STATUS_PILL.approved, dot: statusDotClass('approved') },
+  check_out:   { label: 'خروج',           icon: LogOut,  color: STATUS_PILL.info,     dot: statusDotClass('info') },
+  break_start: { label: 'بداية استراحة',  icon: Coffee,  color: STATUS_PILL.gold,     dot: statusDotClass('gold') },
+  break_end:   { label: 'نهاية استراحة',  icon: Coffee,  color: STATUS_PILL.warning, dot: statusDotClass('warning') },
 };
 
 const SOURCE_META: Record<string, { label: string; icon: React.ElementType }> = {
@@ -72,7 +73,7 @@ function VoidDialog({
       <DialogContent className="max-w-sm border-border" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-right text-base">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> إلغاء الحدث
+            <AlertTriangle className="h-4 w-4 text-warning" /> إلغاء الحدث
           </DialogTitle>
         </DialogHeader>
         {event && (
@@ -278,7 +279,7 @@ function EventRow({
       <div className="shrink-0 text-right">
         <p className="font-mono text-xs tabular-nums text-muted-foreground" dir="ltr">{fmtDate(event.workDate)}</p>
         {event.withinRadius !== null && (
-          <span className={cn('text-[10px]', event.withinRadius ? 'text-emerald-600' : 'text-destructive')}>
+          <span className={cn('text-[10px]', event.withinRadius ? 'text-success' : 'text-destructive')}>
             {event.withinRadius ? '✓ داخل النطاق' : '✗ خارج النطاق'}
           </span>
         )}

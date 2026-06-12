@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import {
+  Clock,
+  Mail,
   Plus,
   SlidersHorizontal,
   Trash2,
@@ -24,6 +26,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { cn, formatDisplayDateTime } from '@/shared/utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ConfirmationModal,
@@ -32,24 +35,24 @@ import {
   HRSettingsFormDrawer,
   MinimalDropdown,
 } from '@/features/hr/requests/components/shared-ui';
-import { EmployeePicker } from '@/components/ui/employee-picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AppPagination, DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 import { useNotificationsAdminDirectoryModel } from '@/features/hr/notifications/admin/hooks/useNotificationsAdminDirectoryModel';
 import {
-  formatAudienceEmployeesLabel,
   NOTIFICATION_AUDIENCE_LABELS,
   NOTIFICATION_CATEGORY_FILTER_ORDER,
   NOTIFICATION_CATEGORY_LABELS,
   NOTIFICATION_SEVERITY_LABELS,
   type HRAdminNotificationRecord,
 } from '@/features/hr/notifications/admin/constants/notification-labels';
-import type {
-  NotificationAudienceKind,
-  NotificationCategory,
-  NotificationSeverity,
-  SendNotificationDto,
+import {
+  notificationsApi,
+  type NotificationCategory,
+  type NotificationDetailResponseDto,
+  type NotificationRecipientDto,
+  type NotificationSeverity,
+  type SendNotificationDto,
 } from '@/features/hr/notifications/lib/api/notifications';
 
 type CategoryFilter = 'all' | NotificationCategory;
@@ -60,10 +63,7 @@ interface SendForm {
   bodyAr: string;
   category: NotificationCategory;
   severity: NotificationSeverity;
-  audienceKind: NotificationAudienceKind;
   employeeIds: Set<string>;
-  branchIds: Set<string>;
-  departmentIds: Set<string>;
   requiresAcknowledgment: boolean;
   actionUrl: string;
   actionLabelAr: string;
@@ -74,14 +74,200 @@ const EMPTY_FORM: SendForm = {
   bodyAr: '',
   category: 'announcement',
   severity: 'info',
-  audienceKind: 'company',
   employeeIds: new Set(),
-  branchIds: new Set(),
-  departmentIds: new Set(),
   requiresAcknowledgment: false,
   actionUrl: '',
   actionLabelAr: 'عرض التفاصيل',
 };
+
+type EmpOption = {
+  id: string;
+  name: string;
+  branchId?: string;
+  branchNameAr?: string;
+  departmentId?: string;
+  departmentNameAr?: string;
+};
+
+function EmployeeMultiSelect({
+  employees,
+  branches,
+  departments,
+  selected,
+  onChange,
+}: {
+  employees: EmpOption[];
+  branches: { value: string; label: string }[];
+  departments: { value: string; label: string }[];
+  selected: Set<string>;
+  onChange: (s: Set<string>) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+  const [branchFilter, setBranchFilter] = React.useState('');
+  const [deptFilter, setDeptFilter] = React.useState('');
+
+  React.useEffect(() => {
+    if (!open) { setSearch(''); setBranchFilter(''); setDeptFilter(''); }
+  }, [open]);
+
+  const filtered = React.useMemo(() => {
+    let list = employees;
+    if (branchFilter) list = list.filter((e) => e.branchId === branchFilter);
+    if (deptFilter) list = list.filter((e) => e.departmentId === deptFilter);
+    if (search.trim()) list = list.filter((e) => e.name.includes(search.trim()));
+    return list;
+  }, [employees, branchFilter, deptFilter, search]);
+
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    onChange(next);
+  };
+
+  const allFiltered = filtered.length > 0 && filtered.every((e) => selected.has(e.id));
+
+  const toggleAllFiltered = () => {
+    const next = new Set(selected);
+    if (allFiltered) filtered.forEach((e) => next.delete(e.id));
+    else filtered.forEach((e) => next.add(e.id));
+    onChange(next);
+  };
+
+  const allSelected = employees.length > 0 && employees.every((e) => selected.has(e.id));
+
+  const triggerLabel = selected.size === 0 || allSelected
+    ? 'جميع الموظفين'
+    : selected.size === 1
+      ? (employees.find((e) => e.id === [...selected][0])?.name ?? '1 موظف')
+      : `${selected.size} موظفين محددون`;
+
+  const branchOptions = [{ value: '', label: 'كل الفروع' }, ...branches];
+  const deptOptions = [{ value: '', label: 'كل الأقسام' }, ...departments];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-sm transition-colors hover:border-ring',
+            selected.size > 0 && !allSelected ? 'text-foreground' : 'text-muted-foreground',
+          )}
+        >
+          <span className={cn(selected.size > 0 && !allSelected && 'font-medium text-foreground')}>
+            {triggerLabel}
+          </span>
+          <svg className="h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-0 shadow-elevated"
+        style={{ width: 'var(--radix-popover-trigger-width)' }}
+        align="start"
+        sideOffset={4}
+        dir="rtl"
+      >
+        {/* ── single filter row: select-all + search + dept + branch ── */}
+        <div className="flex items-center gap-2 border-b border-border p-2">
+          <button
+            type="button"
+            onClick={toggleAllFiltered}
+            title="تحديد الكل"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input transition-colors hover:bg-muted/40"
+          >
+            <span className={cn(
+              'flex h-4 w-4 items-center justify-center rounded border transition-colors',
+              allFiltered ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
+            )}>
+              {allFiltered && (
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </span>
+          </button>
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="بحث…"
+            className="h-8 min-w-0 flex-1 rounded-md border border-input bg-muted/30 px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+          />
+          <MinimalDropdown
+            value={deptFilter}
+            options={deptOptions}
+            onChange={setDeptFilter}
+            className="h-8 w-28 shrink-0 text-xs"
+          />
+          <MinimalDropdown
+            value={branchFilter}
+            options={branchOptions}
+            onChange={setBranchFilter}
+            className="h-8 w-28 shrink-0 text-xs"
+          />
+        </div>
+
+        {/* ── employee list ── */}
+        <div className="max-h-60 overflow-y-auto py-1">
+          {filtered.length === 0 && (
+            <p className="px-3 py-4 text-center text-xs text-muted-foreground">لا نتائج</p>
+          )}
+          {filtered.map((emp) => {
+            const isSelected = selected.has(emp.id);
+            const meta = [emp.departmentNameAr, emp.branchNameAr].filter(Boolean).join(' - ');
+            return (
+              <button
+                key={emp.id}
+                type="button"
+                onClick={() => toggle(emp.id)}
+                className={cn(
+                  'flex w-full items-center gap-2.5 px-3 py-2 transition-colors hover:bg-muted/40',
+                  isSelected ? 'text-primary' : 'text-foreground/80',
+                )}
+              >
+                <span className={cn(
+                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+                  isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
+                )}>
+                  {isSelected && (
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </span>
+                <div className="min-w-0 flex-1 text-start">
+                  <p className={cn('truncate text-sm', isSelected ? 'font-medium text-primary' : 'text-foreground')}>
+                    {emp.name}
+                  </p>
+                  {meta ? (
+                    <p className="truncate text-xs text-muted-foreground">{meta}</p>
+                  ) : null}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── footer ── */}
+        {selected.size > 0 && !allSelected && (
+          <div className="flex items-center justify-between border-t border-border px-3 py-2">
+            <span className="text-xs text-muted-foreground">{selected.size} موظف محدد</span>
+            <button
+              type="button"
+              onClick={() => onChange(new Set())}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              مسح التحديد
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const SEVERITY_FILTER_ORDER: SeverityFilter[] = ['all', 'info', 'success', 'warning', 'error'];
 
@@ -98,35 +284,6 @@ function severityBadgeClass(severity: NotificationSeverity): string {
   }
 }
 
-function IdCheckboxList({
-  options,
-  selected,
-  onSelectedChange,
-}: {
-  options: { id: string; label: string }[];
-  selected: Set<string>;
-  onSelectedChange: (next: Set<string>) => void;
-}) {
-  const toggle = (id: string, checked: boolean) => {
-    const next = new Set(selected);
-    if (checked) next.add(id);
-    else next.delete(id);
-    onSelectedChange(next);
-  };
-  return (
-    <div className="max-h-52 space-y-2 overflow-y-auto rounded-md border border-border bg-muted/15 p-3">
-      {options.map((o) => (
-        <label key={o.id} className="flex cursor-pointer items-center gap-2.5 text-sm">
-          <Checkbox
-            checked={selected.has(o.id)}
-            onCheckedChange={(v) => toggle(o.id, v === true)}
-          />
-          <span className="leading-snug">{o.label}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
 
 function AudienceEmployeesCell({ record }: { record: HRAdminNotificationRecord }) {
   const employees = record.audienceEmployees;
@@ -244,8 +401,36 @@ export function NotificationsAdminClient() {
   const [form, setForm] = React.useState<SendForm>(EMPTY_FORM);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
-  const [detail, setDetail] = React.useState<HRAdminNotificationRecord | null>(null);
+  const [detailRecord, setDetailRecord] = React.useState<HRAdminNotificationRecord | null>(null);
+  const [detailData, setDetailData] = React.useState<NotificationDetailResponseDto | null>(null);
+  const [detailLoading, setDetailLoading] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<HRAdminNotificationRecord | null>(null);
+
+  const openDetail = React.useCallback(async (record: HRAdminNotificationRecord) => {
+    setDetailRecord(record);
+    setDetailData(null);
+    setDetailLoading(true);
+    try {
+      const res = await notificationsApi.getById(record.id);
+      setDetailData(res);
+    } catch {
+      // keep detailData null — dialog will show basic info only
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const allEmployeeOptions = React.useMemo<EmpOption[]>(
+    () => m.employeeOptions.map((e) => ({
+      id: e.value,
+      name: e.label,
+      branchId: e.branchId,
+      branchNameAr: e.branchNameAr,
+      departmentId: e.departmentId,
+      departmentNameAr: e.departmentNameAr,
+    })),
+    [m.employeeOptions],
+  );
 
   const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
     {
@@ -277,7 +462,7 @@ export function NotificationsAdminClient() {
       id: 'severity',
       value: m.filters.severity,
       onChange: (v) => m.patchFilters({ severity: (v || 'all') as SeverityFilter }),
-      placeholder: 'النبرة',
+      placeholder: 'التصنيف',
       className: 'w-[8rem]',
       options: SEVERITY_FILTER_ORDER.map((s) => ({
         value: s,
@@ -339,12 +524,7 @@ export function NotificationsAdminClient() {
           variant="luxe"
           className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
           onClick={() => {
-            setForm({
-              ...EMPTY_FORM,
-              employeeIds: new Set(),
-              branchIds: new Set(),
-              departmentIds: new Set(),
-            });
+            setForm({ ...EMPTY_FORM, employeeIds: new Set() });
             setFormError(null);
             setDrawerOpen(true);
           }}
@@ -372,20 +552,12 @@ export function NotificationsAdminClient() {
     },
     {
       key: 'categorySeverity',
-      title: 'التصنيف / النبرة',
+      title: 'التصنيف',
       render: (n) => (
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary">{NOTIFICATION_CATEGORY_LABELS[n.category]}</Badge>
-          <Badge variant="outline" className={severityBadgeClass(n.severity)}>
-            {NOTIFICATION_SEVERITY_LABELS[n.severity]}
-          </Badge>
         </div>
       ),
-    },
-    {
-      key: 'audience',
-      title: 'المستلمون',
-      render: (n) => <AudienceEmployeesCell record={n} />,
     },
     {
       key: 'counts',
@@ -447,18 +619,12 @@ export function NotificationsAdminClient() {
       setFormError('العنوان مطلوب');
       return;
     }
-    if (form.audienceKind === 'employee' && form.employeeIds.size === 0) {
-      setFormError('اختر موظفاً واحداً على الأقل');
-      return;
-    }
-    if (form.audienceKind === 'branch' && form.branchIds.size === 0) {
-      setFormError('اختر فرعاً واحداً على الأقل');
-      return;
-    }
-    if (form.audienceKind === 'department' && form.departmentIds.size === 0) {
-      setFormError('اختر قسماً واحداً على الأقل');
-      return;
-    }
+
+    const allEmployeeIds = m.employeeOptions.map((e) => e.value);
+    const isAllSelected =
+      form.employeeIds.size === 0
+      || (form.employeeIds.size === allEmployeeIds.length
+        && allEmployeeIds.every((id) => form.employeeIds.has(id)));
 
     const dto: SendNotificationDto = {
       companyId: sendCompanyId,
@@ -466,10 +632,8 @@ export function NotificationsAdminClient() {
       severity: form.severity,
       titleAr: form.titleAr.trim(),
       bodyAr: form.bodyAr.trim() || null,
-      audienceKind: form.audienceKind,
-      employeeIds: form.audienceKind === 'employee' ? [...form.employeeIds] : undefined,
-      branchIds: form.audienceKind === 'branch' ? [...form.branchIds] : undefined,
-      departmentIds: form.audienceKind === 'department' ? [...form.departmentIds] : undefined,
+      audienceKind: isAllSelected ? 'company' : 'employee',
+      employeeIds: isAllSelected ? undefined : [...form.employeeIds],
       deliveryChannel: 'in_app',
       sourceKind: 'manual',
       requiresAcknowledgment: form.requiresAcknowledgment,
@@ -515,20 +679,6 @@ export function NotificationsAdminClient() {
         </div>
       ) : null}
 
-      {m.activeFilterCount > 0 ? (
-        <div className="mb-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={m.clearFilters}
-          >
-            مسح الفلاتر
-          </Button>
-        </div>
-      ) : null}
-
       {!m.loading && m.notifications.length === 0 ? (
         <EmptyState
           title="لا توجد إشعارات"
@@ -547,7 +697,7 @@ export function NotificationsAdminClient() {
             data={m.notifications}
             keyExtractor={(n) => n.id}
             loading={m.loading}
-            onRowClick={(n) => setDetail(n)}
+            onRowClick={(n) => { void openDetail(n); }}
           />
           <AppPagination
             page={m.page}
@@ -596,7 +746,7 @@ export function NotificationsAdminClient() {
               onChange={(v) => setForm((f) => ({ ...f, category: v as NotificationCategory }))}
             />
           </FormField>
-          <FormField label="الأولوية">
+          <FormField label="نوع الاشعار">
             <MinimalDropdown
               value={form.severity}
               options={(
@@ -606,44 +756,15 @@ export function NotificationsAdminClient() {
             />
           </FormField>
         </div>
-        <FormField label="نطاق المستلمين">
-          <MinimalDropdown
-            value={form.audienceKind}
-            options={(
-              Object.entries(NOTIFICATION_AUDIENCE_LABELS) as [NotificationAudienceKind, string][]
-            ).map(([value, label]) => ({ value, label }))}
-            onChange={(v) =>
-              setForm((f) => ({ ...f, audienceKind: v as NotificationAudienceKind }))
-            }
+        <FormField label="المستلمون">
+          <EmployeeMultiSelect
+            employees={allEmployeeOptions}
+            branches={m.branchOptions}
+            departments={m.departmentOptions}
+            selected={form.employeeIds}
+            onChange={(employeeIds) => setForm((f) => ({ ...f, employeeIds }))}
           />
         </FormField>
-        {form.audienceKind === 'employee' ? (
-          <FormField label="الموظفون">
-            <EmployeePicker
-              employees={m.employeeOptions.map((e) => ({ id: e.value, name: e.label }))}
-              selected={form.employeeIds}
-              onChange={(employeeIds) => setForm((f) => ({ ...f, employeeIds }))}
-            />
-          </FormField>
-        ) : null}
-        {form.audienceKind === 'branch' ? (
-          <FormField label="الفروع">
-            <IdCheckboxList
-              options={m.branchOptions.map((b) => ({ id: b.value, label: b.label }))}
-              selected={form.branchIds}
-              onSelectedChange={(branchIds) => setForm((f) => ({ ...f, branchIds }))}
-            />
-          </FormField>
-        ) : null}
-        {form.audienceKind === 'department' ? (
-          <FormField label="الأقسام">
-            <IdCheckboxList
-              options={m.departmentOptions.map((d) => ({ id: d.value, label: d.label }))}
-              selected={form.departmentIds}
-              onSelectedChange={(departmentIds) => setForm((f) => ({ ...f, departmentIds }))}
-            />
-          </FormField>
-        ) : null}
         <label className="flex cursor-pointer items-center gap-2 text-sm">
           <Checkbox
             checked={form.requiresAcknowledgment}
@@ -651,60 +772,16 @@ export function NotificationsAdminClient() {
               setForm((f) => ({ ...f, requiresAcknowledgment: v === true }))
             }
           />
-          يتطلب إقراراً من المستلم
+          يتطلب الموافقة من المستلم
         </label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <FormField label="رابط الإجراء (اختياري)">
-            <Input
-              value={form.actionUrl}
-              onChange={(e) => setForm((f) => ({ ...f, actionUrl: e.target.value }))}
-              placeholder="/hr/dashboard"
-              dir="ltr"
-            />
-          </FormField>
-          <FormField label="نص الزر">
-            <Input
-              value={form.actionLabelAr}
-              onChange={(e) => setForm((f) => ({ ...f, actionLabelAr: e.target.value }))}
-            />
-          </FormField>
-        </div>
       </HRSettingsFormDrawer>
 
-      <Dialog open={detail != null} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-w-lg" dir="rtl">
-          <DialogHeader>
-            <DialogTitle>{detail?.titleAr}</DialogTitle>
-          </DialogHeader>
-          {detail ? (
-            <div className="space-y-3 text-sm">
-              {detail.bodyAr ? (
-                <p className="leading-relaxed text-muted-foreground">{detail.bodyAr}</p>
-              ) : null}
-              <div className="grid gap-2 rounded-xl border border-border bg-muted/20 p-3">
-                <Row label="التصنيف" value={NOTIFICATION_CATEGORY_LABELS[detail.category]} />
-                <Row label="النبرة" value={NOTIFICATION_SEVERITY_LABELS[detail.severity]} />
-                <Row
-                  label="المستلمون"
-                  value={
-                    detail.audienceEmployees.length > 0
-                      ? formatAudienceEmployeesLabel(detail.audienceEmployees)
-                      : detail.audienceSummaryAr
-                  }
-                />
-                <Row
-                  label="العدد / المقروء"
-                  value={`${detail.recipientCount} / ${detail.readCount}`}
-                />
-                {detail.sourceKind ? <Row label="المصدر" value={detail.sourceKind} /> : null}
-                {detail.triggeredByNameAr ? (
-                  <Row label="المرسل" value={detail.triggeredByNameAr} />
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <NotificationDetailDialog
+        record={detailRecord}
+        detail={detailData}
+        loading={detailLoading}
+        onClose={() => { setDetailRecord(null); setDetailData(null); }}
+      />
 
       <ConfirmationModal
         open={deleteTarget != null}
@@ -727,3 +804,179 @@ function Row({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+// ─── Recipient state helpers ──────────────────────────────────────────────────
+
+// ─── Recipient columns ────────────────────────────────────────────────────────
+
+const RECIPIENT_COLUMNS: ColumnDef<NotificationRecipientDto>[] = [
+  {
+    key: 'employee',
+    title: 'الموظف',
+    render: (r) => (
+      <div>
+        <p className="font-medium leading-tight">{r.employeeNameAr || '—'}</p>
+        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{r.employeeCode || '—'}</p>
+      </div>
+    ),
+  },
+  {
+    key: 'email',
+    title: 'البريد الإلكتروني',
+    render: (r) =>
+      r.userEmail ? (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Mail className="h-3 w-3 shrink-0 opacity-60" />
+          {r.userEmail}
+        </span>
+      ) : (
+        <span className="text-xs text-muted-foreground">—</span>
+      ),
+  },
+  {
+    key: 'isRead',
+    title: 'مقروء',
+    render: (r) => r.isRead
+      ? <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">نعم</span>
+      : <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">لا</span>,
+  },
+  {
+    key: 'deliveredAt',
+    title: 'وقت التسليم',
+    className: 'text-xs tabular-nums text-muted-foreground',
+    render: (r) => formatDisplayDateTime(r.deliveredAt),
+  },
+  {
+    key: 'readAt',
+    title: 'وقت القراءة',
+    className: 'text-xs tabular-nums text-muted-foreground',
+    render: (r) => formatDisplayDateTime(r.readAt),
+  },
+  {
+    key: 'acknowledgedAt',
+    title: 'وقت القبول',
+    className: 'text-xs tabular-nums text-muted-foreground',
+    render: (r) => formatDisplayDateTime(r.acknowledgedAt),
+  },
+  {
+    key: 'dismissedAt',
+    title: 'وقت الرفض',
+    className: 'text-xs tabular-nums text-muted-foreground',
+    render: (r) => formatDisplayDateTime(r.dismissedAt),
+  },
+];
+
+// ─── Detail dialog ────────────────────────────────────────────────────────────
+
+type ReadFilter = 'all' | 'read' | 'unread';
+
+function NotificationDetailDialog({
+  record,
+  detail,
+  loading,
+  onClose,
+}: {
+  record: HRAdminNotificationRecord | null;
+  detail: NotificationDetailResponseDto | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const open = record != null;
+  const [readFilter, setReadFilter] = React.useState<ReadFilter>('all');
+
+  React.useEffect(() => { if (!open) setReadFilter('all'); }, [open]);
+
+  const recipients = detail?.recipients ?? [];
+
+  const filteredRecipients = React.useMemo(() => {
+    if (readFilter === 'read') return recipients.filter((r) => r.isRead);
+    if (readFilter === 'unread') return recipients.filter((r) => !r.isRead);
+    return recipients;
+  }, [recipients, readFilter]);
+
+  const d = detail;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col gap-0 overflow-hidden p-0" dir="rtl">
+
+        {/* ── header ── */}
+        <DialogHeader className="shrink-0 border-b border-border bg-background px-6 pt-5 pb-4">
+          <DialogTitle className="text-base leading-snug">{record?.titleAr || '—'}</DialogTitle>
+          {record?.bodyAr ? (
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{record.bodyAr}</p>
+          ) : null}
+          {/* badges + sent date in one row */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="secondary">{record ? NOTIFICATION_CATEGORY_LABELS[record.category] : '—'}</Badge>
+              <Badge variant="outline" className={record ? severityBadgeClass(record.severity) : ''}>
+                {record ? NOTIFICATION_SEVERITY_LABELS[record.severity] : '—'}
+              </Badge>
+              {record?.requiresAcknowledgment ? (
+                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary text-[11px]">يتطلب إقراراً</Badge>
+              ) : null}
+              {record?.sourceKind ? (
+                <Badge variant="outline" className="font-mono text-[11px]">{record.sourceKind}</Badge>
+              ) : null}
+            </div>
+            {record?.createdAt ? (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3 shrink-0" />
+                {formatDisplayDateTime(record.createdAt)}
+              </span>
+            ) : null}
+          </div>
+        </DialogHeader>
+
+        {/* ── scrollable body ── */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">جارٍ التحميل…</div>
+          ) : (
+            <div className="px-6 py-5">
+
+              {/* ── recipients section ── */}
+              <div className="rounded-xl border border-border bg-muted/20">
+                <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3">
+                
+                  {/* read / unread filter */}
+                  <div className="flex items-center gap-1 border rounded-md p-0.5">
+                    {(['all', 'read', 'unread'] as ReadFilter[]).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setReadFilter(f)}
+                        className={cn(
+                          'inline-flex h-6 items-center rounded-md px-2.5 text-[11px] font-medium transition-colors',
+                          readFilter === f
+                            ? 'bg-foreground text-background'
+                            : 'text-muted-foreground hover:bg-muted',
+                        )}
+                      >
+                        {f === 'all' ? 'الكل' : f === 'read' ? 'قرأ' : 'لم يقرأ'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="p-2">
+                  <DataTable
+                    variant="directory"
+                    alwaysShowTable
+                    loading={false}
+                    columns={RECIPIENT_COLUMNS}
+                    data={filteredRecipients}
+                    keyExtractor={(r) => r.recipientId}
+                    emptyText="لا يوجد مستلمون"
+                  />
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

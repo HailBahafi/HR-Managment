@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Building2, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableRowActions } from '@/components/ui/table-cells';
@@ -18,6 +19,14 @@ import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import type { BranchesDirectoryModel } from '@/features/hr/organization/branches/hooks/useBranchesDirectoryModel';
 import type { BranchRow } from '@/features/hr/organization/branches/constants/branches-directory';
 
+function statusBadge(active: boolean) {
+  return active ? (
+    <Badge variant="outline" className="text-[10px] border-success/40 text-success dark:text-success">نشط</Badge>
+  ) : (
+    <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">غير نشط</Badge>
+  );
+}
+
 export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) {
   const { filtered, layoutView, setViewBranch, openEdit, setConfirmId } = model;
 
@@ -25,13 +34,42 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
     {
       key: 'name',
       title: 'الفرع',
-      render: (b) => <span className="font-medium">{b.name}</span>,
+      render: (b) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium">{b.name}</span>
+          {b.code ? <span className="text-[10px] text-muted-foreground" dir="ltr">{b.code}</span> : null}
+        </div>
+      ),
     },
     {
       key: 'city',
       title: 'المدينة',
       className: 'text-muted-foreground',
-      render: (b) => b.city,
+      render: (b) => b.city || '—',
+    },
+    {
+      key: 'manager',
+      title: 'المدير',
+      className: 'text-muted-foreground',
+      render: (b) => b.manager || '—',
+    },
+    {
+      key: 'phone',
+      title: 'الهاتف',
+      className: 'text-muted-foreground',
+      render: (b) => <span dir="ltr">{b.phone ?? b.mobile ?? '—'}</span>,
+    },
+    {
+      key: 'flags',
+      title: 'الحالة',
+      render: (b) => (
+        <div className="flex flex-wrap gap-1">
+          {statusBadge(b.isActive)}
+          {b.isHeadquarters ? (
+            <Badge variant="secondary" className="text-[10px]">المقر الرئيسي</Badge>
+          ) : null}
+        </div>
+      ),
     },
     {
       key: 'actions',
@@ -47,7 +85,7 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
         />
       ),
     },
-  ], [openEdit, setConfirmId, setViewBranch]);
+  ], [openEdit, setConfirmId]);
 
   return (
     <>
@@ -59,17 +97,35 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
             <DirectoryGridCard key={b.id} interactive onClick={() => setViewBranch(b)}>
               <DirectoryGridCardHeader>
                 <DirectoryGridCardTitle>{b.name}</DirectoryGridCardTitle>
+                {b.isHeadquarters ? (
+                  <Badge variant="secondary" className="shrink-0 text-[10px]">المقر</Badge>
+                ) : null}
               </DirectoryGridCardHeader>
               <DirectoryGridCardMeta>
                 <DirectoryGridCardMetaRow>
                   <span className="text-muted-foreground">المدينة</span>
-                  <span className="truncate font-medium">{b.city}</span>
+                  <span className="truncate font-medium">{b.city || '—'}</span>
                 </DirectoryGridCardMetaRow>
+                {b.manager ? (
+                  <DirectoryGridCardMetaRow>
+                    <span className="text-muted-foreground">المدير</span>
+                    <span className="truncate">{b.manager}</span>
+                  </DirectoryGridCardMetaRow>
+                ) : null}
+                {(b.phone ?? b.email) ? (
+                  <DirectoryGridCardMetaRow dir="ltr">
+                    <span className="text-muted-foreground">تواصل</span>
+                    <span className="truncate">{b.phone ?? b.email}</span>
+                  </DirectoryGridCardMetaRow>
+                ) : null}
               </DirectoryGridCardMeta>
               <DirectoryGridCardFooter>
-                <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={() => setViewBranch(b)}><Eye className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" title="تعديل" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="حذف" onClick={() => setConfirmId(b.id)}><Trash2 className="h-4 w-4" /></Button>
+                {statusBadge(b.isActive)}
+                <div className="ms-auto flex gap-0.5">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={() => setViewBranch(b)}><Eye className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="تعديل" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="حذف" onClick={() => setConfirmId(b.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
               </DirectoryGridCardFooter>
             </DirectoryGridCard>
           ))}

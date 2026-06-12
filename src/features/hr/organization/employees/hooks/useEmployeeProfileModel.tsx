@@ -11,6 +11,7 @@ import { useEmployeeProfilePersonal } from '@/features/hr/organization/employees
 import { useEmployeeProfileRosePdf } from '@/features/hr/organization/employees/hooks/useEmployeeProfileRosePdf';
 import { useEmployeeProfilePermissions } from '@/features/hr/organization/employees/hooks/useEmployeeProfilePermissions';
 import { useEmployeeCreateUser } from '@/features/hr/organization/employees/hooks/useEmployeeCreateUser';
+import { useEmployeeProfileAssignments } from '@/features/hr/organization/employees/hooks/useEmployeeProfileAssignments';
 
 const SECTIONS = EMPLOYEE_PROFILE_SECTIONS;
 
@@ -25,13 +26,14 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
     [employee, onUpdated],
   );
 
-  const data = useEmployeeProfileData(employee);
+  const data = useEmployeeProfileData(employee, activeSection);
   const payslip = useEmployeeProfilePayslipFilter(data.employeePayslipSeries);
-  const leave = useEmployeeProfileLeave(employee);
+  const leave = useEmployeeProfileLeave(employee, activeSection === 'leaves');
   const personal = useEmployeeProfilePersonal(employee, activeSection, onUpdated);
   const rose = useEmployeeProfileRosePdf(personal.draft);
-  const permissions = useEmployeeProfilePermissions(employee);
+  const permissions = useEmployeeProfilePermissions(employee, activeSection === 'permissions');
   const createUser = useEmployeeCreateUser(employee, handleUserCreated);
+  const assignments = useEmployeeProfileAssignments(employee, activeSection === 'employment');
 
   React.useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -45,6 +47,7 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
     'activity-log': data.activityLogCount,
     salary: data.employeePayslipSeries.length,
     leaves: leave.leaveRequests.length,
+    employment: assignments.hrAssignments.length,
   };
 
   return {
@@ -61,6 +64,7 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
     ...rose,
     ...permissions,
     ...createUser,
+    ...assignments,
   };
 }
 

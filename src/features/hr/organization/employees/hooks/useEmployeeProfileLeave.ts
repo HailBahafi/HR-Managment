@@ -24,20 +24,24 @@ const ACCENT_BY_CODE: Record<string, 'success' | 'primary'> = {
   sick: 'primary',
 };
 
-export function useEmployeeProfileLeave(employee: Employee) {
+export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
   const [leaveRequests, setLeaveRequests] = React.useState<LeaveRequestResponseDto[]>([]);
   const [leaveBalances, setLeaveBalances] = React.useState<EmployeeLeaveBalanceResponseDto[]>([]);
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
   const [leaveRequestOpen, setLeaveRequestOpen] = React.useState(false);
+  const [leavesLoading, setLeavesLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (!employee.id) return;
+    if (!employee.id || !enabled) return;
+    let cancelled = false;
+    setLeavesLoading(true);
     void (async () => {
       try {
         const [reqRes, balRes] = await Promise.all([
           leaveRequestsApi.getAll({ employeeId: employee.id, limit: 100 }),
           leaveBalancesApi.getAll({ employeeId: employee.id, limit: 50 }),
         ]);
+        if (cancelled) return;
         setLeaveRequests(reqRes.items);
         setLeaveBalances(balRes.items);
 
@@ -47,13 +51,19 @@ export function useEmployeeProfileLeave(employee: Employee) {
         ])];
         if (typeIds.length > 0) {
           const typesRes = await leaveTypesApi.getAll({ limit: 50 });
-          setLeaveTypes(typesRes.items);
+          if (!cancelled) setLeaveTypes(typesRes.items);
         }
       } catch {
-        // silently ignore — sections show empty state
+        if (!cancelled) {
+          setLeaveRequests([]);
+          setLeaveBalances([]);
+        }
+      } finally {
+        if (!cancelled) setLeavesLoading(false);
       }
     })();
-  }, [employee.id]);
+    return () => { cancelled = true; };
+  }, [employee.id, enabled]);
 
   const leaveBalanceCards = React.useMemo((): EmployeeLeaveBalanceCard[] => {
     const year = new Date().getFullYear();
@@ -80,5 +90,6 @@ export function useEmployeeProfileLeave(employee: Employee) {
     leaveBalanceCards,
     leaveRequestOpen,
     setLeaveRequestOpen,
+    leavesLoading,
   };
 }

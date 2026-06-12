@@ -5,15 +5,21 @@ import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-records';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import {
   disciplineAppealsApi,
   type DisciplineAppealResponseDto,
   type CreateDisciplineAppealDto,
   type UpdateDisciplineAppealDto,
+  type ProcessDisciplineAppealDecisionDto,
   type AppealChannelDto,
   type AppealStatusDto,
 } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import type { HRAppealChannel, HRAppealStatus } from '@/features/hr/discipline/lib/types';
+import {
+  sendAppealDecisionNotification,
+  submitAppealDecision,
+} from '@/features/hr/discipline/appeals/services/discipline-appeals.service';
 
 export type AppealEmployee = { id: string; nameAr: string };
 export type AppealCase = { id: string; caseNumber: string; employeeId: string; employeeNameAr: string };
@@ -29,6 +35,7 @@ export type AppealRecord = {
   status: HRAppealStatus;
   grounds: string;
   responseNote: string;
+  decidedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -48,6 +55,7 @@ function mapAppeal(
     status: dto.status as HRAppealStatus,
     grounds: dto.groundsAr,
     responseNote: dto.responseNote ?? '',
+    decidedAt: dto.decidedAt,
     createdAt: typeof dto.createdAt === 'string' ? dto.createdAt : new Date(dto.createdAt).toISOString(),
     updatedAt: typeof dto.updatedAt === 'string' ? dto.updatedAt : new Date(dto.updatedAt).toISOString(),
   };
@@ -132,10 +140,47 @@ export function useDisciplineAppealsDirectoryModel() {
 
   const updateAppeal = React.useCallback(
     async (id: string, patch: UpdateDisciplineAppealDto) => {
-      await disciplineAppealsApi.update(id, patch);
+      const updatedBy = useAuthStore.getState().user?.email ?? useAuthStore.getState().user?.id ?? undefined;
+      await disciplineAppealsApi.update(id, { ...patch, updatedBy });
       await reload();
     },
     [reload],
+  );
+
+  const decideAppeal = React.useCallback(
+    async (
+      appeal: AppealRecord,
+      payload: ProcessDisciplineAppealDecisionDto,
+    ): Promise<{ notificationSent: boolean }> => {
+      const user = useAuthStore.getState().user;
+      const decidedBy = user?.email ?? user?.id ?? undefined;
+      await submitAppealDecision(appeal.id, { ...payload, decidedBy });
+
+      let notificationSent = false;
+      const cid = companyId ?? useAuthStore.getState().activeCompanyId;
+      if (cid) {
+        try {
+          await sendAppealDecisionNotification({
+            companyId: cid,
+            appealId: appeal.id,
+            employeeId: appeal.employeeId,
+            caseNumber: appeal.caseNumber,
+            status: payload.status,
+            responseNote: payload.responseNote?.trim() ?? '',
+            triggeredByUserId: user?.id,
+            triggeredByNameAr: user?.fullNameAr ?? null,
+            createdBy: user?.email ?? user?.id ?? null,
+          });
+          notificationSent = true;
+        } catch {
+          notificationSent = false;
+        }
+      }
+
+      await reload();
+      return { notificationSent };
+    },
+    [companyId, reload],
   );
 
   const deleteAppeal = React.useCallback(
@@ -146,5 +191,17 @@ export function useDisciplineAppealsDirectoryModel() {
     [reload],
   );
 
-  return { appeals, employees, cases, companyId, loading, listError, createAppeal, updateAppeal, deleteAppeal, reload };
+  return {
+    appeals,
+    employees,
+    cases,
+    companyId,
+    loading,
+    listError,
+    createAppeal,
+    updateAppeal,
+    decideAppeal,
+    deleteAppeal,
+    reload,
+  };
 }

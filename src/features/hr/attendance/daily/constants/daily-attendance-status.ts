@@ -1,4 +1,6 @@
 /** Visual keys for daily attendance UI (maps domain statuses). */
+import { STATUS_PILL, statusDotClass } from '@/shared/status-pill-classes';
+
 export const STATUS = {
   present: {
     label: 'حاضر',
@@ -26,27 +28,27 @@ export const STATUS = {
   },
   holiday: {
     label: 'عطلة رسمية',
-    color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-300 dark:border-purple-800',
-    dot: 'bg-purple-500',
-    bar: 'bg-purple-400',
+    color: STATUS_PILL.gold,
+    dot: statusDotClass('gold'),
+    bar: 'bg-gold',
   },
   rest_day: {
     label: 'يوم راحة',
-    color: 'bg-muted/50 text-muted-foreground border-border',
-    dot: 'bg-muted-foreground',
+    color: STATUS_PILL.muted,
+    dot: statusDotClass('muted'),
     bar: 'bg-muted-foreground/50',
   },
   unscheduled: {
     label: 'غير مجدول',
-    color: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700',
-    dot: 'bg-slate-400',
-    bar: 'bg-slate-300',
+    color: STATUS_PILL.muted,
+    dot: statusDotClass('muted'),
+    bar: 'bg-muted-foreground/40',
   },
   on_leave: {
     label: 'إجازة',
-    color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800',
-    dot: 'bg-blue-500',
-    bar: 'bg-blue-400',
+    color: STATUS_PILL.info,
+    dot: statusDotClass('info'),
+    bar: 'bg-primary',
   },
 } as const;
 

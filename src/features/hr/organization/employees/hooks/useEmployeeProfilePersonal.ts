@@ -4,7 +4,9 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import { appendEmployeeAudit } from '@/features/hr/organization/employees/lib/employee-audit-log/append';
 import { diffEmployeeShallowAudit } from '@/features/hr/organization/employees/lib/employee-audit-log/diff-employee';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
+import { buildPersonalEmployeeUpdatePayload } from '@/features/hr/organization/employees/services/employee-update.service';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import type { EmployeeProfileSectionId } from '@/features/hr/organization/employees/constants/EmployeeProfileSections';
 import type { EmployeeProfileDraft } from '@/features/hr/organization/employees/components/employee-profile-field';
@@ -31,28 +33,10 @@ export function useEmployeeProfilePersonal(
   const handleSavePersonal = React.useCallback(async () => {
     setSaving(true);
     try {
-      const updated = await employeesApi.update(employee.id, {
-        nameEn: draft.nameEn || null,
-        email: draft.email || null,
-        phone: draft.phone || null,
-        nationalId: draft.nationalId || null,
-        nationality: draft.nationality || null,
-        position: draft.position || null,
-        managerId: draft.managerId ?? null,
-        contractType: draft.contractType || null,
-        startDate: draft.startDate || null,
-        baseSalary: String(draft.baseSalary),
-        housingAllowance: String(draft.housingAllowance),
-        transportAllowance: String(draft.transportAllowance),
-        otherAllowances: String(draft.otherAllowances),
-        bankAccount: draft.bankAccount || null,
-        iban: draft.iban || null,
-        address: draft.address || null,
-        gender: draft.gender || null,
-        birthDate: draft.birthDate || null,
-        maritalStatus: draft.maritalStatus || null,
-        role: draft.role || null,
-      });
+      const updated = await employeesApi.update(
+        employee.id,
+        buildPersonalEmployeeUpdatePayload(draft),
+      );
       const before = { ...employee };
       const rows = diffEmployeeShallowAudit(before, draft, 'personal');
       if (rows.length) appendEmployeeAudit(employee.id, rows);
@@ -60,6 +44,7 @@ export function useEmployeeProfilePersonal(
         onUpdated({
           ...employee,
           ...draft,
+          name: updated.nameAr ?? draft.name,
           nameEn: updated.nameEn ?? '',
           email: updated.email ?? '',
           phone: updated.phone ?? '',
@@ -67,8 +52,8 @@ export function useEmployeeProfilePersonal(
       }
       toast.success('تم حفظ البيانات بنجاح');
       setEditingPersonal(false);
-    } catch {
-      toast.error('فشل حفظ البيانات، حاول مرة أخرى');
+    } catch (e) {
+      toast.error(handleApiError(e, 'employee.update').displayMessage);
     } finally {
       setSaving(false);
     }

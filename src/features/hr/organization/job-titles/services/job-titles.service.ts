@@ -4,55 +4,52 @@ import {
   type JobTitleResponseDto,
   type UpdateJobTitleDto,
 } from '@/features/hr/organization/lib/api/jobTitles';
-import { departmentsApi } from '@/features/hr/organization/lib/api/departments';
 import { resolveOrganizationScope, type OrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
-import type { DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 
 export type JobTitleTemplateRecord = {
   id: string;
+  companyId: string;
+  code: string;
   titleAr: string;
+  titleEn: string | null;
   descriptionAr?: string;
-  defaultDepartmentId?: string | null;
+  isActive: boolean;
+  notes: string | null;
   sortOrder: number;
   updatedAt: string;
 };
 
 export type JobTitlesDirectoryData = {
   templates: JobTitleTemplateRecord[];
-  departments: DepartmentResponseDto[];
   scope: OrganizationScope;
 };
 
 function mapTemplate(row: JobTitleResponseDto, index: number): JobTitleTemplateRecord {
   return {
     id: row.id,
+    companyId: row.companyId,
+    code: row.code,
     titleAr: row.nameAr,
+    titleEn: row.nameEn,
     descriptionAr: row.description ?? undefined,
-    defaultDepartmentId: null,
+    isActive: row.isActive,
+    notes: row.notes,
     sortOrder: index + 1,
     updatedAt: row.updatedAt,
   };
 }
 
 export async function loadJobTitlesDirectory(): Promise<JobTitlesDirectoryData> {
-  const [jobs, scope, depts] = await Promise.all([
-    jobTitlesApi.getAll(),
-    resolveOrganizationScope(),
-    departmentsApi.getAll(),
-  ]);
+  const scope = await resolveOrganizationScope();
+  const companyId = scope.companyId ?? undefined;
+  const jobs = await jobTitlesApi.getAll(companyId ? { companyId, limit: 200 } : { limit: 200 });
   return {
     templates: jobs.items.map(mapTemplate),
-    departments: depts.items,
     scope: {
       companyId: scope.companyId ?? jobs.items[0]?.companyId ?? null,
       branchId: scope.branchId,
     },
   };
-}
-
-export async function loadJobTitlesDepartments(): Promise<DepartmentResponseDto[]> {
-  const res = await departmentsApi.getAll();
-  return res.items;
 }
 
 export async function createJobTitle(payload: CreateJobTitleDto) {

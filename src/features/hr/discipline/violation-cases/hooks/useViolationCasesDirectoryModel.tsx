@@ -2,11 +2,13 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { violationTypesApi } from '@/features/hr/discipline/lib/api/violation-types';
 import {
   violationRecordsApi,
+  type ViolationInvestigationDto,
   type ViolationRecordResponseDto,
   type ViolationRecordStatus,
   type CreateViolationRecordDto,
@@ -21,11 +23,24 @@ export type ViolationCaseRecord = {
   employeeNameAr: string;
   violationTypeId: string;
   typeNameAr: string;
+  typeNeedsWarning: boolean;
+  typeNeedsInvestigation: boolean;
+  typeNeedsApproval: boolean;
+  typeHasDeduction: boolean;
+  typeDeductionKind: string | null;
+  typeDeductionValue: string | null;
   status: ViolationRecordStatus;
   date: string;
   description: string;
   notes: string | null;
   attachmentsNote: string | null;
+  hasInvestigations: boolean;
+  decisionNotes: string | null;
+  decidedAt: string | null;
+  investigations: ViolationInvestigationDto[];
+  investigationCount: number;
+  latestInvestigationResult: ViolationInvestigationDto['result'] | null;
+  latestInvestigationRecommendation: ViolationInvestigationDto['recommendation'];
   createdAt: string;
   updatedAt: string;
 };
@@ -36,23 +51,50 @@ export type ViolationCaseType = {
   needsWarning: boolean; needsInvestigation: boolean;
 };
 
+function pickLatestInvestigation(investigations: ViolationInvestigationDto[]): ViolationInvestigationDto | null {
+  if (investigations.length === 0) return null;
+  return investigations.reduce((latest, current) => {
+    const latestTs = Date.parse(latest.updatedAt ?? latest.createdAt ?? '');
+    const currentTs = Date.parse(current.updatedAt ?? current.createdAt ?? '');
+    if (Number.isNaN(latestTs)) return current;
+    if (Number.isNaN(currentTs)) return latest;
+    return currentTs >= latestTs ? current : latest;
+  });
+}
+
 function mapRecord(
   dto: ViolationRecordResponseDto,
   employeesById: Map<string, string>,
   typesById: Map<string, string>,
 ): ViolationCaseRecord {
+  const vt = dto.violationType;
+  const investigations = dto.investigations ?? [];
+  const latestInvestigation = pickLatestInvestigation(investigations);
   return {
     id: dto.id,
     caseNumber: dto.recordNumber,
     employeeId: dto.employeeId,
     employeeNameAr: employeesById.get(dto.employeeId) ?? dto.employeeId,
     violationTypeId: dto.violationTypeId,
-    typeNameAr: typesById.get(dto.violationTypeId) ?? dto.violationTypeId,
+    typeNameAr: vt?.nameAr ?? typesById.get(dto.violationTypeId) ?? dto.violationTypeId,
+    typeNeedsWarning: vt?.needsWarning ?? false,
+    typeNeedsInvestigation: vt?.needsInvestigation ?? dto.violationTypeNeedsInvestigation ?? false,
+    typeNeedsApproval: vt?.needsApproval ?? false,
+    typeHasDeduction: vt?.hasDeduction ?? false,
+    typeDeductionKind: vt?.deductionKind ?? null,
+    typeDeductionValue: vt?.deductionValue ?? null,
     status: dto.status ?? 'pending',
     date: dto.violationDate,
     description: dto.description,
     notes: dto.notes,
     attachmentsNote: dto.attachmentsNote,
+    hasInvestigations: dto.hasInvestigations ?? investigations.length > 0,
+    decisionNotes: dto.decisionNotes ?? null,
+    decidedAt: dto.decidedAt ?? null,
+    investigations,
+    investigationCount: investigations.length,
+    latestInvestigationResult: latestInvestigation?.result ?? null,
+    latestInvestigationRecommendation: latestInvestigation?.recommendation ?? null,
     createdAt: typeof dto.createdAt === 'string' ? dto.createdAt : new Date(dto.createdAt).toISOString(),
     updatedAt: typeof dto.updatedAt === 'string' ? dto.updatedAt : new Date(dto.updatedAt).toISOString(),
   };
@@ -92,14 +134,18 @@ export function useViolationCasesDirectoryModel() {
         violationRecordsApi.getAll(recordsQuery),
       ]);
 
-      const employeeMap = new Map(employeesRes.items.map((e) => [e.id, e.nameAr]));
-      const typeMap = new Map(typesRes.items.map((t) => [t.id, t.nameAr]));
+      const employeeItems = ensurePaginatedResult(employeesRes).items;
+      const typeItems = ensurePaginatedResult(typesRes).items;
+      const recordItems = ensurePaginatedResult(recordsRes).items;
 
-      setEmployees(employeesRes.items.map((e) => ({ id: e.id, nameAr: e.nameAr })));
+      const employeeMap = new Map(employeeItems.map((e) => [e.id, e.nameAr]));
+      const typeMap = new Map(typeItems.map((t) => [t.id, t.nameAr]));
+
+      setEmployees(employeeItems.map((e) => ({ id: e.id, nameAr: e.nameAr })));
       setViolationTypes(
-        typesRes.items.map((t) => ({ id: t.id, nameAr: t.nameAr, code: t.code, isActive: t.isActive, needsWarning: t.needsWarning ?? false, needsInvestigation: t.needsInvestigation ?? false })),
+        typeItems.map((t) => ({ id: t.id, nameAr: t.nameAr, code: t.code, isActive: t.isActive, needsWarning: t.needsWarning ?? false, needsInvestigation: t.needsInvestigation ?? false })),
       );
-      setCases(recordsRes.items.map((r) => mapRecord(r, employeeMap, typeMap)));
+      setCases(recordItems.map((r) => mapRecord(r, employeeMap, typeMap)));
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'violation-records.load');
       setListError(displayMessage);

@@ -1,7 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus } from 'lucide-react';
+import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus, CheckCircle2, XCircle, Clock, Ban, Pencil } from 'lucide-react';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+  EntityActionCardGridSkeleton,
+  type WorkflowStatusTone,
+} from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
@@ -11,10 +18,20 @@ import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
 } from '@/features/hr/requests/components/shared-ui';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useDisciplineAppealsDirectoryModel, type AppealRecord } from '@/features/hr/discipline/appeals/hooks/useDisciplineAppealsDirectoryModel';
+import {
+  canDeleteAppealRecord,
+  canMutateAppealRecord,
+  DECISION_STATUS_LABELS,
+} from '@/features/hr/discipline/appeals/services/discipline-appeals.service';
 import type { HRAppealChannel, HRAppealStatus } from '@/features/hr/discipline/lib/types';
 import { APPEAL_CHANNEL_LABELS, APPEAL_STATUS_LABELS, APPEAL_STATUS_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
-import type { AppealChannelDto, AppealStatusDto } from '@/features/hr/discipline/lib/api/discipline-appeals';
+import type { AppealChannelDto, AppealStatusDto, ProcessDisciplineAppealDecisionDto } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
@@ -32,7 +49,6 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 
 const CHANNEL_OPTIONS = (Object.entries(APPEAL_CHANNEL_LABELS) as [HRAppealChannel, string][]).map(([v, l]) => ({ value: v, label: l }));
-const STATUS_OPTIONS = (Object.entries(APPEAL_STATUS_LABELS) as [HRAppealStatus, string][]).map(([v, l]) => ({ value: v, label: l }));
 
 const STATUS_COLORS: Record<HRAppealStatus, string> = {
   pending: 'text-primary border-primary/25 bg-primary/5 dark:border-primary/40 dark:bg-primary/15',
@@ -42,7 +58,28 @@ const STATUS_COLORS: Record<HRAppealStatus, string> = {
   withdrawn: 'text-muted-foreground border-border bg-muted/30',
 };
 
+const APPEAL_STATUS_TONE: Record<HRAppealStatus, WorkflowStatusTone> = {
+  pending: 'pending',
+  under_review: 'warning',
+  accepted: 'approved',
+  rejected: 'rejected',
+  withdrawn: 'muted',
+};
+
 type StatusFilter = 'all' | HRAppealStatus;
+
+type DecisionStatus = ProcessDisciplineAppealDecisionDto['status'];
+
+const DECISION_DIALOG_TITLES: Record<DecisionStatus, string> = {
+  accepted: 'قبول التظلم',
+  rejected: 'رفض التظلم',
+  under_review: 'تحويل إلى تحت المراجعة',
+  withdrawn: 'التراجع عن التظلم',
+};
+
+function canDecideAppeal(status: HRAppealStatus) {
+  return status === 'pending' || status === 'under_review';
+}
 
 interface DraftForm {
   caseId: string; employeeNameAr: string;
@@ -52,7 +89,7 @@ const EMPTY: DraftForm = { caseId: '', employeeNameAr: '', date: '', channel: 'i
 
 export function AppealsClient() {
   const hook = useDisciplineAppealsDirectoryModel();
-  const { appeals, employees, cases, loading, listError, createAppeal, updateAppeal, deleteAppeal, reload } = hook;
+  const { appeals, employees, cases, loading, listError, createAppeal, updateAppeal, decideAppeal, deleteAppeal, reload } = hook;
 
   const [companyNameAr, setCompanyNameAr] = React.useState('');
   const [companyNameEn, setCompanyNameEn] = React.useState('');
@@ -87,6 +124,14 @@ export function AppealsClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [detailRow, setDetailRow] = React.useState<AppealRecord | null>(null);
+  const [decisionTarget, setDecisionTarget] = React.useState<{ appeal: AppealRecord; status: DecisionStatus } | null>(null);
+  const [decisionNote, setDecisionNote] = React.useState('');
+  const [decisionError, setDecisionError] = React.useState<string | null>(null);
+  const [deciding, setDeciding] = React.useState(false);
+  const [editAppeal, setEditAppeal] = React.useState<AppealRecord | null>(null);
+  const [editDraft, setEditDraft] = React.useState<DraftForm>(EMPTY);
+  const [editSaving, setEditSaving] = React.useState(false);
+  const [editError, setEditError] = React.useState<string | null>(null);
 
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
@@ -196,13 +241,124 @@ export function AppealsClient() {
     }
   };
 
-  const handleStatusChange = async (id: string, status: string) => {
-    try {
-      await updateAppeal(id, { status: status as AppealStatusDto });
-      toast.success('تم تحديث الحالة');
-    } catch {
-      toast.error('فشل تحديث الحالة');
+  const handleDecide = async () => {
+    if (!decisionTarget) return;
+    if (!decisionNote.trim()) {
+      setDecisionError('رد الموارد البشرية مطلوب');
+      return;
     }
+    setDecisionError(null);
+    setDeciding(true);
+    try {
+      const { notificationSent } = await decideAppeal(decisionTarget.appeal, {
+        status: decisionTarget.status,
+        responseNote: decisionNote.trim(),
+      });
+      toast.success(
+        notificationSent
+          ? 'تم معالجة التظلم وإرسال إشعار للموظف'
+          : 'تم معالجة التظلم، لكن تعذّر إرسال الإشعار',
+      );
+      setDecisionTarget(null);
+      setDecisionNote('');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-appeals.decide');
+      toast.error(displayMessage);
+    } finally {
+      setDeciding(false);
+    }
+  };
+
+  const openDecision = (appeal: AppealRecord, status: DecisionStatus) => {
+    setDecisionNote('');
+    setDecisionError(null);
+    setDecisionTarget({ appeal, status });
+  };
+
+  const openEdit = (appeal: AppealRecord) => {
+    setEditDraft({
+      caseId: appeal.caseId,
+      employeeNameAr: appeal.employeeNameAr,
+      date: appeal.date,
+      channel: appeal.channel,
+      grounds: appeal.grounds,
+    });
+    setEditError(null);
+    setEditAppeal(appeal);
+  };
+
+  const handleEditSave = async () => {
+    if (!editAppeal) return;
+    setEditError(null);
+    if (!editDraft.date) { setEditError('التاريخ مطلوب'); return; }
+    if (!editDraft.grounds.trim()) { setEditError('أسباب التظلم مطلوبة'); return; }
+    setEditSaving(true);
+    try {
+      await updateAppeal(editAppeal.id, {
+        appealDate: editDraft.date,
+        groundsAr: editDraft.grounds.trim(),
+        channel: editDraft.channel as AppealChannelDto,
+      });
+      toast.success('تم تحديث التظلم');
+      setEditAppeal(null);
+      setEditDraft(EMPTY);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-appeals.update');
+      setEditError(displayMessage);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const renderDecisionActions = (appeal: AppealRecord, compact = false) => {
+    if (!canDecideAppeal(appeal.status)) return null;
+    const btnClass = compact ? 'h-7 flex-1 gap-1 px-1.5 text-[10px]' : 'h-7 flex-1 gap-1 px-2 text-xs';
+    return (
+      <div className="flex flex-wrap gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          className={cn(btnClass, 'text-success hover:bg-success/10 hover:text-success')}
+          onClick={(e) => { e.stopPropagation(); openDecision(appeal, 'accepted'); }}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+          قبول
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          className={cn(btnClass, 'text-destructive hover:bg-destructive/10 hover:text-destructive')}
+          onClick={(e) => { e.stopPropagation(); openDecision(appeal, 'rejected'); }}
+        >
+          <XCircle className="h-3.5 w-3.5 shrink-0" />
+          رفض
+        </Button>
+        {appeal.status === 'pending' ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            className={cn(btnClass, 'text-warning hover:bg-warning/10 hover:text-warning')}
+            onClick={(e) => { e.stopPropagation(); openDecision(appeal, 'under_review'); }}
+          >
+            <Clock className="h-3.5 w-3.5 shrink-0" />
+            مراجعة
+          </Button>
+        ) : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          className={cn(btnClass, 'text-muted-foreground hover:bg-muted hover:text-foreground')}
+          onClick={(e) => { e.stopPropagation(); openDecision(appeal, 'withdrawn'); }}
+        >
+          <Ban className="h-3.5 w-3.5 shrink-0" />
+          تراجع
+        </Button>
+      </div>
+    );
   };
 
   const columns = React.useMemo((): ColumnDef<AppealRecord>[] => [
@@ -239,13 +395,10 @@ export function AppealsClient() {
     {
       key: 'status',
       title: 'الحالة',
-      isInteractive: true,
       render: (a) => (
-        <MinimalDropdown
-          value={a.status}
-          onChange={v => void handleStatusChange(a.id, v)}
-          options={STATUS_OPTIONS}
-        />
+        <Badge variant="outline" className={cn('text-[10px]', STATUS_COLORS[a.status])}>
+          {APPEAL_STATUS_LABELS[a.status]}
+        </Badge>
       ),
     },
     {
@@ -255,17 +408,41 @@ export function AppealsClient() {
       render: (a) => (
         <TableRowActions
           menuItems={[
-            {
-              label: 'حذف',
-              onClick: () => setDeleteId(a.id),
-              icon: <Trash2 className="h-3.5 w-3.5" />,
-              destructive: true,
-            },
+            ...(canDecideAppeal(a.status)
+              ? [
+                  { label: 'قبول', onClick: () => openDecision(a, 'accepted') },
+                  { label: 'رفض', onClick: () => openDecision(a, 'rejected'), destructive: true },
+                  ...(a.status === 'pending'
+                    ? [{ label: 'تحت المراجعة', onClick: () => openDecision(a, 'under_review') }]
+                    : []),
+                  { label: 'تراجع', onClick: () => openDecision(a, 'withdrawn'), separator: true },
+                ]
+              : []),
+            ...(canMutateAppealRecord(a.status)
+              ? [
+                  {
+                    label: 'تعديل',
+                    onClick: () => openEdit(a),
+                    icon: <Pencil className="h-3.5 w-3.5" />,
+                  },
+                ]
+              : []),
+            ...(canDeleteAppealRecord(a.status)
+              ? [
+                  {
+                    label: 'حذف',
+                    onClick: () => setDeleteId(a.id),
+                    icon: <Trash2 className="h-3.5 w-3.5" />,
+                    destructive: true,
+                    separator: true,
+                  },
+                ]
+              : []),
           ]}
         />
       ),
     },
-  ], [handleStatusChange]);
+  ], []);
 
   useEntityFilterSlot(
     () => (
@@ -310,13 +487,7 @@ export function AppealsClient() {
   );
 
   if (loading) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-muted/30" />
-        ))}
-      </div>
-    );
+    return <EntityActionCardGridSkeleton count={6} />;
   }
 
   if (listError) {
@@ -347,44 +518,43 @@ export function AppealsClient() {
           ) : null}
         </div>
       ) : viewMode === 'cards' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {listFiltered.map(a => (
-            <div key={a.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-mono text-[10px] font-bold text-muted-foreground" dir="ltr">{a.caseNumber}</p>
-                  <p className="mt-0.5 truncate font-semibold">{a.employeeNameAr}</p>
-                </div>
-                <span className={cn('inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[a.status])}>
-                  {APPEAL_STATUS_LABELS[a.status]}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  {APPEAL_CHANNEL_LABELS[a.channel]}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground tabular-nums" dir="ltr">
-                  <CalendarDays className="h-3 w-3 shrink-0" />{a.date}
-                </span>
-              </div>
-              {a.grounds?.trim() ? (
-                <p className="line-clamp-3 text-xs text-muted-foreground text-right" title={a.grounds}>
-                  {a.grounds}
-                </p>
-              ) : null}
-              <MinimalDropdown
-                value={a.status}
-                onChange={v => void handleStatusChange(a.id, v)}
-                options={STATUS_OPTIONS}
-              />
-              <div className="mt-auto flex justify-end border-t border-border pt-3">
-                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(a.id)}>
-                  <Trash2 className="h-3.5 w-3.5" /> حذف
-                </Button>
-              </div>
-            </div>
+        <EntityActionCardGrid>
+          {listFiltered.map((a) => (
+            <EntityActionCard
+              key={a.id}
+              reference={a.caseNumber}
+              title={a.employeeNameAr ?? '—'}
+              status={{
+                label: APPEAL_STATUS_LABELS[a.status],
+                tone: APPEAL_STATUS_TONE[a.status],
+              }}
+              chips={
+                <>
+                  <EntityActionCardChip>{APPEAL_CHANNEL_LABELS[a.channel]}</EntityActionCardChip>
+                  <EntityActionCardChip className="font-mono tabular-nums">
+                    <span className="inline-flex items-center gap-1" dir="ltr">
+                      <CalendarDays className="h-3 w-3 shrink-0" />
+                      {a.date}
+                    </span>
+                  </EntityActionCardChip>
+                </>
+              }
+              description={a.grounds}
+              footerNote={
+                a.responseNote?.trim() ? (
+                  <p className="rounded-lg border border-border/60 bg-muted/20 px-2.5 py-1.5 text-[11px] text-muted-foreground text-right">
+                    <span className="font-medium text-foreground">رد الموارد البشرية: </span>
+                    {a.responseNote}
+                  </p>
+                ) : null
+              }
+              extraFooter={renderDecisionActions(a)}
+              onEdit={canMutateAppealRecord(a.status) ? () => openEdit(a) : undefined}
+              onClick={() => setDetailRow(a)}
+              onDelete={canDeleteAppealRecord(a.status) ? () => setDeleteId(a.id) : undefined}
+            />
           ))}
-        </div>
+        </EntityActionCardGrid>
       ) : (
         <DataTable
           variant="directory"
@@ -396,6 +566,75 @@ export function AppealsClient() {
           onRowClick={(a) => setDetailRow(a)}
         />
       )}
+
+      <HRSettingsFormDrawer open={editAppeal != null} onOpenChange={(o) => { if (!o) { setEditAppeal(null); setEditDraft(EMPTY); setEditError(null); } }} title="تعديل التظلم" size="lg" onSave={() => void handleEditSave()} saveDisabled={editSaving} error={editError}>
+        {editDraft.employeeNameAr ? (
+          <div className="rounded-lg bg-muted/40 px-3 py-2 text-sm"><span className="text-muted-foreground">الموظف: </span>{editDraft.employeeNameAr}</div>
+        ) : null}
+        <FormField label="تاريخ التظلم" required>
+          <Input type="date" value={editDraft.date} onChange={e => setEditDraft(d => ({ ...d, date: e.target.value }))} />
+        </FormField>
+        <FormField label="قناة التظلم" required>
+          <MinimalDropdown value={editDraft.channel} onChange={v => setEditDraft(d => ({ ...d, channel: v as HRAppealChannel }))} options={CHANNEL_OPTIONS} />
+        </FormField>
+        <FormField label="أسباب التظلم" required>
+          <textarea value={editDraft.grounds} onChange={e => setEditDraft(d => ({ ...d, grounds: e.target.value }))} placeholder="اشرح أسباب التظلم…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        </FormField>
+      </HRSettingsFormDrawer>
+
+      <Dialog open={decisionTarget != null} onOpenChange={(o) => { if (!o) { setDecisionTarget(null); setDecisionNote(''); setDecisionError(null); } }}>
+        <DialogContent dir="rtl" className="max-w-md text-right">
+          <DialogHeader>
+            <DialogTitle>{decisionTarget ? DECISION_DIALOG_TITLES[decisionTarget.status] : 'معالجة التظلم'}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {decisionTarget
+                ? `${decisionTarget.appeal.caseNumber} · ${decisionTarget.appeal.employeeNameAr} · ${DECISION_STATUS_LABELS[decisionTarget.status]}`
+                : 'معالجة التظلم'}
+            </DialogDescription>
+            {decisionTarget ? (
+              <div className="space-y-2 text-right text-xs text-muted-foreground">
+                <p>{decisionTarget.appeal.caseNumber} · {decisionTarget.appeal.employeeNameAr}</p>
+                <Badge variant="outline" className={cn('text-[10px]', STATUS_COLORS[decisionTarget.status as HRAppealStatus] ?? STATUS_COLORS.pending)}>
+                  {DECISION_STATUS_LABELS[decisionTarget.status]}
+                </Badge>
+              </div>
+            ) : null}
+          </DialogHeader>
+
+          {decisionTarget?.appeal.responseNote?.trim() ? (
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground text-right">
+              <p className="mb-1 font-medium text-foreground">آخر رد مسجّل</p>
+              <p>{decisionTarget.appeal.responseNote}</p>
+            </div>
+          ) : null}
+
+          <FormField label="رد الموارد البشرية" required>
+            <textarea
+              value={decisionNote}
+              onChange={(e) => {
+                setDecisionNote(e.target.value);
+                if (decisionError) setDecisionError(null);
+              }}
+              placeholder="اكتب رد الموارد البشرية للموظف — يُرسل مع الإشعار…"
+              className={cn(
+                'flex min-h-[96px] w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                decisionError ? 'border-destructive' : 'border-input',
+              )}
+            />
+            {decisionError ? <p className="mt-1 text-xs text-destructive">{decisionError}</p> : null}
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              سيُسجَّل القرار ويُرسل إشعار in-app للموظف المعني.
+            </p>
+          </FormField>
+
+          <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
+            <Button onClick={() => void handleDecide()} disabled={deciding}>
+              {deciding ? 'جاري الحفظ…' : 'تأكيد وإرسال'}
+            </Button>
+            <Button variant="outline" onClick={() => { setDecisionTarget(null); setDecisionNote(''); setDecisionError(null); }}>إلغاء</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="تقديم تظلم" size="lg" onSave={() => void handleSave()} saveDisabled={saving} error={formError}>
         <FormField label="المخالفة" required>
@@ -437,6 +676,8 @@ export function AppealsClient() {
           { label: 'التاريخ', value: <TableDateCell value={detailRow.date} /> },
           { label: 'القناة', value: APPEAL_CHANNEL_LABELS[detailRow.channel] },
           { label: 'الحالة', value: APPEAL_STATUS_LABELS[detailRow.status] },
+          { label: 'رد الموارد البشرية', value: detailRow.responseNote?.trim() || '—' },
+          { label: 'تاريخ القرار', value: detailRow.decidedAt ? <TableDateCell value={detailRow.decidedAt} /> : '—' },
           { label: 'أسباب التظلم', value: detailRow.grounds || '—' },
         ] : []}
       />

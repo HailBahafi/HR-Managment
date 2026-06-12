@@ -84,6 +84,31 @@ export type SentNotificationResponseDto = {
   updatedBy: string | null;
 };
 
+export type NotificationRecipientDto = {
+  recipientId: string;
+  notificationId: string;
+  employeeId: string;
+  employeeNameAr: string;
+  employeeCode: string;
+  hasUser: boolean;
+  userId: string | null;
+  userEmail: string | null;
+  userFullNameAr: string | null;
+  deliveryChannel: string;
+  deliveredAt: string | null;
+  state: string;
+  isRead: boolean;
+  readAt: string | null;
+  dismissedAt: string | null;
+  acknowledgedAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+};
+
+export type NotificationDetailResponseDto = SentNotificationResponseDto & {
+  recipients: NotificationRecipientDto[];
+};
+
 export type SendNotificationDto = {
   companyId: string;
   category: NotificationCategory;
@@ -138,7 +163,7 @@ export const notificationsApi = {
     }),
 
   getById: (id: string) =>
-    apiRequest<SentNotificationResponseDto>(`/notifications/${id}`),
+    apiRequest<NotificationDetailResponseDto>(`/notifications/${id}`),
 
   send: (body: SendNotificationDto) =>
     apiRequest<SentNotificationResponseDto>('/notifications', {

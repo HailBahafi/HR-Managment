@@ -1,6 +1,8 @@
 'use client';
 
+import * as React from 'react';
 import { Pencil, Trash2, ChevronRight, Building2, Network } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ActiveBadge } from '@/features/hr/requests/components/shared-ui';
 import type { HRDepartmentEntity } from '@/features/hr/requests/lib/types';
@@ -21,16 +23,25 @@ type FlatNode = { dept: HRDepartmentEntity; depth: number };
 type DepartmentsListGridProps = {
   departments: DepartmentRecord[];
   filtered: FlatNode[];
+  branchLabel?: (branchId: string) => string | undefined;
   onEdit: (dept: HRDepartmentEntity) => void;
   onDelete: (id: string) => void;
 };
 
-export function DepartmentsListGrid({ departments, filtered, onEdit, onDelete }: DepartmentsListGridProps) {
+export function DepartmentsListGrid({
+  departments,
+  filtered,
+  branchLabel,
+  onEdit,
+  onDelete,
+}: DepartmentsListGridProps) {
   return (
     <DirectoryGrid variant="wide">
       {filtered.map(({ dept, depth }) => {
+        const record = dept as DepartmentRecord;
         const parent = departments.find((d) => d.id === dept.parentId);
         const subDepts = departments.filter((d) => d.parentId === dept.id);
+        const branchName = branchLabel?.(record.branchId);
         return (
           <DirectoryGridCard key={dept.id} interactive hoverLift onClick={() => onEdit(dept)}>
             <DirectoryGridCardDecoration />
@@ -49,9 +60,29 @@ export function DepartmentsListGrid({ departments, filtered, onEdit, onDelete }:
                 </DirectoryGridCardEyebrow>
               )}
               <DirectoryGridCardHeading>{dept.nameAr}</DirectoryGridCardHeading>
+              {record.code ? (
+                <p className="mt-1 text-[10px] text-muted-foreground" dir="ltr">{record.code}</p>
+              ) : null}
             </div>
 
+            {record.description ? (
+              <p className="relative mb-3 line-clamp-2 text-xs text-muted-foreground">{record.description}</p>
+            ) : null}
+
             <DirectoryGridCardMetaChips>
+              {branchName ? (
+                <Badge variant="outline" className="text-[10px] font-normal">{branchName}</Badge>
+              ) : null}
+              {record.levelNo > 0 ? (
+                <span className="flex items-center gap-1 text-[10px]">
+                  مستوى {record.levelNo}
+                </span>
+              ) : null}
+              {record.managerEmployeeId ? (
+                <span className="text-[10px] text-muted-foreground" dir="ltr">
+                  مدير: {record.managerEmployeeId.slice(0, 8)}…
+                </span>
+              ) : null}
               {subDepts.length > 0 && (
                 <span className="flex items-center gap-1">
                   <Network className="h-3.5 w-3.5" />
@@ -61,7 +92,7 @@ export function DepartmentsListGrid({ departments, filtered, onEdit, onDelete }:
               {depth > 0 && (
                 <span className="flex items-center gap-1">
                   <ChevronRight className="h-3.5 w-3.5" />
-                  مستوى {depth + 1}
+                  عمق {depth + 1}
                 </span>
               )}
             </DirectoryGridCardMetaChips>

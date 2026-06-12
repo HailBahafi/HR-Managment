@@ -20,14 +20,14 @@ export type PermissionOverlay = {
   reason: string | null;
 };
 
-export function useEmployeeProfilePermissions(employee: Employee) {
+export function useEmployeeProfilePermissions(employee: Employee, enabled = true) {
   const qc = useQueryClient();
   const userId = employee.userId ?? null;
   const hasLinkedUser = employee.hasUser ?? !!userId;
 
   // ── All roles & permissions from system ──────────────────────────────────
-  const { data: rolesResult } = useRoles();
-  const { data: permissionsResult } = usePermissions();
+  const { data: rolesResult } = useRoles(enabled);
+  const { data: permissionsResult } = usePermissions(undefined, enabled);
   const allRoles = rolesResult?.items ?? [];
   const allPermissions: PermissionResponseDto[] = permissionsResult?.items ?? [];
 
@@ -35,7 +35,7 @@ export function useEmployeeProfilePermissions(employee: Employee) {
   const { data: userRolesResult, isLoading: rolesAssignLoading } = useQuery({
     queryKey: ['user-roles', userId],
     queryFn: () => userRolesApi.list(userId!),
-    enabled: !!userId,
+    enabled: enabled && !!userId,
     staleTime: 2 * 60 * 1000,
   });
   const userRoleAssignments = userRolesResult?.items ?? [];
@@ -55,7 +55,7 @@ export function useEmployeeProfilePermissions(employee: Employee) {
   const { data: rolePermsResult } = useQuery({
     queryKey: ['role-permissions', roleDraft],
     queryFn: () => rolesApi.getPermissions(roleDraft),
-    enabled: !!roleDraft,
+    enabled: enabled && !!roleDraft,
     staleTime: 5 * 60 * 1000,
   });
   const rolePermissionIds = React.useMemo(
@@ -71,7 +71,7 @@ export function useEmployeeProfilePermissions(employee: Employee) {
   const { data: overlaysResult } = useQuery({
     queryKey: ['user-permissions', userId],
     queryFn: () => userPermissionsApi.list(userId!),
-    enabled: !!userId,
+    enabled: enabled && !!userId,
     staleTime: 2 * 60 * 1000,
   });
   const overlays: PermissionOverlay[] = React.useMemo(

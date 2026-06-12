@@ -2,6 +2,11 @@
 
 import * as React from 'react';
 import { Trash2, CalendarDays, Megaphone, Send, Search, Plus } from 'lucide-react';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+} from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,6 +134,10 @@ function circularMatchesEmpToolbarFilter(
     if (circularAppliesToEmployee(c, empId, emp.branchId, emp.departmentId)) return true;
   }
   return false;
+}
+
+function canMutateCircular(c: HRDisciplineCircularRecord) {
+  return !c.sentAt;
 }
 
 export function CircularsClient() {
@@ -301,18 +310,7 @@ export function CircularsClient() {
       isActions: true,
       headerClassName: 'whitespace-nowrap',
       render: (c) => (
-        c.sentAt ? (
-          <TableRowActions
-            menuItems={[
-              {
-                label: 'حذف',
-                onClick: () => setDeleteId(c.id),
-                icon: <Trash2 className="h-3.5 w-3.5" />,
-                destructive: true,
-              },
-            ]}
-          />
-        ) : (
+        canMutateCircular(c) ? (
           <TableRowActions
             primaryActions={[
               {
@@ -332,6 +330,8 @@ export function CircularsClient() {
               },
             ]}
           />
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
         )
       ),
     },
@@ -456,44 +456,36 @@ export function CircularsClient() {
           </Button>
         </div>
       ) : viewMode === 'cards' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <EntityActionCardGrid>
           {listFiltered.map((c) => (
-            <div key={c.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-              <button
-                type="button"
-                className="text-right"
-                onClick={() => setDetailCircular(c)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-1.5  font-semibold hover:text-primary transition-colors">
-                      <Megaphone className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                      {c.titleAr || 'تعميم'}
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-muted-foreground" dir="ltr">
+            <EntityActionCard
+              key={c.id}
+              title={c.titleAr || 'تعميم'}
+              status={{
+                label: c.sentAt ? 'مُرسل' : 'لم يُرسل',
+                tone: c.sentAt ? 'approved' : 'pending',
+              }}
+              chips={
+                <>
+                  <EntityActionCardChip className="max-w-[10rem] leading-tight">{c.audienceSummaryAr}</EntityActionCardChip>
+                  <EntityActionCardChip className="font-mono tabular-nums">
+                    <span className="inline-flex items-center gap-1" dir="ltr">
                       <CalendarDays className="h-3 w-3 shrink-0" />
                       {c.date}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="inline-flex max-w-[10rem] items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-medium leading-tight text-primary">
-                      {c.audienceSummaryAr}
                     </span>
-                    <span className={c.sentAt
-                      ? 'text-[10px] text-muted-foreground'
-                      : 'rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200'}>
-                      {c.sentAt ? 'مُرسل' : 'لم يُرسل'}
-                    </span>
-                  </div>
-                </div>
-                <p className="mt-2 line-clamp-3 text-xs text-muted-foreground text-right">{c.bodyAr}</p>
-              </button>
-              <div className="mt-auto flex flex-wrap justify-end gap-2 border-t border-border pt-3">
-                {!c.sentAt ? (
+                  </EntityActionCardChip>
+                </>
+              }
+              description={c.bodyAr}
+              avatarLetter={c.titleAr?.charAt(0) ?? 'ت'}
+              onClick={() => setDetailCircular(c)}
+              onDelete={canMutateCircular(c) ? () => setDeleteId(c.id) : undefined}
+              extraFooter={
+                !c.sentAt ? (
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="gap-1.5"
+                    className="h-7 w-full gap-1.5 text-xs"
                     type="button"
                     onClick={() => {
                       void (async () => {
@@ -509,14 +501,11 @@ export function CircularsClient() {
                   >
                     <Send className="h-3.5 w-3.5" /> إرسال التعميم
                   </Button>
-                ) : null}
-                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
+                ) : undefined
+              }
+            />
           ))}
-        </div>
+        </EntityActionCardGrid>
       ) : (
         <DataTable
           variant="directory"

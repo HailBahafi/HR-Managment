@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { UserCircle, Eye, Pencil, Trash2 } from 'lucide-react';
+import { UserCircle, Eye, Pencil, Trash2, Building2, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
@@ -23,27 +23,53 @@ type Props = { model: ContactsDirectoryModel };
 
 function statusBadge(user: UserRecord) {
   if (!user.isActive) return <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">غير نشط</Badge>;
-  return <Badge variant="outline" className="text-[10px] border-green-500/40 text-green-700 dark:text-green-400">نشط</Badge>;
+  if (!user.canSignIn) return <Badge variant="outline" className="text-[10px]">لا يمكن الدخول</Badge>;
+  return <Badge variant="outline" className="text-[10px] border-success/40 text-success dark:text-success">نشط</Badge>;
+}
+
+function primaryCompanyLabel(row: UserRecord, model: ContactsDirectoryModel) {
+  const link = row.companies.find((c) => c.isDefault) ?? row.companies[0];
+  if (link) return model.companyLinkLabel(link);
+  if (row.defaultCompanyId) {
+    const c = model.companies.find((x) => x.id === row.defaultCompanyId);
+    return c?.nameAr ?? row.defaultCompanyId.slice(0, 8);
+  }
+  return '—';
+}
+
+function primaryBranchLabel(row: UserRecord, model: ContactsDirectoryModel) {
+  const link = row.branches.find((b) => b.isDefault) ?? row.branches[0];
+  if (link) return model.branchLinkLabel(link);
+  if (row.defaultBranchId) {
+    const b = model.branches.find((x) => x.id === row.defaultBranchId);
+    return b?.nameAr ?? row.defaultBranchId.slice(0, 8);
+  }
+  return '—';
 }
 
 export function ContactsListViews({ model }: Props) {
-  const { users, loading, listError, layoutView, setViewRow, openEdit, setConfirmId } = model;
+  const { users, loading, listError, layoutView, setViewRow, openEdit, setConfirmId, formatDate } = model;
 
   const columns = React.useMemo((): ColumnDef<UserRecord>[] => [
     {
       key: 'name',
       title: 'الاسم',
-      render: (row) => <span className="font-medium">{row.fullNameAr ?? row.email}</span>,
+      render: (row) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium">{row.fullNameAr ?? row.email}</span>
+          {row.fullNameEn ? <span className="text-[10px] text-muted-foreground" dir="ltr">{row.fullNameEn}</span> : null}
+        </div>
+      ),
     },
     {
       key: 'email',
-      title: 'البريد الإلكتروني',
+      title: 'البريد',
       className: 'text-muted-foreground',
       render: (row) => <span dir="ltr">{row.email}</span>,
     },
     {
       key: 'userType',
-      title: 'نوع المستخدم',
+      title: 'النوع',
       render: (row) => (
         <Badge variant="outline" className="text-[10px]">
           {USER_TYPE_LABELS[row.userType ?? ''] ?? row.userType ?? '—'}
@@ -51,15 +77,45 @@ export function ContactsListViews({ model }: Props) {
       ),
     },
     {
-      key: 'status',
-      title: 'الحالة',
-      render: (row) => statusBadge(row),
+      key: 'company',
+      title: 'الشركة',
+      className: 'text-muted-foreground text-xs',
+      render: (row) => primaryCompanyLabel(row, model),
     },
     {
-      key: 'phone',
-      title: 'الجوال',
-      className: 'text-muted-foreground',
-      render: (row) => <span dir="ltr">{row.phone ?? '—'}</span>,
+      key: 'branch',
+      title: 'الفرع',
+      className: 'text-muted-foreground text-xs',
+      render: (row) => primaryBranchLabel(row, model),
+    },
+    {
+      key: 'links',
+      title: 'الإسناد',
+      render: (row) => (
+        <div className="flex gap-1 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-0.5"><Building2 className="h-3 w-3" />{row.companies.length}</span>
+          <span>·</span>
+          <span className="inline-flex items-center gap-0.5"><MapPin className="h-3 w-3" />{row.branches.length}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      render: (row) => (
+        <div className="flex flex-col gap-0.5">
+          {statusBadge(row)}
+          {row.isVerified ? (
+            <span className="text-[10px] text-muted-foreground">موثّق</span>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: 'lastLogin',
+      title: 'آخر دخول',
+      className: 'text-muted-foreground text-xs',
+      render: (row) => formatDate(row.lastLoginAt),
     },
     {
       key: 'actions',
@@ -69,19 +125,20 @@ export function ContactsListViews({ model }: Props) {
       render: (row) => (
         <TableRowActions
           menuItems={[
+            { label: 'عرض التفاصيل', onClick: (e) => { e.stopPropagation(); setViewRow(row); } },
             { label: 'تعديل', onClick: (e) => { e.stopPropagation(); openEdit(row); } },
             { label: 'حذف', onClick: (e) => { e.stopPropagation(); setConfirmId(row.id); }, destructive: true, separator: true },
           ]}
         />
       ),
     },
-  ], [openEdit, setConfirmId, setViewRow]);
+  ], [formatDate, model, openEdit, setConfirmId, setViewRow]);
 
   if (loading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-32 animate-pulse rounded-xl border border-border bg-muted/30" />
+          <div key={i} className="h-36 animate-pulse rounded-xl border border-border bg-muted/30" />
         ))}
       </div>
     );
@@ -105,6 +162,7 @@ export function ContactsListViews({ model }: Props) {
             <UserGridCard
               key={row.id}
               row={row}
+              model={model}
               onOpen={() => setViewRow(row)}
               onEdit={() => openEdit(row)}
               onDelete={() => setConfirmId(row.id)}
@@ -125,7 +183,19 @@ export function ContactsListViews({ model }: Props) {
   );
 }
 
-function UserGridCard({ row, onOpen, onEdit, onDelete }: { row: UserRecord; onOpen: () => void; onEdit: () => void; onDelete: () => void }) {
+function UserGridCard({
+  row,
+  model,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  row: UserRecord;
+  model: ContactsDirectoryModel;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
     <DirectoryGridCard interactive onClick={onOpen}>
       <DirectoryGridCardHeader>
@@ -139,17 +209,26 @@ function UserGridCard({ row, onOpen, onEdit, onDelete }: { row: UserRecord; onOp
           <span className="text-muted-foreground">البريد</span>
           <span className="truncate">{row.email}</span>
         </DirectoryGridCardMetaRow>
-        {row.phone && (
-          <DirectoryGridCardMetaRow dir="ltr">
-            <span className="text-muted-foreground">الجوال</span>
-            <span>{row.phone}</span>
-          </DirectoryGridCardMetaRow>
-        )}
+        <DirectoryGridCardMetaRow>
+          <span className="text-muted-foreground">الشركة</span>
+          <span className="truncate">{primaryCompanyLabel(row, model)}</span>
+        </DirectoryGridCardMetaRow>
+        <DirectoryGridCardMetaRow>
+          <span className="text-muted-foreground">الفرع</span>
+          <span className="truncate">{primaryBranchLabel(row, model)}</span>
+        </DirectoryGridCardMetaRow>
+        <DirectoryGridCardMetaRow>
+          <span className="text-muted-foreground">الإسناد</span>
+          <span>{row.companies.length} شركة · {row.branches.length} فرع</span>
+        </DirectoryGridCardMetaRow>
       </DirectoryGridCardMeta>
       <DirectoryGridCardFooter>
-        <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={onOpen}><Eye className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" title="تعديل" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="حذف" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
+        {statusBadge(row)}
+        <div className="ms-auto flex gap-0.5">
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={onOpen}><Eye className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="تعديل" onClick={onEdit}><Pencil className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="حذف" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
+        </div>
       </DirectoryGridCardFooter>
     </DirectoryGridCard>
   );

@@ -5,8 +5,16 @@ import {
   Trash2, CalendarDays, CheckCircle2, XCircle, Edit3,
   FileDown, FileSpreadsheet, Plus, AlertTriangle, Scale, Search,
 } from 'lucide-react';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+  EntityActionCardGridSkeleton,
+  type WorkflowStatusTone,
+} from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
-import { cn } from '@/shared/utils';
+import { cn, formatDisplayDateTime } from '@/shared/utils';
+import { STATUS_PILL } from '@/shared/status-pill-classes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format, parse, isValid } from 'date-fns';
@@ -27,6 +35,11 @@ import {
 import { useViolationCasesDirectoryModel } from '@/features/hr/discipline/violation-cases/hooks/useViolationCasesDirectoryModel';
 import type { ViolationCaseRecord } from '@/features/hr/discipline/violation-cases/hooks/useViolationCasesDirectoryModel';
 import type { ViolationRecordStatus } from '@/features/hr/discipline/lib/api/violation-records';
+import {
+  INVESTIGATION_DEDUCTION_TYPE_LABELS,
+  INVESTIGATION_RECOMMENDATION_LABELS,
+  INVESTIGATION_RESULT_LABELS,
+} from '@/features/hr/discipline/lib/types';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
@@ -63,8 +76,19 @@ const STATUS_COLORS: Record<ViolationRecordStatus, string> = {
   needs_edit: 'text-warning border-warning/30 bg-warning/10',
 };
 
+const VIOLATION_STATUS_TONE: Record<ViolationRecordStatus, WorkflowStatusTone> = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  needs_edit: 'warning',
+};
+
 const STATUS_ORDER: readonly ViolationRecordStatus[] = ['pending', 'approved', 'rejected', 'needs_edit'];
 type StatusFilter = 'all' | ViolationRecordStatus;
+
+function canMutateViolationCase(status: ViolationRecordStatus) {
+  return status === 'pending' || status === 'needs_edit';
+}
 
 // ─── Notice dialog (إنذار) ────────────────────────────────────────────────────
 
@@ -116,7 +140,7 @@ function NoticeDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-right text-base">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle className="h-4 w-4 text-warning" />
             إصدار إنذار
           </DialogTitle>
           <DialogDescription className="text-right text-xs text-muted-foreground">
@@ -186,11 +210,15 @@ function InvestigationDialog({
     }
     setSaving(true);
     try {
-      await disciplineInvestigationsApi.create({
+      const created = await disciplineInvestigationsApi.create({
         companyId,
         violationRecordId: violationCase.id,
         investigatorEmployeeId: investigatorId,
         investigationDate: date,
+        result: 'pending',
+      });
+      await disciplineInvestigationsApi.submitResults(created.id, {
+        investigatorEmployeeId: investigatorId,
         employeeStatement: statement.trim() || null,
         result,
       });
@@ -205,7 +233,7 @@ function InvestigationDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-right text-base">
-            <Search className="h-4 w-4 text-blue-500" />
+            <Search className="h-4 w-4 text-primary" />
             فتح تحقيق
           </DialogTitle>
           <DialogDescription className="text-right text-xs text-muted-foreground">
@@ -291,7 +319,7 @@ function AppealDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-right text-base">
-            <Scale className="h-4 w-4 text-violet-500" />
+            <Scale className="h-4 w-4 text-primary" />
             تقديم تظلم
           </DialogTitle>
           <DialogDescription className="text-right text-xs text-muted-foreground">
@@ -371,18 +399,18 @@ function TypeRequirementBadges({ needsWarning, needsInvestigation }: { needsWarn
   if (!needsWarning && !needsInvestigation) return null;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {needsInvestigation && (
-        <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-400">
+      {needsInvestigation ? (
+        <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_PILL.info)}>
           <Search className="h-3 w-3" />
           يحتاج تحقيق
         </span>
-      )}
-      {needsWarning && (
-        <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+      ) : null}
+      {needsWarning ? (
+        <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_PILL.warning)}>
           <AlertTriangle className="h-3 w-3" />
           يحتاج إنذار
         </span>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -622,9 +650,6 @@ export function ViolationCasesClient() {
     setRejectNote('');
   };
 
-  // Get the type info for a given case (from violationTypes list)
-  const typeFor = (c: ViolationCaseRecord) => violationTypes.find((t) => t.id === c.violationTypeId);
-
   const columns = React.useMemo((): ColumnDef<ViolationCaseRecord>[] => [
     {
       key: 'caseNumber',
@@ -655,6 +680,14 @@ export function ViolationCasesClient() {
       render: (c) => <TableDateCell value={c.date} />,
     },
     {
+      key: 'description',
+      title: 'الوصف',
+      className: 'max-w-[14rem] truncate text-xs text-muted-foreground',
+      render: (c) => (
+        <span className="line-clamp-2" title={c.description || undefined}>{c.description || '—'}</span>
+      ),
+    },
+    {
       key: 'status',
       title: 'الحالة',
       headerClassName: 'whitespace-nowrap',
@@ -669,17 +702,37 @@ export function ViolationCasesClient() {
       title: 'المتطلبات',
       headerClassName: 'whitespace-nowrap',
       render: (c) => {
-        const type = typeFor(c);
         return (
           <div className="flex flex-wrap gap-1">
-            {type?.needsInvestigation && (
-              <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-[9px] text-blue-700 dark:text-blue-400">تحقيق</Badge>
-            )}
-            {type?.needsWarning && (
-              <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[9px] text-amber-700 dark:text-amber-400">إنذار</Badge>
-            )}
+            {c.typeNeedsInvestigation ? (
+              <Badge variant="outline" className={cn('text-[9px]', STATUS_PILL.info)}>تحقيق</Badge>
+            ) : null}
+            {c.hasInvestigations ? (
+              <Badge variant="outline" className={cn('text-[9px]', STATUS_PILL.calculated)}>
+                {c.investigationCount > 1 ? `${c.investigationCount} تحقيقات` : 'يوجد تحقيق'}
+              </Badge>
+            ) : null}
+            {c.typeNeedsWarning ? (
+              <Badge variant="outline" className={cn('text-[9px]', STATUS_PILL.warning)}>إنذار</Badge>
+            ) : null}
           </div>
         );
+      },
+    },
+    {
+      key: 'investigation',
+      title: 'آخر تحقيق',
+      headerClassName: 'whitespace-nowrap',
+      className: 'max-w-[10rem] text-xs text-muted-foreground',
+      render: (c) => {
+        if (!c.hasInvestigations) return '—';
+        const parts = [
+          c.latestInvestigationResult ? INVESTIGATION_RESULT_LABELS[c.latestInvestigationResult] : null,
+          c.latestInvestigationRecommendation
+            ? INVESTIGATION_RECOMMENDATION_LABELS[c.latestInvestigationRecommendation]
+            : null,
+        ].filter(Boolean);
+        return parts.length > 0 ? parts.join(' · ') : `${c.investigationCount} تحقيق`;
       },
     },
     {
@@ -688,30 +741,34 @@ export function ViolationCasesClient() {
       isActions: true,
       headerClassName: 'whitespace-nowrap',
       render: (c) => {
-        const type = typeFor(c);
+        const canMutate = canMutateViolationCase(c.status);
         const menuItems = [
-          { label: 'تعديل', onClick: () => openEdit(c), icon: <Edit3 className="h-3.5 w-3.5" /> },
-          ...(type?.needsWarning
+          ...(canMutate
+            ? [{ label: 'تعديل', onClick: () => openEdit(c), icon: <Edit3 className="h-3.5 w-3.5" /> }]
+            : []),
+          ...(c.typeNeedsWarning
             ? [{ label: 'إنذار', onClick: () => setNoticeCase(c), icon: <AlertTriangle className="h-3.5 w-3.5" /> }]
             : []),
-          ...(type?.needsInvestigation
+          ...(c.typeNeedsInvestigation
             ? [{ label: 'تحقيق', onClick: () => setInvestigationCase(c), icon: <Search className="h-3.5 w-3.5" /> }]
             : []),
           { label: 'تظلم', onClick: () => setAppealCase(c), icon: <Scale className="h-3.5 w-3.5" /> },
-          {
-            label: 'حذف',
-            onClick: () => setDeleteId(c.id),
-            icon: <Trash2 className="h-3.5 w-3.5" />,
-            destructive: true,
-            separator: true,
-          },
+          ...(canMutate
+            ? [{
+                label: 'حذف',
+                onClick: () => setDeleteId(c.id),
+                icon: <Trash2 className="h-3.5 w-3.5" />,
+                destructive: true,
+                separator: true,
+              }]
+            : []),
         ];
         return (
           <TableRowActions
-            primaryActions={[
+            primaryActions={c.status === 'pending' ? [
               { label: 'موافقة', variant: 'success', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onClick: () => void handleApprove(c) },
               { label: 'رفض', variant: 'destructive', icon: <XCircle className="h-3.5 w-3.5" />, onClick: () => { setRejectNote(''); setRejectCase(c); } },
-            ]}
+            ] : []}
             menuItems={menuItems}
           />
         );
@@ -755,13 +812,7 @@ export function ViolationCasesClient() {
   );
 
   if (loading) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-52 animate-pulse rounded-xl border border-border bg-muted/30" />
-        ))}
-      </div>
-    );
+    return <EntityActionCardGridSkeleton count={6} />;
   }
 
   if (listError) {
@@ -782,91 +833,97 @@ export function ViolationCasesClient() {
           <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>عرض الكل</Button>
         </div>
       ) : viewMode === 'cards' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <EntityActionCardGrid>
           {listFiltered.map((c) => {
-            const type = typeFor(c);
+            const isPending = c.status === 'pending';
             return (
-              <div key={c.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-                {/* Header */}
-                <button type="button" className="text-right" onClick={() => setViewCase(c)}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-mono text-[10px] font-bold text-muted-foreground" dir="ltr">{c.caseNumber}</p>
-                      <p className="mt-0.5 truncate font-semibold">{c.employeeNameAr}</p>
+              <EntityActionCard
+                key={c.id}
+                onClick={() => setViewCase(c)}
+                reference={c.caseNumber}
+                title={c.employeeNameAr ?? '—'}
+                subtitle={c.typeNameAr}
+                description={c.description}
+                status={{
+                  label: STATUS_LABELS[c.status],
+                  tone: VIOLATION_STATUS_TONE[c.status],
+                }}
+                chips={
+                  <>
+                    <EntityActionCardChip className="font-mono tabular-nums">
+                      <span className="inline-flex items-center gap-1" dir="ltr">
+                        <CalendarDays className="h-3 w-3 shrink-0" />
+                        {c.date}
+                      </span>
+                    </EntityActionCardChip>
+                    {c.hasInvestigations && c.latestInvestigationResult ? (
+                      <EntityActionCardChip>
+                        {INVESTIGATION_RESULT_LABELS[c.latestInvestigationResult]}
+                      </EntityActionCardChip>
+                    ) : null}
+                    {c.latestInvestigationRecommendation ? (
+                      <EntityActionCardChip>
+                        {INVESTIGATION_RECOMMENDATION_LABELS[c.latestInvestigationRecommendation]}
+                      </EntityActionCardChip>
+                    ) : null}
+                  </>
+                }
+                footerNote={
+                  !isPending && (c.decidedAt || c.decisionNotes) ? (
+                    <div className="space-y-0.5 text-[11px] text-muted-foreground">
+                      {c.decidedAt ? (
+                        <p>
+                          <span className="text-foreground/80">تاريخ القرار: </span>
+                          {formatDisplayDateTime(c.decidedAt)}
+                        </p>
+                      ) : null}
+                      {c.decisionNotes ? (
+                        <p className="line-clamp-2" title={c.decisionNotes}>
+                          <span className="text-foreground/80">ملاحظات: </span>
+                          {c.decisionNotes}
+                        </p>
+                      ) : null}
                     </div>
-                    <span className={cn('inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium', STATUS_COLORS[c.status])}>
-                      {STATUS_LABELS[c.status]}
-                    </span>
-                  </div>
-                </button>
-
-                {/* Type chip + date + requirement badges */}
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground truncate max-w-[10rem]">
-                      {c.typeNameAr}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground tabular-nums" dir="ltr">
-                      <CalendarDays className="h-3 w-3 shrink-0" />{c.date}
-                    </span>
-                  </div>
-                  {type && (
-                    <TypeRequirementBadges needsWarning={type.needsWarning} needsInvestigation={type.needsInvestigation} />
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                <div className="grid grid-cols-2 gap-1 rounded-lg border border-border/60 bg-muted/20 p-1">
-                  <Button variant="ghost" size="sm" type="button"
-                    className="h-8 gap-1 px-2 text-xs text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
-                    onClick={() => void handleApprove(c)}>
-                    <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                  </Button>
-                  <Button variant="ghost" size="sm" type="button"
-                    className="h-8 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10"
-                    onClick={() => { setRejectNote(''); setRejectCase(c); }}>
-                    <XCircle className="h-3.5 w-3.5" /> رفض
-                  </Button>
-                  <Button variant="ghost" size="sm" type="button"
-                    className="h-8 gap-1 px-2 text-xs text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400"
-                    onClick={() => openEdit(c)}>
-                    <Edit3 className="h-3.5 w-3.5" /> تعديل
-                  </Button>
-                </div>
-
-                {/* Contextual action row: إنذار / تحقيق / تظلم */}
-                <div className="flex flex-wrap gap-1">
-                  {type?.needsWarning && (
-                    <Button variant="outline" size="sm" type="button"
-                      className="h-7 gap-1 border-amber-500/30 px-2 text-[11px] text-amber-700 hover:bg-amber-500/10 dark:text-amber-400"
-                      onClick={() => setNoticeCase(c)}>
-                      <AlertTriangle className="h-3 w-3" /> إنذار
+                  ) : undefined
+                }
+                workflow={
+                  isPending
+                    ? {
+                        showApproveReject: true,
+                        onApprove: () => void handleApprove(c),
+                        onReject: () => { setRejectNote(''); setRejectCase(c); },
+                      }
+                    : undefined
+                }
+                onEdit={canMutateViolationCase(c.status) ? () => openEdit(c) : undefined}
+                onDelete={canMutateViolationCase(c.status) ? () => setDeleteId(c.id) : undefined}
+                extraFooter={
+                  <div className="flex gap-1">
+                    {c.typeNeedsWarning ? (
+                      <Button variant="ghost" size="sm" type="button"
+                        className="h-7 flex-1 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={() => setNoticeCase(c)}>
+                        <AlertTriangle className="h-3 w-3" /> إنذار
+                      </Button>
+                    ) : null}
+                    {c.typeNeedsInvestigation ? (
+                      <Button variant="ghost" size="sm" type="button"
+                        className="h-7 flex-1 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                        onClick={() => setInvestigationCase(c)}>
+                        <Search className="h-3 w-3" /> تحقيق
+                      </Button>
+                    ) : null}
+                    <Button variant="ghost" size="sm" type="button"
+                      className="h-7 flex-1 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => setAppealCase(c)}>
+                      <Scale className="h-3 w-3" /> تظلم
                     </Button>
-                  )}
-                  {type?.needsInvestigation && (
-                    <Button variant="outline" size="sm" type="button"
-                      className="h-7 gap-1 border-blue-500/30 px-2 text-[11px] text-blue-700 hover:bg-blue-500/10 dark:text-blue-400"
-                      onClick={() => setInvestigationCase(c)}>
-                      <Search className="h-3 w-3" /> تحقيق
-                    </Button>
-                  )}
-                  <Button variant="outline" size="sm" type="button"
-                    className="h-7 gap-1 border-violet-500/30 px-2 text-[11px] text-violet-700 hover:bg-violet-500/10 dark:text-violet-400"
-                    onClick={() => setAppealCase(c)}>
-                    <Scale className="h-3 w-3" /> تظلم
-                  </Button>
-                </div>
-
-                {/* Footer: delete */}
-                <div className="mt-auto flex justify-end border-t border-border pt-3">
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}>
-                    <Trash2 className="h-3.5 w-3.5" /> حذف
-                  </Button>
-                </div>
-              </div>
+                  </div>
+                }
+              />
             );
           })}
-        </div>
+        </EntityActionCardGrid>
       ) : (
         <DataTable
           variant="directory"
@@ -949,27 +1006,93 @@ export function ViolationCasesClient() {
                 <div><span className="text-muted-foreground text-xs">التاريخ</span><p>{viewCase.date}</p></div>
                 <div>
                   <span className="text-muted-foreground text-xs">الحالة</span>
-                  <p><span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', STATUS_COLORS[viewCase.status])}>{STATUS_LABELS[viewCase.status]}</span></p>
+                  <p className="flex items-center gap-1.5">
+                    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', STATUS_COLORS[viewCase.status])}>{STATUS_LABELS[viewCase.status]}</span>
+                    {viewCase.hasInvestigations ? (
+                      <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium', STATUS_PILL.calculated)}>يوجد تحقيق</span>
+                    ) : null}
+                  </p>
                 </div>
               </div>
-              {(() => { const t = typeFor(viewCase); return t && (t.needsWarning || t.needsInvestigation) ? <TypeRequirementBadges needsWarning={t.needsWarning} needsInvestigation={t.needsInvestigation} /> : null; })()}
+              {viewCase.typeNeedsInvestigation || viewCase.typeNeedsWarning ? (
+                <TypeRequirementBadges
+                  needsWarning={viewCase.typeNeedsWarning}
+                  needsInvestigation={viewCase.typeNeedsInvestigation}
+                />
+              ) : null}
               <div><span className="text-muted-foreground text-xs">الوصف</span><p className="mt-1">{viewCase.description}</p></div>
               {viewCase.notes && <div><span className="text-muted-foreground text-xs">ملاحظات</span><p className="mt-1">{viewCase.notes}</p></div>}
               {viewCase.attachmentsNote && <div><span className="text-muted-foreground text-xs">المرفقات</span><p className="mt-1">{viewCase.attachmentsNote}</p></div>}
+              {viewCase.investigations.length > 0 ? (
+                <div className="space-y-2 rounded-lg border border-border bg-muted/15 p-3">
+                  <p className="text-xs font-semibold text-foreground">
+                    التحقيقات ({viewCase.investigationCount})
+                  </p>
+                  <div className="space-y-2">
+                    {viewCase.investigations.map((inv) => (
+                      <div key={inv.id} className="rounded-md border border-border/60 bg-background px-3 py-2 text-xs space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono tabular-nums" dir="ltr">{inv.investigationDate}</span>
+                          <Badge variant="outline" className="text-[10px]">
+                            {INVESTIGATION_RESULT_LABELS[inv.result]}
+                          </Badge>
+                          {inv.recommendation ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              {INVESTIGATION_RECOMMENDATION_LABELS[inv.recommendation]}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        {inv.employeeStatement ? (
+                          <p><span className="text-muted-foreground">أقوال الموظف: </span>{inv.employeeStatement}</p>
+                        ) : null}
+                        {inv.witnessStatement ? (
+                          <p><span className="text-muted-foreground">أقوال الشهود: </span>{inv.witnessStatement}</p>
+                        ) : null}
+                        {inv.deductionType && inv.deductionValue ? (
+                          <p>
+                            <span className="text-muted-foreground">الاستقطاع: </span>
+                            {INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType]} · {inv.deductionValue}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {(viewCase.decidedAt || viewCase.decisionNotes) && (
+                <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground">القرار</p>
+                  {viewCase.decidedAt && (
+                    <div><span className="text-muted-foreground text-xs">تاريخ القرار</span><p className="font-mono text-xs">{formatDisplayDateTime(viewCase.decidedAt)}</p></div>
+                  )}
+                  {viewCase.decisionNotes && (
+                    <div><span className="text-muted-foreground text-xs">ملاحظات القرار</span><p className="mt-0.5">{viewCase.decisionNotes}</p></div>
+                  )}
+                </div>
+              )}
+              {viewCase.typeHasDeduction && viewCase.typeDeductionKind ? (
+                <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
+                  <p className="text-xs font-semibold text-foreground">خصم مالي</p>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">النوع: </span>{viewCase.typeDeductionKind}
+                    {viewCase.typeDeductionValue && <><span className="mx-1">·</span><span className="font-medium text-foreground">القيمة: </span>{viewCase.typeDeductionValue}</>}
+                  </p>
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
-                {typeFor(viewCase)?.needsWarning && (
-                  <Button size="sm" variant="outline" className="gap-1.5 border-amber-500/30 text-amber-700 hover:bg-amber-500/10"
+                {viewCase.typeNeedsWarning ? (
+                  <Button size="sm" variant="outline" className="gap-1.5"
                     onClick={() => { setViewCase(null); setNoticeCase(viewCase); }}>
                     <AlertTriangle className="h-3.5 w-3.5" /> إصدار إنذار
                   </Button>
-                )}
-                {typeFor(viewCase)?.needsInvestigation && (
-                  <Button size="sm" variant="outline" className="gap-1.5 border-blue-500/30 text-blue-700 hover:bg-blue-500/10"
+                ) : null}
+                {viewCase.typeNeedsInvestigation ? (
+                  <Button size="sm" variant="outline" className="gap-1.5"
                     onClick={() => { setViewCase(null); setInvestigationCase(viewCase); }}>
                     <Search className="h-3.5 w-3.5" /> فتح تحقيق
                   </Button>
-                )}
-                <Button size="sm" variant="outline" className="gap-1.5 border-violet-500/30 text-violet-700 hover:bg-violet-500/10"
+                ) : null}
+                <Button size="sm" variant="outline" className="gap-1.5"
                   onClick={() => { setViewCase(null); setAppealCase(viewCase); }}>
                   <Scale className="h-3.5 w-3.5" /> تقديم تظلم
                 </Button>

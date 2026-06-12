@@ -18,7 +18,7 @@ jest.mock('@/features/auth/lib/api/auth', () => ({
 }));
 
 jest.mock('@/features/auth/lib/auth-store', () => ({
-  useAuthStore: { getState: jest.fn(() => ({ setUser: jest.fn() })) },
+  useAuthStore: { getState: jest.fn(() => ({ setUser: jest.fn(), setAccessProfile: jest.fn() })) },
 }));
 
 jest.mock('sonner', () => ({
@@ -78,7 +78,14 @@ describe('LoginPage', () => {
   it('calls authApi.login with trimmed lowercase email on valid submit', async () => {
     mockLogin.mockResolvedValueOnce({
       access_token: 'tok',
+      userId: 'u1',
       user: { id: 'u1', email: 'admin@test.com', phone: null },
+      accessProfile: {
+        userId: 'u1',
+        defaultCompanyId: 'c1',
+        defaultBranchId: null,
+        companies: [],
+      },
     });
 
     renderLoginPage();

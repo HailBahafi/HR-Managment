@@ -10,12 +10,16 @@ import { employeesApi } from '@/features/hr/organization/employees/lib/api/emplo
 import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-records';
 import {
   disciplineInvestigationsApi,
-  type CreateDisciplineInvestigationDto,
+  type CreateDisciplineInvestigationWithResultsDto,
   type InvestigationResultDto,
 } from '@/features/hr/discipline/lib/api/discipline-investigations';
 import {
+  createDisciplineInvestigationWithResults,
   mapDisciplineInvestigationResponse,
+  openDisciplineInvestigation,
+  submitDisciplineInvestigationResults,
 } from '@/features/hr/discipline/investigations/services/discipline-investigations.service';
+import type { SubmitDisciplineInvestigationResultsDto } from '@/features/hr/discipline/lib/api/discipline-investigations';
 
 const PAGE_LIMIT = 200;
 
@@ -133,9 +137,25 @@ export function useDisciplineInvestigationsDirectoryModel() {
     void reload();
   }, [reload]);
 
+  const openInvestigation = React.useCallback(
+    async (payload: Parameters<typeof openDisciplineInvestigation>[0]) => {
+      await openDisciplineInvestigation(payload);
+      await reload();
+    },
+    [reload],
+  );
+
+  const submitResults = React.useCallback(
+    async (id: string, payload: SubmitDisciplineInvestigationResultsDto) => {
+      await submitDisciplineInvestigationResults(id, payload);
+      await reload();
+    },
+    [reload],
+  );
+
   const add = React.useCallback(
-    async (payload: CreateDisciplineInvestigationDto) => {
-      await disciplineInvestigationsApi.create(payload);
+    async (payload: CreateDisciplineInvestigationWithResultsDto) => {
+      await createDisciplineInvestigationWithResults(payload);
       await reload();
     },
     [reload],
@@ -158,6 +178,8 @@ export function useDisciplineInvestigationsDirectoryModel() {
     loading,
     listError,
     add,
+    openInvestigation,
+    submitResults,
     remove,
     reloadInvestigations,
   };

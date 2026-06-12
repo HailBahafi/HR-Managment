@@ -1,7 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus } from 'lucide-react';
+import { Trash2, CalendarDays, FileDown, FileSpreadsheet, Plus, ClipboardCheck } from 'lucide-react';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+  EntityActionCardGridSkeleton,
+} from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +31,7 @@ import {
 import {
   toInvestigationRecommendationDto,
   toInvestigationResultDto,
+  canMutateInvestigationRecord,
 } from '@/features/hr/discipline/investigations/services/discipline-investigations.service';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
@@ -43,25 +50,42 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
 import type { HRDisciplineInvestigationRecord } from '@/features/hr/discipline/lib/types';
 
-const RESULT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][]).map(([v, l]) => ({ value: v, label: l }));
+const RESULT_SUBMIT_OPTIONS = (Object.entries(INVESTIGATION_RESULT_LABELS) as [HRInvestigationResult, string][])
+  .filter(([value]) => value !== 'pending')
+  .map(([value, label]) => ({ value, label }));
 
 type ResultFilter = 'all' | HRInvestigationResult;
 
 type RecommendationFilter = 'all' | HRInvestigationRecommendation;
 
-interface DraftForm {
+interface OpenDraftForm {
   caseId: string; caseNumber: string; employeeId: string; employeeNameAr: string;
   investigatorEmployeeId: string; investigatorName: string; date: string;
-  employeeStatement: string; witnessStatement: string;
-  result: HRInvestigationResult;
+}
+
+interface ResultsDraftForm {
+  investigatorEmployeeId: string;
+  employeeStatement: string;
+  witnessStatement: string;
+  result: 'proven' | 'not_proven';
   recommendationType: RecommendationFilter;
   deductionType: 'days' | 'hours' | 'fixed_amount';
   deductionValue: string;
 }
-const EMPTY: DraftForm = {
+
+const OPEN_EMPTY: OpenDraftForm = {
   caseId: '', caseNumber: '', employeeId: '', employeeNameAr: '',
-  investigatorEmployeeId: '', investigatorName: '', date: '', employeeStatement: '', witnessStatement: '',
-  result: 'proven', recommendationType: 'all', deductionType: 'days', deductionValue: '',
+  investigatorEmployeeId: '', investigatorName: '', date: '',
+};
+
+const RESULTS_EMPTY: ResultsDraftForm = {
+  investigatorEmployeeId: '',
+  employeeStatement: '',
+  witnessStatement: '',
+  result: 'proven',
+  recommendationType: 'all',
+  deductionType: 'days',
+  deductionValue: '',
 };
 
 export function InvestigationsClient() {
@@ -90,9 +114,13 @@ export function InvestigationsClient() {
     void reloadInvestigations({ employeeId, result });
   }, [selectedEmpIds, resultFilter, reloadInvestigations]);
 
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
-  const [formError, setFormError] = React.useState<string | null>(null);
+  const [openDrawerOpen, setOpenDrawerOpen] = React.useState(false);
+  const [openDraft, setOpenDraft] = React.useState<OpenDraftForm>(OPEN_EMPTY);
+  const [openFormError, setOpenFormError] = React.useState<string | null>(null);
+  const [resultsTarget, setResultsTarget] = React.useState<HRDisciplineInvestigationRecord | null>(null);
+  const [resultsDraft, setResultsDraft] = React.useState<ResultsDraftForm>(RESULTS_EMPTY);
+  const [resultsFormError, setResultsFormError] = React.useState<string | null>(null);
+  const [resultsSaving, setResultsSaving] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [detailRow, setDetailRow] = React.useState<HRDisciplineInvestigationRecord | null>(null);
@@ -132,9 +160,9 @@ export function InvestigationsClient() {
       <div className="flex items-center gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
-          onClick={() => setDrawerOpen(true)}>
+          onClick={() => { setOpenDraft({ ...OPEN_EMPTY, date: new Date().toISOString().slice(0, 10) }); setOpenFormError(null); setOpenDrawerOpen(true); }}>
           <Plus className="h-3.5 w-3.5" />
-          إضافة تحقيق
+          فتح تحقيق
         </Button>
       </div>
     ),
@@ -202,7 +230,22 @@ export function InvestigationsClient() {
     toast.success('تم تنزيل ملف Excel.');
   }, [listFiltered]);
 
-  const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
+  const setOpen = (patch: Partial<OpenDraftForm>) => setOpenDraft((d) => ({ ...d, ...patch }));
+  const setResults = (patch: Partial<ResultsDraftForm>) => setResultsDraft((d) => ({ ...d, ...patch }));
+
+  const openResultsDrawer = React.useCallback((inv: HRDisciplineInvestigationRecord) => {
+    setResultsTarget(inv);
+    setResultsDraft({
+      investigatorEmployeeId: inv.investigatorEmployeeId ?? '',
+      employeeStatement: inv.employeeStatement ?? '',
+      witnessStatement: inv.witnessStatement ?? '',
+      result: 'proven',
+      recommendationType: 'all',
+      deductionType: 'days',
+      deductionValue: '',
+    });
+    setResultsFormError(null);
+  }, []);
 
   const columns = React.useMemo((): ColumnDef<HRDisciplineInvestigationRecord>[] => [
     {
@@ -285,65 +328,106 @@ export function InvestigationsClient() {
       isActions: true,
       headerClassName: 'whitespace-nowrap',
       render: (inv) => (
-        <TableRowActions
-          menuItems={[
-            {
-              label: 'حذف',
-              onClick: () => setDeleteId(inv.id),
-              icon: <Trash2 className="h-3.5 w-3.5" />,
-              destructive: true,
-            },
-          ]}
-        />
+        canMutateInvestigationRecord(inv.result) ? (
+          <TableRowActions
+            primaryActions={[
+              {
+                label: 'إدخال النتائج',
+                variant: 'primary',
+                icon: <ClipboardCheck className="h-3.5 w-3.5" />,
+                onClick: () => openResultsDrawer(inv),
+              },
+            ]}
+            menuItems={[
+              {
+                label: 'حذف',
+                onClick: () => setDeleteId(inv.id),
+                icon: <Trash2 className="h-3.5 w-3.5" />,
+                destructive: true,
+                separator: true,
+              },
+            ]}
+          />
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )
       ),
     },
-  ], []);
+  ], [openResultsDrawer]);
 
   const handleCaseSelect = (caseId: string) => {
     const c = m.cases.find(x => x.id === caseId);
-    if (!c) { set({ caseId: '', caseNumber: '', employeeId: '', employeeNameAr: '' }); return; }
-    set({ caseId: c.id, caseNumber: c.caseNumber, employeeId: c.employeeId, employeeNameAr: c.employeeNameAr });
+    if (!c) { setOpen({ caseId: '', caseNumber: '', employeeId: '', employeeNameAr: '' }); return; }
+    setOpen({ caseId: c.id, caseNumber: c.caseNumber, employeeId: c.employeeId, employeeNameAr: c.employeeNameAr });
   };
 
-  const handleSave = async () => {
-    setFormError(null);
-    if (!draft.caseId) { setFormError('المخالفة مطلوبة'); return; }
-    if (!draft.investigatorEmployeeId) { setFormError('المحقق مطلوب'); return; }
-    if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
-    if (!m.companyId) { setFormError('تعذر تحديد الشركة'); return; }
+  const handleOpenSave = async () => {
+    setOpenFormError(null);
+    if (!openDraft.caseId) { setOpenFormError('المخالفة مطلوبة'); return; }
+    if (!openDraft.investigatorEmployeeId) { setOpenFormError('المحقق مطلوب'); return; }
+    if (!openDraft.date) { setOpenFormError('التاريخ مطلوب'); return; }
+    if (!m.companyId) { setOpenFormError('تعذر تحديد الشركة'); return; }
 
-    const recommendation = draft.recommendationType === 'all'
-      ? null
-      : toInvestigationRecommendationDto(draft.recommendationType);
+    try {
+      await m.openInvestigation({
+        companyId: m.companyId,
+        violationRecordId: openDraft.caseId,
+        investigatorEmployeeId: openDraft.investigatorEmployeeId,
+        investigationDate: openDraft.date,
+      });
+      toast.success('تم فتح التحقيق — أدخل النتائج من بطاقة التحقيق');
+      setOpenDrawerOpen(false);
+      setOpenDraft(OPEN_EMPTY);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-investigations.open');
+      setOpenFormError(displayMessage);
+    }
+  };
 
-    const deductionValue = recommendation === 'deduction'
-      ? Number(draft.deductionValue)
-      : undefined;
-
-    if (recommendation === 'deduction' && (!draft.deductionValue || Number.isNaN(deductionValue))) {
-      setFormError('قيمة الاستقطاع مطلوبة');
+  const handleResultsSave = async () => {
+    if (!resultsTarget) return;
+    setResultsFormError(null);
+    if (!resultsDraft.investigatorEmployeeId && !resultsTarget.investigatorEmployeeId) {
+      setResultsFormError('المحقق مطلوب');
       return;
     }
 
+    const recommendation = resultsDraft.recommendationType === 'all'
+      ? null
+      : toInvestigationRecommendationDto(resultsDraft.recommendationType);
+
+    const deductionValue = recommendation === 'deduction'
+      ? Number(resultsDraft.deductionValue)
+      : undefined;
+
+    if (recommendation === 'deduction' && (!resultsDraft.deductionValue || Number.isNaN(deductionValue))) {
+      setResultsFormError('قيمة الاستقطاع مطلوبة');
+      return;
+    }
+
+    setResultsSaving(true);
     try {
-      await m.add({
-        companyId: m.companyId,
-        violationRecordId: draft.caseId,
-        investigatorEmployeeId: draft.investigatorEmployeeId,
-        investigationDate: draft.date,
-        employeeStatement: draft.employeeStatement || null,
-        witnessStatement: draft.witnessStatement || null,
-        result: toInvestigationResultDto(draft.result),
+      await m.submitResults(resultsTarget.id, {
+        ...(resultsDraft.investigatorEmployeeId
+          ? { investigatorEmployeeId: resultsDraft.investigatorEmployeeId }
+          : resultsTarget.investigatorEmployeeId
+            ? { investigatorEmployeeId: resultsTarget.investigatorEmployeeId }
+            : {}),
+        employeeStatement: resultsDraft.employeeStatement || null,
+        witnessStatement: resultsDraft.witnessStatement || null,
+        result: toInvestigationResultDto(resultsDraft.result),
         recommendation,
-        deductionType: recommendation === 'deduction' ? draft.deductionType : undefined,
+        deductionType: recommendation === 'deduction' ? resultsDraft.deductionType : undefined,
         deductionValue: recommendation === 'deduction' ? deductionValue : undefined,
       });
-      toast.success('تم إضافة التحقيق');
-      setDrawerOpen(false);
-      setDraft(EMPTY);
+      toast.success('تم إدخال نتائج التحقيق');
+      setResultsTarget(null);
+      setResultsDraft(RESULTS_EMPTY);
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-investigations.save');
-      setFormError(displayMessage);
+      const { displayMessage } = handleApiError(err, 'discipline-investigations.submit-results');
+      setResultsFormError(displayMessage);
+    } finally {
+      setResultsSaving(false);
     }
   };
 
@@ -352,8 +436,8 @@ export function InvestigationsClient() {
       <DisciplineFilterToolbar
         ref={filterToolbarRef}
         showPrimaryAction={false}
-        primaryActionLabel="إضافة تحقيق"
-        onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
+        primaryActionLabel="فتح تحقيق"
+        onPrimaryAction={() => { setOpenDraft({ ...OPEN_EMPTY, date: new Date().toISOString().slice(0, 10) }); setOpenFormError(null); setOpenDrawerOpen(true); }}
         toolbarExtraTrailing={(
           <>
             <Button
@@ -467,25 +551,41 @@ export function InvestigationsClient() {
           </Button>
         </div>
       ) : viewMode === 'cards' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {listFiltered.map(inv => (
-            <div key={inv.id} className="flex flex-col space-y-3 rounded-xl border border-border bg-card p-5 shadow-soft">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-mono text-[10px] font-bold text-muted-foreground" dir="ltr">{inv.caseNumber}</p>
-                  <p className="mt-0.5 truncate font-semibold">{inv.employeeNameAr}</p>
-                </div>
-                <span className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
-                  {INVESTIGATION_RESULT_LABELS[inv.result]}
-                </span>
-              </div>
-              <div className="space-y-0.5 text-xs text-muted-foreground">
-                <p>المحقق: {inv.investigatorName}</p>
-                <p className="flex items-center gap-1 font-mono tabular-nums" dir="ltr">
-                  <CalendarDays className="h-3 w-3 shrink-0" />
-                  {inv.date}
-                </p>
-              </div>
+        <EntityActionCardGrid>
+          {listFiltered.map((inv) => (
+            <EntityActionCard
+              key={inv.id}
+              reference={inv.caseNumber}
+              title={inv.employeeNameAr ?? '—'}
+              status={{ label: INVESTIGATION_RESULT_LABELS[inv.result], tone: inv.result === 'pending' ? 'pending' : 'info' }}
+              chips={
+                <>
+                  <EntityActionCardChip>المحقق: {inv.investigatorName ?? '—'}</EntityActionCardChip>
+                  <EntityActionCardChip className="font-mono tabular-nums">
+                    <span className="inline-flex items-center gap-1" dir="ltr">
+                      <CalendarDays className="h-3 w-3 shrink-0" />
+                      {inv.date}
+                    </span>
+                  </EntityActionCardChip>
+                </>
+              }
+              onClick={() => setDetailRow(inv)}
+              onDelete={canMutateInvestigationRecord(inv.result) ? () => setDeleteId(inv.id) : undefined}
+              extraFooter={
+                canMutateInvestigationRecord(inv.result) ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 w-full gap-1.5 text-xs"
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); openResultsDrawer(inv); }}
+                  >
+                    <ClipboardCheck className="h-3.5 w-3.5" />
+                    إدخال النتائج
+                  </Button>
+                ) : undefined
+              }
+            >
               {inv.employeeStatement?.trim() ? (
                 <div className="space-y-0.5">
                   <p className="text-[10px] font-medium text-muted-foreground/80">أقوال الموظف</p>
@@ -505,26 +605,17 @@ export function InvestigationsClient() {
               {inv.recommendationType === 'deduction' ? (
                 <div className="space-y-0.5 text-xs text-muted-foreground">
                   <p>التوصية: {INVESTIGATION_RECOMMENDATION_LABELS.deduction}</p>
-                  {inv.deductionType ? (
-                    <p>نوع الاستقطاع: {INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType]}</p>
-                  ) : null}
+                  {inv.deductionType ? <p>نوع الاستقطاع: {INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType]}</p> : null}
                   {inv.deductionValue != null ? (
                     <p className="font-mono tabular-nums" dir="ltr">قيمة الاستقطاع: {inv.deductionValue}</p>
                   ) : null}
                 </div>
               ) : inv.recommendationType === 'warning' ? (
-                <p className="text-xs text-muted-foreground">
-                  التوصية: {INVESTIGATION_RECOMMENDATION_LABELS.warning}
-                </p>
+                <p className="text-xs text-muted-foreground">التوصية: {INVESTIGATION_RECOMMENDATION_LABELS.warning}</p>
               ) : null}
-              <div className="mt-auto flex justify-end border-t border-border pt-3">
-                <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDeleteId(inv.id)}>
-                  <Trash2 className="h-3.5 w-3.5" /> حذف
-                </Button>
-              </div>
-            </div>
+            </EntityActionCard>
           ))}
-        </div>
+        </EntityActionCardGrid>
       ) : (
         <DataTable
           variant="directory"
@@ -537,19 +628,29 @@ export function InvestigationsClient() {
         />
       )}
 
-      <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة تحقيق" size="lg" onSave={() => void handleSave()} error={formError}>
+      <HRSettingsFormDrawer
+        open={openDrawerOpen}
+        onOpenChange={setOpenDrawerOpen}
+        title="فتح تحقيق"
+        size="lg"
+        onSave={() => void handleOpenSave()}
+        error={openFormError}
+      >
+        <p className="text-xs text-muted-foreground">
+          يُفتح التحقيق بحالة «قيد التحقيق». بعد الحفظ استخدم «إدخال النتائج» لإرسال النتيجة والتوصية إلى النظام.
+        </p>
         <FormField label="المخالفة" required>
-          <SearchableDropdown value={draft.caseId} onChange={handleCaseSelect} options={caseOptions} placeholder="اختر المخالفة…" />
+          <SearchableDropdown value={openDraft.caseId} onChange={handleCaseSelect} options={caseOptions} placeholder="اختر المخالفة…" />
         </FormField>
-        {draft.employeeNameAr && (
-          <div className="rounded-lg bg-muted/40 px-3 py-2 text-sm"><span className="text-muted-foreground">الموظف: </span>{draft.employeeNameAr}</div>
-        )}
+        {openDraft.employeeNameAr ? (
+          <div className="rounded-lg bg-muted/40 px-3 py-2 text-sm"><span className="text-muted-foreground">الموظف: </span>{openDraft.employeeNameAr}</div>
+        ) : null}
         <FormField label="المحقق" required>
           <SearchableDropdown
-            value={draft.investigatorEmployeeId}
+            value={openDraft.investigatorEmployeeId}
             onChange={(v) => {
               const selected = m.employees.find((emp) => emp.id === v);
-              set({
+              setOpen({
                 investigatorEmployeeId: v,
                 investigatorName: selected?.nameAr ?? '',
               });
@@ -559,25 +660,49 @@ export function InvestigationsClient() {
           />
         </FormField>
         <FormField label="تاريخ التحقيق" required>
-          <DatePickerInput value={draft.date} onChange={(ymd) => set({ date: ymd })} />
+          <DatePickerInput value={openDraft.date} onChange={(ymd) => setOpen({ date: ymd })} />
+        </FormField>
+      </HRSettingsFormDrawer>
+
+      <HRSettingsFormDrawer
+        open={resultsTarget != null}
+        onOpenChange={(o) => { if (!o) { setResultsTarget(null); setResultsDraft(RESULTS_EMPTY); setResultsFormError(null); } }}
+        title={resultsTarget ? `إدخال نتائج التحقيق — ${resultsTarget.caseNumber}` : 'إدخال نتائج التحقيق'}
+        size="lg"
+        onSave={() => void handleResultsSave()}
+        saveDisabled={resultsSaving}
+        error={resultsFormError}
+      >
+        {resultsTarget ? (
+          <div className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">الموظف: </span>{resultsTarget.employeeNameAr ?? '—'}
+          </div>
+        ) : null}
+        <FormField label="المحقق" required>
+          <SearchableDropdown
+            value={resultsDraft.investigatorEmployeeId}
+            onChange={(v) => setResults({ investigatorEmployeeId: v })}
+            options={investigatorOptions}
+            placeholder="اختر المحقق…"
+          />
         </FormField>
         <FormField label="أقوال الموظف">
-          <textarea value={draft.employeeStatement} onChange={e => set({ employeeStatement: e.target.value })} placeholder="ما قاله الموظف في التحقيق…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          <textarea value={resultsDraft.employeeStatement} onChange={e => setResults({ employeeStatement: e.target.value })} placeholder="ما قاله الموظف في التحقيق…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         </FormField>
         <FormField label="أقوال الشهود">
-          <textarea value={draft.witnessStatement} onChange={e => set({ witnessStatement: e.target.value })} placeholder="شهادة الشهود…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          <textarea value={resultsDraft.witnessStatement} onChange={e => setResults({ witnessStatement: e.target.value })} placeholder="شهادة الشهود…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         </FormField>
         <FormField label="نتيجة التحقيق" required>
-          <MinimalDropdown value={draft.result} onChange={v => set({ result: v as HRInvestigationResult })} options={RESULT_OPTIONS} />
+          <MinimalDropdown value={resultsDraft.result} onChange={v => setResults({ result: v as ResultsDraftForm['result'] })} options={RESULT_SUBMIT_OPTIONS} />
         </FormField>
         <FormField label="التوصية">
           <MinimalDropdown
-            value={draft.recommendationType}
+            value={resultsDraft.recommendationType}
             onChange={(v) => {
               const next = v as RecommendationFilter;
-              set({
+              setResults({
                 recommendationType: next,
-                deductionValue: next === 'deduction' ? draft.deductionValue : '',
+                deductionValue: next === 'deduction' ? resultsDraft.deductionValue : '',
               });
             }}
             options={[
@@ -589,12 +714,12 @@ export function InvestigationsClient() {
             ]}
           />
         </FormField>
-        {draft.recommendationType === 'deduction' ? (
+        {resultsDraft.recommendationType === 'deduction' ? (
           <>
             <FormField label="نوع الاستقطاع" required>
               <MinimalDropdown
-                value={draft.deductionType}
-                onChange={(v) => set({ deductionType: v as DraftForm['deductionType'] })}
+                value={resultsDraft.deductionType}
+                onChange={(v) => setResults({ deductionType: v as ResultsDraftForm['deductionType'] })}
                 options={[
                   { value: 'days', label: 'أيام' },
                   { value: 'hours', label: 'ساعات' },
@@ -607,12 +732,17 @@ export function InvestigationsClient() {
                 type="number"
                 min={0}
                 step="0.01"
-                value={draft.deductionValue}
-                onChange={(e) => set({ deductionValue: e.target.value })}
+                value={resultsDraft.deductionValue}
+                onChange={(e) => setResults({ deductionValue: e.target.value })}
                 placeholder="أدخل القيمة…"
               />
             </FormField>
           </>
+        ) : null}
+        {resultsDraft.recommendationType === 'warning' ? (
+          <p className="text-xs text-muted-foreground">
+            عند اختيار «توجيه إنذار» يُنشئ النظام إنذاراً تلقائياً للموظف.
+          </p>
         ) : null}
       </HRSettingsFormDrawer>
 

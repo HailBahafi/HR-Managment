@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { STATUS_PILL } from '@/shared/status-pill-classes';
 import { employeeContractsApi, type ApiEmployeeContract } from './contracts-api';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 
@@ -305,13 +306,13 @@ export const CONTRACT_STATUS_LABELS: Record<HRContractLifecycleStatus, string> =
 };
 
 export const CONTRACT_STATUS_COLORS: Record<HRContractLifecycleStatus, string> = {
-  draft: 'text-muted-foreground border-border bg-muted/40',
-  pending_signature: 'text-blue-700 border-blue-200 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/30',
-  active: 'text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/30',
-  expired: 'text-amber-700 border-amber-200 bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:bg-amber-950/30',
-  terminated: 'text-red-700 border-red-200 bg-red-50 dark:text-red-400 dark:border-red-800 dark:bg-red-950/30',
-  superseded: 'text-violet-700 border-violet-200 bg-violet-50 dark:text-violet-400 dark:border-violet-800 dark:bg-violet-950/30',
-  cancelled: 'text-muted-foreground border-border bg-muted/30',
+  draft: STATUS_PILL.muted,
+  pending_signature: STATUS_PILL.info,
+  active: STATUS_PILL.approved,
+  expired: STATUS_PILL.warning,
+  terminated: STATUS_PILL.rejected,
+  superseded: STATUS_PILL.calculated,
+  cancelled: STATUS_PILL.cancelled,
 };
 
 export function normalizeContractRow(raw: Record<string, unknown>): HRContractRecord {

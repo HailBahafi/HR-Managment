@@ -74,7 +74,37 @@ export type CreateEmployeeDto = {
   role?: string | null;
 };
 
-export type UpdateEmployeeDto = Partial<Omit<CreateEmployeeDto, 'employeeCode'>>;
+/** Matches PATCH /hr/employees/{id} — no allowance fields (not in backend schema). */
+export type UpdateEmployeeDto = {
+  nameAr?: string;
+  nameEn?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  nationalId?: string | null;
+  nationality?: string | null;
+  avatar?: string | null;
+  avatarHue?: number;
+  position?: string | null;
+  managerId?: string | null;
+  contractType?: string | null;
+  contractStatus?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  baseSalary?: number | null;
+  bankAccount?: string | null;
+  iban?: string | null;
+  address?: string | null;
+  openStream?: string | null;
+  village?: string | null;
+  district?: string | null;
+  city?: string | null;
+  emergencyContact?: string | null;
+  gender?: string | null;
+  birthDate?: string | null;
+  maritalStatus?: string | null;
+  role?: string | null;
+  meta?: Record<string, unknown>;
+};
 
 export type EmployeeListQuery = {
   page?: number;

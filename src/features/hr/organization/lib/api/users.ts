@@ -3,19 +3,30 @@ import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 export type UserCompanyLink = {
   id: string;
   companyId: string;
+  companyCode?: string | null;
+  companyNameAr?: string | null;
+  companyNameEn?: string | null;
   isDefault: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 };
 
 export type UserBranchLink = {
   id: string;
   branchId: string;
+  branchCode?: string | null;
+  branchNameAr?: string | null;
+  branchNameEn?: string | null;
+  companyId?: string | null;
   isDefault: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 };
 
 export type UserResponseDto = {
@@ -37,34 +48,50 @@ export type UserResponseDto = {
   languageCode: string | null;
   timezone: string | null;
   lastLoginAt: string | null;
+  passwordChangedAt?: string | null;
   notes: string | null;
   employeeId: string | null;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string | null;
+  updatedBy?: string | null;
 };
 
 export type CreateUserDto = {
   email: string;
   password: string;
+  phone?: string | null;
   fullNameAr?: string | null;
   fullNameEn?: string | null;
-  phone?: string | null;
+  avatarUrl?: string | null;
   userType?: string | null;
-  isActive?: boolean;
-  notes?: string | null;
   defaultCompanyId?: string | null;
+  defaultBranchId?: string | null;
+  isActive?: boolean;
+  isVerified?: boolean;
+  status?: string | null;
+  languageCode?: string | null;
+  timezone?: string | null;
+  notes?: string | null;
   employeeId?: string | null;
 };
 
 export type UpdateUserDto = {
   email?: string;
+  password?: string;
   phone?: string | null;
   fullNameAr?: string | null;
   fullNameEn?: string | null;
+  avatarUrl?: string | null;
   userType?: string | null;
-  isActive?: boolean;
-  notes?: string | null;
   defaultCompanyId?: string | null;
+  defaultBranchId?: string | null;
+  isActive?: boolean;
+  isVerified?: boolean;
+  status?: string | null;
+  languageCode?: string | null;
+  timezone?: string | null;
+  notes?: string | null;
   employeeId?: string | null;
 };
 

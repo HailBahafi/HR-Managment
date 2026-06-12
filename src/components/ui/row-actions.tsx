@@ -41,7 +41,7 @@ const PRIMARY_VARIANT_CLASS: Record<NonNullable<RowPrimaryAction['variant']>, st
   success: 'border-success/40 bg-success/10 text-success hover:bg-success/20',
   destructive: 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20',
   default: 'border-border bg-muted/60 text-foreground hover:bg-muted',
-  warning: 'border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400',
+  warning: 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/20',
   primary: 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/20',
 };
 

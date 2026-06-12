@@ -317,10 +317,10 @@ export function ActiveBadge({ active }: { active: boolean }) {
     <span className={cn(
       'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium',
       active
-        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+        ? 'border-success/30 bg-success/10 text-success'
         : 'border-border bg-muted text-muted-foreground',
     )}>
-      <span className={cn('h-1.5 w-1.5 rounded-full', active ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+      <span className={cn('h-1.5 w-1.5 rounded-full', active ? 'bg-success' : 'bg-muted-foreground')} />
       {active ? 'نشط' : 'موقوف'}
     </span>
   );

@@ -35,6 +35,8 @@ import { hrPayrollNavGroups, hrContractsOnlyNavGroups, isHrPayrollNavPath, isHrC
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsNavGroups, isHrPermissionsNavPath } from '@/features/hr/permissions/constants/nav';
 import { useLogout } from '@/features/auth/hooks/use-logout';
+import { useAuthUserDisplay } from '@/features/auth/hooks/use-auth-user-display';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 
 /* ── Icon registry ────────────────────────────────────────────────────── */
 export const PAGE_ICONS: Record<string, React.ElementType> = {
@@ -74,6 +76,7 @@ export const navConfig: NavItem[] = [
     groups: [{ items: [
       { label: 'سجل الموظفين',     href: '/hr/organization/employees',  icon: Users },
       { label: 'المستخدمين', href: '/hr/organization/contacts',    icon: UserCircle },
+      { label: 'الشركات', href: '/hr/organization/companies', icon: Building2 },
       { label: 'المسميات الوظيفية', href: '/hr/organization/job-titles', icon: Briefcase },
       { label: 'الفروع',           href: '/hr/organization/branches',   icon: Building2 },
       { label: 'الأقسام',          href: '/hr/organization/departments', icon: Building2 },
@@ -280,6 +283,19 @@ function NavDropdownContent({
 export function Topbar() {
   const [dark, setDark] = React.useState(false);
   const { logout, loading: logoutLoading } = useLogout();
+  const {
+    displayName,
+    subtitle,
+    avatarFallback,
+    avatarUrl,
+    email,
+    phone,
+    roleLabel,
+    accessProfile,
+    activeCompanyId,
+    activeBranchId,
+  } = useAuthUserDisplay();
+  const setActiveContext = useAuthStore((s) => s.setActiveContext);
   const { toggle } = useSidebar();
   const { meta } = usePageTitle();
   const pathname = usePathname();
@@ -397,22 +413,82 @@ export function Topbar() {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted/60">
                 <Avatar className="h-7 w-7 ring-2 ring-gold/40">
-                  <AvatarImage src="https://i.pravatar.cc/100?img=12" />
-                  <AvatarFallback>ع</AvatarFallback>
+                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
+                  <AvatarFallback>{avatarFallback}</AvatarFallback>
                 </Avatar>
                 <div className="hidden flex-col text-right leading-tight md:flex">
-                  <span className="text-[12px] font-semibold">عبدالرحمن المالكي</span>
-                  <span className="text-[10px] text-muted-foreground">مدير الموارد البشرية</span>
+                  <span className="text-[12px] font-semibold">{displayName}</span>
+                  {subtitle ? (
+                    <span className="text-[10px] text-muted-foreground">{subtitle}</span>
+                  ) : null}
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold">عبدالرحمن المالكي</span>
-                  <span className="text-xs font-normal text-muted-foreground">abdulrahman.m@rose.sa</span>
+                  <span className="text-sm font-semibold">{displayName}</span>
+                  {email ? (
+                    <span className="text-xs font-normal text-muted-foreground" dir="ltr">
+                      {email}
+                    </span>
+                  ) : null}
+                  {phone ? (
+                    <span className="text-xs font-normal text-muted-foreground" dir="ltr">
+                      {phone}
+                    </span>
+                  ) : null}
+                  {roleLabel ? (
+                    <span className="text-xs font-normal text-primary">{roleLabel}</span>
+                  ) : null}
                 </div>
               </DropdownMenuLabel>
+              {(accessProfile?.companies.length ?? 0) > 1 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    الشركة النشطة
+                  </DropdownMenuLabel>
+                  {accessProfile!.companies.map((company) => (
+                    <DropdownMenuItem
+                      key={company.companyId}
+                      onSelect={() => {
+                        const defaultBranch =
+                          company.branches.find((b) => b.isDefault)?.branchId ??
+                          company.branches[0]?.branchId ??
+                          null;
+                        setActiveContext(company.companyId, defaultBranch);
+                      }}
+                      className={company.companyId === activeCompanyId ? 'bg-primary/10 font-medium' : undefined}
+                    >
+                      {company.companyId === activeCompanyId ? '● ' : ''}
+                      {company.roles?.[0]?.nameAr ?? company.companyId.slice(0, 8)}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              {(accessProfile?.companies.find((c) => c.companyId === activeCompanyId)?.branches.length ?? 0) > 1 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    الفرع النشط
+                  </DropdownMenuLabel>
+                  {accessProfile!.companies
+                    .find((c) => c.companyId === activeCompanyId)
+                    ?.branches.map((branch) => (
+                      <DropdownMenuItem
+                        key={branch.branchId}
+                        onSelect={() => {
+                          if (activeCompanyId) setActiveContext(activeCompanyId, branch.branchId);
+                        }}
+                        className={branch.branchId === activeBranchId ? 'bg-primary/10 font-medium' : undefined}
+                      >
+                        {branch.branchId === activeBranchId ? '● ' : ''}
+                        {branch.branchId.slice(0, 8)}…
+                      </DropdownMenuItem>
+                    ))}
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem><User className="h-4 w-4" /><span>الملف الشخصي</span></DropdownMenuItem>
               <DropdownMenuItem><Settings className="h-4 w-4" /><span>الإعدادات</span></DropdownMenuItem>

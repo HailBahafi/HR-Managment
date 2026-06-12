@@ -17,8 +17,10 @@ function dtoToEmployee(dto: EmployeeResponseDto): Employee {
     nationality: dto.nationality ?? '',
     avatar: dto.avatar ?? '',
     position: dto.position ?? '',
-    departmentId: '',
-    branchId: '',
+    departmentId: dto.departmentId ?? '',
+    branchId: dto.branchId ?? '',
+    branchNameAr: dto.branchNameAr ?? undefined,
+    departmentNameAr: dto.departmentNameAr ?? undefined,
     managerId: dto.managerId ?? null,
     contractType: (dto.contractType ?? 'permanent') as Employee['contractType'],
     contractStatus: (dto.contractStatus ?? 'active') as Employee['contractStatus'],
@@ -84,5 +86,9 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  return <EmployeeProfileBody employee={employee} onUpdated={setEmployee} />;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <EmployeeProfileBody employee={employee} onUpdated={setEmployee} />
+    </div>
+  );
 }

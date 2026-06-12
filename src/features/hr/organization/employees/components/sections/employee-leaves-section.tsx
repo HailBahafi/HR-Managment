@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Calendar, ExternalLink } from 'lucide-react';
+import { Calendar, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { formatDate, cn } from '@/shared/utils';
@@ -9,8 +9,17 @@ import { Empty, LeaveBalanceCard } from '@/features/hr/organization/employees/co
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 
 export function EmployeeLeavesSection({ model }: { model: EmployeeProfileModel }) {
-  const { leaveBalanceCards, setLeaveRequestOpen, leaveRequests } = model;
+  const { leaveBalanceCards, setLeaveRequestOpen, leaveRequests, leavesLoading } = model;
   const leaveReqs = leaveRequests;
+
+  if (leavesLoading) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        جاري تحميل الإجازات…
+      </div>
+    );
+  }
 
   return (
     <section>

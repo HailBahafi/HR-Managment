@@ -2,13 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useJobTitlesDirectoryModel } from '@/features/hr/organization/job-titles/hooks/useJobTitlesDirectoryModel';
 import { JobTitlesListViews } from '@/features/hr/organization/job-titles/components/job-titles-list-views';
@@ -41,32 +35,32 @@ export default function JobTitlesPage() {
             placeholder="مثال: مدير مبيعات إقليمي"
           />
         </FormField>
-        <FormField label="القسم المقترح (اختياري)">
-          <Select
-            value={model.form.defaultDepartmentId || '_none'}
-            onValueChange={(v) => model.patch({ defaultDepartmentId: v === '_none' ? '' : v })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="بدون اقتراح قسم" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_none">بدون اقتراح</SelectItem>
-              {model.departments.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.nameAr}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <FormField label="المسمى بالإنجليزية">
+          <Input
+            dir="ltr"
+            value={model.form.titleEn}
+            onChange={(e) => model.patch({ titleEn: e.target.value })}
+            placeholder="Regional Sales Manager"
+          />
         </FormField>
-        <FormField label="وصف داخلي (اختياري)">
+        <FormField label="وصف">
           <Textarea
             value={model.form.descriptionAr}
             onChange={(e) => model.patch({ descriptionAr: e.target.value })}
-            placeholder="مسؤوليات مختصرة، مستوى، ملاحظات للموارد البشرية…"
             rows={3}
           />
         </FormField>
+        <FormField label="ملاحظات">
+          <Textarea
+            value={model.form.notes}
+            onChange={(e) => model.patch({ notes: e.target.value })}
+            rows={2}
+          />
+        </FormField>
+        <div className="flex items-center justify-between rounded-xl border border-border p-4">
+          <span className="text-sm">نشط</span>
+          <Switch checked={model.form.isActive} onCheckedChange={(v) => model.patch({ isActive: v })} />
+        </div>
       </HRSettingsFormDrawer>
 
       <ConfirmationModal
@@ -83,7 +77,6 @@ export default function JobTitlesPage() {
 
       <JobTitleTemplateDetailDialog
         row={model.viewRow}
-        getDepartmentName={model.getDepartmentName}
         onOpenChange={(open) => {
           if (!open) model.setViewRow(null);
         }}
