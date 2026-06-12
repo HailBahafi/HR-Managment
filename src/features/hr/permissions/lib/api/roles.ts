@@ -67,10 +67,20 @@ export const rolesApi = {
       { query: { limit: 500 } },
     );
   },
-  bulkAssignPermissions(roleId: string, permissionIds: string[]) {
+  bulkAssignPermissions(
+    roleId: string,
+    permissionIds: string[],
+    createdBy?: string | null,
+  ) {
+    const actor = createdBy?.trim() || undefined;
     return apiRequest<void>(`/roles/${roleId}/permissions/bulk`, {
       method: 'POST',
-      body: { permissions: permissionIds.map((permissionId) => ({ permissionId })) },
+      body: {
+        permissions: permissionIds.map((permissionId) => ({
+          permissionId,
+          ...(actor ? { createdBy: actor } : {}),
+        })),
+      },
     });
   },
   removePermission(rolePermissionId: string) {

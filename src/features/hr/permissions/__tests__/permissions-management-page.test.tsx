@@ -30,12 +30,51 @@ jest.mock('@/features/hr/permissions/hooks/useRoles', () => ({
   useRoles: () => ({ data: { items: mockRoles }, isLoading: false }),
 }));
 
+const mockPermissions = [
+  {
+    id: 'perm-read',
+    applicationId: 'app-1',
+    code: 'hr.employees.read',
+    nameAr: 'عرض الموظفين',
+    nameEn: 'View employees',
+    nodeType: 'ACTION' as const,
+    action: 'read',
+    resource: 'employees',
+    parentId: null,
+    sortOrder: 0,
+    isSystem: false,
+    status: 'active',
+  },
+  {
+    id: 'perm-create',
+    applicationId: 'app-1',
+    code: 'hr.employees.create',
+    nameAr: 'إنشاء موظف',
+    nameEn: 'Create employee',
+    nodeType: 'ACTION' as const,
+    action: 'create',
+    resource: 'employees',
+    parentId: null,
+    sortOrder: 1,
+    isSystem: false,
+    status: 'active',
+  },
+];
+
 jest.mock('@/features/hr/permissions/hooks/usePermissions', () => ({
-  usePermissions: () => ({ data: { items: [] } }),
+  usePermissions: () => ({
+    data: { items: mockPermissions, applicationId: 'app-1' },
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 jest.mock('@/features/hr/permissions/hooks/useApplicationId', () => ({
-  useApplicationId: () => 'app-1',
+  useApplicationId: () => ({ applicationId: 'app-1', isLoading: false }),
+}));
+
+jest.mock('@/features/hr/permissions/hooks/useRolePermissionsMap', () => ({
+  useRolePermissionsMap: () => ({ grantedMap: { r1: [] }, isLoading: false }),
 }));
 
 jest.mock('@/features/auth/lib/auth-store', () => ({
@@ -43,10 +82,13 @@ jest.mock('@/features/auth/lib/auth-store', () => ({
     sel({ activeCompanyId: 'company-1' }),
 }));
 
+const mockCreateRole = jest.fn().mockResolvedValue(undefined);
+const mockUpdateRole = jest.fn().mockResolvedValue(undefined);
+
 jest.mock('@/features/hr/permissions/hooks/useRolesMutations', () => ({
   useRolesMutations: () => ({
-    create: { mutateAsync: jest.fn(), isPending: false },
-    update: { mutateAsync: jest.fn(), isPending: false },
+    create: { mutateAsync: mockCreateRole, isPending: false },
+    update: { mutateAsync: mockUpdateRole, isPending: false },
     remove: { mutateAsync: jest.fn(), isPending: false },
   }),
 }));
@@ -75,7 +117,7 @@ describe('PermissionsManagementPage', () => {
 
   it('renders the page heading', () => {
     renderPage();
-    expect(screen.getByText('إدارة الصلاحيات')).toBeInTheDocument();
+    expect(screen.getByText('الأدوار')).toBeInTheDocument();
   });
 
   it('renders the add-role button', () => {
@@ -119,5 +161,26 @@ describe('PermissionsManagementPage', () => {
   it('displays the "إضافة دور جديد" placeholder card', () => {
     renderPage();
     expect(screen.getByText('إضافة دور جديد')).toBeInTheDocument();
+  });
+
+  it('creates role with selected permission ids from GET /permissions matrix', async () => {
+    renderPage();
+    await userEvent.click(screen.getAllByRole('button', { name: /إضافة دور/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('دور جديد')).toBeInTheDocument();
+    });
+
+    await userEvent.type(screen.getByPlaceholderText('مثال: مشرف الفرع'), 'مشرف الفرع');
+    await userEvent.click(screen.getByTitle('عرض'));
+    await userEvent.click(screen.getByRole('button', { name: /حفظ التغييرات/i }));
+
+    await waitFor(() => {
+      expect(mockCreateRole).toHaveBeenCalledWith({
+        name: 'مشرف الفرع',
+        description: '',
+        permissionIds: ['perm-read'],
+      });
+    });
   });
 });

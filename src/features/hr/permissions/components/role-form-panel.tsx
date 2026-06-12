@@ -35,6 +35,7 @@ const ACTION_AR: Record<string, string> = {
 
 const RESOURCE_AR: Record<string, string> = {
   employees: 'الموظفين',
+  'employee-assignments': 'تعيينات الموظف',
   attendance: 'الحضور',
   requests: 'الطلبات',
   payroll: 'الرواتب',
@@ -47,6 +48,7 @@ const RESOURCE_AR: Record<string, string> = {
   branches: 'الفروع',
   departments: 'الأقسام',
   companies: 'الشركات',
+  'job-titles': 'المسميات الوظيفية',
 };
 
 type Props = {
@@ -72,14 +74,20 @@ export function RoleFormPanel({
   }, [open, initialValues]);
 
   // Build matrix structure from actual permissions
-  const { resources, actionIds, matrix } = React.useMemo(() => {
+  const { resources, actionIds, matrix, resourceLabels } = React.useMemo(() => {
     const actionNodes = availablePermissions.filter((p) => p.nodeType === 'ACTION');
+    const groupNodes = availablePermissions.filter((p) => p.nodeType === 'GROUP');
 
     const resourceSet = new Set<string>();
     const actionSet = new Set<string>();
     for (const p of actionNodes) {
       if (p.resource) resourceSet.add(p.resource);
       if (p.action) actionSet.add(p.action);
+    }
+
+    const labels: Record<string, string> = { ...RESOURCE_AR };
+    for (const g of groupNodes) {
+      if (g.resource && g.nameAr) labels[g.resource] = g.nameAr;
     }
 
     // Stable action order
@@ -98,7 +106,7 @@ export function RoleFormPanel({
       }
     }
 
-    return { resources: [...resourceSet].sort(), actionIds, matrix };
+    return { resources: [...resourceSet].sort(), actionIds, matrix, resourceLabels: labels };
   }, [availablePermissions]);
 
   const selectedSet = new Set(form.permissionIds);
@@ -248,10 +256,8 @@ export function RoleFormPanel({
                           style={{ gridTemplateColumns: `1fr repeat(${actionIds.length}, 52px) 56px` }}
                         >
                           <div className="px-4 py-3">
-                            <span className="text-sm font-medium">
-                              {RESOURCE_AR[res] ?? res}
-                            </span>
-                            <code className="mr-2 text-[10px] text-muted-foreground font-mono">{res}</code>
+                            <div className="text-sm font-medium">{resourceLabels[res] ?? res}</div>
+                            <code className="mt-0.5 block text-[10px] text-muted-foreground font-mono">{res}</code>
                           </div>
                           {actionIds.map((action) => {
                             const permId = matrix[res]?.[action];

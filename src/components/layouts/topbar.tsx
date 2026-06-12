@@ -10,7 +10,7 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck, UserPlus,
-  Coins, FileStack, Receipt,
+  Coins, FileStack, Receipt, KeyRound,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrNotificationsNavGroups, isHrNotificationsNavPath } from '@/features/hr/notifications/constants/nav';
 import { hrPayrollNavGroups, hrContractsOnlyNavGroups, isHrPayrollNavPath, isHrContractsOnlyNavPath } from '@/features/hr/contracts/constants/nav';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
-import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
+import { hrPermissionsNavGroups, isHrPermissionsNavPath } from '@/features/hr/permissions/constants/nav';
 import { useLogout } from '@/features/auth/hooks/use-logout';
 
 /* ── Icon registry ────────────────────────────────────────────────────── */
@@ -43,7 +43,7 @@ export const PAGE_ICONS: Record<string, React.ElementType> = {
   CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet, Bell,
   UserCircle, Briefcase, UserCheck, UserPlus,
   CalendarClock, LayoutList, ListChecks, ShieldCheck,
-  Coins, FileStack, Receipt,
+  Coins, FileStack, Receipt, KeyRound,
 };
 
 /* ── Nav data ──────────────────────────────────────────────────────────── */
@@ -170,7 +170,20 @@ export const navConfig: NavItem[] = [
     isActive: isHrContractsOnlyNavPath,
     groups: mapContractsNavGroups(hrContractsOnlyNavGroups),
   },
-  { key: 'permissions', label: 'الصلاحيات', href: hrPermissionsHref(), icon: Shield },
+  {
+    key: 'permissions',
+    label: 'الصلاحيات',
+    icon: Shield,
+    isActive: isHrPermissionsNavPath,
+    groups: hrPermissionsNavGroups.map((g) => ({
+      labelAr: g.labelAr,
+      items: g.items.map((item) => ({
+        label: item.labelAr,
+        href: item.href,
+        icon: item.icon,
+      })),
+    })),
+  },
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */

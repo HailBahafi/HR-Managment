@@ -2,10 +2,13 @@
 
 import * as React from 'react';
 import { Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { Button } from '@/components/ui/button';
 import { useRoles } from '@/features/hr/permissions/hooks/useRoles';
 import { usePermissions } from '@/features/hr/permissions/hooks/usePermissions';
+import { useApplicationId } from '@/features/hr/permissions/hooks/useApplicationId';
+import { useRolePermissionsMap } from '@/features/hr/permissions/hooks/useRolePermissionsMap';
 
 import { useRolesMutations } from '@/features/hr/permissions/hooks/useRolesMutations';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -18,14 +21,21 @@ import type { RoleResponseDto } from '@/features/hr/permissions/lib/api/roles';
 import type { PermissionResponseDto } from '@/features/hr/permissions/lib/api/permissions';
 
 export function PermissionsManagementPage() {
-  useSetPageTitle({ titleAr: 'إدارة الصلاحيات', descriptionAr: 'الأدوار والصلاحيات', iconName: 'Shield' });
+  useSetPageTitle({ titleAr: 'الأدوار', descriptionAr: 'إنشاء الأدوار وربط الصلاحيات', iconName: 'Shield' });
 
+  const { applicationId: appFromApi } = useApplicationId();
   const { data: rolesResult, isLoading: rolesLoading } = useRoles();
-  const { data: permissionsResult } = usePermissions();
+  const {
+    data: permissionsResult,
+    isLoading: permissionsLoading,
+    isError: permissionsError,
+  } = usePermissions(appFromApi);
 
-
+  const applicationId = permissionsResult?.applicationId ?? appFromApi;
   const allPermissions: PermissionResponseDto[] = permissionsResult?.items ?? [];
   const roles = rolesResult?.items ?? [];
+  const roleIds = React.useMemo(() => roles.map((r) => r.id), [roles]);
+  const { grantedMap } = useRolePermissionsMap(roleIds);
 
   const appPermissions = allPermissions;
 
@@ -37,8 +47,7 @@ export function PermissionsManagementPage() {
   const [initialValues, setInitialValues] = React.useState<RoleFormValues | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<RoleResponseDto | null>(null);
 
-  // Tracks loaded permission IDs per role for the progress bar
-  const [grantedMap, setGrantedMap] = React.useState<Record<string, string[]>>({});
+  const isCatalogReady = !permissionsLoading && !permissionsError;
 
   function openCreate() {
     setEditingRole(null);
@@ -59,7 +68,6 @@ export function PermissionsManagementPage() {
         permissionIds: loaded.permissionIds,
         color: coercePermissionRoleColorToken('primary'),
       });
-      setGrantedMap((prev) => ({ ...prev, [role.id]: loaded.permissionIds }));
     } catch (err) {
       handleApiError(err, 'roles.loadForEdit');
       setPanelOpen(false);
@@ -69,21 +77,27 @@ export function PermissionsManagementPage() {
   }
 
   async function handleSave(values: RoleFormValues) {
-    if (editingRole) {
-      await update.mutateAsync({
-        roleId: editingRole.id,
-        name: values.name,
-        description: values.description,
-        permissionIds: values.permissionIds,
-      });
-    } else {
-      await create.mutateAsync({
-        name: values.name,
-        description: values.description,
-        permissionIds: values.permissionIds,
-      });
+    try {
+      if (editingRole) {
+        await update.mutateAsync({
+          roleId: editingRole.id,
+          name: values.name,
+          description: values.description,
+          permissionIds: values.permissionIds,
+        });
+        toast.success('تم تحديث الدور والصلاحيات بنجاح');
+      } else {
+        await create.mutateAsync({
+          name: values.name,
+          description: values.description,
+          permissionIds: values.permissionIds,
+        });
+        toast.success('تم إنشاء الدور وربط الصلاحيات بنجاح');
+      }
+      setPanelOpen(false);
+    } catch {
+      // Toast shown by mutation onError
     }
-    setPanelOpen(false);
   }
 
   async function handleDelete(roleId: string) {
@@ -100,7 +114,7 @@ export function PermissionsManagementPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">إدارة الصلاحيات</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight">الأدوار</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             أنشئ الأدوار وحدد الصلاحيات على كل مورد — تعيين الأدوار على الموظفين يتم من ملف الموظف
           </p>
@@ -109,6 +123,12 @@ export function PermissionsManagementPage() {
           <Plus className="h-4 w-4" /> إضافة دور
         </Button>
       </div>
+
+      {permissionsError && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          تعذّر تحميل قائمة الصلاحيات من الخادم. تأكد من تسجيل الدخول وأن الـ API يعمل.
+        </div>
+      )}
 
       {rolesLoading ? (
         <RolesGridSkeleton />
@@ -142,7 +162,7 @@ export function PermissionsManagementPage() {
 
       <RoleFormPanel
         open={panelOpen}
-        isLoading={panelLoading}
+        isLoading={panelLoading || !isCatalogReady}
         isSaving={isSaving}
         editingTitle={editingRole ? (editingRole.nameAr ?? editingRole.name ?? null) : null}
         initialValues={initialValues}

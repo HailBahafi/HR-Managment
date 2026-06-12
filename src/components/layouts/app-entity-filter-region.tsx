@@ -7,13 +7,15 @@ import { usePageHeaderActionsRegion } from '@/components/layouts/page-header-act
 import { cn } from '@/shared/utils';
 import { HR_PERMISSIONS_BASE } from '@/features/hr/permissions/constants/routes';
 
-const EXCLUDED_FILTER_PATHS = new Set(['/hr/dashboard', HR_PERMISSIONS_BASE]);
+const EXCLUDED_FILTER_PREFIXES = ['/hr/dashboard', HR_PERMISSIONS_BASE] as const;
 
 export function AppEntityFilterRegion({ className }: { className?: string }) {
   const pathname = usePathname();
   const { renderFnRef, reRenderSlotRef } = useEntityFilterSlotRegion();
   const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderActionsRegion();
-  const excluded = EXCLUDED_FILTER_PATHS.has(pathname);
+  const excluded = EXCLUDED_FILTER_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
 
   // forceUpdate lets useEntityFilterSlot trigger our re-render without any
   // context state change — the caller component never sees this re-render.

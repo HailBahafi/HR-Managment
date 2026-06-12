@@ -9,7 +9,7 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet,
-  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,
+  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox, KeyRound,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Logo } from '@/components/layouts/logo';
@@ -18,7 +18,7 @@ import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrNotificationsNavGroups } from '@/features/hr/notifications/constants/nav';
 import { hrContractsNavGroups } from '@/features/hr/contracts/constants/nav';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
-import { hrPermissionsHref } from '@/features/hr/permissions/constants/routes';
+import { hrPermissionsNavGroups } from '@/features/hr/permissions/constants/nav';
 
 type MobileNavChild =
   | { label: string; href: string; icon?: React.ElementType; match?: 'exact' | 'prefix' }
@@ -120,7 +120,18 @@ const mobileNav: MobileNavItem[] = [
       { label: 'إيصالات الرواتب', href: '/payroll/receipt', icon: FileSpreadsheet },
     ],
   },
-  { key: 'permissions', label: 'الصلاحيات', href: hrPermissionsHref(), icon: Shield },
+  {
+    key: 'permissions',
+    label: 'الصلاحيات',
+    icon: Shield,
+    children: hrPermissionsNavGroups.flatMap((g) =>
+      g.items.map((item) => ({
+        label: item.labelAr,
+        href: item.href,
+        icon: item.icon,
+      })),
+    ),
+  },
 ];
 
 function MobileDrawer({ onClose }: { onClose: () => void }) {

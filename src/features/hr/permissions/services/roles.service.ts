@@ -46,6 +46,8 @@ export type RoleFormData = {
   permissionIds: string[];
   companyId: string;
   applicationId: string;
+  /** Optional actor label for bulk permission links */
+  createdBy?: string | null;
 };
 
 export async function createRoleWithPermissions(
@@ -61,14 +63,14 @@ export async function createRoleWithPermissions(
   });
 
   if (data.permissionIds.length > 0) {
-    await rolesApi.bulkAssignPermissions(role.id, data.permissionIds);
+    await rolesApi.bulkAssignPermissions(role.id, data.permissionIds, data.createdBy);
   }
   return role;
 }
 
 export async function updateRoleWithPermissions(
   roleId: string,
-  data: Pick<RoleFormData, 'name' | 'description' | 'permissionIds'>,
+  data: Pick<RoleFormData, 'name' | 'description' | 'permissionIds' | 'createdBy'>,
 ): Promise<RoleResponseDto> {
   const [role, currentResult] = await Promise.all([
     rolesApi.update(roleId, { nameAr: data.name, description: data.description || undefined }),
@@ -84,7 +86,9 @@ export async function updateRoleWithPermissions(
 
   await Promise.all([
     ...toRemove.map((p) => rolesApi.removePermission(p.id)),
-    toAdd.length > 0 ? rolesApi.bulkAssignPermissions(roleId, toAdd) : Promise.resolve(),
+    toAdd.length > 0
+      ? rolesApi.bulkAssignPermissions(roleId, toAdd, data.createdBy)
+      : Promise.resolve(),
   ]);
 
   return role;

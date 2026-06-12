@@ -2,6 +2,7 @@ import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 
 export type PermissionResponseDto = {
   id: string;
+  applicationId: string;
   code: string;
   nameAr: string;
   nameEn: string | null;
