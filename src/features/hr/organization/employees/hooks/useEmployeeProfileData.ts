@@ -11,7 +11,18 @@ import type { Employee } from '@/features/hr/organization/employees/types';
 import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 import { payslipsApi } from '@/features/hr/payroll/lib/api/payslips';
 import type { Payslip } from '@/features/hr/payroll/types';
-const PAYSLIP_MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'] as const;
+import { employeePayslipsApi } from '@/features/hr/organization/employees/lib/api/employee-payslips';
+import {
+  mapEmployeePayslipHistoryItem,
+  mapPayslipListItem,
+} from '@/features/hr/organization/employees/services/employee-payslips.service';
+
+export type EmployeePayslipCounts = {
+  totalPayslips: number;
+  draft: number;
+  approved: number;
+  paid: number;
+};
 
 export type { ViolationRecordResponseDto, LeaveRequestResponseDto };
 
@@ -23,6 +34,7 @@ export function useEmployeeProfileData(employee: Employee) {
   const [leaveRequests, setLeaveRequests] = React.useState<LeaveRequestResponseDto[]>([]);
   const [employeeContracts, setEmployeeContracts] = React.useState<HRContractRecord[]>([]);
   const [employeePayslipSeries, setEmployeePayslipSeries] = React.useState<Payslip[]>([]);
+  const [payslipCounts, setPayslipCounts] = React.useState<EmployeePayslipCounts | null>(null);
   const [activityLogCount] = React.useState(0);
   const [roseFormsCount] = React.useState(0);
 
@@ -55,31 +67,33 @@ export function useEmployeeProfileData(employee: Employee) {
       } else {
         setEmployeeContracts([]);
       }
-      if (psRes.status === 'fulfilled') {
-        setEmployeePayslipSeries(psRes.value.items.map(p => ({
-          id: p.id,
-          employeeId: p.employeeId,
-          month: p.periodMonth != null ? PAYSLIP_MONTHS_AR[(p.periodMonth - 1) % 12] ?? '' : '',
-          year: p.periodYear ?? 0,
-          baseSalary: parseFloat(p.baseSalary) || 0,
-          housing: 0,
-          transport: 0,
-          otherAllowances: parseFloat(p.allowancesTotal) || 0,
-          overtime: parseFloat(p.additionsTotal) || 0,
-          gosi: parseFloat(p.gosi) || 0,
-          absenceDeduction: 0,
-          latenessDeduction: 0,
-          loanDeduction: 0,
-          otherDeductions: parseFloat(p.deductionsTotal) || 0,
-          gross: parseFloat(p.gross) || 0,
-          net: parseFloat(p.net) || 0,
-          workingDays: p.workingDays ?? 0,
-          presentDays: p.presentDays ?? 0,
-          absentDays: p.absentDays ?? 0,
-          lateDays: p.lateDays ?? 0,
-        })));
-      } else {
+      if (companyId) {
+        try {
+          const history = await employeePayslipsApi.getHistory(employee.id, { companyId });
+          if (!cancelled) {
+            setEmployeePayslipSeries(
+              history.payslipsHistory.map((item) => mapEmployeePayslipHistoryItem(item, employee.id)),
+            );
+            setPayslipCounts(history.counts);
+          }
+        } catch {
+          if (!cancelled && psRes.status === 'fulfilled') {
+            const items = psRes.value.items.map(mapPayslipListItem);
+            setEmployeePayslipSeries(items);
+            setPayslipCounts({
+              totalPayslips: items.length,
+              draft: items.filter((p) => p.status === 'draft').length,
+              approved: items.filter((p) => p.status === 'approved').length,
+              paid: items.filter((p) => p.status === 'paid').length,
+            });
+          } else if (!cancelled) {
+            setEmployeePayslipSeries([]);
+            setPayslipCounts(null);
+          }
+        }
+      } else if (!cancelled) {
         setEmployeePayslipSeries([]);
+        setPayslipCounts(null);
       }
     })();
 
@@ -212,6 +226,7 @@ export function useEmployeeProfileData(employee: Employee) {
     employeeContracts,
     employeeRequests,
     employeePayslipSeries,
+    payslipCounts,
     roseFormsCount,
     activityLogCount,
   };

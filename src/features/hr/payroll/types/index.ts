@@ -10,11 +10,14 @@ export interface PayrollRun {
   processedAt?: string;
 }
 
+import type { PayslipStatusDto } from '@/features/hr/payroll/lib/api/payslips';
+
 export interface Payslip {
   id: string;
   employeeId: string;
   month: string;
   year: number;
+  status: PayslipStatusDto;
   baseSalary: number;
   housing: number;
   transport: number;
