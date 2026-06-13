@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { User, Briefcase, Banknote, Phone } from 'lucide-react';
+import { User, Briefcase, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { cn, formatNumber } from '@/shared/utils';
+import { cn } from '@/shared/utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { employeeAssignmentsApi } from '@/features/hr/organization/employees/lib/api/employee-assignments';
@@ -27,8 +27,7 @@ interface NewEmployeeForm {
   nationalId: string; nationality: string;
   gender: string; birthDate: string; maritalStatus: string;
   position: string; departmentId: string; branchId: string; managerId: string;
-  contractType: string; startDate: string;
-  baseSalary: string; housingAllowance: string; transportAllowance: string; otherAllowances: string;
+  startDate: string;
   bankAccount: string; iban: string;
   address: string; emergencyContact: string;
   role: string;
@@ -38,8 +37,7 @@ const EMPTY_FORM: NewEmployeeForm = {
   nameAr: '', email: '', phone: '',
   nationalId: '', nationality: 'سعودي', gender: 'male', birthDate: '', maritalStatus: 'single',
   position: '', departmentId: '', branchId: '', managerId: 'none',
-  contractType: 'permanent', startDate: '',
-  baseSalary: '', housingAllowance: '', transportAllowance: '', otherAllowances: '',
+  startDate: '',
   bankAccount: '', iban: '',
   address: '', emergencyContact: '',
   role: 'employee',
@@ -141,15 +139,11 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
         maritalStatus: form.maritalStatus || null,
         position: form.position.trim() || null,
         managerId: form.managerId !== 'none' ? form.managerId : null,
-        contractType: form.contractType || null,
         startDate: form.startDate || null,
-        baseSalary: form.baseSalary || null,
-        housingAllowance: form.housingAllowance || null,
-        transportAllowance: form.transportAllowance || null,
-        otherAllowances: form.otherAllowances || null,
         bankAccount: form.bankAccount.trim() || null,
         iban: form.iban.trim() || null,
         address: form.address.trim() || null,
+        emergencyContact: form.emergencyContact.trim() || null,
         role: form.role || null,
       });
 
@@ -181,13 +175,6 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
     setErrors({});
     setSaveError(null);
   };
-
-  const totalComp = formatNumber(
-    (Number(form.baseSalary) || 0) +
-      (Number(form.housingAllowance) || 0) +
-      (Number(form.transportAllowance) || 0) +
-      (Number(form.otherAllowances) || 0),
-  );
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -264,6 +251,12 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
               <Field label="جهة اتصال الطوارئ">
                 <Input dir="ltr" value={form.emergencyContact} onChange={(e) => patch('emergencyContact', e.target.value)} placeholder="+966 55 000 1111" />
               </Field>
+              <Field label="رقم الحساب البنكي">
+                <Input dir="ltr" value={form.bankAccount} onChange={(e) => patch('bankAccount', e.target.value)} placeholder="SA12 3400 5600 7800 9012" />
+              </Field>
+              <Field label="رقم الآيبان (IBAN)">
+                <Input dir="ltr" value={form.iban} onChange={(e) => patch('iban', e.target.value)} placeholder="SA1234567890123456789012" />
+              </Field>
             </div>
           </div>
 
@@ -301,17 +294,6 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
                 </Select>
                 {errors.branchId && <p className="text-[11px] text-destructive">{errors.branchId}</p>}
               </Field>
-              <Field label="نوع العقد">
-                <Select value={form.contractType} onValueChange={(v) => patch('contractType', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="permanent">دائم</SelectItem>
-                    <SelectItem value="fixed-term">محدد المدة</SelectItem>
-                    <SelectItem value="part-time">دوام جزئي</SelectItem>
-                    <SelectItem value="contractor">مستقل / مقاول</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
               <Field label="تاريخ الالتحاق" required>
                 <Input
                   type="date"
@@ -332,41 +314,6 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
                     <SelectItem value="admin">مدير النظام</SelectItem>
                   </SelectContent>
                 </Select>
-              </Field>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Compensation */}
-          <div className="space-y-4">
-            <SectionHeader icon={Banknote} title="الراتب والبدلات" description="الحزمة التعويضية الشهرية" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="الراتب الأساسي (ر.س)">
-                <Input type="number" dir="ltr" min={0} value={form.baseSalary} onChange={(e) => patch('baseSalary', e.target.value)} placeholder="10000" />
-              </Field>
-              <Field label="بدل السكن (ر.س)">
-                <Input type="number" dir="ltr" min={0} value={form.housingAllowance} onChange={(e) => patch('housingAllowance', e.target.value)} placeholder="0" />
-              </Field>
-              <Field label="بدل المواصلات (ر.س)">
-                <Input type="number" dir="ltr" min={0} value={form.transportAllowance} onChange={(e) => patch('transportAllowance', e.target.value)} placeholder="0" />
-              </Field>
-              <Field label="بدلات أخرى (ر.س)">
-                <Input type="number" dir="ltr" min={0} value={form.otherAllowances} onChange={(e) => patch('otherAllowances', e.target.value)} placeholder="0" />
-              </Field>
-            </div>
-            {Number(form.baseSalary) > 0 && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">إجمالي الحزمة الشهرية</span>
-                <span className="font-display text-lg font-bold text-primary" dir="ltr">{totalComp} ر.س</span>
-              </div>
-            )}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="رقم الحساب البنكي" span2>
-                <Input dir="ltr" value={form.bankAccount} onChange={(e) => patch('bankAccount', e.target.value)} placeholder="SA12 3400 5600 7800 9012" />
-              </Field>
-              <Field label="رقم الآيبان (IBAN)" span2>
-                <Input dir="ltr" value={form.iban} onChange={(e) => patch('iban', e.target.value)} placeholder="SA1234567890123456789012" />
               </Field>
             </div>
           </div>

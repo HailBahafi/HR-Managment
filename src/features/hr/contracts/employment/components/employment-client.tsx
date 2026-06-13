@@ -30,6 +30,7 @@ import {
   WORK_ARRANGEMENT_LABELS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_STATUS_COLORS,
+  formatEmployeeSignedLabel,
   type HRContractDraft,
   type HRContractLifecycleStatus,
   type HRContractNature,
@@ -82,19 +83,22 @@ export function EmploymentContractsClient() {
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
   const { data: activeCompany } = useActiveCompany();
+  const companyId = useAuthStore((s) => s.activeCompanyId);
   const { contracts, add, update, remove, activate, terminate, archive, createAmendmentDraft, fetch: fetchContracts } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
-  const { items: allowanceTypes } = useHRAllowanceTypesStore();
+  const { items: allowanceTypes, fetch: fetchAllowanceTypes } = useHRAllowanceTypesStore();
   const { articles, fetch: fetchArticles } = useHRContractArticlesStore();
   const { employees: allEmployees, fetch: fetchEmployees } = useHREmployeeDirectoryStore();
   const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
 
   React.useEffect(() => {
+    if (!companyId) return;
     fetchContracts();
     fetchTemplates();
     fetchArticles();
     fetchEmployees();
-  }, []);
+    fetchAllowanceTypes();
+  }, [companyId, fetchContracts, fetchTemplates, fetchArticles, fetchEmployees, fetchAllowanceTypes]);
 
   const essentialArticleIds = React.useMemo(
     () => articles.filter(a => a.isActive && a.isBasic).map(a => a.id),
@@ -163,6 +167,12 @@ export function EmploymentContractsClient() {
   const [terminateReason, setTerminateReason] = React.useState('');
   const [copyFromEmployeeId, setCopyFromEmployeeId] = React.useState('');
   const [copyFromContractId, setCopyFromContractId] = React.useState('');
+
+  React.useEffect(() => {
+    if (drawerOpen && companyId && allowanceTypes.length === 0) {
+      void fetchAllowanceTypes();
+    }
+  }, [drawerOpen, companyId, allowanceTypes.length, fetchAllowanceTypes]);
 
   const [contractPdfOpen, setContractPdfOpen] = React.useState(false);
   const [contractPrintable, setContractPrintable] = React.useState<React.ReactElement | null>(null);
@@ -528,10 +538,15 @@ export function EmploymentContractsClient() {
       {c.status === 'draft' && (
         <>
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(c)}>تعديل</Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c.id)}>تفعيل</Button>
+          {c.employeeSigned ? (
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c.id)}>تفعيل</Button>
+          ) : null}
           <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => setConfirmDelete(c.id)}>حذف</Button>
         </>
       )}
+      {c.status === 'pending_signature' && c.employeeSigned ? (
+        <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c.id)}>تفعيل</Button>
+      ) : null}
       {c.status === 'active' && (
         <>
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openAmendment(c)}>تعديل رسمي</Button>
@@ -592,6 +607,20 @@ export function EmploymentContractsClient() {
                 {formatNumber(c.baseSalary)}
                 <span className="text-[10px] font-normal text-muted-foreground">{c.currency}</span>
               </div>
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="text-muted-foreground">توقيع الموظف على العقد</span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-[10px] font-medium',
+                    c.employeeSigned
+                      ? 'border-success/40 bg-success/10 text-success'
+                      : 'border-muted-foreground/30 bg-muted/40 text-muted-foreground',
+                  )}
+                >
+                  {formatEmployeeSignedLabel(c.employeeSigned)}
+                </Badge>
+              </div>
               <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
                 <ContractActions c={c} />
               </div>
@@ -647,6 +676,22 @@ export function EmploymentContractsClient() {
             <SearchableDropdown value={form.employeeId} onChange={v => patch({ employeeId: v })} options={empOptions} placeholder="اختر الموظف…" />
           )}
         </FormField>
+
+        {readOnly && selected ? (
+          <FormField label="توقيع الموظف على العقد">
+            <Input
+              value={formatEmployeeSignedLabel(selected.employeeSigned)}
+              readOnly
+              className={cn(
+                'bg-muted/30 font-medium',
+                selected.employeeSigned ? 'text-success' : 'text-muted-foreground',
+              )}
+            />
+            {selected.rejectionReason ? (
+              <p className="mt-1.5 text-[11px] text-destructive">سبب الرفض: {selected.rejectionReason}</p>
+            ) : null}
+          </FormField>
+        ) : null}
 
         {!readOnly && panelMode === 'create' ? (
           <FormField label="إشعار الموظف" span2>
@@ -793,6 +838,9 @@ export function EmploymentContractsClient() {
         {/* Allowance lines */}
         <FormField label="البدلات من الدليل" span2>
           <div className="space-y-2">
+            {!readOnly && allowanceOptions.length === 0 ? (
+              <p className="text-xs text-muted-foreground">لا توجد بدلات في الدليل — أضف أنواع البدلات من صفحة «أنواع البدلات».</p>
+            ) : null}
             {form.allowanceLines.map((line, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <div className="flex-1">

@@ -30,6 +30,11 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [rememberDevice, setRememberDevice] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const {
     register,
@@ -58,7 +63,7 @@ export function LoginPage() {
         const maxAge = 7 * 24 * 60 * 60; // 7 days in seconds
         document.cookie = `access_token=${result.access_token}; path=/; max-age=${maxAge}; SameSite=Lax`;
       }
-      router.push('/hr/dashboard');
+      router.replace('/hr/dashboard');
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'auth.login');
       toast.error(displayMessage);
@@ -157,7 +162,15 @@ export function LoginPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-5">
+            <form
+              method="post"
+              action="/login"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleSubmit(onSubmit)(event);
+              }}
+              className="mt-10 space-y-5"
+            >
               <div className="space-y-2">
                 <Label htmlFor="email">البريد الإلكتروني</Label>
                 <div className="relative">
@@ -201,8 +214,14 @@ export function LoginPage() {
                 </div>
                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               </div>
-              <Button type="submit" variant="luxe" size="lg" className="w-full gap-2" disabled={loading}>
-                {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+              <Button
+                type="submit"
+                variant="luxe"
+                size="lg"
+                className="w-full gap-2"
+                disabled={loading || !hydrated}
+              >
+                {!hydrated ? 'جاري التحميل...' : loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
                 <ArrowLeft className="h-4 w-4" />
               </Button>
 

@@ -28,7 +28,7 @@ export function MinimalDropdown({ value, onChange, options, placeholder = 'اخ�
   const selected = options.find(o => o.value === value);
 
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen} modal={false}>
       <PopoverPrimitive.Trigger asChild>
         <button
           type="button"
@@ -48,12 +48,13 @@ export function MinimalDropdown({ value, onChange, options, placeholder = 'اخ�
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          className="popover-match-trigger z-50 max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-elevated"
+          className="popover-match-trigger z-[200] max-h-64 min-w-[12rem] overflow-auto rounded-md border border-border bg-popover p-1 shadow-elevated"
           sideOffset={4}
+          collisionPadding={12}
         >
           {options.map(opt => (
             <button
-              key={opt.value}
+              key={opt.value || '__empty__'}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
               className={cn(
@@ -89,7 +90,7 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
   const filtered = q ? options.filter(o => o.label.toLowerCase().includes(q.toLowerCase()) || (o.sub?.toLowerCase().includes(q.toLowerCase()))) : options;
 
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={(v) => { setOpen(v); if (!v) setQ(''); }}>
+    <PopoverPrimitive.Root open={open} onOpenChange={(v) => { setOpen(v); if (!v) setQ(''); }} modal={false}>
       <PopoverPrimitive.Trigger asChild>
         <button
           type="button"
@@ -120,8 +121,9 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          className="popover-match-trigger z-50 overflow-hidden rounded-md border border-border bg-popover shadow-elevated"
+          className="popover-match-trigger z-[200] min-w-[12rem] overflow-hidden rounded-md border border-border bg-popover shadow-elevated"
           sideOffset={4}
+          collisionPadding={12}
         >
           <div className="border-b border-border p-2">
             <div className="relative">
@@ -138,7 +140,7 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
           <div className="max-h-52 overflow-auto">
             {filtered.map(opt => (
               <button
-                key={opt.value}
+                key={opt.value || '__empty__'}
                 type="button"
                 onClick={() => { onChange(opt.value); setOpen(false); setQ(''); }}
                 className={cn(

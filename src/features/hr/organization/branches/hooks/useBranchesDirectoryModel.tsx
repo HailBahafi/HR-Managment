@@ -9,6 +9,7 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PermissionGate } from '@/components/shared/permission-gate';
+import { companiesApi, type CompanyResponseDto } from '@/features/hr/organization/lib/api/companies';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   createBranch,
@@ -16,7 +17,7 @@ import {
   loadBranchesDirectory,
   updateBranch,
 } from '@/features/hr/organization/branches/services/branches.service';
-import { slugify } from '@/features/hr/requests/lib/types';
+import { generateEntityCode } from '@/features/hr/requests/lib/types';
 import {
   BRANCH_EMPTY_FORM,
   branchRowToDraftForm,
@@ -31,23 +32,55 @@ export function useBranchesDirectoryModel() {
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
   const [branches, setBranches] = React.useState<BranchRow[]>([]);
+  const [companies, setCompanies] = React.useState<CompanyResponseDto[]>([]);
+  const [companyFilter, setCompanyFilter] = React.useState('');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<BranchDraftForm>(BRANCH_EMPTY_FORM);
   const [error, setError] = React.useState<string | null>(null);
   const [listError, setListError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [defaultCompanyId, setDefaultCompanyId] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewBranch, setViewBranch] = React.useState<BranchRow | null>(null);
 
-  const loadBranches = React.useCallback(async () => {
+  const companySelectOptions = React.useMemo(
+    () =>
+      companies.map((c) => ({
+        value: c.id,
+        label: c.nameAr ?? c.nameEn ?? c.code ?? c.id.slice(0, 8),
+      })),
+    [companies],
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void companiesApi
+      .getAll({ limit: 200 })
+      .then((res) => {
+        if (cancelled) return;
+        setCompanies(res.items);
+        if (res.items.length > 0) {
+          setCompanyFilter((prev) => prev || res.items[0].id);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const { displayMessage } = handleApiError(err, 'branches.companies.load');
+        setListError(displayMessage);
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const loadBranches = React.useCallback(async (companyId: string) => {
+    if (!companyId) return;
     setLoading(true);
     setListError(null);
     try {
-      const data = await loadBranchesDirectory();
+      const data = await loadBranchesDirectory(companyId);
       setBranches(data.branches);
-      setDefaultCompanyId(data.scope.companyId);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'branches.load');
       setListError(displayMessage);
@@ -57,8 +90,9 @@ export function useBranchesDirectoryModel() {
   }, []);
 
   React.useEffect(() => {
-    void loadBranches();
-  }, [loadBranches]);
+    if (!companyFilter) return;
+    void loadBranches(companyFilter);
+  }, [companyFilter, loadBranches]);
 
   const filtered = branches;
 
@@ -89,8 +123,8 @@ export function useBranchesDirectoryModel() {
       setError('المدينة مطلوبة');
       return;
     }
-    if (!defaultCompanyId) {
-      setError('تعذر تحديد الشركة لهذا الفرع');
+    if (!companyFilter) {
+      setError('اختر الشركة من القائمة أعلاه');
       return;
     }
 
@@ -99,28 +133,28 @@ export function useBranchesDirectoryModel() {
       if (editId) {
         await updateBranch(editId, draftFormToUpdatePayload(form));
       } else {
-        await createBranch(draftFormToCreatePayload(form, defaultCompanyId, slugify(form.name)));
+        await createBranch(draftFormToCreatePayload(form, companyFilter, generateEntityCode(form.name.trim(), 'branch')));
       }
-      await loadBranches();
+      await loadBranches(companyFilter);
       setDrawerOpen(false);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'branches.save');
       setError(displayMessage);
     }
-  }, [defaultCompanyId, editId, form.city, form.name, loadBranches]);
+  }, [companyFilter, editId, form, loadBranches]);
 
   const handleDelete = React.useCallback(async () => {
-    if (!confirmId) return;
+    if (!confirmId || !companyFilter) return;
     setError(null);
     try {
       await deleteBranch(confirmId);
-      await loadBranches();
+      await loadBranches(companyFilter);
       setConfirmId(null);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'branches.delete');
       setError(displayMessage);
     }
-  }, [confirmId, loadBranches]);
+  }, [companyFilter, confirmId, loadBranches]);
 
   usePageHeaderActions(
     () => (
@@ -143,6 +177,18 @@ export function useBranchesDirectoryModel() {
         showStatusSection={false}
         showEmployeePicker={false}
         onDateBoundsChange={() => {}}
+        inlineSelects={[
+          {
+            id: 'company',
+            value: companyFilter,
+            onChange: (v) => {
+              if (v && v !== 'all') setCompanyFilter(v);
+            },
+            placeholder: 'الشركة',
+            options: companySelectOptions,
+            className: 'w-[11rem] max-w-[11rem]',
+          },
+        ]}
         dataView={{
           value: layoutView,
           onChange: (v) => setLayoutView(v as 'grid' | 'table'),
@@ -153,7 +199,7 @@ export function useBranchesDirectoryModel() {
         }}
       />
     ),
-    [layoutView],
+    [companyFilter, companySelectOptions, layoutView],
   );
 
   return {
@@ -176,6 +222,8 @@ export function useBranchesDirectoryModel() {
     openEdit,
     handleSave,
     handleDelete,
+    companyFilter,
+    companies,
   };
 }
 

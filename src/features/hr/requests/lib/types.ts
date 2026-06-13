@@ -394,3 +394,11 @@ export function slugify(str: string): string {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '') || 'item';
 }
+
+/** Unique API code for org entities (Arabic labels often slugify to "item"). Max 50 chars. */
+export function generateEntityCode(label: string, prefix = 'item'): string {
+  const slug = slugify(label);
+  const stem = slug && slug !== 'item' ? slug.slice(0, 28) : prefix.slice(0, 12);
+  const unique = `${Date.now().toString(36).slice(-4)}${Math.random().toString(36).slice(2, 5)}`;
+  return `${stem}-${unique}`.replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
+}

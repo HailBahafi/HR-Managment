@@ -59,15 +59,11 @@ export type CreateEmployeeDto = {
   nationality?: string | null;
   position?: string | null;
   managerId?: string | null;
-  contractType?: string | null;
   startDate?: string | null;
-  baseSalary?: string | null;
-  housingAllowance?: string | null;
-  transportAllowance?: string | null;
-  otherAllowances?: string | null;
   bankAccount?: string | null;
   iban?: string | null;
   address?: string | null;
+  emergencyContact?: string | null;
   gender?: string | null;
   birthDate?: string | null;
   maritalStatus?: string | null;

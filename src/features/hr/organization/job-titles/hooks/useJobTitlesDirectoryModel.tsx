@@ -19,7 +19,7 @@ import {
   updateJobTitle,
   type JobTitleTemplateRecord,
 } from '@/features/hr/organization/job-titles/services/job-titles.service';
-import { slugify } from '@/features/hr/requests/lib/types';
+import { generateEntityCode } from '@/features/hr/requests/lib/types';
 import {
   JOB_TITLE_EMPTY_FORM,
   type JobTitleDraftForm,
@@ -103,7 +103,6 @@ export function useJobTitlesDirectoryModel() {
     try {
       if (editId) {
         const payload: UpdateJobTitleDto = {
-          code: slugify(titleAr),
           nameAr: titleAr,
           nameEn: form.titleEn.trim() || null,
           description: descriptionAr ?? null,
@@ -114,7 +113,7 @@ export function useJobTitlesDirectoryModel() {
       } else {
         const payload: CreateJobTitleDto = {
           companyId: defaultCompanyId,
-          code: slugify(titleAr),
+          code: generateEntityCode(titleAr, 'job'),
           nameAr: titleAr,
           nameEn: form.titleEn.trim() || null,
           description: descriptionAr ?? null,

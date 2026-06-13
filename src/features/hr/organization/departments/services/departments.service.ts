@@ -4,7 +4,7 @@ import {
   type DepartmentResponseDto,
   type UpdateDepartmentDto,
 } from '@/features/hr/organization/lib/api/departments';
-import { resolveOrganizationScope, type OrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
+import type { OrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { mapDepartmentResponse, type DepartmentRecord } from '@/features/hr/organization/departments/constants/departments-directory';
 
 export type DepartmentsDirectoryData = {
@@ -12,21 +12,26 @@ export type DepartmentsDirectoryData = {
   scope: OrganizationScope;
 };
 
-export async function loadDepartmentsDirectory(filters?: { isActive?: boolean }): Promise<DepartmentsDirectoryData> {
-  const scope = await resolveOrganizationScope();
+export async function loadDepartmentsDirectory(filters: {
+  companyId: string;
+  isActive?: boolean;
+  /** Pass `null` to load all branches for the company. */
+  branchId?: string | null;
+}): Promise<DepartmentsDirectoryData> {
+  const branchId = filters.branchId ?? undefined;
   const query: Parameters<typeof departmentsApi.getAll>[0] = {
-    companyId: scope.companyId ?? undefined,
-    branchId: scope.branchId ?? undefined,
+    companyId: filters.companyId,
+    branchId,
   };
-  if (filters?.isActive !== undefined) query.isActive = filters.isActive;
+  if (filters.isActive !== undefined) query.isActive = filters.isActive;
 
   const res = await departmentsApi.getAll(query);
 
   return {
     departments: res.items.map(mapDepartmentResponse),
     scope: {
-      companyId: scope.companyId ?? res.items[0]?.companyId ?? null,
-      branchId: scope.branchId ?? res.items[0]?.branchId ?? null,
+      companyId: filters.companyId,
+      branchId: branchId ?? res.items[0]?.branchId ?? null,
     },
   };
 }

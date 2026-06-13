@@ -49,6 +49,9 @@ export type HRContractRecord = {
   earlyTerminationReason: string | null;
   articleIds: string[];
   annualLeaveDays: number | null;
+  employeeSigned: boolean;
+  rejectionReason: string | null;
+  signedAt: string | null;
   updatedAt: string;
 };
 
@@ -87,6 +90,9 @@ export function mapEmployeeContractFromApi(c: ApiEmployeeContract): HRContractRe
     earlyTerminationReason: c.earlyTerminationReason ?? null,
     articleIds: (c.articles ?? []).map(a => a.contractArticleId),
     annualLeaveDays: c.annualLeaveDays ?? null,
+    employeeSigned: c.employeeSigned ?? false,
+    rejectionReason: c.rejectionReason ?? null,
+    signedAt: c.signedAt ?? null,
     updatedAt: c.updatedAt,
   };
 }
@@ -314,6 +320,10 @@ export const CONTRACT_STATUS_COLORS: Record<HRContractLifecycleStatus, string> =
   superseded: STATUS_PILL.calculated,
   cancelled: STATUS_PILL.cancelled,
 };
+
+export function formatEmployeeSignedLabel(signed: boolean): string {
+  return signed ? 'نعم' : 'لا';
+}
 
 export function normalizeContractRow(raw: Record<string, unknown>): HRContractRecord {
   return raw as HRContractRecord;

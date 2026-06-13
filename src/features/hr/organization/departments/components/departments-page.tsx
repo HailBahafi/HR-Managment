@@ -55,6 +55,8 @@ export default function DepartmentsPage() {
               value={model.draft.parentId}
               onChange={(v) => model.patch('parentId', v)}
               options={model.parentOptions}
+              placeholder={model.parentPickerLoading ? 'جاري تحميل الأقسام…' : 'اختر القسم الأصل'}
+              disabled={model.parentPickerLoading}
             />
           </FormField>
           <FormField label="الحالة">
