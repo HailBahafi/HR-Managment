@@ -350,15 +350,13 @@ function EmployeeBalanceGroupCard({
   onEdit,
   onDelete,
   onAddType,
-  defaultExpanded = false,
 }: {
   group: EmployeeLeaveBalanceGroupDto;
   onEdit: (balance: EmployeeLeaveBalanceResponseDto) => void;
   onDelete: (balance: EmployeeLeaveBalanceResponseDto) => void;
   onAddType: (employeeId: string) => void;
-  defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = React.useState(defaultExpanded);
+  const [expanded, setExpanded] = React.useState(false);
   const initials = group.employeeNameAr.split(' ').map((w) => w[0]).slice(0, 2).join('');
   const hue = ((group.employeeId.charCodeAt(0) ?? 0) * 47) % 360;
   const p = pct(group.usedDays, group.totalDays);
@@ -562,11 +560,10 @@ export function AnalyticsClient() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {filteredGroups.map((group, i) => (
+          {filteredGroups.map((group) => (
             <EmployeeBalanceGroupCard
               key={group.employeeId}
               group={group}
-              defaultExpanded={filteredGroups.length === 1 && i === 0}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
               onAddType={openAddForEmployee}
