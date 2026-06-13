@@ -62,9 +62,29 @@ function buildQuery(query?: Record<string, QueryValue>) {
 
 function buildUrl(path: string, query?: Record<string, QueryValue>) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const baseUrl = publicConfig.apiUrl;
+  const baseUrl = resolveApiBaseUrl(publicConfig.apiUrl);
   const urlBase = baseUrl ? baseUrl.replace(/\/$/, '') : '';
   return `${urlBase}${normalizedPath}${buildQuery(query)}`;
+}
+
+function resolveApiBaseUrl(configuredUrl: string) {
+  if (typeof window === 'undefined') {
+    return configuredUrl;
+  }
+
+  const currentHost = window.location.hostname;
+  const isLocalPage = currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost === '::1';
+  if (isLocalPage) {
+    return configuredUrl;
+  }
+
+  try {
+    const apiHost = new URL(configuredUrl).hostname;
+    const isLocalApi = apiHost === 'localhost' || apiHost === '127.0.0.1' || apiHost === '::1';
+    return isLocalApi ? '/api-backend' : configuredUrl;
+  } catch {
+    return configuredUrl;
+  }
 }
 
 type RequestOptions = {
