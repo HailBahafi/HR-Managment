@@ -1,29 +1,20 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type {
+  EmployeeLeaveBalanceGroupDto,
+  EmployeeLeaveBalanceResponseDto,
+  LeaveBalanceListQuery,
+} from '@/features/hr/leaves/lib/api/leave-balances';
 
-export type EmployeeLeaveBalanceResponseDto = {
-  id: string;
-  companyId: string;
-  employeeId: string;
-  leaveTypeId: string;
-  usedDays: number;
-  totalDays: number;
-  remainingDays: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string | null;
-  updatedBy: string | null;
+export type {
+  EmployeeLeaveBalanceGroupDto,
+  EmployeeLeaveBalanceResponseDto,
+  EmployeeLeaveBalanceListQuery,
 };
 
-export type EmployeeLeaveBalanceListQuery = {
-  page?: number;
-  limit?: number;
-  companyId?: string;
-  employeeId?: string;
-  leaveTypeId?: string;
-};
+export type EmployeeLeaveBalanceListQuery = LeaveBalanceListQuery;
 
 export const employeeLeaveBalancesApi = {
   getAll(query?: EmployeeLeaveBalanceListQuery) {
-    return apiRequest<PaginatedResult<EmployeeLeaveBalanceResponseDto>>('/leaves/balances', { query });
+    return apiRequest<PaginatedResult<EmployeeLeaveBalanceGroupDto>>('/leaves/balances', { query });
   },
 };

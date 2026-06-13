@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Loader2, LogIn, LogOut, Coffee } from 'lucide-react';
+import { Plus, Loader2, LogIn, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { attendanceEventsApi, type AttendanceEventType, type AttendanceEventResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
+import { attendanceEventsApi, type AttendanceEventResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
 
-export const EVENT_TYPE_META: Record<AttendanceEventType, { labelAr: string; icon: React.ElementType; color: string }> = {
-  check_in:    { labelAr: 'دخول',           icon: LogIn,   color: 'text-emerald-700 bg-emerald-500/15 border-emerald-500/30' },
-  check_out:   { labelAr: 'خروج',           icon: LogOut,  color: 'text-sky-700 bg-sky-500/15 border-sky-500/30' },
-  break_start: { labelAr: 'بداية استراحة',  icon: Coffee,  color: 'text-amber-700 bg-amber-500/15 border-amber-500/30' },
-  break_end:   { labelAr: 'نهاية استراحة',  icon: Coffee,  color: 'text-orange-700 bg-orange-500/15 border-orange-500/30' },
+const REGISTERABLE_EVENT_TYPES = ['check_in', 'check_out'] as const;
+type RegisterableEventType = (typeof REGISTERABLE_EVENT_TYPES)[number];
+
+const REGISTER_EVENT_TYPE_META: Record<RegisterableEventType, { labelAr: string; icon: React.ElementType; color: string }> = {
+  check_in:  { labelAr: 'تسجيل حضور',   icon: LogIn,  color: 'text-emerald-700 bg-emerald-500/15 border-emerald-500/30' },
+  check_out: { labelAr: 'تسجيل انصراف', icon: LogOut, color: 'text-sky-700 bg-sky-500/15 border-sky-500/30' },
+};
+
+const REGISTER_SUCCESS_MSG: Record<RegisterableEventType, string> = {
+  check_in:  'تم تسجيل الحضور بنجاح',
+  check_out: 'تم تسجيل الانصراف بنجاح',
 };
 
 function nowTimeLocal() {
@@ -34,7 +40,7 @@ type Props = {
 };
 
 export function DailyRegisterEventDialog({ open, onOpenChange, employeeId, employeeName, workDate, companyId, onCreated }: Props) {
-  const [eventType, setEventType] = React.useState<AttendanceEventType>('check_in');
+  const [eventType, setEventType] = React.useState<RegisterableEventType>('check_in');
   const [time, setTime] = React.useState(nowTimeLocal());
   const [notes, setNotes] = React.useState('');
   const [saving, setSaving] = React.useState(false);
@@ -58,7 +64,7 @@ export function DailyRegisterEventDialog({ open, onOpenChange, employeeId, emplo
         source: 'manual_hr',
         notes: notes.trim() || null,
       });
-      toast.success(`تم تسجيل ${EVENT_TYPE_META[eventType].labelAr} بنجاح`);
+      toast.success(REGISTER_SUCCESS_MSG[eventType]);
       onCreated?.(res);
       onOpenChange(false);
     } catch {
@@ -82,8 +88,8 @@ export function DailyRegisterEventDialog({ open, onOpenChange, employeeId, emplo
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">نوع الحدث</Label>
             <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(EVENT_TYPE_META) as AttendanceEventType[]).map((t) => {
-                const m = EVENT_TYPE_META[t];
+              {REGISTERABLE_EVENT_TYPES.map((t) => {
+                const m = REGISTER_EVENT_TYPE_META[t];
                 const Icon = m.icon;
                 return (
                   <button
