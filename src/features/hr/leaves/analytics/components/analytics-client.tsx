@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  Plus, Pencil, Trash2, Loader2, AlertTriangle,
+  Plus, Pencil, Trash2, Loader2, AlertTriangle, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
@@ -350,12 +350,15 @@ function EmployeeBalanceGroupCard({
   onEdit,
   onDelete,
   onAddType,
+  defaultExpanded = false,
 }: {
   group: EmployeeLeaveBalanceGroupDto;
   onEdit: (balance: EmployeeLeaveBalanceResponseDto) => void;
   onDelete: (balance: EmployeeLeaveBalanceResponseDto) => void;
   onAddType: (employeeId: string) => void;
+  defaultExpanded?: boolean;
 }) {
+  const [expanded, setExpanded] = React.useState(defaultExpanded);
   const initials = group.employeeNameAr.split(' ').map((w) => w[0]).slice(0, 2).join('');
   const hue = ((group.employeeId.charCodeAt(0) ?? 0) * 47) % 360;
   const p = pct(group.usedDays, group.totalDays);
@@ -364,7 +367,12 @@ function EmployeeBalanceGroupCard({
 
   return (
     <div className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-shadow hover:shadow-md">
-      <div className="flex items-center gap-2.5 px-3.5 pt-3.5 pb-2.5">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-2.5 px-3.5 pt-3.5 pb-2.5 text-right transition-colors hover:bg-muted/20"
+        aria-expanded={expanded}
+      >
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
           style={{ background: `hsl(${hue} 55% 45%)` }}
@@ -375,16 +383,13 @@ function EmployeeBalanceGroupCard({
           <p className="truncate text-sm font-semibold leading-tight">{group.employeeNameAr}</p>
           <p className="text-[10px] text-muted-foreground">{group.leaveTypes.length} نوع إجازة</p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-primary group-hover:opacity-100"
-          onClick={() => onAddType(group.employeeId)}
-          aria-label="إضافة نوع رصيد"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+            expanded && 'rotate-180',
+          )}
+        />
+      </button>
 
       <div className="grid grid-cols-3 divide-x divide-x-reverse divide-border/60 border-t border-border/60 bg-muted/30">
         <div className="flex flex-col items-center gap-0 px-2 py-2">
@@ -407,16 +412,30 @@ function EmployeeBalanceGroupCard({
         <BalanceBar used={group.usedDays} total={group.totalDays} color="bg-primary" />
       </div>
 
-      <div className="border-t border-border/50 bg-card/50">
-        {group.leaveTypes.map((lt) => (
-          <LeaveTypeRow
-            key={lt.id}
-            leaveType={lt}
-            onEdit={(balance) => onEdit({ ...balance, employeeId: group.employeeId, companyId: group.companyId })}
-            onDelete={(balance) => onDelete({ ...balance, employeeId: group.employeeId, companyId: group.companyId })}
-          />
-        ))}
-      </div>
+      {expanded && (
+        <div className="border-t border-border/50 bg-card/50">
+          <div className="flex items-center justify-between border-b border-border/40 px-3.5 py-2">
+            <p className="text-[10px] font-medium text-muted-foreground">تفاصيل أنواع الإجازة</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-2 text-[10px] text-muted-foreground hover:text-primary"
+              onClick={() => onAddType(group.employeeId)}
+            >
+              <Plus className="h-3 w-3" />
+              إضافة نوع
+            </Button>
+          </div>
+          {group.leaveTypes.map((lt) => (
+            <LeaveTypeRow
+              key={lt.id}
+              leaveType={lt}
+              onEdit={(balance) => onEdit({ ...balance, employeeId: group.employeeId, companyId: group.companyId })}
+              onDelete={(balance) => onDelete({ ...balance, employeeId: group.employeeId, companyId: group.companyId })}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -543,10 +562,11 @@ export function AnalyticsClient() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {filteredGroups.map((group) => (
+          {filteredGroups.map((group, i) => (
             <EmployeeBalanceGroupCard
               key={group.employeeId}
               group={group}
+              defaultExpanded={filteredGroups.length === 1 && i === 0}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
               onAddType={openAddForEmployee}
