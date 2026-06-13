@@ -2,7 +2,7 @@
 @config '../../tailwind.config.js';
 
 @theme {
-  --color-gold: hsl(38 62% 52%);
+  --color-gold: hsl(39 45% 54%);
   --color-gold-foreground: hsl(180 25% 10%);
 }
 @import 'react-day-picker/style.css';
@@ -111,9 +111,9 @@
     --primary-900: 175 60% 12%;
 
     /* Accent: Warm burnished gold */
-    --gold: 38 62% 52%;
+    --gold: 39 45% 54%;
     --gold-foreground: 180 25% 10%;
-    --color-gold: hsl(38 62% 52%);
+    --color-gold: hsl(39 45% 54%);
     --color-gold-foreground: hsl(180 25% 10%);
 
     --accent: 175 30% 92%;
