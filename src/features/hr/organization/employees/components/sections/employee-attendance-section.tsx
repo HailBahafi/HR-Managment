@@ -114,7 +114,7 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
           </div>
           <div className="p-2 space-y-1.5">
             {employeeAssignments.length > 0 ? employeeAssignments.map((asg) => {
-              const isOpen = asg.templateId === '__open__';
+              const isOpen = asg.openShiftHours != null && asg.openShiftHours > 0;
               const tpl = !isOpen ? shiftTemplates.find((t) => t.id === asg.templateId) : null;
               return (
                 <div

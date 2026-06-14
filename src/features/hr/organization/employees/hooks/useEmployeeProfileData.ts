@@ -9,7 +9,6 @@ import { mapEmployeeContractFromApi, type HRContractRecord } from '@/features/hr
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import type { EmployeeProfileSectionId } from '@/features/hr/organization/employees/constants/EmployeeProfileSections';
-import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 import { payslipsApi } from '@/features/hr/payroll/lib/api/payslips';
 import type { Payslip } from '@/features/hr/payroll/types';
 import { employeePayslipsApi } from '@/features/hr/organization/employees/lib/api/employee-payslips';
@@ -44,6 +43,7 @@ export function useEmployeeProfileData(
 
   const attendance = useEmployeeProfileAttendance(
     employee,
+    companyId,
     activeSection === 'attendance',
   );
 
@@ -240,8 +240,8 @@ export function useEmployeeProfileData(
     shiftTemplates,
     employeeSummaries: allEmployeeSummaries,
     employeeEvents: allEmployeeEvents,
-    employeeCheckpoints: [] as AttendanceCheckInPointLink[],
-    checkpoints: [] as AttendanceCheckInPoint[],
+    employeeCheckpoints: attendance.checkpointLinks,
+    checkpoints: attendance.checkpoints,
     violations,
     employeeViolations,
     employeeContracts,
