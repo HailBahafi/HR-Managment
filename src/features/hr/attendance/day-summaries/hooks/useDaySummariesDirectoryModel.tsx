@@ -51,7 +51,7 @@ export function useDaySummariesDirectoryModel() {
   const [items, setItems] = React.useState<DaySummaryResponseDto[]>([]);
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(1);
-  const [limit, setLimit] = React.useState(25);
+  const [limit, setLimit] = React.useState(50);
   const [loading, setLoading] = React.useState(true);
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [allEmployees, setAllEmployees] = React.useState<{ id: string; name: string }[]>([]);
@@ -63,10 +63,22 @@ export function useDaySummariesDirectoryModel() {
   });
 
   React.useEffect(() => {
-    void employeesApi.getAll({ limit: 500 }).then((res) => {
-      setAllEmployees(res.items.map((e) => ({ id: e.id, name: e.nameAr })));
-    }).catch(() => setAllEmployees([]));
-  }, []);
+    if (!companyId) {
+      setAllEmployees([]);
+      return;
+    }
+    void employeesApi
+      .getAll({ companyId, limit: 500 })
+      .then((res) => {
+        setAllEmployees(res.items.map((e) => ({ id: e.id, name: e.nameAr })));
+      })
+      .catch((err) => {
+        handleApiError(err, 'day-summaries.employees');
+        setAllEmployees([]);
+      });
+  }, [companyId]);
+
+  const empPickerList = React.useMemo(() => allEmployees, [allEmployees]);
 
   const applyMonthBounds = React.useCallback((y: number, m: number) => {
     const bounds = monthDateBounds(y, m);
@@ -154,7 +166,7 @@ export function useDaySummariesDirectoryModel() {
 
   React.useEffect(() => {
     setPage(1);
-  }, [from, to, employeeId, filters.status, filters.isManualOverride, selectedEmpIds.size]);
+  }, [from, to, employeeId, filters.status, filters.isManualOverride, selectedEmpIds.size, limit]);
 
   const patchFilters = (patch: Partial<DaySummariesFilters>) => {
     setFilters((f) => ({ ...f, ...patch }));
@@ -248,7 +260,7 @@ export function useDaySummariesDirectoryModel() {
         showDateSection={false}
         showStatusSection={false}
         leadingFilters={yearMonthFilters}
-        empPickerEmployees={allEmployees}
+        empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         inlineSelects={inlineSelects}
@@ -276,6 +288,8 @@ export function useDaySummariesDirectoryModel() {
       filters.status,
       filters.isManualOverride,
       selectedEmpKey,
+      empPickerList,
+      inlineSelects,
     ],
   );
 

@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   Layers,
   Unlink,
+  Wrench,
 } from 'lucide-react';
 import {
   Dialog,
@@ -35,6 +36,7 @@ import { STATUS } from '@/features/hr/attendance/daily/constants/daily-attendanc
 import { resolveVisualKey } from '@/features/hr/attendance/daily/utils/daily-attendance-status-resolve';
 import { fmtFull, minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { toast } from 'sonner';
 
 const WEEKDAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -270,10 +272,11 @@ export function DailyDayDetailDialog({
   const [registerOpen, setRegisterOpen] = React.useState(false);
   const [breakdown, setBreakdown] = React.useState<DailyBreakdownResponseDto | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const [correctingIndex, setCorrectingIndex] = React.useState<number | null>(null);
 
-  const loadBreakdown = React.useCallback(async () => {
+  const loadBreakdown = React.useCallback(async (opts?: { silent?: boolean }) => {
     if (!summary || !companyId) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     try {
       const data = await attendanceEventsApi.getDailyBreakdown({
         employeeId: summary.employeeId,
@@ -286,9 +289,67 @@ export function DailyDayDetailDialog({
       handleApiError(err, 'attendance/events/daily-breakdown');
       setBreakdown(null);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [summary, companyId]);
+
+  const correctPeriod = React.useCallback(
+    async (period: DailyBreakdownPeriod, periodIndex: number) => {
+      if (!summary || !companyId || !breakdown) return;
+
+      const { expected } = period;
+      const label =
+        breakdown.periods.length > 1 ? `وردية ${periodIndex + 1}` : 'الوردية';
+      const voidReason = `تصحيح ${label} — اختبار`;
+
+      setCorrectingIndex(periodIndex);
+      try {
+        const punchTypes = new Set<AttendanceEventType>(['check_in', 'check_out']);
+        const toVoid = [
+          ...period.events,
+          ...(breakdown.periods.length === 1 ? breakdown.unmatchedEvents : []),
+        ].filter((evt) => !evt.isVoided && punchTypes.has(evt.eventType));
+
+        for (const evt of toVoid) {
+          await attendanceEventsApi.void(evt.id, voidReason);
+        }
+
+        await attendanceEventsApi.create({
+          companyId,
+          employeeId: summary.employeeId,
+          eventType: 'check_in',
+          occurredAt: expected.startAt,
+          workDate: summary.date,
+          source: 'manual_hr',
+          periodSortOrder: expected.sortOrder,
+          notes: voidReason,
+        });
+
+        if (!expected.checkOutNotRequired && expected.endAt) {
+          await attendanceEventsApi.create({
+            companyId,
+            employeeId: summary.employeeId,
+            eventType: 'check_out',
+            occurredAt: expected.endAt,
+            workDate: summary.date,
+            source: 'manual_hr',
+            periodSortOrder: expected.sortOrder,
+            notes: voidReason,
+          });
+        }
+
+        toast.success(
+          `تم تصحيح ${label} (${trimTime(expected.startTime)} — ${trimTime(expected.endTime)})`,
+        );
+        await loadBreakdown({ silent: true });
+      } catch (err) {
+        handleApiError(err, 'attendance/events/correct-period');
+      } finally {
+        setCorrectingIndex(null);
+      }
+    },
+    [breakdown, companyId, loadBreakdown, summary],
+  );
 
   React.useEffect(() => {
     if (!open || !summary || !companyId) {
@@ -309,10 +370,40 @@ export function DailyDayDetailDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex max-h-[90vh] max-w-lg flex-col gap-0 overflow-hidden p-0" dir="rtl">
           <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-right">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              تفاصيل يوم الحضور
-            </DialogTitle>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                تفاصيل يوم الحضور
+              </DialogTitle>
+
+              {!loading && breakdown && breakdown.periods.length > 0 && companyId ? (
+                <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                  {breakdown.periods.map((period, index) => {
+                    const multi = breakdown.periods.length > 1;
+                    const busy = correctingIndex !== null;
+                    return (
+                      <Button
+                        key={period.expected.periodId}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1.5 border-primary/30 px-2.5 text-[11px] text-primary hover:bg-primary/5"
+                        disabled={busy}
+                        title={`تصحيح ${multi ? `وردية ${index + 1}` : 'الوردية'} — ${trimTime(period.expected.startTime)} إلى ${trimTime(period.expected.endTime)}`}
+                        onClick={() => void correctPeriod(period, index)}
+                      >
+                        {correctingIndex === index ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Wrench className="h-3 w-3" />
+                        )}
+                        تصحيح {multi ? `وردية ${index + 1}` : 'الوردية'}
+                      </Button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           </DialogHeader>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">

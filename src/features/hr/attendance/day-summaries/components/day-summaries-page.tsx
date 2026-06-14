@@ -147,7 +147,7 @@ export function DaySummariesPage() {
   ], []);
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="ملخص الحضور اليومي"
         descriptionAr="سجلات الحضور المحسوبة لكل موظف — إعادة الحساب من الأحداث والورديات."
@@ -161,22 +161,28 @@ export function DaySummariesPage() {
           description="غيّر نطاق التاريخ أو نفّذ «تحديث البيانات» لإعادة الحساب من الأحداث."
         />
       ) : (
-        <>
-          <DataTable
-            columns={columns}
-            data={model.items}
-            keyExtractor={(row) => row.id}
-            loading={model.loading}
-            onRowClick={(row) => setDetailRow(row)}
-          />
-          <AppPagination
-            page={model.page}
-            pageSize={model.limit}
-            total={model.total}
-            onPageChange={model.setPage}
-            onPageSizeChange={model.setLimit}
-          />
-        </>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+          <div className="min-w-0">
+            <DataTable
+              columns={columns}
+              data={model.items}
+              keyExtractor={(row) => row.id}
+              loading={model.loading}
+              alwaysShowTable
+              onRowClick={(row) => setDetailRow(row)}
+            />
+          </div>
+          <div className="sticky bottom-0 z-10 shrink-0 border-t border-border/60 bg-background/95 py-3 backdrop-blur-sm supports-backdrop-filter:bg-background/80">
+            <AppPagination
+              page={model.page}
+              pageSize={model.limit}
+              total={model.total}
+              onPageChange={model.setPage}
+              onPageSizeChange={model.setLimit}
+              pageSizeOptions={[50, 100, 150, 200]}
+            />
+          </div>
+        </div>
       )}
 
       <DaySummaryDetailDialog
@@ -197,6 +203,6 @@ export function DaySummariesPage() {
           onSuccess={model.reload}
         />
       ) : null}
-    </>
+    </div>
   );
 }
