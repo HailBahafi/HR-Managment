@@ -61,8 +61,8 @@ describe('employee-user-account.service', () => {
 
   it('calls POST /hr/employees/user-account via employeesApi', async () => {
     createUserAccount.mockResolvedValue({
-      id: 'emp-1',
-      userId: 'user-1',
+      id: 'user-1',
+      email: 'user@company.com',
     });
 
     const result = await createEmployeeUserAccount({
@@ -78,12 +78,14 @@ describe('employee-user-account.service', () => {
       email: 'user@company.com',
       password: 'secret12',
     });
-    expect(result.userId).toBe('user-1');
+    expect(result.id).toBe('user-1');
+    expect(resolveCreatedUserId(result)).toBe('user-1');
   });
 
-  it('resolveCreatedUserId prefers userId then nested user.id', () => {
+  it('resolveCreatedUserId prefers userId, nested user.id, then top-level id', () => {
     expect(resolveCreatedUserId({ userId: 'u1' } as never)).toBe('u1');
     expect(resolveCreatedUserId({ user: { id: 'u2' } } as never)).toBe('u2');
+    expect(resolveCreatedUserId({ id: 'u3' } as never)).toBe('u3');
     expect(resolveCreatedUserId({} as never)).toBeNull();
   });
 });

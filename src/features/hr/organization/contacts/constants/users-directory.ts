@@ -6,7 +6,6 @@ export type UserDraftForm = {
   fullNameAr: string;
   fullNameEn: string;
   phone: string;
-  avatarUrl: string;
   userType: string;
   defaultCompanyId: string;
   defaultBranchId: string;
@@ -14,7 +13,6 @@ export type UserDraftForm = {
   languageCode: string;
   timezone: string;
   status: string;
-  notes: string;
   isActive: boolean;
   isVerified: boolean;
 };
@@ -25,7 +23,6 @@ export const EMPTY_USER_FORM: UserDraftForm = {
   fullNameAr: '',
   fullNameEn: '',
   phone: '',
-  avatarUrl: '',
   userType: 'internal_employee',
   defaultCompanyId: '',
   defaultBranchId: '',
@@ -33,7 +30,6 @@ export const EMPTY_USER_FORM: UserDraftForm = {
   languageCode: 'ar',
   timezone: 'Asia/Riyadh',
   status: 'active',
-  notes: '',
   isActive: true,
   isVerified: false,
 };
@@ -77,7 +73,6 @@ export function userToDraftForm(user: UserResponseDto): UserDraftForm {
     fullNameAr: user.fullNameAr ?? '',
     fullNameEn: user.fullNameEn ?? '',
     phone: user.phone ?? '',
-    avatarUrl: user.avatarUrl ?? '',
     userType: user.userType ?? 'internal_employee',
     defaultCompanyId: user.defaultCompanyId ?? '',
     defaultBranchId: user.defaultBranchId ?? '',
@@ -85,7 +80,6 @@ export function userToDraftForm(user: UserResponseDto): UserDraftForm {
     languageCode: user.languageCode ?? 'ar',
     timezone: user.timezone ?? 'Asia/Riyadh',
     status: user.status ?? 'active',
-    notes: user.notes ?? '',
     isActive: user.isActive,
     isVerified: user.isVerified,
   };

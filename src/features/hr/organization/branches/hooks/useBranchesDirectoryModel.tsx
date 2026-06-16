@@ -9,8 +9,10 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PermissionGate } from '@/components/shared/permission-gate';
-import { companiesApi, type CompanyResponseDto } from '@/features/hr/organization/lib/api/companies';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import {
   createBranch,
   deleteBranch,
@@ -30,10 +32,11 @@ import {
 export function useBranchesDirectoryModel() {
   useSetPageTitle({ titleAr: 'الفروع', descriptionAr: 'إدارة فروع الشركة وتوزيع الموظفين.', iconName: 'Building2' });
 
+  const defaultCompanyId = useDefaultCompanyId();
+  const { data: defaultCompany } = useDefaultCompany();
+
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
   const [branches, setBranches] = React.useState<BranchRow[]>([]);
-  const [companies, setCompanies] = React.useState<CompanyResponseDto[]>([]);
-  const [companyFilter, setCompanyFilter] = React.useState('');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<BranchDraftForm>(BRANCH_EMPTY_FORM);
@@ -42,40 +45,23 @@ export function useBranchesDirectoryModel() {
   const [loading, setLoading] = React.useState(true);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewBranch, setViewBranch] = React.useState<BranchRow | null>(null);
+  const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
+  const [employeesLoading, setEmployeesLoading] = React.useState(false);
 
-  const companySelectOptions = React.useMemo(
-    () =>
-      companies.map((c) => ({
-        value: c.id,
-        label: c.nameAr ?? c.nameEn ?? c.code ?? c.id.slice(0, 8),
-      })),
-    [companies],
+  const companyLabel = React.useCallback(
+    (companyId: string) =>
+      defaultCompany?.nameAr
+      ?? defaultCompany?.code
+      ?? companyId.slice(0, 8),
+    [defaultCompany],
   );
 
-  React.useEffect(() => {
-    let cancelled = false;
-    void companiesApi
-      .getAll({ limit: 200 })
-      .then((res) => {
-        if (cancelled) return;
-        setCompanies(res.items);
-        if (res.items.length > 0) {
-          setCompanyFilter((prev) => prev || res.items[0].id);
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        const { displayMessage } = handleApiError(err, 'branches.companies.load');
-        setListError(displayMessage);
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const loadBranches = React.useCallback(async (companyId: string) => {
-    if (!companyId) return;
+  const loadBranches = React.useCallback(async (companyId: string | null) => {
+    if (!companyId) {
+      setBranches([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setListError(null);
     try {
@@ -90,9 +76,53 @@ export function useBranchesDirectoryModel() {
   }, []);
 
   React.useEffect(() => {
-    if (!companyFilter) return;
-    void loadBranches(companyFilter);
-  }, [companyFilter, loadBranches]);
+    void loadBranches(defaultCompanyId);
+  }, [defaultCompanyId, loadBranches]);
+
+  React.useEffect(() => {
+    if (!drawerOpen || !defaultCompanyId) {
+      setEmployees([]);
+      return;
+    }
+    let cancelled = false;
+    setEmployeesLoading(true);
+    void employeesApi
+      .getAll({ companyId: defaultCompanyId, limit: 500 })
+      .then((res) => {
+        if (!cancelled) setEmployees(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setEmployees([]);
+      })
+      .finally(() => {
+        if (!cancelled) setEmployeesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [drawerOpen, defaultCompanyId]);
+
+  const employeeOptions = React.useMemo(
+    () => employees.map((e) => ({
+      value: e.id,
+      label: e.nameAr,
+      sub: e.employeeCode ?? undefined,
+    })),
+    [employees],
+  );
+
+  const setManagerEmployee = React.useCallback((employeeId: string) => {
+    if (!employeeId) {
+      setForm((f) => ({ ...f, managerEmployeeId: '', managerName: '' }));
+      return;
+    }
+    const employee = employees.find((e) => e.id === employeeId);
+    setForm((f) => ({
+      ...f,
+      managerEmployeeId: employeeId,
+      managerName: employee?.nameAr ?? '',
+    }));
+  }, [employees]);
 
   const filtered = branches;
 
@@ -102,19 +132,32 @@ export function useBranchesDirectoryModel() {
 
   const openCreate = React.useCallback(() => {
     setEditId(null);
-    setForm(BRANCH_EMPTY_FORM);
+    setForm({
+      ...BRANCH_EMPTY_FORM,
+      companyId: defaultCompanyId ?? '',
+    });
     setError(null);
     setDrawerOpen(true);
-  }, []);
+  }, [defaultCompanyId]);
 
   const openEdit = React.useCallback((b: BranchRow) => {
     setEditId(b.id);
-    setForm(branchRowToDraftForm(b));
+    setForm(branchRowToDraftForm(b, employees));
     setError(null);
     setDrawerOpen(true);
-  }, []);
+  }, [employees]);
+
+  React.useEffect(() => {
+    if (!drawerOpen || !editId) return;
+    setForm((f) => {
+      if (f.managerEmployeeId || !f.managerName) return f;
+      const matched = employees.find((e) => e.nameAr.trim() === f.managerName.trim());
+      return matched ? { ...f, managerEmployeeId: matched.id } : f;
+    });
+  }, [drawerOpen, editId, employees]);
 
   const handleSave = React.useCallback(async () => {
+    const companyId = defaultCompanyId ?? form.companyId;
     if (!form.name.trim()) {
       setError('اسم الفرع مطلوب');
       return;
@@ -123,8 +166,8 @@ export function useBranchesDirectoryModel() {
       setError('المدينة مطلوبة');
       return;
     }
-    if (!companyFilter) {
-      setError('اختر الشركة من القائمة أعلاه');
+    if (!companyId) {
+      setError('لم يتم تحديد الشركة الافتراضية. سجّل الدخول مرة أخرى.');
       return;
     }
 
@@ -133,28 +176,28 @@ export function useBranchesDirectoryModel() {
       if (editId) {
         await updateBranch(editId, draftFormToUpdatePayload(form));
       } else {
-        await createBranch(draftFormToCreatePayload(form, companyFilter, generateEntityCode(form.name.trim(), 'branch')));
+        await createBranch(draftFormToCreatePayload(form, companyId, generateEntityCode(form.name.trim(), 'branch')));
       }
-      await loadBranches(companyFilter);
+      await loadBranches(defaultCompanyId);
       setDrawerOpen(false);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'branches.save');
       setError(displayMessage);
     }
-  }, [companyFilter, editId, form, loadBranches]);
+  }, [defaultCompanyId, editId, form, loadBranches]);
 
   const handleDelete = React.useCallback(async () => {
-    if (!confirmId || !companyFilter) return;
+    if (!confirmId) return;
     setError(null);
     try {
       await deleteBranch(confirmId);
-      await loadBranches(companyFilter);
+      await loadBranches(defaultCompanyId);
       setConfirmId(null);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'branches.delete');
       setError(displayMessage);
     }
-  }, [companyFilter, confirmId, loadBranches]);
+  }, [confirmId, defaultCompanyId, loadBranches]);
 
   usePageHeaderActions(
     () => (
@@ -177,18 +220,6 @@ export function useBranchesDirectoryModel() {
         showStatusSection={false}
         showEmployeePicker={false}
         onDateBoundsChange={() => {}}
-        inlineSelects={[
-          {
-            id: 'company',
-            value: companyFilter,
-            onChange: (v) => {
-              if (v && v !== 'all') setCompanyFilter(v);
-            },
-            placeholder: 'الشركة',
-            options: companySelectOptions,
-            className: 'w-[11rem] max-w-[11rem]',
-          },
-        ]}
         dataView={{
           value: layoutView,
           onChange: (v) => setLayoutView(v as 'grid' | 'table'),
@@ -199,7 +230,7 @@ export function useBranchesDirectoryModel() {
         }}
       />
     ),
-    [companyFilter, companySelectOptions, layoutView],
+    [layoutView],
   );
 
   return {
@@ -222,8 +253,10 @@ export function useBranchesDirectoryModel() {
     openEdit,
     handleSave,
     handleDelete,
-    companyFilter,
-    companies,
+    companyLabel,
+    employeeOptions,
+    employeesLoading,
+    setManagerEmployee,
   };
 }
 

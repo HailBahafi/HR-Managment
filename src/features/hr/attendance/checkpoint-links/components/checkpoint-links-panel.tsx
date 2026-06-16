@@ -15,13 +15,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ContractStatus } from '@/features/hr/contracts/types';
 import { cn } from '@/shared/utils';
 import {
   CONTRACT_STATUS_AR,
-  CP_LINKS_ALL_DEPARTMENTS,
 } from '@/features/hr/attendance/checkpoint-links/constants/checkpoint-links-panel';
 import { useCheckpointLinksPanelModel } from '@/features/hr/attendance/checkpoint-links/hooks/useCheckpointLinksPanelModel';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
@@ -203,10 +202,10 @@ export function CheckpointLinksPanel() {
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setViewBatchId(null)}>إغلاق</Button>
                 <Button variant="luxe" onClick={() => { setViewBatchId(null); m.openEditDialog(viewBatch.batchId); }}>
                   <Pencil className="h-4 w-4" /> تعديل
                 </Button>
+                <Button variant="outline" onClick={() => setViewBatchId(null)}>إغلاق</Button>
               </DialogFooter>
             </>
           )}
@@ -259,25 +258,14 @@ export function CheckpointLinksPanel() {
                   </button>
                 </div>
 
-                {/* dept filter + search in a single flex row */}
-                <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-                  <Select value={m.employeeDepartmentFilter} onValueChange={(v) => { m.setEmployeeDepartmentFilter(v); m.setEmpSel(new Set()); }}>
-                    <SelectTrigger className="h-8 w-36 shrink-0 text-xs">
-                      <SelectValue placeholder="كل الأقسام" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={CP_LINKS_ALL_DEPARTMENTS}>كل الأقسام</SelectItem>
-                      {m.departments.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="relative flex-1">
+                {/* search */}
+                <div className="border-b border-border px-3 py-2">
+                  <div className="relative">
                     <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={m.eq}
                       onChange={(e) => m.setEq(e.target.value)}
-                      placeholder="اسم، رقم، قسم…"
+                      placeholder="بحث بالاسم أو الرقم…"
                       className="h-8 bg-background pr-8 text-xs"
                     />
                   </div>
@@ -465,9 +453,9 @@ export function CheckpointLinksPanel() {
             </label>
           </div>
 
-          <DialogFooter className="gap-2 border-t border-border bg-muted/20 pt-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" type="button" onClick={() => m.setEditOpen(false)}>إلغاء</Button>
+          <DialogFooter className={dialogFormFooterClass}>
             <Button variant="luxe" type="button" onClick={() => void m.submitEdit()}>حفظ التعديلات</Button>
+            <Button variant="outline" type="button" onClick={() => m.setEditOpen(false)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -483,8 +471,7 @@ export function CheckpointLinksPanel() {
               هل أنت متأكد من حذف كل عناصر هذه الدفعة؟ لا يمكن التراجع عن هذا الإجراء.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 pt-2">
-            <Button variant="outline" onClick={() => m.setDeleteTarget(null)}>إلغاء</Button>
+          <DialogFooter className="pt-2">
             <Button
               variant="destructive"
               onClick={() => {
@@ -496,6 +483,7 @@ export function CheckpointLinksPanel() {
             >
               <Trash2 className="h-4 w-4" /> حذف
             </Button>
+            <Button variant="outline" onClick={() => m.setDeleteTarget(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

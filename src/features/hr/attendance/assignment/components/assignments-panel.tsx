@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { useAssignmentsPanelModel } from '@/features/hr/attendance/assignment/hooks/useAssignmentsPanelModel';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
@@ -112,10 +113,10 @@ export function AssignmentsPanel() {
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setViewBatchId(null)}>إغلاق</Button>
                 <Button variant="luxe" onClick={() => { setViewBatchId(null); model.openEdit(viewBatch.batchId); }}>
                   <Clock className="h-4 w-4" /> تعديل
                 </Button>
+                <Button variant="outline" onClick={() => setViewBatchId(null)}>إغلاق</Button>
               </DialogFooter>
             </>
           )}
@@ -187,9 +188,9 @@ export function AssignmentsPanel() {
             </label>
           </div>
 
-          <DialogFooter className="gap-2 border-t border-border bg-muted/20 pt-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" type="button" onClick={() => model.setEditOpen(false)}>إلغاء</Button>
+          <DialogFooter className={dialogFormFooterClass}>
             <Button variant="luxe" type="button" onClick={() => void model.submitEdit()}>حفظ التعديلات</Button>
+            <Button variant="outline" type="button" onClick={() => model.setEditOpen(false)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

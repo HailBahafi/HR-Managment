@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { auditLogsApi } from './api/audit-logs';
 import type { AuditLogResponseDto } from './api/audit-logs';
 import type { HRDisciplineAuditLogEntry } from './discipline-audit-log';
@@ -37,7 +38,7 @@ export const useHRDisciplineAuditLogStore = create<AuditLogState>()((set) => ({
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {

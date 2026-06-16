@@ -181,8 +181,7 @@ export function EmployeeAttendanceDialogs(p: EmployeeAttendanceDialogsProps) {
             </DialogTitle>
             <DialogDescription>هل تريد إزالة هذا الشيفت من الموظف؟</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={() => p.setShiftUnlinkTarget(null)}>إلغاء</Button>
+          <DialogFooter className="pt-2">
             <Button
               variant="destructive"
               size="sm"
@@ -196,6 +195,7 @@ export function EmployeeAttendanceDialogs(p: EmployeeAttendanceDialogsProps) {
             >
               <Unlink className="h-3.5 w-3.5" /> فك الربط
             </Button>
+            <Button variant="outline" size="sm" onClick={() => p.setShiftUnlinkTarget(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -320,8 +320,7 @@ export function EmployeeAttendanceDialogs(p: EmployeeAttendanceDialogsProps) {
             </DialogTitle>
             <DialogDescription>هل تريد فك ربط هذه النقطة من الموظف؟</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={() => p.setCpUnlinkTarget(null)}>إلغاء</Button>
+          <DialogFooter className="pt-2">
             <Button
               variant="destructive"
               size="sm"
@@ -334,6 +333,7 @@ export function EmployeeAttendanceDialogs(p: EmployeeAttendanceDialogsProps) {
             >
               <Unlink className="h-3.5 w-3.5" /> فك الربط
             </Button>
+            <Button variant="outline" size="sm" onClick={() => p.setCpUnlinkTarget(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

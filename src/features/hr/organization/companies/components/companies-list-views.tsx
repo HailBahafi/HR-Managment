@@ -29,15 +29,8 @@ export function CompaniesListViews({ model }: { model: CompaniesDirectoryModel }
       render: (row) => (
         <div className="flex flex-col gap-0.5">
           <span className="font-medium">{row.nameAr}</span>
-          <span className="text-[10px] text-muted-foreground" dir="ltr">{row.code}</span>
         </div>
       ),
-    },
-    {
-      key: 'nameEn',
-      title: 'الاسم (EN)',
-      className: 'text-muted-foreground',
-      render: (row) => <span dir="ltr">{row.nameEn ?? '—'}</span>,
     },
     {
       key: 'city',

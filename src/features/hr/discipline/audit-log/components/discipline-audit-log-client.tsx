@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell } from '@/components/ui/table-cells';
 import { cn } from '@/shared/utils';
-import { companiesApi } from '@/features/hr/lib/api/companies';
+import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { auditLogsApi, type AuditLogResponseDto } from '@/features/hr/discipline/lib/api/audit-logs';
@@ -153,17 +153,9 @@ export function DisciplineAuditLogClient() {
   const [rawEntries, setRawEntries] = React.useState<ReturnType<typeof dtoToEntry>[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const [companyNameAr, setCompanyNameAr] = React.useState('');
-  const [companyNameEn, setCompanyNameEn] = React.useState('');
-  React.useEffect(() => {
-    void (async () => {
-      try {
-        const res = await companiesApi.getAll({ limit: 1 });
-        const c = res.items[0];
-        if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
-      } catch { /* ignore */ }
-    })();
-  }, []);
+  const { data: defaultCompany } = useDefaultCompany();
+  const companyNameAr = defaultCompany?.nameAr ?? '';
+  const companyNameEn = defaultCompany?.nameEn ?? '';
 
   React.useEffect(() => {
     let cancelled = false;

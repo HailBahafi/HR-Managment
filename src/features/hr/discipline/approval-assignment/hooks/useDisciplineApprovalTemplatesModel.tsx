@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { violationTypesApi } from '@/features/hr/discipline/lib/api/violation-types';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { disciplineApprovalTemplatesApi } from '@/features/hr/discipline/lib/api/discipline-approval-templates';
@@ -26,7 +27,7 @@ export function useDisciplineApprovalTemplatesModel() {
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
 
   const reload = React.useCallback(async () => {
     if (!companyId) { setLoading(false); return; }

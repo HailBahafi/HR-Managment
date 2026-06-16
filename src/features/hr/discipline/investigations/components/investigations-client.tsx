@@ -95,11 +95,10 @@ export function InvestigationsClient() {
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
   const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
 
-  const empPickerList = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const i of investigations) map.set(i.employeeId, i.employeeNameAr);
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [investigations]);
+  const empPickerList = React.useMemo(
+    () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [m.employees],
+  );
 
   React.useEffect(() => {
     const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;

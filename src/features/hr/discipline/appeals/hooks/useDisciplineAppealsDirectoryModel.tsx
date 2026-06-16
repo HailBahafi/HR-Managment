@@ -6,6 +6,7 @@ import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/org
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-records';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   disciplineAppealsApi,
   type DisciplineAppealResponseDto,
@@ -157,7 +158,7 @@ export function useDisciplineAppealsDirectoryModel() {
       await submitAppealDecision(appeal.id, { ...payload, decidedBy });
 
       let notificationSent = false;
-      const cid = companyId ?? useAuthStore.getState().activeCompanyId;
+      const cid = companyId ?? getDefaultCompanyId();
       if (cid) {
         try {
           await sendAppealDecisionNotification({

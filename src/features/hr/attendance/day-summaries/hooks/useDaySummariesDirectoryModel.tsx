@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   attendanceDaySummariesApi,
@@ -38,7 +39,7 @@ export type DaySummariesFilters = {
 };
 
 export function useDaySummariesDirectoryModel() {
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   const initialYm = currentYearMonth();
   const initialBounds = monthDateBounds(initialYm.year, initialYm.month);
 

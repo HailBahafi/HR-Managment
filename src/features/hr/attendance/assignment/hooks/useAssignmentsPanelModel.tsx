@@ -3,29 +3,25 @@
 import * as React from 'react';
 import type { AssignmentTargetType } from '@/features/hr/attendance/lib/types';
 import type { MultiSelectOption } from '@/components/ui/multi-select';
-import { ASSIGNMENTS_ALL_DEPARTMENTS } from '@/features/hr/attendance/assignment/constants/assignments-panel';
 import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
 import { shiftAssignmentsApi, type GroupedByTemplateItem } from '@/features/hr/attendance/lib/api/shift-assignments';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
-import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
-import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
-// Shape consumed by AssignmentsBatchCard
 type BatchRow = {
-  id: string;          // assignmentId
+  id: string;
   batchId?: string;
   templateId: string;
   effectiveFrom: string;
   targetType: AssignmentTargetType;
   targetId: string;
-  targetLabel: string; // employee name
+  targetLabel: string;
   employeeCode: string;
   isActive: boolean;
 };
 
 type Batch = {
-  batchId: string;       // shiftTemplate.id used as stable group key
+  batchId: string;
   rows: BatchRow[];
   templateId: string | undefined;
   templateName: string;
@@ -36,20 +32,16 @@ type Batch = {
 };
 
 export function useAssignmentsPanelModel() {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
   const [grouped, setGrouped] = React.useState<GroupedByTemplateItem[]>([]);
   const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplateResponseDto[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
-  const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
-  const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
 
   const [open, setOpen] = React.useState(false);
   const [dialogContentEl, setDialogContentEl] = React.useState<HTMLElement | null>(null);
   const [templateId, setTemplateId] = React.useState('');
   const [effectiveFrom, setEffectiveFrom] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [targetType, setTargetType] = React.useState<AssignmentTargetType>('employee');
-  const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = React.useState(ASSIGNMENTS_ALL_DEPARTMENTS);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
 
   const [editOpen, setEditOpen] = React.useState(false);
@@ -70,18 +62,13 @@ export function useAssignmentsPanelModel() {
     void Promise.allSettled([
       shiftTemplatesApi.getAll({ limit: 200, companyId }),
       employeesApi.getAll({ limit: 500, companyId }),
-      departmentsApi.getAll({ companyId }),
-      branchesApi.getAll({ companyId }),
-    ]).then(([tmplRes, empRes, deptRes, branchRes]) => {
+    ]).then(([tmplRes, empRes]) => {
       if (tmplRes.status === 'fulfilled') setShiftTemplates(tmplRes.value.items);
       if (empRes.status === 'fulfilled') setEmployees(empRes.value.items);
-      if (deptRes.status === 'fulfilled') setDepartments(deptRes.value.items);
-      if (branchRes.status === 'fulfilled') setBranches(branchRes.value.items);
     });
     void reloadAssignments();
   }, [companyId, reloadAssignments]);
 
-  // Map grouped API response → Batch[] for the card grid
   const batches = React.useMemo<Batch[]>(() =>
     grouped.map((group) => ({
       batchId: group.shiftTemplate.id,
@@ -110,8 +97,6 @@ export function useAssignmentsPanelModel() {
   const openNew = React.useCallback(() => {
     setTemplateId(activeTemplates[0]?.id ?? '');
     setEffectiveFrom(new Date().toISOString().slice(0, 10));
-    setTargetType('employee');
-    setEmployeeDepartmentFilter(ASSIGNMENTS_ALL_DEPARTMENTS);
     setSelectedIds(new Set());
     setOpen(true);
   }, [activeTemplates]);
@@ -119,20 +104,7 @@ export function useAssignmentsPanelModel() {
   const submit = React.useCallback(async () => {
     if (!templateId || selectedIds.size === 0 || !companyId) return;
 
-    let employeeIds: string[];
-    if (targetType === 'employee') {
-      employeeIds = [...selectedIds];
-    } else if (targetType === 'department') {
-      employeeIds = employees
-        .filter((e) => e.departmentId && selectedIds.has(e.departmentId))
-        .map((e) => e.id);
-    } else {
-      // location / branch
-      employeeIds = employees
-        .filter((e) => e.branchId && selectedIds.has(e.branchId))
-        .map((e) => e.id);
-    }
-
+    const employeeIds = [...selectedIds];
     if (employeeIds.length === 0) return;
 
     try {
@@ -146,7 +118,7 @@ export function useAssignmentsPanelModel() {
       await reloadAssignments();
     } catch { /* ignore */ }
     setOpen(false);
-  }, [templateId, selectedIds, companyId, effectiveFrom, targetType, employees, reloadAssignments]);
+  }, [templateId, selectedIds, companyId, effectiveFrom, reloadAssignments]);
 
   const openEdit = React.useCallback((batchId: string) => {
     const batch = batches.find((b) => b.batchId === batchId);
@@ -185,55 +157,26 @@ export function useAssignmentsPanelModel() {
     } catch { /* ignore */ }
   }, [batches, reloadAssignments]);
 
-  const multiOptions = React.useMemo((): MultiSelectOption[] => {
-    if (targetType === 'employee') {
-      const filtered = employeeDepartmentFilter === ASSIGNMENTS_ALL_DEPARTMENTS
-        ? employees
-        : employees.filter((e) => e.departmentId === employeeDepartmentFilter);
-      return filtered.map((e) => ({
-        value: e.id,
-        label: e.nameAr,
-        subtitle: e.employeeCode,
-      }));
-    }
-    if (targetType === 'department') {
-      return departments.map((d) => ({
-        value: d.id,
-        label: d.nameAr,
-        subtitle: d.code,
-      }));
-    }
-    if (targetType === 'location') {
-      return branches.map((b) => ({
-        value: b.id,
-        label: b.nameAr,
-        subtitle: b.code,
-      }));
-    }
-    return [];
-  }, [targetType, employees, departments, branches, employeeDepartmentFilter]);
+  const multiOptions = React.useMemo((): MultiSelectOption[] =>
+    employees.map((e) => ({
+      value: e.id,
+      label: e.nameAr,
+      subtitle: e.employeeCode,
+    })),
+  [employees]);
 
   React.useEffect(() => {
-    if (targetType !== 'employee') return;
     const allowedIds = new Set(employees.map((e) => e.id));
     setSelectedIds((prev) => {
       const next = new Set([...prev].filter((id) => allowedIds.has(id)));
       if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
       return next;
     });
-  }, [targetType, employees]);
-
-  const onTargetTypeChange = React.useCallback((v: AssignmentTargetType) => {
-    setTargetType(v);
-    setSelectedIds(new Set());
-    if (v !== 'employee') setEmployeeDepartmentFilter(ASSIGNMENTS_ALL_DEPARTMENTS);
-  }, []);
+  }, [employees]);
 
   return {
     batches,
     shiftTemplates,
-    departments,
-    branches,
     removeAssignmentBatch,
     openEdit,
     submitEdit,
@@ -251,10 +194,6 @@ export function useAssignmentsPanelModel() {
     setTemplateId,
     effectiveFrom,
     setEffectiveFrom,
-    targetType,
-    onTargetTypeChange,
-    employeeDepartmentFilter,
-    setEmployeeDepartmentFilter,
     selectedIds,
     setSelectedIds,
     activeTemplates,

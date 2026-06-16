@@ -127,7 +127,6 @@ export function UserCompaniesPanel({ model }: Props) {
                   </div>
                   <p className="text-xs text-muted-foreground" dir="ltr">
                     {link.companyCode ?? link.companyId}
-                    {link.companyNameEn ? ` · ${link.companyNameEn}` : ''}
                   </p>
                 </div>
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">

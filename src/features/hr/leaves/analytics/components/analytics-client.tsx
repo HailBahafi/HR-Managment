@@ -12,11 +12,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -199,8 +201,8 @@ function BalanceFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start pt-1">
-            <Button type="submit" disabled={saving} className="flex-1 gap-2">
+          <DialogFooter className={dialogFormFooterClass}>
+            <Button type="submit" disabled={saving} className="gap-2">
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {isEdit ? 'حفظ التعديلات' : 'إنشاء الرصيد'}
             </Button>
@@ -254,8 +256,8 @@ function DeleteDialog({
           هل أنت متأكد من حذف رصيد <span className="font-semibold text-foreground">{leaveTypeName}</span> للموظف{' '}
           <span className="font-semibold text-foreground">{employeeName}</span>؟ لا يمكن التراجع.
         </p>
-        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
-          <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="flex-1 gap-2">
+        <DialogFooter>
+          <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
             {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             حذف
           </Button>
@@ -441,7 +443,7 @@ function EmployeeBalanceGroupCard({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function AnalyticsClient() {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
   const [groups, setGroups] = React.useState<EmployeeLeaveBalanceGroupDto[]>([]);
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);

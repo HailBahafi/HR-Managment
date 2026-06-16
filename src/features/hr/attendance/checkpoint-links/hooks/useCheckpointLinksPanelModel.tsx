@@ -4,16 +4,15 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
-import { CP_LINKS_ALL_DEPARTMENTS } from '@/features/hr/attendance/checkpoint-links/constants/checkpoint-links-panel';
 import { mapCheckInPointResponse } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 import { checkInPointsApi } from '@/features/hr/attendance/lib/api/check-in-points';
 import { createCheckInPointLinkBatch } from '@/features/hr/attendance/checkpoint-links/services/check-in-point-links.service';
 import { checkInPointLinksApi, type GroupedByPointItem } from '@/features/hr/attendance/lib/api/check-in-point-links';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 export function useCheckpointLinksPanelModel() {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
   const [grouped, setGrouped] = React.useState<GroupedByPointItem[]>([]);
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
@@ -27,7 +26,6 @@ export function useCheckpointLinksPanelModel() {
   const [cpSel, setCpSel] = React.useState<Set<string>>(new Set());
   const [eq, setEq] = React.useState('');
   const [cq, setCq] = React.useState('');
-  const [employeeDepartmentFilter, setEmployeeDepartmentFilter] = React.useState(CP_LINKS_ALL_DEPARTMENTS);
   const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null);
 
   const [editOpen, setEditOpen] = React.useState(false);
@@ -127,7 +125,6 @@ export function useCheckpointLinksPanelModel() {
     setCpSel(new Set());
     setEq('');
     setCq('');
-    setEmployeeDepartmentFilter(CP_LINKS_ALL_DEPARTMENTS);
     setOpen(true);
   }, []);
 
@@ -167,25 +164,14 @@ export function useCheckpointLinksPanelModel() {
     }
   }, [batches, reload]);
 
-  const departments = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const e of employees) {
-      if (e.departmentId && e.departmentNameAr) map.set(e.departmentId, e.departmentNameAr);
-    }
-    return [...map.entries()].map(([id, nameAr]) => ({ id, nameAr }));
-  }, [employees]);
-
   const employeesFiltered = React.useMemo(() => {
     const q = eq.trim().toLowerCase();
-    const byDept = employeeDepartmentFilter === CP_LINKS_ALL_DEPARTMENTS
-      ? employees
-      : employees.filter((e) => e.departmentId === employeeDepartmentFilter);
-    if (!q) return byDept;
-    return byDept.filter((e) =>
+    if (!q) return employees;
+    return employees.filter((e) =>
       [e.nameAr, e.employeeCode, e.email, e.phone, e.position]
         .filter(Boolean).join(' ').toLowerCase().includes(q),
     );
-  }, [employees, eq, employeeDepartmentFilter]);
+  }, [employees, eq]);
 
   React.useEffect(() => {
     const allowed = new Set(employeesFiltered.map((e) => e.id));
@@ -231,9 +217,6 @@ export function useCheckpointLinksPanelModel() {
     setEq,
     cq,
     setCq,
-    employeeDepartmentFilter,
-    setEmployeeDepartmentFilter,
-    departments,
     employeesFiltered,
     cps,
     toggle,

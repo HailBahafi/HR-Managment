@@ -22,8 +22,8 @@ import {
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 function empStartYmd(e: EmployeeResponseDto): string {
@@ -36,8 +36,7 @@ function empStartYmd(e: EmployeeResponseDto): string {
 export function useEmployeesListModel() {
   useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
   const router = useRouter();
-  // companyId comes directly from the auth store — never blocks on GET /companies
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   // company details are optional (used only for PDF header); 403 is silently ignored
   const { data: activeCompany } = useActiveCompany();
 
@@ -79,10 +78,16 @@ export function useEmployeesListModel() {
   }, [companyId]);
 
   const loadEmployees = React.useCallback(async () => {
+    if (!companyId) {
+      setEmployees([]);
+      setTotalCount(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setListError(null);
     try {
-      const query: Parameters<typeof employeesApi.getAll>[0] = { limit: 200 };
+      const query: Parameters<typeof employeesApi.getAll>[0] = { limit: 200, companyId };
       if (branchFilter !== 'all') query.branchId = branchFilter;
       if (deptFilter !== 'all') query.departmentId = deptFilter;
       if (toolbarStatus !== 'all') query.contractStatus = toolbarStatus;
@@ -182,7 +187,7 @@ export function useEmployeesListModel() {
     }
     const rows: XlsxCell[][] = [[
       'الموظف', 'رقم الموظف', 'المسمى', 'القسم', 'الفرع',
-      'نوع العقد', 'تاريخ الالتحاق', 'الراتب الأساسي', 'حالة العقد',
+      'نوع العقد', 'تاريخ الالتحاق', 'حالة العقد',
     ]];
     for (const emp of filtered) {
       rows.push([
@@ -193,7 +198,6 @@ export function useEmployeesListModel() {
         emp.branchNameAr ?? '—',
         CONTRACT_TYPE_AR[emp.contractType ?? ''] ?? emp.contractType ?? '—',
         empStartYmd(emp),
-        formatCurrency(parseFloat(emp.baseSalary ?? '0') || 0),
         EMP_CONTRACT_STATUS_LABELS[emp.contractStatus ?? ''] ?? emp.contractStatus ?? '—',
       ]);
     }

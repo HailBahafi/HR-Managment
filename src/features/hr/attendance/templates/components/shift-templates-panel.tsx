@@ -10,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { defaultShiftPeriod, normalizeShiftTemplate } from '@/features/hr/attendance/lib/defaults';
@@ -24,6 +25,7 @@ import {
 } from '@/features/hr/attendance/templates/utils/shift-template-helpers';
 import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
 import { companiesApi } from '@/features/hr/lib/api/companies';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 
 function dtoToLocal(dto: ShiftTemplateResponseDto): ShiftTemplate {
@@ -83,12 +85,7 @@ export function ShiftTemplatesPanel() {
   }, []);
 
   React.useEffect(() => {
-    void (async () => {
-      try {
-        const cRes = await companiesApi.getAll({ limit: 1 });
-        setCompanyId(cRes.items[0]?.id ?? '');
-      } catch { /* ignore */ }
-    })();
+    setCompanyId(getDefaultCompanyId() ?? '');
     void reload();
   }, [reload]);
 
@@ -241,12 +238,12 @@ export function ShiftTemplatesPanel() {
             </div>
           )}
 
-          <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" type="button" onClick={() => setOpen(false)}>
-              إلغاء
-            </Button>
+          <DialogFooter className={dialogFormFooterClass}>
             <Button variant="luxe" type="button" onClick={() => void save()}>
               حفظ القالب
+            </Button>
+            <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+              إلغاء
             </Button>
           </DialogFooter>
         </DialogContent>

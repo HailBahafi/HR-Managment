@@ -26,6 +26,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { EmployeePicker } from '@/components/ui/employee-picker';
 import { cn, formatDisplayDateTime } from '@/shared/utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
@@ -79,195 +80,6 @@ const EMPTY_FORM: SendForm = {
   actionUrl: '',
   actionLabelAr: 'عرض التفاصيل',
 };
-
-type EmpOption = {
-  id: string;
-  name: string;
-  branchId?: string;
-  branchNameAr?: string;
-  departmentId?: string;
-  departmentNameAr?: string;
-};
-
-function EmployeeMultiSelect({
-  employees,
-  branches,
-  departments,
-  selected,
-  onChange,
-}: {
-  employees: EmpOption[];
-  branches: { value: string; label: string }[];
-  departments: { value: string; label: string }[];
-  selected: Set<string>;
-  onChange: (s: Set<string>) => void;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState('');
-  const [branchFilter, setBranchFilter] = React.useState('');
-  const [deptFilter, setDeptFilter] = React.useState('');
-
-  React.useEffect(() => {
-    if (!open) { setSearch(''); setBranchFilter(''); setDeptFilter(''); }
-  }, [open]);
-
-  const filtered = React.useMemo(() => {
-    let list = employees;
-    if (branchFilter) list = list.filter((e) => e.branchId === branchFilter);
-    if (deptFilter) list = list.filter((e) => e.departmentId === deptFilter);
-    if (search.trim()) list = list.filter((e) => e.name.includes(search.trim()));
-    return list;
-  }, [employees, branchFilter, deptFilter, search]);
-
-  const toggle = (id: string) => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    onChange(next);
-  };
-
-  const allFiltered = filtered.length > 0 && filtered.every((e) => selected.has(e.id));
-
-  const toggleAllFiltered = () => {
-    const next = new Set(selected);
-    if (allFiltered) filtered.forEach((e) => next.delete(e.id));
-    else filtered.forEach((e) => next.add(e.id));
-    onChange(next);
-  };
-
-  const allSelected = employees.length > 0 && employees.every((e) => selected.has(e.id));
-
-  const triggerLabel = selected.size === 0 || allSelected
-    ? 'جميع الموظفين'
-    : selected.size === 1
-      ? (employees.find((e) => e.id === [...selected][0])?.name ?? '1 موظف')
-      : `${selected.size} موظفين محددون`;
-
-  const branchOptions = [{ value: '', label: 'كل الفروع' }, ...branches];
-  const deptOptions = [{ value: '', label: 'كل الأقسام' }, ...departments];
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-sm transition-colors hover:border-ring',
-            selected.size > 0 && !allSelected ? 'text-foreground' : 'text-muted-foreground',
-          )}
-        >
-          <span className={cn(selected.size > 0 && !allSelected && 'font-medium text-foreground')}>
-            {triggerLabel}
-          </span>
-          <svg className="h-4 w-4 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="p-0 shadow-elevated"
-        style={{ width: 'var(--radix-popover-trigger-width)' }}
-        align="start"
-        sideOffset={4}
-        dir="rtl"
-      >
-        {/* ── single filter row: select-all + search + dept + branch ── */}
-        <div className="flex items-center gap-2 border-b border-border p-2">
-          <button
-            type="button"
-            onClick={toggleAllFiltered}
-            title="تحديد الكل"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input transition-colors hover:bg-muted/40"
-          >
-            <span className={cn(
-              'flex h-4 w-4 items-center justify-center rounded border transition-colors',
-              allFiltered ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
-            )}>
-              {allFiltered && (
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </span>
-          </button>
-          <input
-            autoFocus
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="بحث…"
-            className="h-8 min-w-0 flex-1 rounded-md border border-input bg-muted/30 px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
-          />
-          <MinimalDropdown
-            value={deptFilter}
-            options={deptOptions}
-            onChange={setDeptFilter}
-            className="h-8 w-28 shrink-0 text-xs"
-          />
-          <MinimalDropdown
-            value={branchFilter}
-            options={branchOptions}
-            onChange={setBranchFilter}
-            className="h-8 w-28 shrink-0 text-xs"
-          />
-        </div>
-
-        {/* ── employee list ── */}
-        <div className="max-h-60 overflow-y-auto py-1">
-          {filtered.length === 0 && (
-            <p className="px-3 py-4 text-center text-xs text-muted-foreground">لا نتائج</p>
-          )}
-          {filtered.map((emp) => {
-            const isSelected = selected.has(emp.id);
-            const meta = [emp.departmentNameAr, emp.branchNameAr].filter(Boolean).join(' - ');
-            return (
-              <button
-                key={emp.id}
-                type="button"
-                onClick={() => toggle(emp.id)}
-                className={cn(
-                  'flex w-full items-center gap-2.5 px-3 py-2 transition-colors hover:bg-muted/40',
-                  isSelected ? 'text-primary' : 'text-foreground/80',
-                )}
-              >
-                <span className={cn(
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-                  isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
-                )}>
-                  {isSelected && (
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </span>
-                <div className="min-w-0 flex-1 text-start">
-                  <p className={cn('truncate text-sm', isSelected ? 'font-medium text-primary' : 'text-foreground')}>
-                    {emp.name}
-                  </p>
-                  {meta ? (
-                    <p className="truncate text-xs text-muted-foreground">{meta}</p>
-                  ) : null}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── footer ── */}
-        {selected.size > 0 && !allSelected && (
-          <div className="flex items-center justify-between border-t border-border px-3 py-2">
-            <span className="text-xs text-muted-foreground">{selected.size} موظف محدد</span>
-            <button
-              type="button"
-              onClick={() => onChange(new Set())}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              مسح التحديد
-            </button>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 const SEVERITY_FILTER_ORDER: SeverityFilter[] = ['all', 'info', 'success', 'warning', 'error'];
 
@@ -420,30 +232,17 @@ export function NotificationsAdminClient() {
     }
   }, []);
 
-  const allEmployeeOptions = React.useMemo<EmpOption[]>(
+  const allEmployeeOptions = React.useMemo(
     () => m.employeeOptions.map((e) => ({
       id: e.value,
       name: e.label,
-      branchId: e.branchId,
       branchNameAr: e.branchNameAr,
-      departmentId: e.departmentId,
       departmentNameAr: e.departmentNameAr,
     })),
     [m.employeeOptions],
   );
 
   const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
-    {
-      id: 'company',
-      value: m.filters.companyId,
-      onChange: (v) => m.patchFilters({ companyId: v || 'all' }),
-      placeholder: 'الشركة',
-      className: 'w-[10rem]',
-      options: [
-        { value: 'all', label: 'كل الشركات' },
-        ...m.companyOptions.map((c) => ({ value: c.value, label: c.label })),
-      ],
-    },
     {
       id: 'category',
       value: m.filters.category,
@@ -469,7 +268,7 @@ export function NotificationsAdminClient() {
         label: s === 'all' ? 'كل النبرات' : NOTIFICATION_SEVERITY_LABELS[s],
       })),
     },
-  ], [m.companyOptions, m.filters.category, m.filters.companyId, m.filters.severity, m.patchFilters]);
+  ], [m.filters.category, m.filters.severity, m.patchFilters]);
 
   const onDateBoundsChange = React.useCallback(
     (bounds: { from: string; to: string }) => m.setDateBounds(bounds),
@@ -604,10 +403,7 @@ export function NotificationsAdminClient() {
     },
   ], []);
 
-  const resolveSendCompanyId = (): string | null => {
-    if (m.filters.companyId !== 'all') return m.filters.companyId;
-    return m.companyId;
-  };
+  const resolveSendCompanyId = (): string | null => m.companyId;
 
   const submitSend = async () => {
     const sendCompanyId = resolveSendCompanyId();
@@ -756,11 +552,10 @@ export function NotificationsAdminClient() {
             />
           </FormField>
         </div>
-        <FormField label="المستلمون">
-          <EmployeeMultiSelect
+        <FormField label={`الموظفون${form.employeeIds.size > 0 ? ` (${form.employeeIds.size})` : ''}`}>
+          <EmployeePicker
+            variant="form"
             employees={allEmployeeOptions}
-            branches={m.branchOptions}
-            departments={m.departmentOptions}
             selected={form.employeeIds}
             onChange={(employeeIds) => setForm((f) => ({ ...f, employeeIds }))}
           />

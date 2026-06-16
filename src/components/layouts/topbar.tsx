@@ -4,13 +4,13 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  Bell, Moon, Sun, LogOut, User, Settings, Shield, Menu,
+  Bell, Moon, Sun, LogOut, Shield, Menu,
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck, UserPlus,
-  Coins, FileStack, Receipt, KeyRound,
+  Coins, FileStack, Receipt, KeyRound, Settings,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,9 @@ import { hrPermissionsNavGroups, isHrPermissionsNavPath } from '@/features/hr/pe
 import { useLogout } from '@/features/auth/hooks/use-logout';
 import { useAuthUserDisplay } from '@/features/auth/hooks/use-auth-user-display';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getBranchAccessLabel } from '@/features/auth/types/access-profile';
+import { CompanySwitcherMenuSection } from '@/components/layouts/company-switcher';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 /* ── Icon registry ────────────────────────────────────────────────────── */
 export const PAGE_ICONS: Record<string, React.ElementType> = {
@@ -305,9 +308,9 @@ export function Topbar() {
     phone,
     roleLabel,
     accessProfile,
-    activeCompanyId,
     activeBranchId,
   } = useAuthUserDisplay();
+  const defaultCompanyId = useDefaultCompanyId();
   const setActiveContext = useAuthStore((s) => s.setActiveContext);
   const { toggle } = useSidebar();
   const { meta } = usePageTitle();
@@ -437,7 +440,7 @@ export function Topbar() {
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuContent align="end" className="w-72">
               <DropdownMenuLabel>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-sm font-semibold">{displayName}</span>
@@ -456,55 +459,32 @@ export function Topbar() {
                   ) : null}
                 </div>
               </DropdownMenuLabel>
-              {(accessProfile?.companies.length ?? 0) > 1 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    الشركة النشطة
-                  </DropdownMenuLabel>
-                  {accessProfile!.companies.map((company) => (
-                    <DropdownMenuItem
-                      key={company.companyId}
-                      onSelect={() => {
-                        const defaultBranch =
-                          company.branches.find((b) => b.isDefault)?.branchId ??
-                          company.branches[0]?.branchId ??
-                          null;
-                        setActiveContext(company.companyId, defaultBranch);
-                      }}
-                      className={company.companyId === activeCompanyId ? 'bg-primary/10 font-medium' : undefined}
-                    >
-                      {company.companyId === activeCompanyId ? '● ' : ''}
-                      {company.roles?.[0]?.nameAr ?? company.companyId.slice(0, 8)}
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
-              {(accessProfile?.companies.find((c) => c.companyId === activeCompanyId)?.branches.length ?? 0) > 1 && (
+
+              <DropdownMenuSeparator />
+              <CompanySwitcherMenuSection />
+
+              {(accessProfile?.companies.find((c) => c.companyId === defaultCompanyId)?.branches.length ?? 0) > 1 && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
                     الفرع النشط
                   </DropdownMenuLabel>
                   {accessProfile!.companies
-                    .find((c) => c.companyId === activeCompanyId)
+                    .find((c) => c.companyId === defaultCompanyId)
                     ?.branches.map((branch) => (
                       <DropdownMenuItem
                         key={branch.branchId}
                         onSelect={() => {
-                          if (activeCompanyId) setActiveContext(activeCompanyId, branch.branchId);
+                          if (defaultCompanyId) setActiveContext(defaultCompanyId, branch.branchId);
                         }}
                         className={branch.branchId === activeBranchId ? 'bg-primary/10 font-medium' : undefined}
                       >
                         {branch.branchId === activeBranchId ? '● ' : ''}
-                        {branch.branchId.slice(0, 8)}…
+                        {getBranchAccessLabel(branch)}
                       </DropdownMenuItem>
                     ))}
                 </>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem><User className="h-4 w-4" /><span>الملف الشخصي</span></DropdownMenuItem>
-              <DropdownMenuItem><Settings className="h-4 w-4" /><span>الإعدادات</span></DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"

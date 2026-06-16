@@ -15,6 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -171,6 +172,8 @@ export function RecomputeDaySummariesDialog({
             {scope === 'selected' ? (
               <div className="space-y-2 pt-1">
                 <EmployeePicker
+                  variant="form"
+                  selectionMode="target"
                   employees={allEmployees}
                   selected={selectedEmpIds}
                   onChange={setSelectedEmpIds}
@@ -211,13 +214,13 @@ export function RecomputeDaySummariesDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 border-t border-border px-6 py-4 sm:justify-start">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            إلغاء
-          </Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button type="button" onClick={() => void handleSubmit()} disabled={submitting}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             إعادة الحساب
+          </Button>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            إلغاء
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -90,8 +91,8 @@ function VoidDialog({
             </div>
           </div>
         )}
-        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
-          <Button variant="destructive" onClick={handleConfirm} disabled={saving} className="flex-1 gap-2">
+        <DialogFooter>
+          <Button variant="destructive" onClick={handleConfirm} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
             تأكيد الإلغاء
           </Button>
@@ -213,8 +214,8 @@ function CreateEventDialog({
           </div>
           {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">{error}</p>}
         </div>
-        <DialogFooter className="gap-2 sm:flex-row-reverse">
-          <Button onClick={handleSave} disabled={saving} className="flex-1 gap-2">
+        <DialogFooter className={dialogFormFooterClass}>
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             تسجيل
           </Button>

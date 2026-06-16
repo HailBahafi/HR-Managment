@@ -13,6 +13,7 @@ import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organizati
 import { checkInPointsApi } from '@/features/hr/attendance/lib/api/check-in-points';
 import { mapCheckInPointResponse } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
@@ -37,7 +38,7 @@ export function useAttendanceEventsModel() {
     iconName: 'Activity',
   });
 
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
   const [events, setEvents] = React.useState<AttendanceEventResponseDto[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
@@ -64,7 +65,7 @@ export function useAttendanceEventsModel() {
   React.useEffect(() => {
     if (!companyId) return;
     void Promise.allSettled([
-      employeesApi.getAll({ limit: 500 }),
+      employeesApi.getAll({ companyId, limit: 500 }),
       checkInPointsApi.getAll({ limit: 200, companyId }),
     ]).then(([empRes, cpRes]) => {
       if (empRes.status === 'fulfilled') setEmployees(empRes.value.items);

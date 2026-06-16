@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { correctionRequestsApi, type ApiCorrectionRequest, type CorrectionRequestStatus } from './api/correction-requests';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 export type AttendanceCorrectionRequest = {
   id: string;
@@ -122,7 +123,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
   error: null,
 
   fetch: async (params) => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -134,7 +135,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
   },
 
   submit: async (input) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const userId = useAuthStore.getState().user?.id;
     if (!input.employeeId.trim()) return { ok: false, error: 'اختر الموظف.' };
     if (!input.requestTypeId.trim()) return { ok: false, error: 'اختر نوع الطلب.' };

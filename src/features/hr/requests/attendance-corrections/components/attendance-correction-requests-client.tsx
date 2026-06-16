@@ -21,11 +21,13 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { FormField, EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   useAttendanceCorrectionRequestsStore,
   attendanceCorrectionStatusLabelAr,
@@ -73,7 +75,7 @@ function statusBadgeClass(s: AttendanceCorrectionRequest['status']) {
 }
 
 export function AttendanceCorrectionRequestsClient() {
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   const departments = useHRConfigurationStore((s) => s.departments);
   const { requestTypes, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
   const employees = useHREmployeeDirectoryStore((s) => s.employees);
@@ -450,9 +452,9 @@ export function AttendanceCorrectionRequestsClient() {
                 <Textarea value={formReason} onChange={(e) => setFormReason(e.target.value)} rows={3} placeholder="تفاصيل إضافية للمراجع…" />
               </FormField>
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>إلغاء</Button>
+            <DialogFooter className={dialogFormFooterClass}>
               <Button type="submit" variant="luxe">تسجيل الطلب</Button>
+              <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>إلغاء</Button>
             </DialogFooter>
           </form>
         </DialogContent>

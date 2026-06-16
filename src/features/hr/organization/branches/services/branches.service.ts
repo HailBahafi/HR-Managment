@@ -11,12 +11,15 @@ export type BranchesDirectoryData = {
   scope: OrganizationScope;
 };
 
-export async function loadBranchesDirectory(companyId: string): Promise<BranchesDirectoryData> {
-  const res = await branchesApi.getAll({ companyId, limit: 200 });
+export async function loadBranchesDirectory(companyId?: string | null): Promise<BranchesDirectoryData> {
+  const res = await branchesApi.getAll({
+    ...(companyId && companyId !== 'all' ? { companyId } : {}),
+    limit: 200,
+  });
   return {
     branches: res.items.map(mapBranchResponse),
     scope: {
-      companyId,
+      companyId: companyId && companyId !== 'all' ? companyId : null,
       branchId: null,
     },
   };

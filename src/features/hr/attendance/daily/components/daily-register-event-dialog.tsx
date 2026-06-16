@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, dialogFormFooterClass } from '@/components/ui/dialog';
 import { attendanceEventsApi, type AttendanceEventResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
 
 const REGISTERABLE_EVENT_TYPES = ['check_in', 'check_out'] as const;
@@ -129,8 +129,8 @@ export function DailyRegisterEventDialog({ open, onOpenChange, employeeId, emplo
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:flex-row-reverse">
-          <Button onClick={handleSave} disabled={saving} className="gap-2 flex-1">
+        <DialogFooter className={dialogFormFooterClass}>
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             تسجيل
           </Button>

@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import {
   usePublicHolidaysPanelModel,
@@ -189,9 +190,9 @@ export function PublicHolidaysPanel() {
             </div>
             {m.error && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.error}</p>}
           </div>
-          <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" type="button" onClick={() => m.setOpen(false)}>إلغاء</Button>
+          <DialogFooter className={dialogFormFooterClass}>
             <Button variant="luxe" type="button" onClick={() => void m.save()}>{m.editId ? 'حفظ التعديلات' : 'إضافة العطلة'}</Button>
+            <Button variant="outline" type="button" onClick={() => m.setOpen(false)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -202,9 +203,9 @@ export function PublicHolidaysPanel() {
             <DialogTitle>حذف العطلة الرسمية</DialogTitle>
             <DialogDescription>هل أنت متأكد من حذف هذه العطلة؟ لا يمكن التراجع عن هذا الإجراء.</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" onClick={() => m.setConfirmId(null)}>إلغاء</Button>
+          <DialogFooter>
             <Button variant="destructive" onClick={() => void m.remove()}>حذف</Button>
+            <Button variant="outline" onClick={() => m.setConfirmId(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

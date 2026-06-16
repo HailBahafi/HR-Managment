@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { disciplineAppealsApi } from './api/discipline-appeals';
 import type { DisciplineAppealResponseDto } from './api/discipline-appeals';
 import type { HRDisciplineAppealRecord, HRAppealChannel, HRAppealStatus } from './types';
@@ -37,7 +38,7 @@ export const useHRDisciplineAppealsStore = create<AppealsState>()((set) => ({
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -49,7 +50,7 @@ export const useHRDisciplineAppealsStore = create<AppealsState>()((set) => ({
   },
 
   add: async (d) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const created = await disciplineAppealsApi.create({
       companyId,
       violationRecordId: d.caseId || undefined,

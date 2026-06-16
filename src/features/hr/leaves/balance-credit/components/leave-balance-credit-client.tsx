@@ -13,6 +13,7 @@ import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/componen
 import { FormField, EmptyState } from '@/features/hr/requests/components/shared-ui';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
@@ -359,12 +360,12 @@ export function LeaveBalanceCreditClient() {
                 />
               </FormField>
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="outline" onClick={() => { m.setAddOpen(false); m.resetAddForm(); }}>
-                إلغاء
-              </Button>
+            <DialogFooter className={dialogFormFooterClass}>
               <Button type="submit" variant="luxe">
                 تسجيل الطلب
+              </Button>
+              <Button type="button" variant="outline" onClick={() => { m.setAddOpen(false); m.resetAddForm(); }}>
+                إلغاء
               </Button>
             </DialogFooter>
           </form>

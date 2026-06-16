@@ -15,12 +15,14 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   allowanceTypesApi,
   type AllowanceTypeDto,
@@ -220,12 +222,12 @@ function AllowanceTypeDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button variant="luxe" onClick={handleSave} disabled={saving} className="gap-2">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {editItem ? 'حفظ التعديلات' : 'إضافة'}
           </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -309,7 +311,7 @@ export function AllowanceTypesClient() {
     iconName: 'Coins',
   });
 
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
   const [items, setItems] = React.useState<AllowanceTypeDto[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -519,12 +521,12 @@ export function AllowanceTypesClient() {
               هل أنت متأكد من حذف «{deleteTarget?.nameAr}»؟ لا يمكن التراجع عن هذا الإجراء.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>إلغاء</Button>
+          <DialogFooter>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
               {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <Trash2 className="h-4 w-4" /> حذف
             </Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

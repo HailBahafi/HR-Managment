@@ -30,10 +30,7 @@ export function DeleteRoleDialog({ role, isDeleting, onConfirm, onClose }: Props
             ؟ سيفقد المستخدمون المرتبطون به صلاحياتهم. لا يمكن التراجع عن هذا الإجراء.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 pt-2">
-          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
-            إلغاء
-          </Button>
+        <DialogFooter className="pt-2">
           <Button
             variant="destructive"
             disabled={isDeleting}
@@ -41,6 +38,9 @@ export function DeleteRoleDialog({ role, isDeleting, onConfirm, onClose }: Props
           >
             <Trash2 className="h-4 w-4" />
             {isDeleting ? 'جاري الحذف…' : 'حذف الدور'}
+          </Button>
+          <Button variant="outline" onClick={onClose} disabled={isDeleting}>
+            إلغاء
           </Button>
         </DialogFooter>
       </DialogContent>

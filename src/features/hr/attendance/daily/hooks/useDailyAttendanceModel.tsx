@@ -22,6 +22,7 @@ import { attendanceEventsApi } from '@/features/hr/attendance/lib/api/attendance
 import { companiesApi } from '@/features/hr/lib/api/companies';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 export type AttendanceViewMode = 'card' | 'table';
 
@@ -41,15 +42,16 @@ export function useDailyAttendanceModel() {
 
   const { from: filterFrom, to: filterTo } = dateBounds;
 
-  // Load company info and all employees once on mount
+  // Load company info and employees for the default company
   React.useEffect(() => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
+    if (!companyId) return;
     void Promise.allSettled([
-      companiesApi.getAll({ limit: 1 }),
-      employeesApi.getAll({ limit: 500 }),
+      companiesApi.getById(companyId),
+      employeesApi.getAll({ companyId, limit: 500 }),
     ]).then(([companyRes, empRes]) => {
       if (companyRes.status === 'fulfilled') {
-        const c = companyRes.value.items[0];
+        const c = companyRes.value;
         if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
       }
       if (empRes.status === 'fulfilled') {

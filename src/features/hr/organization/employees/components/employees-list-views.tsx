@@ -47,7 +47,7 @@ export function EmployeesListViews({ model }: Props) {
           </Avatar>
           <div className="min-w-0">
             <p className="font-semibold truncate">{emp.nameAr}</p>
-            <p className="text-xs text-muted-foreground truncate">{emp.employeeCode} · {emp.position ?? '—'}</p>
+            {emp.position && <p className="text-xs text-muted-foreground truncate">{emp.position}</p>}
           </div>
         </div>
       ),
@@ -68,12 +68,6 @@ export function EmployeesListViews({ model }: Props) {
       title: 'تاريخ الالتحاق',
       className: 'text-muted-foreground',
       render: (emp) => <TableDateCell value={emp.startDate} />,
-    },
-    {
-      key: 'baseSalary',
-      title: 'الراتب الأساسي',
-      className: 'font-semibold number-ar',
-      render: (emp) => emp.baseSalary ? formatCurrency(parseFloat(emp.baseSalary)) : '—',
     },
     {
       key: 'nationality',

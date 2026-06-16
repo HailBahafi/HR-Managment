@@ -9,12 +9,13 @@ import { LayoutGrid, Table2, Plus } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { RegisterEventComboDialog } from '@/features/hr/attendance/daily/components/daily-one-day-view';
 import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
 
 export function DailyAttendancePanel() {
   const model = useDailyAttendanceModel();
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
   const [registerOpen, setRegisterOpen] = React.useState(false);
 
   usePageHeaderActions(

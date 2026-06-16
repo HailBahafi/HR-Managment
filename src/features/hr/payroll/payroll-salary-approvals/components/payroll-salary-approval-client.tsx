@@ -17,6 +17,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -29,6 +30,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableRowActions } from '@/components/ui/table-cells';
 import { EmptyState, ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import {
   useHRPayrollPeriodsStore,
@@ -78,7 +80,7 @@ function money(value: string): string {
 export function PayrollSalaryApprovalClient() {
   const searchParams = useSearchParams();
   const requestedPeriodId = searchParams.get('period') ?? '';
-  const companyId = useAuthStore(s => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   const actor = useAuthStore(s => s.user?.email ?? undefined);
   const user = useAuthStore(s => s.user);
 
@@ -579,7 +581,7 @@ export function PayrollSalaryApprovalClient() {
               </span>
             </label>
           </div>
-          <DialogFooter className="gap-2 border-t border-border/60 bg-muted/15 px-6 py-4 sm:justify-start">
+          <DialogFooter className={dialogFormFooterClass}>
             <Button disabled={busy === 'finalize'} onClick={() => void handleFinalize()}>
               {busy === 'finalize' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'اعتماد وقفل'}
             </Button>
@@ -615,7 +617,7 @@ export function PayrollSalaryApprovalClient() {
         companyId={companyId}
         employeeOptions={periodEmployees}
         initialEmployeeIds={periodEmployeeIds}
-        lockAudienceToEmployees
+        requireSelection
         defaults={notificationDefaults}
         createdBy={actor}
         description={

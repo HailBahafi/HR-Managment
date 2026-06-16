@@ -3,12 +3,10 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, FileText, Trash2, User, CalendarRange, Coins, ChevronRight, BarChart2, Copy, FileDown, Bell } from 'lucide-react';
+import { Plus, FileText, User, CalendarRange, Coins, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
@@ -16,21 +14,15 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
-  HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
-  MinimalDropdown, SearchableDropdown,
+  ConfirmationModal, EmptyState,
+  Pagination,
 } from '@/features/hr/requests/components/shared-ui';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import {
   useHRContractsStore,
   CONTRACT_NATURE_LABELS,
   WORK_ARRANGEMENT_LABELS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_STATUS_COLORS,
-  formatEmployeeSignedLabel,
   type HRContractDraft,
   type HRContractLifecycleStatus,
   type HRContractNature,
@@ -47,7 +39,6 @@ import { cn, formatNumber } from '@/shared/utils';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 import {
   HR_CONTRACTS_MODE_PARAM,
-  CURRENCIES,
   suggestContractNumber,
   type AllowanceLine,
   type EmploymentContractFormValues,
@@ -55,25 +46,29 @@ import {
   recordToEmploymentForm,
   cloneEmploymentFormFromContract,
   employmentFormToDraft,
+  mergeEssentialArticleIds,
   EMPLOYMENT_STATUS_FILTER_OPTIONS,
   EMPLOYMENT_KIND_FILTER_OPTIONS,
 } from '@/features/hr/contracts/employment/utils/employment-contract-form';
 import { EmploymentContractTerminateModal as TerminateModal } from '@/features/hr/contracts/employment/components/employment-contract-terminate-modal';
+import { EmploymentContractSignatureCard } from '@/features/hr/contracts/employment/components/employment-contract-signature-card';
+import { EmploymentContractDetailDialog } from '@/features/hr/contracts/employment/components/employment-contract-detail-dialog';
+import { EmploymentContractFormDialog } from '@/features/hr/contracts/employment/components/employment-contract-form-dialog';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
 import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { sendEmploymentContractCreatedNotification } from '@/features/hr/contracts/employment/services/contract-created-notification.service';
 
 type FormValues = EmploymentContractFormValues;
-const emptyForm = emptyEmploymentContractForm;
 const recordToForm = recordToEmploymentForm;
 const cloneFormFromContract = cloneEmploymentFormFromContract;
 const formToDraft = employmentFormToDraft;
 
-type PanelMode = 'create' | 'edit' | 'view';
+type PanelMode = 'create' | 'edit';
 type StatusFilter = 'all' | HRContractLifecycleStatus;
 type KindFilter = 'all' | HRContractNature;
 
@@ -83,7 +78,7 @@ export function EmploymentContractsClient() {
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
   const { data: activeCompany } = useActiveCompany();
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   const { contracts, add, update, remove, activate, terminate, archive, createAmendmentDraft, fetch: fetchContracts } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { items: allowanceTypes, fetch: fetchAllowanceTypes } = useHRAllowanceTypesStore();
@@ -159,14 +154,18 @@ export function EmploymentContractsClient() {
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [panelMode, setPanelMode] = React.useState<PanelMode>('create');
+  const [detailContractId, setDetailContractId] = React.useState<string | null>(null);
+  const [detailRefreshKey, setDetailRefreshKey] = React.useState(0);
   const [selected, setSelected] = React.useState<HRContractRecord | null>(null);
-  const [form, setForm] = React.useState<FormValues>(emptyForm());
+  const [form, setForm] = React.useState<FormValues>(() => emptyEmploymentContractForm());
   const [error, setError] = React.useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
   const [terminateId, setTerminateId] = React.useState<string | null>(null);
   const [terminateReason, setTerminateReason] = React.useState('');
   const [copyFromEmployeeId, setCopyFromEmployeeId] = React.useState('');
   const [copyFromContractId, setCopyFromContractId] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const [perPage, setPerPage] = React.useState(20);
 
   React.useEffect(() => {
     if (drawerOpen && companyId && allowanceTypes.length === 0) {
@@ -183,23 +182,24 @@ export function EmploymentContractsClient() {
     if (!contractPdfOpen) setContractPrintable(null);
   }, [contractPdfOpen]);
 
-  const openEmploymentContractPdf = React.useCallback(() => {
-    if (!form.employeeId.trim()) {
+  const openEmploymentContractPdf = React.useCallback((source?: FormValues, employeeNameOverride?: string) => {
+    const values = source ?? form;
+    if (!values.employeeId.trim()) {
       toast.error('اختر الموظف أولاً');
       return;
     }
-    if (!form.startDate.trim()) {
+    if (!values.startDate.trim()) {
       toast.error('حدّد تاريخ البداية لاستكمال نص العرض');
       return;
     }
-    const empAr = getEmpName(form.employeeId);
-    const allowanceRows = form.allowanceLines
+    const empAr = employeeNameOverride ?? getEmpName(values.employeeId);
+    const allowanceRows = values.allowanceLines
       .filter((l) => l.allowanceTypeId.trim())
       .map((l) => ({
         labelAr: allowanceTypes.find((a) => a.id === l.allowanceTypeId)?.nameAr ?? l.allowanceTypeId,
         amount: String(l.amount || '0'),
       }));
-    const selectedArticles = form.articleIds
+    const selectedArticles = values.articleIds
       .map((id) => articles.find((a) => a.id === id))
       .filter(Boolean) as typeof articles;
 
@@ -225,17 +225,17 @@ export function EmploymentContractsClient() {
         logoSrc={getPdfLogoSrc()}
         company={company}
         employeeNameAr={empAr}
-        contractNumber={form.contractNumber.trim() || '—'}
-        natureLabelAr={CONTRACT_NATURE_LABELS[form.contractType]}
-        arrangementLabelAr={WORK_ARRANGEMENT_LABELS[form.workArrangement]}
-        startDate={form.startDate}
-        endDate={form.endDate}
-        probationDaysLabel={form.probationDays.trim() ? `${form.probationDays} يوم` : 'بدون'}
-        annualLeaveDaysLabel={`${form.annualLeaveDays || '—'} يوم`}
-        baseSalary={formatNumber(Number(form.baseSalary) || 0)}
-        currency={form.currency}
-        allowancesNote={form.allowancesNote}
-        deductionsNote={form.deductionsNote}
+        contractNumber={values.contractNumber.trim() || '—'}
+        natureLabelAr={CONTRACT_NATURE_LABELS[values.contractType]}
+        arrangementLabelAr={WORK_ARRANGEMENT_LABELS[values.workArrangement]}
+        startDate={values.startDate}
+        endDate={values.endDate}
+        probationDaysLabel={values.probationDays.trim() ? `${values.probationDays} يوم` : 'بدون'}
+        annualLeaveDaysLabel={`${values.annualLeaveDays || '—'} يوم`}
+        baseSalary={formatNumber(Number(values.baseSalary) || 0)}
+        currency={values.currency}
+        allowancesNote={values.allowancesNote}
+        deductionsNote={values.deductionsNote}
         allowanceRows={allowanceRows}
         articles={artLines}
       />
@@ -246,7 +246,21 @@ export function EmploymentContractsClient() {
     form,
     allowanceTypes,
     articles,
+    activeCompany,
+    getEmpName,
   ]);
+
+  const openContractPdfFromRecord = React.useCallback((record: HRContractRecord) => {
+    openEmploymentContractPdf(recordToForm(record), record.employeeNameAr || getEmpName(record.employeeId));
+  }, [openEmploymentContractPdf, getEmpName]);
+
+  const syncContractInStore = React.useCallback((record: HRContractRecord) => {
+    useHRContractsStore.setState((s) => ({
+      contracts: s.contracts.some((c) => c.id === record.id)
+        ? s.contracts.map((c) => (c.id === record.id ? record : c))
+        : [record, ...s.contracts],
+    }));
+  }, []);
 
   const copySourceEmpOptions = React.useMemo(() => {
     const ids = new Set(contracts.map(c => c.employeeId));
@@ -267,19 +281,26 @@ export function EmploymentContractsClient() {
   /* ── URL mode sync ── */
   React.useEffect(() => {
     if (modeParam === 'createContract') {
-      const f = { ...emptyForm(), contractNumber: suggestContractNumber(), articleIds: [...essentialArticleIds] };
+      const f = {
+        ...emptyEmploymentContractForm(essentialArticleIds),
+        contractNumber: suggestContractNumber(),
+      };
       setSelected(null); setForm(f); setPanelMode('create'); setError(null);
       setCopyFromEmployeeId(''); setCopyFromContractId('');
       setDrawerOpen(true);
     }
-  }, [modeParam]);
+  }, [modeParam, essentialArticleIds]);
 
-  /* ── pre-select essentials when articles load ── */
   React.useEffect(() => {
-    if (panelMode === 'create' && form.articleIds.length === 0 && essentialArticleIds.length > 0) {
-      setForm(f => ({ ...f, articleIds: [...essentialArticleIds] }));
-    }
-  }, [essentialArticleIds, panelMode]);
+    if (!drawerOpen || essentialArticleIds.length === 0) return;
+    setForm((f) => {
+      const merged = mergeEssentialArticleIds(f.articleIds, essentialArticleIds);
+      if (merged.length === f.articleIds.length && essentialArticleIds.every((id) => f.articleIds.includes(id))) {
+        return f;
+      }
+      return { ...f, articleIds: merged };
+    });
+  }, [essentialArticleIds, drawerOpen]);
 
   const closeDrawer = () => {
     setDrawerOpen(false);
@@ -296,7 +317,13 @@ export function EmploymentContractsClient() {
       toast.error('اختر عقد المصدر أولاً');
       return;
     }
-    setForm(f => cloneFormFromContract(f.employeeId, src));
+    setForm(f => {
+      const cloned = cloneFormFromContract(f.employeeId, src);
+      return {
+        ...cloned,
+        articleIds: mergeEssentialArticleIds(cloned.articleIds, essentialArticleIds),
+      };
+    });
     toast.success('تم نسخ بيانات العقد. راجع الموظف المستهدف والتواريخ ثم احفظ.');
   };
 
@@ -321,24 +348,35 @@ export function EmploymentContractsClient() {
 
   const openView = (c: HRContractRecord) => {
     if (modeParam) router.replace(hrContractsRoutes.employment, { scroll: false });
-    setSelected(c); setForm(recordToForm(c)); setPanelMode('view'); setError(null); setDrawerOpen(true);
+    setDetailContractId(c.id);
   };
 
-  const openEdit = (c: HRContractRecord) => {
-    if (c.status !== 'draft') {
-      toast.info('التعديل المباشر للمسودات فقط. للعقد النشط استخدم «تعديل رسمي».');
-      openView(c);
-      return;
-    }
-    if (modeParam) router.replace(hrContractsRoutes.employment, { scroll: false });
-    setSelected(c); setForm(recordToForm(c)); setPanelMode('edit'); setError(null); setDrawerOpen(true);
+  const openEditFromDetail = (c: HRContractRecord) => {
+    setDetailContractId(null);
+    setSelected(c);
+    setForm({
+      ...recordToForm(c),
+      articleIds: mergeEssentialArticleIds(c.articleIds, essentialArticleIds),
+    });
+    setPanelMode('edit');
+    setError(null);
+    setDrawerOpen(true);
   };
 
   const openAmendment = async (c: HRContractRecord) => {
     const res = await createAmendmentDraft(c.id);
     if (!res.ok) { toast.error(res.message); return; }
     const draft = useHRContractsStore.getState().contracts.find(x => x.id === res.id);
-    if (draft) { setSelected(draft); setForm(recordToForm(draft)); setPanelMode('edit'); setError(null); setDrawerOpen(true); }
+    if (draft) {
+      setSelected(draft);
+      setForm({
+        ...recordToForm(draft),
+        articleIds: mergeEssentialArticleIds(draft.articleIds, essentialArticleIds),
+      });
+      setPanelMode('edit');
+      setError(null);
+      setDrawerOpen(true);
+    }
     toast.success('تم إنشاء مسودة التعديل الرسمي.');
   };
 
@@ -354,9 +392,13 @@ export function EmploymentContractsClient() {
       return;
     }
     try {
+      const payload = {
+        ...form,
+        articleIds: mergeEssentialArticleIds(form.articleIds, essentialArticleIds),
+      };
       if (panelMode === 'create') {
-        const contractId = await add(formToDraft(form, 'draft'));
-        const companyId = useAuthStore.getState().activeCompanyId ?? '';
+        const contractId = await add(formToDraft(payload, 'draft'));
+        const companyId = getDefaultCompanyId() ?? '';
         const actor = useAuthStore.getState().user?.email ?? undefined;
 
         let notificationSent = false;
@@ -383,7 +425,7 @@ export function EmploymentContractsClient() {
             : 'تم إنشاء العقد كمسودة.',
         );
       } else if (panelMode === 'edit' && selected) {
-        const ok = await update(selected.id, formToDraft(form, selected.status));
+        const ok = await update(selected.id, formToDraft(payload, selected.status));
         if (!ok) { setError('لا يمكن تعديل عقد غير مسودة'); return; }
       }
       closeDrawer();
@@ -394,7 +436,11 @@ export function EmploymentContractsClient() {
 
   const handleActivate = async (id: string) => {
     const res = await activate(id);
-    if (!res.ok) toast.error(res.message); else toast.success('تم تفعيل العقد.');
+    if (!res.ok) toast.error(res.message);
+    else {
+      toast.success('تم تفعيل العقد.');
+      setDetailRefreshKey((k) => k + 1);
+    }
   };
 
   const handleTerminate = async () => {
@@ -435,7 +481,7 @@ export function EmploymentContractsClient() {
   };
 
   React.useEffect(() => {
-    if (!form.templateId || !form.startDate || panelMode === 'view') return;
+    if (!form.templateId || !form.startDate || !drawerOpen) return;
     const cached = templates.find((t) => t.id === form.templateId);
     if (!cached?.durationMonths) return;
     const end = computeTemplateEndDate(
@@ -458,9 +504,12 @@ export function EmploymentContractsClient() {
   }));
 
   const toggleArticle = (id: string) => {
+    if (essentialArticleIds.includes(id)) return;
     setForm(f => ({
       ...f,
-      articleIds: f.articleIds.includes(id) ? f.articleIds.filter(x => x !== id) : [...f.articleIds, id],
+      articleIds: f.articleIds.includes(id)
+        ? f.articleIds.filter(x => x !== id)
+        : mergeEssentialArticleIds([...f.articleIds, id], essentialArticleIds),
     }));
   };
 
@@ -496,7 +545,15 @@ export function EmploymentContractsClient() {
   );
 
   const total = filtered.length;
-  const readOnly = panelMode === 'view';
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [statusFilter, kindFilter, selectedEmpKey, perPage]);
+
+  const paged = React.useMemo(
+    () => filtered.slice((page - 1) * perPage, page * perPage),
+    [filtered, page, perPage],
+  );
 
   useEntityFilterSlot(
     () => (
@@ -537,7 +594,6 @@ export function EmploymentContractsClient() {
     <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
       {c.status === 'draft' && (
         <>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(c)}>تعديل</Button>
           {c.employeeSigned ? (
             <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c.id)}>تفعيل</Button>
           ) : null}
@@ -566,8 +622,9 @@ export function EmploymentContractsClient() {
       {filtered.length === 0 ? (
         <EmptyState icon={FileText} title="لا توجد عقود" description="أنشئ عقد عمل جديداً للبدء." />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map(c => (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {paged.map(c => (
             <div
               key={c.id}
               className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col cursor-pointer"
@@ -607,330 +664,71 @@ export function EmploymentContractsClient() {
                 {formatNumber(c.baseSalary)}
                 <span className="text-[10px] font-normal text-muted-foreground">{c.currency}</span>
               </div>
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="text-muted-foreground">توقيع الموظف على العقد</span>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    'text-[10px] font-medium',
-                    c.employeeSigned
-                      ? 'border-success/40 bg-success/10 text-success'
-                      : 'border-muted-foreground/30 bg-muted/40 text-muted-foreground',
-                  )}
-                >
-                  {formatEmployeeSignedLabel(c.employeeSigned)}
-                </Badge>
-              </div>
+              <EmploymentContractSignatureCard
+                signed={c.employeeSigned}
+                rejectionReason={c.rejectionReason}
+                contractStatus={c.status}
+                variant="compact"
+              />
               <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
                 <ContractActions c={c} />
               </div>
             </div>
           ))}
-        </div>
+          </div>
+          {total > perPage ? (
+            <div className="mt-4 overflow-hidden rounded-xl border border-border">
+              <Pagination
+                page={page}
+                perPage={perPage}
+                total={total}
+                onPage={setPage}
+                onPerPage={setPerPage}
+              />
+            </div>
+          ) : null}
+        </>
       )}
 
-      {/* ── Contract drawer form ── */}
-      <HRSettingsFormDrawer
-        open={drawerOpen} onOpenChange={open => { if (!open) closeDrawer(); }}
-        title={panelMode === 'create' ? 'عقد جديد' : panelMode === 'edit' ? 'تعديل العقد' : 'تفاصيل العقد'}
-        description={
-          panelMode === 'view'
-            ? 'عرض تفاصيل العقد دون تعديل.'
-            : panelMode === 'edit'
-              ? 'عدّل الحقول ثم احفظ التغييرات.'
-              : 'أنشئ عقد عمل — أو انسخ بيانات عقد موظف آخر ثم اربطه بالموظف الجديد.'
-        }
-        size="xl"
-        onSave={readOnly ? closeDrawer : handleSave}
-        saveLabel={readOnly ? 'إغلاق' : 'حفظ'}
+      <EmploymentContractDetailDialog
+        contractId={detailContractId}
+        open={!!detailContractId}
+        onOpenChange={(open) => { if (!open) setDetailContractId(null); }}
+        refreshKey={detailRefreshKey}
+        onLoaded={syncContractInStore}
+        onEditDraft={openEditFromDetail}
+        onDownloadPdf={openContractPdfFromRecord}
+      />
+
+      <EmploymentContractFormDialog
+        open={drawerOpen}
+        onOpenChange={(open) => { if (!open) closeDrawer(); }}
+        mode={panelMode}
+        form={form}
         error={error}
-        footerExtra={(
-          <Button type="button" variant="secondary" size="sm" className="h-9 gap-1.5 text-xs" onClick={openEmploymentContractPdf} disabled={!form.employeeId}>
-            <FileDown className="h-3.5 w-3.5 shrink-0" />
-            معاينة / تنزيل PDF
-          </Button>
-        )}
-      >
-        {!readOnly && (
-          <FormField label="قالب العقد" span2>
-            <MinimalDropdown
-              value={form.templateId}
-              onChange={(id) => { void applyTemplate(id); }}
-              options={templateOptions}
-              placeholder={applyingTemplate ? 'جاري تحميل القالب…' : 'اختر قالباً لتعبئة الحقول تلقائياً…'}
-            />
-            <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
-              عند الاختيار يُملأ النموذج فوراً بالراتب والبدلات ومواد العقد والإعدادات الافتراضية من القالب.
-              {form.templateId && form.startDate && form.contractType === 'fixed_term' ? (
-                <span> عند تغيير تاريخ البداية يُحدَّث تاريخ الانتهاء حسب مدة القالب.</span>
-              ) : null}
-            </p>
-          </FormField>
-        )}
-
-        {/* Employee */}
-        <FormField label="الموظف" required>
-          {readOnly ? (
-            <Input value={getEmpName(form.employeeId)} readOnly className="bg-muted/30" />
-          ) : (
-            <SearchableDropdown value={form.employeeId} onChange={v => patch({ employeeId: v })} options={empOptions} placeholder="اختر الموظف…" />
-          )}
-        </FormField>
-
-        {readOnly && selected ? (
-          <FormField label="توقيع الموظف على العقد">
-            <Input
-              value={formatEmployeeSignedLabel(selected.employeeSigned)}
-              readOnly
-              className={cn(
-                'bg-muted/30 font-medium',
-                selected.employeeSigned ? 'text-success' : 'text-muted-foreground',
-              )}
-            />
-            {selected.rejectionReason ? (
-              <p className="mt-1.5 text-[11px] text-destructive">سبب الرفض: {selected.rejectionReason}</p>
-            ) : null}
-          </FormField>
-        ) : null}
-
-        {!readOnly && panelMode === 'create' ? (
-          <FormField label="إشعار الموظف" span2>
-            <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
-              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <div className="space-y-1 text-xs leading-relaxed text-muted-foreground">
-                <p className="font-medium text-foreground">إشعار تلقائي بعد الحفظ</p>
-                <p>
-                  {form.employeeId
-                    ? `بعد حفظ العقد سيتم إنشاء وإرسال إشعار داخل النظام إلى ${getEmpName(form.employeeId)} لإعلامه بإنشاء عقد العمل وطلب مراجعته.`
-                    : 'بعد اختيار الموظف وحفظ العقد سيتم إنشاء وإرسال إشعار داخل النظام له لإعلامه بإنشاء عقد العمل.'}
-                </p>
-              </div>
-            </div>
-          </FormField>
-        ) : null}
-
-        {!readOnly && panelMode === 'create' && (
-          <FormField label="نسخ من عقد موظف آخر" span2>
-            <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
-              اختر أولاً <strong className="text-foreground">الموظف المستهدف</strong> أعلاه، ثم موظفاً لديه عقداً واختر العقد؛ يُنسخ نوع العقد والدوام والتواريخ والراتب والبدلات والمواد وغيرها، مع الإبقاء على الموظف المستهدف وتوليد{' '}
-              <strong className="text-foreground">رقم عقد جديد</strong>.
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-              <div className="min-w-0 flex-1 basis-[14rem]">
-                <SearchableDropdown
-                  value={copyFromEmployeeId}
-                  onChange={(id) => { setCopyFromEmployeeId(id); setCopyFromContractId(''); }}
-                  options={copySourceEmpOptions}
-                  placeholder={copySourceEmpOptions.length ? 'موظف المصدر (لديه عقد)…' : 'لا يوجد موظف لديه عقد بعد'}
-                />
-              </div>
-              <div className="min-w-0 flex-1 basis-[14rem]">
-                <MinimalDropdown
-                  value={copyFromContractId}
-                  onChange={setCopyFromContractId}
-                  options={[
-                    { value: '', label: '— اختر عقد المصدر —' },
-                    ...copySourceContractOptions,
-                  ]}
-                  placeholder="عقد المصدر"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="h-9 shrink-0 gap-1.5"
-                disabled={!copyFromContractId}
-                onClick={handleApplyCopyFromContract}
-              >
-                <Copy className="h-3.5 w-3.5" />
-                تطبيق النسخ
-              </Button>
-            </div>
-          </FormField>
-        )}
-
-        {/* Contract number */}
-        <FormField label="رقم العقد" required>
-          <Input value={form.contractNumber} onChange={e => patch({ contractNumber: e.target.value })} readOnly={readOnly} className={readOnly ? 'bg-muted/30' : ''} />
-        </FormField>
-
-        {/* Type */}
-        <FormField label="نوع العقد">
-          {readOnly ? (
-            <Input value={CONTRACT_NATURE_LABELS[form.contractType]} readOnly className="bg-muted/30" />
-          ) : (
-            <MinimalDropdown
-              value={form.contractType}
-              onChange={v => patch({ contractType: v as HRContractNature })}
-              options={Object.entries(CONTRACT_NATURE_LABELS).map(([v, l]) => ({ value: v, label: l }))}
-            />
-          )}
-        </FormField>
-
-        <FormField label="نوع الدوام">
-          {readOnly ? (
-            <Input value={WORK_ARRANGEMENT_LABELS[form.workArrangement]} readOnly className="bg-muted/30" />
-          ) : (
-            <MinimalDropdown
-              value={form.workArrangement}
-              onChange={v => patch({ workArrangement: v as HRWorkArrangement })}
-              options={Object.entries(WORK_ARRANGEMENT_LABELS).map(([v, l]) => ({ value: v, label: l }))}
-            />
-          )}
-        </FormField>
-
-        {/* Dates */}
-        <FormField label="تاريخ البداية" required>
-          <SingleDatePicker
-            value={form.startDate || undefined}
-            onChange={(next) => patch({ startDate: next })}
-            placeholder="اختر تاريخ البداية"
-            disabled={readOnly}
-            max={form.endDate || undefined}
-          />
-        </FormField>
-        <FormField label="تاريخ الانتهاء" required={form.contractType === 'fixed_term'}>
-          <SingleDatePicker
-            value={form.endDate || undefined}
-            onChange={(next) => patch({ endDate: next })}
-            placeholder="اختر تاريخ الانتهاء"
-            disabled={readOnly}
-            min={form.startDate || undefined}
-          />
-        </FormField>
-
-        {/* Probation */}
-        <FormField label="أيام التجربة">
-          <Input type="number" min="0" value={form.probationDays} onChange={e => patch({ probationDays: e.target.value })} readOnly={readOnly} className={readOnly ? 'bg-muted/30' : ''} placeholder="90" />
-        </FormField>
-
-        {/* Annual leave (contract entitlement) */}
-        <FormField label="الإجازات السنوية" required>
-          <Input
-            type="number"
-            min="0"
-            max="366"
-            step="1"
-            value={form.annualLeaveDays}
-            onChange={e => patch({ annualLeaveDays: e.target.value })}
-            readOnly={readOnly}
-            className={readOnly ? 'bg-muted/30' : ''}
-            placeholder="مثال: 21"
-          />
-          <p className="text-[10px] text-muted-foreground mt-1">إجمالي أيام الإجازة السنوية المعتمدة في العقد لكل سنة ميلادية.</p>
-        </FormField>
-
-        {/* Salary */}
-        <FormField label="الراتب الأساسي" required>
-          <Input type="number" min="0" value={form.baseSalary} onChange={e => patch({ baseSalary: e.target.value })} readOnly={readOnly} className={readOnly ? 'bg-muted/30' : ''} placeholder="0" />
-        </FormField>
-
-        {/* Currency */}
-        <FormField label="العملة">
-          {readOnly ? (
-            <Input value={form.currency} readOnly className="bg-muted/30" />
-          ) : (
-            <MinimalDropdown value={form.currency} onChange={v => patch({ currency: v })} options={CURRENCIES.map(c => ({ value: c, label: c }))} />
-          )}
-        </FormField>
-
-        {/* Allowance lines */}
-        <FormField label="البدلات من الدليل" span2>
-          <div className="space-y-2">
-            {!readOnly && allowanceOptions.length === 0 ? (
-              <p className="text-xs text-muted-foreground">لا توجد بدلات في الدليل — أضف أنواع البدلات من صفحة «أنواع البدلات».</p>
-            ) : null}
-            {form.allowanceLines.map((line, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <div className="flex-1">
-                  {readOnly ? (
-                    <Input
-                      value={
-                        selected?.allowanceLines.find(l => l.allowanceTypeId === line.allowanceTypeId)?.allowanceTypeNameAr ||
-                        allowanceTypes.find(a => a.id === line.allowanceTypeId)?.nameAr ||
-                        line.allowanceTypeId
-                      }
-                      readOnly className="bg-muted/30 text-xs"
-                    />
-                  ) : (
-                    <MinimalDropdown
-                      value={line.allowanceTypeId}
-                      onChange={v => updateAllowanceLine(idx, { allowanceTypeId: v })}
-                      options={[{ value: '', label: 'اختر البدل…' }, ...allowanceOptions]}
-                    />
-                  )}
-                </div>
-                <Input
-                  type="number" min="0" className="w-24 text-xs"
-                  value={line.amount} placeholder="0"
-                  onChange={e => updateAllowanceLine(idx, { amount: e.target.value })}
-                  readOnly={readOnly}
-                />
-                {!readOnly && (
-                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={() => removeAllowanceLine(idx)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-            ))}
-            {!readOnly && (
-              <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={addAllowanceLine}>
-                <Plus className="h-3 w-3" />إضافة بدل
-              </Button>
-            )}
-          </div>
-        </FormField>
-
-        {/* Notes */}
-        <FormField label="ملاحظات البدلات" span2>
-          <Input value={form.allowancesNote} onChange={e => patch({ allowancesNote: e.target.value })} readOnly={readOnly} className={readOnly ? 'bg-muted/30' : ''} placeholder="ملاحظات البدلات…" />
-        </FormField>
-        <FormField label="ملاحظات الخصومات" span2>
-          <Input value={form.deductionsNote} onChange={e => patch({ deductionsNote: e.target.value })} readOnly={readOnly} className={readOnly ? 'bg-muted/30' : ''} placeholder="ملاحظات الخصومات…" />
-        </FormField>
-
-        {/* Contract articles */}
-        <FormField label={`مواد العقد ${form.articleIds.length > 0 ? `(${form.articleIds.length} محدّد)` : ''}`} span2>
-          {activeArticles.length === 0 ? (
-            <p className="text-xs text-muted-foreground">لا توجد مواد فعّالة — أضف مواداً من صفحة «مواد العقود».</p>
-          ) : (
-            <div className="rounded-lg border border-border divide-y divide-border max-h-56 overflow-y-auto">
-              {activeArticles.map(a => (
-                <label key={a.id} className={cn(
-                  'flex items-start gap-3 px-3 py-2.5 cursor-pointer transition-colors',
-                  readOnly ? 'cursor-default' : 'hover:bg-muted/30',
-                  form.articleIds.includes(a.id) && 'bg-primary/5',
-                )}>
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 h-3.5 w-3.5 rounded border-border"
-                    checked={form.articleIds.includes(a.id)}
-                    onChange={() => !readOnly && toggleArticle(a.id)}
-                    disabled={readOnly}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-[10px] text-muted-foreground">{a.code}</span>
-                      {a.isBasic && <span className="text-[9px] font-medium text-blue-600 dark:text-blue-400">أساسية</span>}
-                    </div>
-                    <p className="text-xs font-medium leading-snug">{a.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{a.body.slice(0, 80)}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-          {!readOnly && activeArticles.length > 0 && essentialArticleIds.length > 0 && (
-            <Button
-              size="sm" variant="ghost" className="mt-1 h-7 text-xs text-primary"
-              onClick={() => setForm(f => ({ ...f, articleIds: [...new Set([...f.articleIds, ...essentialArticleIds])] }))}
-            >
-              إعادة تضمين الأساسية
-            </Button>
-          )}
-        </FormField>
-      </HRSettingsFormDrawer>
+        applyingTemplate={applyingTemplate}
+        templateOptions={templateOptions}
+        empOptions={empOptions}
+        allowanceOptions={allowanceOptions}
+        activeArticles={activeArticles}
+        essentialArticleIds={essentialArticleIds}
+        copyFromEmployeeId={copyFromEmployeeId}
+        copyFromContractId={copyFromContractId}
+        copySourceEmpOptions={copySourceEmpOptions}
+        copySourceContractOptions={copySourceContractOptions}
+        getEmpName={getEmpName}
+        onSave={() => { void handleSave(); }}
+        onPreviewPdf={() => openEmploymentContractPdf()}
+        onPatch={patch}
+        onApplyTemplate={(id) => { void applyTemplate(id); }}
+        onCopyFromEmployeeChange={(id) => { setCopyFromEmployeeId(id); setCopyFromContractId(''); }}
+        onCopyFromContractChange={setCopyFromContractId}
+        onApplyCopyFromContract={handleApplyCopyFromContract}
+        onToggleArticle={toggleArticle}
+        onUpdateAllowanceLine={updateAllowanceLine}
+        onAddAllowanceLine={addAllowanceLine}
+        onRemoveAllowanceLine={removeAllowanceLine}
+      />
 
       <PdfPreviewExportDialog
         open={contractPdfOpen}

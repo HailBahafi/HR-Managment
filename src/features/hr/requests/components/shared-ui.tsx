@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { cn } from '@/shared/utils';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
@@ -189,9 +190,9 @@ export function ConfirmationModal({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        <DialogFooter>
           <Button variant={variant} onClick={() => { onConfirm(); onOpenChange(false); }}>{confirmLabel}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -243,11 +244,11 @@ export function HRSettingsFormDrawer({ open, onOpenChange, title, description, s
             </div>
           )}
         </div>
-        <div className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 flex flex-row-reverse flex-wrap justify-end sm:justify-start sm:flex-row items-center gap-2">
-          {footerExtra ? <div className="me-auto flex flex-wrap gap-2 sm:me-0 sm:order-first">{footerExtra}</div> : null}
-          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
+          {footerExtra ? <div className="flex flex-wrap gap-2">{footerExtra}</div> : null}
           <Button variant="luxe" type="button" onClick={onSave} disabled={saveDisabled}>{saveLabel}</Button>
-        </div>
+          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

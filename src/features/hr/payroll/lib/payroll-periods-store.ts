@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { payrollPeriodsApi, type PayrollPeriodResponseDto } from './api/payroll-periods';
 import {
   monthlyInputsApi,
@@ -236,7 +237,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
   _rawInputs: {},
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -317,7 +318,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
   },
 
   add: async (data) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const [yearStr, monthStr] = data.periodStart.split('-');
     const periodYear = parseInt(yearStr ?? '0', 10);
     const periodMonth = parseInt(monthStr ?? '0', 10);
@@ -436,7 +437,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       }),
     }));
 
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
 
     const state = get();
@@ -511,7 +512,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
   },
 
   refreshMonthlyInputsForPeriod: async (periodId) => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
 
     try {

@@ -7,12 +7,12 @@ export type EmployeeAssignmentCompanyContext = {
   companyLabel: string;
 };
 
-/** Company for a new assignment — primary assignment first, then active session company. */
+/** Company for a new assignment — primary assignment first, then default login company. */
 export function resolveAssignmentCompanyContextFromProfile(options: {
   primaryAssignment: EnrichedEmployeeAssignment | null;
-  activeCompanyId: string | null;
+  defaultCompanyId: string | null;
 }): EmployeeAssignmentCompanyContext | null {
-  const companyId = options.primaryAssignment?.companyId ?? options.activeCompanyId;
+  const companyId = options.primaryAssignment?.companyId ?? options.defaultCompanyId;
   if (!companyId) return null;
 
   const labelFromAssignment = options.primaryAssignment?.companyNameAr;

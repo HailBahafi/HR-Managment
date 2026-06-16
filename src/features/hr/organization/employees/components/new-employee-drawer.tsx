@@ -12,16 +12,22 @@ import {
 } from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { cn } from '@/shared/utils';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { employeeAssignmentsApi } from '@/features/hr/organization/employees/lib/api/employee-assignments';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
-import { companiesApi } from '@/features/hr/organization/lib/api/companies';
+import { companiesApi, type CompanyResponseDto } from '@/features/hr/organization/lib/api/companies';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getCompanyAccessLabel } from '@/features/auth/types/access-profile';
 
 interface NewEmployeeForm {
+  companyId: string;
   nameAr: string;
   email: string; phone: string;
   nationalId: string; nationality: string;
@@ -34,6 +40,7 @@ interface NewEmployeeForm {
 }
 
 const EMPTY_FORM: NewEmployeeForm = {
+  companyId: '',
   nameAr: '', email: '', phone: '',
   nationalId: '', nationality: 'سعودي', gender: 'male', birthDate: '', maritalStatus: 'single',
   position: '', departmentId: '', branchId: '', managerId: 'none',
@@ -80,47 +87,130 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const [companies, setCompanies] = React.useState<CompanyResponseDto[]>([]);
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
-  const [companyId, setCompanyId] = React.useState<string | null>(null);
+  const [loadingCompanies, setLoadingCompanies] = React.useState(false);
+  const [loadingRefs, setLoadingRefs] = React.useState(false);
+
+  const defaultCompanyId = useDefaultCompanyId();
+  const accessProfile = useAuthStore((s) => s.accessProfile);
+
+  const companyOptions = React.useMemo(() => {
+    const fromProfile = accessProfile?.companies ?? [];
+    if (fromProfile.length > 0) {
+      return fromProfile.map((c) => ({
+        value: c.companyId,
+        label: getCompanyAccessLabel(c),
+      }));
+    }
+    return companies.map((c) => ({
+      value: c.id,
+      label: c.nameAr ?? c.nameEn ?? c.code ?? c.id.slice(0, 8),
+    }));
+  }, [accessProfile?.companies, companies]);
 
   React.useEffect(() => {
     if (!open) return;
     void (async () => {
+      if ((accessProfile?.companies.length ?? 0) > 0) return;
+      setLoadingCompanies(true);
       try {
-        const companies = await companiesApi.getAll({ limit: 1 });
-        const cid = companies.items[0]?.id ?? null;
-        setCompanyId(cid);
-        if (cid) {
-          const [br, dp] = await Promise.all([
-            branchesApi.getAll({ companyId: cid, limit: 200 }),
-            departmentsApi.getAll({ companyId: cid, limit: 200 }),
-          ]);
+        const res = await companiesApi.getAll({ limit: 200 });
+        setCompanies(res.items);
+      } catch {
+        setCompanies([]);
+      } finally {
+        setLoadingCompanies(false);
+      }
+    })();
+  }, [open, accessProfile?.companies.length]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const initialCompanyId =
+      defaultCompanyId
+      ?? companyOptions.find((o) => o.value)?.value
+      ?? '';
+    setForm((f) => ({ ...f, companyId: f.companyId || initialCompanyId }));
+  }, [open, defaultCompanyId, companyOptions]);
+
+  React.useEffect(() => {
+    if (!open || !form.companyId) {
+      setBranches([]);
+      setDepartments([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingRefs(true);
+    void (async () => {
+      try {
+        const [br, dp] = await Promise.all([
+          branchesApi.getAll({ companyId: form.companyId, limit: 200 }),
+          departmentsApi.getAll({ companyId: form.companyId, limit: 200 }),
+        ]);
+        if (!cancelled) {
           setBranches(br.items);
           setDepartments(dp.items);
         }
       } catch {
-        // silently ignore — user can still type ids
+        if (!cancelled) {
+          setBranches([]);
+          setDepartments([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingRefs(false);
       }
     })();
-  }, [open]);
+    return () => { cancelled = true; };
+  }, [open, form.companyId]);
+
+  const handleCompanyChange = (companyId: string) => {
+    setForm((f) => ({
+      ...f,
+      companyId,
+      branchId: '',
+      departmentId: '',
+    }));
+  };
 
   const patch = <K extends keyof NewEmployeeForm>(k: K, v: NewEmployeeForm[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  const filteredDepartments = React.useMemo(() => {
+    if (!form.branchId) return [];
+    return departments.filter((d) => d.branchId === form.branchId);
+  }, [departments, form.branchId]);
+
+  const handleBranchChange = (branchId: string) => {
+    setForm((f) => ({
+      ...f,
+      branchId,
+      departmentId: f.departmentId && departments.some((d) => d.id === f.departmentId && d.branchId === branchId)
+        ? f.departmentId
+        : '',
+    }));
+  };
+
   const validate = (): boolean => {
     const e: typeof errors = {};
+    if (!form.companyId) e.companyId = 'مطلوب';
     if (!form.nameAr.trim()) e.nameAr = 'مطلوب';
     if (!form.startDate) e.startDate = 'مطلوب';
     if (!form.branchId) e.branchId = 'مطلوب';
+    if (form.departmentId && !filteredDepartments.some((d) => d.id === form.departmentId)) {
+      e.departmentId = 'القسم لا يتبع الفرع المختار';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleSave = async () => {
     if (!validate()) return;
-    if (!companyId) {
-      setSaveError('لم يتم العثور على شركة. تأكد من إعداد بيانات الشركة أولاً.');
+    if (!form.companyId) {
+      setSaveError('اختر الشركة التي سيتبع لها الموظف.');
       return;
     }
 
@@ -148,7 +238,7 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
       });
 
       await employeeAssignmentsApi.create(emp.id, {
-        companyId,
+        companyId: form.companyId,
         branchId: form.branchId,
         departmentId: form.departmentId || null,
         isPrimary: true,
@@ -178,7 +268,7 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden border-border p-0">
+      <DialogContent ref={containerRef} className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden border-border p-0">
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">إضافة موظف جديد</DialogTitle>
@@ -192,7 +282,7 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
           <div className="space-y-4">
             <SectionHeader icon={User} title="البيانات الشخصية" description="المعلومات الأساسية للموظف" />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="الاسم الكامل بالعربية" required>
+              <Field label="الاسم الكامل" required>
                 <Input
                   value={form.nameAr}
                   onChange={(e) => patch('nameAr', e.target.value)}
@@ -211,7 +301,11 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
                 </Select>
               </Field>
               <Field label="تاريخ الميلاد">
-                <Input type="date" dir="ltr" value={form.birthDate} onChange={(e) => patch('birthDate', e.target.value)} />
+                <DatePickerInput
+                  value={form.birthDate}
+                  onChange={(v) => patch('birthDate', v)}
+                  popoverContainer={containerRef.current}
+                />
               </Field>
               <Field label="الجنسية">
                 <Input value={form.nationality} onChange={(e) => patch('nationality', e.target.value)} placeholder="سعودي" />
@@ -264,26 +358,46 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
 
           {/* Employment */}
           <div className="space-y-4">
-            <SectionHeader icon={Briefcase} title="بيانات التوظيف" description="المسمى الوظيفي والقسم والفرع" />
+            <SectionHeader icon={Briefcase} title="بيانات التوظيف" description="الشركة والمسمى الوظيفي والقسم والفرع" />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="المسمى الوظيفي" span2>
-                <Input value={form.position} onChange={(e) => patch('position', e.target.value)} placeholder="مدير تطوير الأعمال" />
-              </Field>
-              <Field label="القسم">
-                <Select value={form.departmentId || '_none'} onValueChange={(v) => patch('departmentId', v === '_none' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
+              <Field label="الشركة" required span2={companyOptions.length > 1}>
+                <Select
+                  value={form.companyId || '_none'}
+                  onValueChange={(v) => handleCompanyChange(v === '_none' ? '' : v)}
+                  disabled={loadingCompanies || companyOptions.length <= 1}
+                >
+                  <SelectTrigger className={cn(errors.companyId && 'border-destructive')}>
+                    <SelectValue placeholder={loadingCompanies ? 'جاري تحميل الشركات…' : 'اختر الشركة'} />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="_none">— بدون قسم —</SelectItem>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>
+                    <SelectItem value="_none">— اختر الشركة —</SelectItem>
+                    {companyOptions.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.companyId && <p className="text-[11px] text-destructive">{errors.companyId}</p>}
+                {companyOptions.length <= 1 && form.companyId ? (
+                  <p className="text-[10px] text-muted-foreground">شركة واحدة مرتبطة بحسابك — تم اختيارها تلقائياً.</p>
+                ) : null}
+              </Field>
+              <Field label="المسمى الوظيفي" span2>
+                <Input value={form.position} onChange={(e) => patch('position', e.target.value)} placeholder="مدير تطوير الأعمال" />
               </Field>
               <Field label="الفرع" required>
-                <Select value={form.branchId || '_none'} onValueChange={(v) => patch('branchId', v === '_none' ? '' : v)}>
+                <Select
+                  value={form.branchId || '_none'}
+                  onValueChange={(v) => handleBranchChange(v === '_none' ? '' : v)}
+                  disabled={!form.companyId || loadingRefs}
+                >
                   <SelectTrigger className={cn(errors.branchId && 'border-destructive')}>
-                    <SelectValue placeholder="اختر الفرع" />
+                    <SelectValue placeholder={
+                      !form.companyId
+                        ? 'اختر الشركة أولاً'
+                        : loadingRefs
+                          ? 'جاري التحميل…'
+                          : 'اختر الفرع'
+                    } />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="_none">— اختر الفرع —</SelectItem>
@@ -294,12 +408,29 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
                 </Select>
                 {errors.branchId && <p className="text-[11px] text-destructive">{errors.branchId}</p>}
               </Field>
+              <Field label="القسم">
+                <Select
+                  value={form.departmentId || '_none'}
+                  onValueChange={(v) => patch('departmentId', v === '_none' ? '' : v)}
+                  disabled={!form.branchId}
+                >
+                  <SelectTrigger className={cn(errors.departmentId && 'border-destructive')}>
+                    <SelectValue placeholder={form.branchId ? 'اختر القسم' : 'اختر الفرع أولاً'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— بدون قسم —</SelectItem>
+                    {filteredDepartments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.departmentId && <p className="text-[11px] text-destructive">{errors.departmentId}</p>}
+              </Field>
               <Field label="تاريخ الالتحاق" required>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePickerInput
                   value={form.startDate}
-                  onChange={(e) => patch('startDate', e.target.value)}
+                  onChange={(v) => patch('startDate', v)}
+                  popoverContainer={containerRef.current}
                   className={cn(errors.startDate && 'border-destructive')}
                 />
                 {errors.startDate && <p className="text-[11px] text-destructive">{errors.startDate}</p>}
@@ -325,11 +456,11 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
           )}
         </div>
 
-        <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-          <Button variant="outline" type="button" onClick={handleClose} disabled={saving}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button variant="luxe" type="button" onClick={() => void handleSave()} disabled={saving}>
             {saving ? 'جاري الحفظ…' : 'إضافة الموظف'}
           </Button>
+          <Button variant="outline" type="button" onClick={handleClose} disabled={saving}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

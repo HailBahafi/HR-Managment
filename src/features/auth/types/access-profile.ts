@@ -7,6 +7,8 @@ export type RoleAccess = {
 
 export type BranchAccess = {
   branchId: string;
+  branchNameAr?: string;
+  branchNameEn?: string | null;
   isDefault?: boolean;
   roles?: RoleAccess[];
   permissions: string[];
@@ -15,6 +17,8 @@ export type BranchAccess = {
 
 export type CompanyAccess = {
   companyId: string;
+  companyNameAr?: string;
+  companyNameEn?: string | null;
   isDefault?: boolean;
   roles?: RoleAccess[];
   permissions: string[];
@@ -45,9 +49,26 @@ export type AuthUser = {
 /** Primary role label for the active company (Arabic). */
 export function getActiveRoleLabel(
   profile: AccessProfile | null,
-  activeCompanyId: string | null,
+  companyId: string | null,
 ): string | null {
-  if (!profile || !activeCompanyId) return null;
-  const company = profile.companies.find((c) => c.companyId === activeCompanyId);
+  if (!profile || !companyId) return null;
+  const company = profile.companies.find((c) => c.companyId === companyId);
   return company?.roles?.[0]?.nameAr ?? null;
+}
+
+export function getCompanyAccessLabel(company: CompanyAccess): string {
+  return (
+    company.companyNameAr?.trim()
+    || company.companyNameEn?.trim()
+    || company.roles?.[0]?.nameAr
+    || company.companyId.slice(0, 8)
+  );
+}
+
+export function getBranchAccessLabel(branch: BranchAccess): string {
+  return (
+    branch.branchNameAr?.trim()
+    || branch.branchNameEn?.trim()
+    || branch.branchId.slice(0, 8)
+  );
 }

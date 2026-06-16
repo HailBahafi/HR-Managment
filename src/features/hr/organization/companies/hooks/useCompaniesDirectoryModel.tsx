@@ -89,23 +89,9 @@ export function useCompaniesDirectoryModel() {
       const base = {
         code,
         nameAr: form.nameAr.trim(),
-        nameEn: form.nameEn.trim() || null,
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        mobile: form.mobile.trim() || null,
-        city: form.city.trim() || null,
-        country: form.country.trim() || null,
         commercialRegistrationNo: form.commercialRegistrationNo.trim() || null,
         taxNumber: form.taxNumber.trim() || null,
-        website: form.website.trim() || null,
-        address: form.address.trim() || null,
-        district: form.district.trim() || null,
-        postalCode: form.postalCode.trim() || null,
-        timezone: form.timezone.trim() || 'Asia/Riyadh',
-        currencyCode: form.currencyCode.trim() || 'SAR',
-        languageCode: form.languageCode.trim() || 'ar',
         isActive: form.isActive,
-        notes: form.notes.trim() || null,
       };
       if (editId) {
         await companiesApi.update(editId, base as UpdateCompanyDto);

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { disciplineCircularsApi } from './api/discipline-circulars';
 import type { DisciplineCircularResponseDto, CircularAudienceTypeDto } from './api/discipline-circulars';
 import type { HRDisciplineCircularRecord, HRDisciplineCircularAudience } from './types';
@@ -74,7 +75,7 @@ export const useHRDisciplineCircularsStore = create<CircularsState>()((set) => (
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -86,7 +87,7 @@ export const useHRDisciplineCircularsStore = create<CircularsState>()((set) => (
   },
 
   add: async (d) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const { audienceType, audienceTargetIds } = mapAudienceToBackend(d);
     const created = await disciplineCircularsApi.create({
       companyId,

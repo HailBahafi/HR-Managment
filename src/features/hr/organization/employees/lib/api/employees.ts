@@ -1,4 +1,5 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type { UserResponseDto } from '@/features/hr/organization/lib/api/users';
 
 export type EmployeeResponseDto = {
   id: string;
@@ -138,7 +139,7 @@ export const employeesApi = {
     return apiRequest<void>(`/hr/employees/${id}`, { method: 'DELETE' });
   },
   createUserAccount(payload: CreateEmployeeUserAccountDto) {
-    return apiRequest<EmployeeResponseDto>('/hr/employees/user-account', {
+    return apiRequest<UserResponseDto>('/hr/employees/user-account', {
       method: 'POST',
       body: payload,
     });

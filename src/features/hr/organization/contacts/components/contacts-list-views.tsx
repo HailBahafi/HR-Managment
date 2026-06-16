@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { UserCircle, Eye, Pencil, Trash2, Building2, MapPin } from 'lucide-react';
+import { UserCircle, Eye, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
@@ -57,7 +57,6 @@ export function ContactsListViews({ model }: Props) {
       render: (row) => (
         <div className="flex flex-col gap-0.5">
           <span className="font-medium">{row.fullNameAr ?? row.email}</span>
-          {row.fullNameEn ? <span className="text-[10px] text-muted-foreground" dir="ltr">{row.fullNameEn}</span> : null}
         </div>
       ),
     },
@@ -83,39 +82,9 @@ export function ContactsListViews({ model }: Props) {
       render: (row) => primaryCompanyLabel(row, model),
     },
     {
-      key: 'branch',
-      title: 'الفرع',
-      className: 'text-muted-foreground text-xs',
-      render: (row) => primaryBranchLabel(row, model),
-    },
-    {
-      key: 'links',
-      title: 'الإسناد',
-      render: (row) => (
-        <div className="flex gap-1 text-[10px] text-muted-foreground">
-          <span className="inline-flex items-center gap-0.5"><Building2 className="h-3 w-3" />{row.companies.length}</span>
-          <span>·</span>
-          <span className="inline-flex items-center gap-0.5"><MapPin className="h-3 w-3" />{row.branches.length}</span>
-        </div>
-      ),
-    },
-    {
       key: 'status',
       title: 'الحالة',
-      render: (row) => (
-        <div className="flex flex-col gap-0.5">
-          {statusBadge(row)}
-          {row.isVerified ? (
-            <span className="text-[10px] text-muted-foreground">موثّق</span>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      key: 'lastLogin',
-      title: 'آخر دخول',
-      className: 'text-muted-foreground text-xs',
-      render: (row) => formatDate(row.lastLoginAt),
+      render: (row) => statusBadge(row),
     },
     {
       key: 'actions',

@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function UserProfileTab({ user }: Props) {
-  const displayName = user.fullNameAr ?? user.fullNameEn ?? user.email;
+  const displayName = user.fullNameAr ?? user.email;
 
   return (
     <div className="space-y-5">
@@ -68,7 +68,6 @@ export function UserProfileTab({ user }: Props) {
         </h3>
         <div className="grid gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2">
           <DetailField label="الجوال" value={user.phone} dir="ltr" />
-          <DetailField label="الاسم (EN)" value={user.fullNameEn} dir="ltr" />
           {user.avatarUrl && (
             <DetailField label="رابط الصورة" value={user.avatarUrl} dir="ltr" className="sm:col-span-2" />
           )}

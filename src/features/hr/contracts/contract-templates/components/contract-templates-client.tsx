@@ -15,6 +15,7 @@ import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { contractTemplatesApi } from '@/features/hr/contracts/contract-templates/lib/api/contract-templates';
 import type { ContractTemplateDto } from '@/features/hr/contracts/contract-templates/types/contract-template';
 import {
@@ -41,7 +42,7 @@ export function ContractTemplatesClient() {
     iconName: 'FileStack',
   });
 
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
   const [items, setItems] = React.useState<ContractTemplateDto[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -257,12 +258,12 @@ export function ContractTemplatesClient() {
               هل أنت متأكد من حذف «{deleteTarget?.nameAr}»؟ لا يمكن التراجع عن هذا الإجراء.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>إلغاء</Button>
+          <DialogFooter>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
               {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <Trash2 className="h-4 w-4" /> حذف
             </Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

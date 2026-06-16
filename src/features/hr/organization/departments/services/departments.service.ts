@@ -13,24 +13,25 @@ export type DepartmentsDirectoryData = {
 };
 
 export async function loadDepartmentsDirectory(filters: {
-  companyId: string;
+  companyId?: string | null;
   isActive?: boolean;
   /** Pass `null` to load all branches for the company. */
   branchId?: string | null;
 }): Promise<DepartmentsDirectoryData> {
-  const branchId = filters.branchId ?? undefined;
+  const branchId = filters.branchId && filters.branchId !== 'all' ? filters.branchId : undefined;
+  const companyId = filters.companyId && filters.companyId !== 'all' ? filters.companyId : undefined;
   const query: Parameters<typeof departmentsApi.getAll>[0] = {
-    companyId: filters.companyId,
-    branchId,
+    ...(companyId ? { companyId } : {}),
+    ...(branchId ? { branchId } : {}),
   };
   if (filters.isActive !== undefined) query.isActive = filters.isActive;
 
-  const res = await departmentsApi.getAll(query);
+  const res = await departmentsApi.getAll({ ...query, limit: 200 });
 
   return {
     departments: res.items.map(mapDepartmentResponse),
     scope: {
-      companyId: filters.companyId,
+      companyId: companyId ?? res.items[0]?.companyId ?? null,
       branchId: branchId ?? res.items[0]?.branchId ?? null,
     },
   };

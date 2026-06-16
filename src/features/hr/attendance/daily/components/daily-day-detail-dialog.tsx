@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { DailyRegisterEventDialog } from '@/features/hr/attendance/daily/components/daily-register-event-dialog';
@@ -549,10 +550,10 @@ export function DailyDayDetailDialog({
           </div>
 
           {companyId ? (
-            <DialogFooter className="shrink-0 border-t border-border px-5 py-3">
+            <DialogFooter className={dialogFormFooterClass}>
               <Button
                 type="button"
-                className="w-full gap-2"
+                className="gap-2"
                 onClick={() => {
                   setRegisterOpen(true);
                 }}

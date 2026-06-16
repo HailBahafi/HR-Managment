@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { violationTypesApi } from './api/violation-types';
 import type { ViolationTypeResponseDto } from './api/violation-types';
 import type { HRViolationTypeRecord } from './types';
@@ -39,7 +40,7 @@ export const useHRViolationTypesStore = create<VTState>()((set) => ({
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -52,7 +53,7 @@ export const useHRViolationTypesStore = create<VTState>()((set) => ({
 
   add: async (d) => {
     try {
-      const companyId = useAuthStore.getState().activeCompanyId ?? '';
+      const companyId = getDefaultCompanyId() ?? '';
       const created = await violationTypesApi.create({
         companyId,
         code: d.code.toUpperCase().trim(),

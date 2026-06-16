@@ -41,7 +41,6 @@ describe('buildPersonalEmployeeUpdatePayload', () => {
     const payload = buildPersonalEmployeeUpdatePayload(baseEmployee({ name: 'سارة العتيبي' }));
     expect(payload).toEqual({
       nameAr: 'سارة العتيبي',
-      nameEn: 'Ahmed',
       email: 'a@test.com',
       phone: '0500000000',
       nationalId: '123',

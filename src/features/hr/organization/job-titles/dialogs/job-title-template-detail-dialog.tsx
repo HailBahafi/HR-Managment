@@ -37,14 +37,12 @@ export function JobTitleTemplateDetailDialog({ row, onOpenChange, onEdit }: Prop
               <Badge variant="outline" className="mb-2 text-[10px] border-destructive/40 text-destructive">غير نشط</Badge>
             )}
             <DetailField label="الرمز" value={row.code} dir="ltr" />
-            <DetailField label="الاسم (EN)" value={row.titleEn} dir="ltr" />
             <DetailField label="الوصف" value={row.descriptionAr} />
             <DetailField label="ملاحظات" value={row.notes} />
             <DetailField label="آخر تحديث" value={new Date(row.updatedAt).toLocaleString('ar-SA')} dir="ltr" />
           </div>
         )}
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
+        <DialogFooter>
           <Button
             onClick={() => {
               if (row) {
@@ -58,6 +56,7 @@ export function JobTitleTemplateDetailDialog({ row, onOpenChange, onEdit }: Prop
             <Pencil className="h-3.5 w-3.5" />
             تعديل
           </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

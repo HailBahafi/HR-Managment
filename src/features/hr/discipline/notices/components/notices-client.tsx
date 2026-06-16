@@ -26,7 +26,7 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
-import { companiesApi } from '@/features/hr/lib/api/companies';
+import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -50,17 +50,9 @@ export function NoticesClient() {
   const hook = useDisciplineNoticesDirectoryModel();
   const { notices, employees, cases, loading, listError, createNotice, deleteNotice, reloadNotices } = hook;
 
-  const [companyNameAr, setCompanyNameAr] = React.useState('');
-  const [companyNameEn, setCompanyNameEn] = React.useState('');
-  React.useEffect(() => {
-    void (async () => {
-      try {
-        const res = await companiesApi.getAll({ limit: 1 });
-        const c = res.items[0];
-        if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
-      } catch { /* ignore */ }
-    })();
-  }, []);
+  const { data: defaultCompany } = useDefaultCompany();
+  const companyNameAr = defaultCompany?.nameAr ?? '';
+  const companyNameEn = defaultCompany?.nameEn ?? '';
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
@@ -71,11 +63,10 @@ export function NoticesClient() {
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
   const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
 
-  const empPickerList = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const n of notices) map.set(n.employeeId, n.employeeNameAr);
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [notices]);
+  const empPickerList = React.useMemo(
+    () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [employees],
+  );
 
   React.useEffect(() => {
     const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;

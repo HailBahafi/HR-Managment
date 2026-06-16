@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { contractArticlesApi, type ApiContractArticle } from './contracts-api';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 export type HRContractArticle = {
   id: string;
@@ -45,7 +46,7 @@ export const useHRContractArticlesStore = create<State>()((set, get) => ({
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -57,7 +58,7 @@ export const useHRContractArticlesStore = create<State>()((set, get) => ({
   },
 
   add: async (a) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const created = await contractArticlesApi.create({
       companyId,
       code: a.code.trim() || `ART-${Date.now().toString(36).toUpperCase()}`,

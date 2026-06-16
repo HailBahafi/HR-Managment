@@ -9,6 +9,7 @@ import { validateCheckpointDraft } from '@/features/hr/attendance/checkpoints/ut
 import { publicConfig } from '@/shared/config';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   createCheckInPoint,
   deleteCheckInPoint,
@@ -21,7 +22,7 @@ const r6 = (n: number) => parseFloat(n.toFixed(6));
 export function useCheckpointsPanelModel() {
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
   // companyId from auth store — never blocked by GET /companies 403
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);

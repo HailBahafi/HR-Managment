@@ -13,15 +13,41 @@ import { mapCheckInPointLinkResponse } from '@/features/hr/attendance/checkpoint
 import { mapCheckInPointResponse } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
+import { employeeAssignmentsApi } from '@/features/hr/organization/employees/lib/api/employee-assignments';
+import { resolvePrimaryAssignment } from '@/features/hr/organization/employees/services/employee-assignments.service';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { randomUUID } from '@/shared/utils';
 
 export type { DaySummaryResponseDto, AttendanceEventResponseDto, ShiftTemplateResponseDto, ShiftAssignmentResponseDto };
 
 export function useEmployeeProfileAttendance(
   employee: Employee,
-  companyId: string | null | undefined,
+  companyIdProp: string | null | undefined,
   enabled = true,
 ) {
+  const defaultCompanyId = useDefaultCompanyId();
+  const [resolvedCompanyId, setResolvedCompanyId] = React.useState<string | null>(null);
+  const [linksLoadError, setLinksLoadError] = React.useState<string | null>(null);
+
+  const companyId = resolvedCompanyId ?? companyIdProp ?? defaultCompanyId;
+
+  React.useEffect(() => {
+    if (!employee.id || !enabled) return;
+    let cancelled = false;
+    void employeeAssignmentsApi
+      .getAll(employee.id)
+      .then((rows) => {
+        if (cancelled) return;
+        const list = Array.isArray(rows) ? rows : [];
+        const primary = resolvePrimaryAssignment(list);
+        setResolvedCompanyId(primary?.companyId ?? companyIdProp ?? defaultCompanyId);
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedCompanyId(companyIdProp ?? defaultCompanyId);
+      });
+    return () => { cancelled = true; };
+  }, [employee.id, enabled, companyIdProp, defaultCompanyId]);
+
   const [daySummaries, setDaySummaries] = React.useState<DaySummaryResponseDto[]>([]);
   const [events, setEvents] = React.useState<AttendanceEventResponseDto[]>([]);
   const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplateResponseDto[]>([]);
@@ -33,16 +59,55 @@ export function useEmployeeProfileAttendance(
   const [attTo, setAttTo] = React.useState('');
 
   const reloadAttendanceLinks = React.useCallback(async () => {
-    if (!employee.id || !companyId) return;
-    const [tmplRes, assignRes, pointsRes, linksRes] = await Promise.all([
-      shiftTemplatesApi.getAll({ companyId, limit: 100 }),
-      shiftAssignmentsApi.getAll({ companyId, employeeId: employee.id, limit: 50 }),
-      checkInPointsApi.getAll({ companyId, limit: 200 }),
-      checkInPointLinksApi.getAll({ companyId, employeeId: employee.id, limit: 50 }),
+    if (!employee.id) return;
+    setLinksLoadError(null);
+
+    const scopedQuery = companyId ? { companyId } : {};
+
+    const [assignRes, linksRes] = await Promise.all([
+      shiftAssignmentsApi.getAll({ ...scopedQuery, employeeId: employee.id, limit: 50 }),
+      checkInPointLinksApi.getAll({ ...scopedQuery, employeeId: employee.id, limit: 50 }),
     ]);
+
+    const catalogCompanyId =
+      companyId
+      ?? assignRes.items[0]?.companyId
+      ?? linksRes.items[0]?.companyId
+      ?? null;
+
+    const catalogScope = catalogCompanyId ? { companyId: catalogCompanyId } : {};
+
+    const tmplRes = await shiftTemplatesApi.getAll({ ...catalogScope, limit: 100 });
+
+    const linkPointIds = [...new Set(linksRes.items.map((l) => l.checkInPointId))];
+    let checkpointItems: AttendanceCheckInPoint[] = [];
+
+    if (linkPointIds.length > 0) {
+      const pointsRes = catalogCompanyId
+        ? await checkInPointsApi.getAll({ companyId: catalogCompanyId, limit: 200 })
+        : { items: [] as Awaited<ReturnType<typeof checkInPointsApi.getAll>>['items'] };
+      const byId = new Map(pointsRes.items.map((p) => [p.id, mapCheckInPointResponse(p)]));
+
+      const resolved = await Promise.all(
+        linkPointIds.map(async (id) => {
+          const cached = byId.get(id);
+          if (cached) return cached;
+          try {
+            return mapCheckInPointResponse(await checkInPointsApi.getById(id));
+          } catch {
+            return null;
+          }
+        }),
+      );
+      checkpointItems = resolved.filter((p): p is AttendanceCheckInPoint => p != null);
+    } else if (catalogCompanyId) {
+      const pointsRes = await checkInPointsApi.getAll({ companyId: catalogCompanyId, limit: 200 });
+      checkpointItems = pointsRes.items.map(mapCheckInPointResponse);
+    }
+
     setShiftTemplates(tmplRes.items);
     setShiftAssignments(assignRes.items);
-    setCheckpoints(pointsRes.items.map(mapCheckInPointResponse));
+    setCheckpoints(checkpointItems);
     setCheckpointLinks(linksRes.items.map(mapCheckInPointLinkResponse));
   }, [employee.id, companyId]);
 
@@ -75,14 +140,16 @@ export function useEmployeeProfileAttendance(
   }, [employee.id, attFrom, attTo, enabled, companyId]);
 
   React.useEffect(() => {
-    if (!employee.id || !enabled || !companyId) return;
-    void reloadAttendanceLinks().catch(() => {
+    if (!employee.id || !enabled) return;
+    void reloadAttendanceLinks().catch((err) => {
+      const { displayMessage } = handleApiError(err, 'employee-profile.attendance-links');
+      setLinksLoadError(displayMessage);
       setShiftTemplates([]);
       setShiftAssignments([]);
       setCheckpoints([]);
       setCheckpointLinks([]);
     });
-  }, [employee.id, enabled, companyId, reloadAttendanceLinks]);
+  }, [employee.id, enabled, reloadAttendanceLinks]);
 
   const employeeSummaries = React.useMemo(
     () => daySummaries.filter(
@@ -263,5 +330,7 @@ export function useEmployeeProfileAttendance(
     submitShift,
     removeCheckpointLink,
     removeAssignment,
+    linksLoadError,
+    companyId,
   };
 }

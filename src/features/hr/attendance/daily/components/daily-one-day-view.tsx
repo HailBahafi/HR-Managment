@@ -10,8 +10,9 @@ import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, dialogFormFooterClass } from '@/components/ui/dialog';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   attendanceEventsApi,
   type AttendanceEventResponseDto,
@@ -295,8 +296,8 @@ function VoidDialog({
             </div>
           </div>
         )}
-        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
-          <Button variant="destructive" onClick={handleVoid} disabled={saving} className="flex-1 gap-2">
+        <DialogFooter>
+          <Button variant="destructive" onClick={handleVoid} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
             تأكيد الإلغاء
           </Button>
@@ -747,8 +748,8 @@ export function RegisterEventComboDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:flex-row-reverse">
-          <Button onClick={handleSave} disabled={saving || !selectedId || !time} className="flex-1 gap-2">
+        <DialogFooter className={dialogFormFooterClass}>
+          <Button onClick={handleSave} disabled={saving || !selectedId || !time} className="gap-2">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             تسجيل
           </Button>
@@ -808,7 +809,7 @@ export function DailyOneDayView({
   workDate: string;
   allEmployees: { id: string; name: string }[];
 }) {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
   const [eventsMap, setEventsMap] = React.useState<Map<string, AttendanceEventResponseDto[]>>(
     () => buildEventsMap(initialEvents),

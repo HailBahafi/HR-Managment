@@ -10,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { cn } from '@/shared/utils';
 
@@ -483,13 +484,13 @@ export function DateRangePicker({
         )}
 
         {/* ── Footer ── */}
-        <DialogFooter className="border-t border-border/40 bg-muted/20 px-4 py-3 flex flex-row gap-2 sm:justify-start">
+        <DialogFooter className={dialogFormFooterClass}>
           <Button
             type="button"
             size="sm"
             disabled={!canApply}
             onClick={handleApply}
-            className="flex-1 gap-1.5 rounded-xl font-semibold"
+            className="gap-1.5 rounded-xl font-semibold"
           >
             <Search className="h-3.5 w-3.5" />
             تطبيق
@@ -499,7 +500,7 @@ export function DateRangePicker({
             size="sm"
             variant="outline"
             onClick={handleCancel}
-            className="flex-1 gap-1.5 rounded-xl"
+            className="gap-1.5 rounded-xl"
           >
             <X className="h-3.5 w-3.5" />
             إلغاء

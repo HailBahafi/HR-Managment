@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { disciplinePayrollDeductionsApi } from './api/discipline-payroll-deductions';
 import type { DisciplinePayrollDeductionResponseDto, PayrollDeductionTypeDto, PayrollDeductionStatusDto } from './api/discipline-payroll-deductions';
 import type { HRDisciplinePayrollDeductionRecord, HRViolationDeductionKind, HRDeductionStatus } from './types';
@@ -78,7 +79,7 @@ export const useHRDisciplinePayrollDeductionsStore = create<DedState>()((set) =>
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -90,7 +91,7 @@ export const useHRDisciplinePayrollDeductionsStore = create<DedState>()((set) =>
   },
 
   add: async (d) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const backendType = mapDeductionKindToBackend(d.deductionKind);
     const created = await disciplinePayrollDeductionsApi.create({
       companyId,

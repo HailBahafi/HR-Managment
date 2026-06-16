@@ -17,7 +17,7 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  EmptyState, MinimalDropdown,
+  EmptyState,
 } from '@/features/hr/requests/components/shared-ui';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmployeePicker } from '@/components/ui/employee-picker';
@@ -41,19 +41,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 
-const AUDIENCE_OPTIONS = (Object.entries(CIRCULAR_AUDIENCE_LABELS) as [HRDisciplineCircularAudience, string][]).map(
-  ([v, l]) => ({ value: v, label: l }),
-);
-
 type AudienceFilter = 'all' | HRDisciplineCircularAudience;
 
 interface DraftForm {
   titleAr: string;
   bodyAr: string;
   date: string;
-  audience: HRDisciplineCircularAudience;
-  branchIds: Set<string>;
-  departmentIds: Set<string>;
   targetEmployeeIds: Set<string>;
   /** تنفيذ الإرسال فور الحفظ — الافتراضي لا */
   executeSend: boolean;
@@ -63,42 +56,9 @@ const EMPTY: DraftForm = {
   titleAr: '',
   bodyAr: '',
   date: new Date().toISOString().slice(0, 10),
-  audience: 'all',
-  branchIds: new Set(),
-  departmentIds: new Set(),
   targetEmployeeIds: new Set(),
   executeSend: false,
 };
-
-function IdCheckboxList({
-  options,
-  selected,
-  onSelectedChange,
-}: {
-  options: { id: string; label: string }[];
-  selected: Set<string>;
-  onSelectedChange: (next: Set<string>) => void;
-}) {
-  const toggle = (id: string, checked: boolean) => {
-    const next = new Set(selected);
-    if (checked) next.add(id);
-    else next.delete(id);
-    onSelectedChange(next);
-  };
-  return (
-    <div className="max-h-52 space-y-2 overflow-y-auto rounded-md border border-border bg-muted/15 p-3">
-      {options.map((o) => (
-        <label key={o.id} className="flex cursor-pointer items-center gap-2.5 text-sm">
-          <Checkbox
-            checked={selected.has(o.id)}
-            onCheckedChange={(v) => toggle(o.id, v === true)}
-          />
-          <span className="leading-snug">{o.label}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
 
 function circularAppliesToEmployee(
   c: HRDisciplineCircularRecord,
@@ -161,16 +121,6 @@ export function CircularsClient() {
   const employeeById = React.useMemo(
     () => new Map(m.employees.map((e) => [e.id, e])),
     [m.employees],
-  );
-  const branchOptions = m.branchOptions;
-  const departmentOptions = m.departmentOptions;
-  const branchNameById = React.useMemo(
-    () => Object.fromEntries(branchOptions.map((o) => [o.value, o.label])),
-    [branchOptions],
-  );
-  const departmentNameById = React.useMemo(
-    () => Object.fromEntries(departmentOptions.map((o) => [o.value, o.label])),
-    [departmentOptions],
   );
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -343,20 +293,15 @@ export function CircularsClient() {
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
     if (!m.companyId) { setFormError('تعذر تحديد الشركة'); return; }
 
-    const built = tryBuildCircularAudienceSnapshot(draft, { branchNameById, departmentNameById });
+    const built = tryBuildCircularAudienceSnapshot({
+      audience: 'employees',
+      branchIds: new Set(),
+      departmentIds: new Set(),
+      targetEmployeeIds: draft.targetEmployeeIds,
+    });
     if (!built.ok) { setFormError(built.error); return; }
 
-    const { branchIds, departmentIds, targetEmployeeIds } = built.data;
-
-    const audienceType = toCircularAudienceType(draft.audience);
-    const audienceTargetIds =
-      draft.audience === 'employees'
-        ? targetEmployeeIds
-        : draft.audience === 'branch'
-          ? branchIds
-          : draft.audience === 'department'
-            ? departmentIds
-            : undefined;
+    const { targetEmployeeIds } = built.data;
 
     try {
       await m.add({
@@ -364,8 +309,8 @@ export function CircularsClient() {
         titleAr: draft.titleAr.trim() ? draft.titleAr.trim() : null,
         bodyAr: draft.bodyAr.trim(),
         issueDate: draft.date,
-        audienceType,
-        audienceTargetIds,
+        audienceType: toCircularAudienceType('employees'),
+        audienceTargetIds: targetEmployeeIds,
         sendOnSave: draft.executeSend,
       });
       toast.success(
@@ -540,48 +485,15 @@ export function CircularsClient() {
         <FormField label="تاريخ الإصدار" required>
           <DatePickerInput value={draft.date} onChange={(ymd) => set({ date: ymd })} />
         </FormField>
-        <FormField label="المستلمون" required>
-          <MinimalDropdown
-            value={draft.audience}
-            onChange={(v) => {
-              const next = v as HRDisciplineCircularAudience;
-              set({
-                audience: next,
-                branchIds: new Set(),
-                departmentIds: new Set(),
-                targetEmployeeIds: new Set(),
-              });
-            }}
-            options={AUDIENCE_OPTIONS}
+        <FormField label={`الموظفون المستهدفون${draft.targetEmployeeIds.size > 0 ? ` (${draft.targetEmployeeIds.size})` : ''}`} required>
+          <EmployeePicker
+            variant="form"
+            selectionMode="target"
+            employees={empPickerList}
+            selected={draft.targetEmployeeIds}
+            onChange={(s) => set({ targetEmployeeIds: s })}
           />
         </FormField>
-        {draft.audience === 'branch' ? (
-          <FormField label="الفروع (اختيار متعدد)" required>
-            <IdCheckboxList
-              options={branchOptions.map((o) => ({ id: o.value, label: o.label }))}
-              selected={draft.branchIds}
-              onSelectedChange={(s) => set({ branchIds: s })}
-            />
-          </FormField>
-        ) : null}
-        {draft.audience === 'department' ? (
-          <FormField label="الأقسام (اختيار متعدد)" required>
-            <IdCheckboxList
-              options={departmentOptions.map((o) => ({ id: o.value, label: o.label }))}
-              selected={draft.departmentIds}
-              onSelectedChange={(s) => set({ departmentIds: s })}
-            />
-          </FormField>
-        ) : null}
-        {draft.audience === 'employees' ? (
-          <FormField label="اختيار الموظفين" required>
-            <EmployeePicker
-              employees={empPickerList}
-              selected={draft.targetEmployeeIds}
-              onChange={(s) => set({ targetEmployeeIds: s })}
-            />
-          </FormField>
-        ) : null}
         <FormField label="تنفيذ">
           <p className="mb-2 text-[11px] text-muted-foreground">
             الافتراضي: لا إرسال — يُحفظ التعميم فقط حتى تختار الإرسال من هنا أو من عرض الجدول.

@@ -10,11 +10,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
-import type { AssignmentTargetType, ShiftTemplate } from '@/features/hr/attendance/lib/types';
-import { ASSIGNMENTS_ALL_DEPARTMENTS } from '@/features/hr/attendance/assignment/constants/assignments-panel';
 import type { AssignmentsPanelModel } from '@/features/hr/attendance/assignment/hooks/useAssignmentsPanelModel';
 
 export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel }) {
@@ -27,15 +26,10 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
     setTemplateId,
     effectiveFrom,
     setEffectiveFrom,
-    targetType,
-    onTargetTypeChange,
-    employeeDepartmentFilter,
-    setEmployeeDepartmentFilter,
     selectedIds,
     setSelectedIds,
     activeTemplates,
     multiOptions,
-    departments,
     submit,
   } = model;
 
@@ -48,7 +42,7 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
         <div className="shrink-0 space-y-2 border-b border-border px-6 pb-4 pt-6">
           <DialogHeader className="space-y-2 text-right">
             <DialogTitle className="font-display text-lg">ربط قالب بالموظفين</DialogTitle>
-            <DialogDescription>اختر قالب الحضور وتاريخ التطبيق، ثم حدد الموظفين أو الأقسام المراد ربطهم.</DialogDescription>
+            <DialogDescription>اختر قالب الحضور وتاريخ التطبيق، ثم حدّد الموظفين المراد ربطهم.</DialogDescription>
           </DialogHeader>
         </div>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
@@ -75,57 +69,26 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
               onChange={setEffectiveFrom}
             />
           </div>
-          <div className="space-y-2">
-            <Label>تطبيق على</Label>
-            <Select value={targetType} onValueChange={(v) => onTargetTypeChange(v as AssignmentTargetType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="employee">موظفين</SelectItem>
-                <SelectItem value="department">أقسام</SelectItem>
-                <SelectItem value="location">فروع</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {targetType === 'employee' ? (
-            <div className="space-y-2">
-              <Label>تصفية الموظفين حسب القسم</Label>
-              <Select value={employeeDepartmentFilter} onValueChange={setEmployeeDepartmentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="كل الأقسام" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ASSIGNMENTS_ALL_DEPARTMENTS}>كل الأقسام</SelectItem>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-          <MultiSelect 
-            label="الموظفين"
+          <MultiSelect
+            label="الموظفون"
             options={multiOptions}
             value={[...selectedIds]}
             onChange={(ids) => setSelectedIds(new Set(ids))}
-            placeholder={
-              targetType === 'employee' ? 'اختر موظفين…' : targetType === 'department' ? 'اختر أقسام…' : 'اختر فروع…'
-            }
-            searchPlaceholder={targetType === 'employee' ? 'بحث بالاسم أو القسم…' : 'بحث بالاسم…'}
-            emptyMessage="لا توجد عناصر مطابقة"
+            placeholder="اختر موظفين…"
+            searchPlaceholder="بحث بالاسم أو الرقم…"
+            emptyMessage="لا يوجد موظف مطابق"
             selectAllLabel="تحديد الكل"
             deselectAllLabel="إلغاء التحديد"
             listMaxHeight="min(220px,36vh)"
             popoverPortalContainer={dialogContentEl}
           />
         </div>
-        <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-          <Button variant="outline" type="button" onClick={() => setOpen(false)}>
-            إلغاء
-          </Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button variant="luxe" type="button" onClick={submit} disabled={!templateId || selectedIds.size === 0}>
             تأكيد الربط
+          </Button>
+          <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+            إلغاء
           </Button>
         </DialogFooter>
       </DialogContent>

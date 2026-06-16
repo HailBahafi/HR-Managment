@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   requestApprovalTemplatesApi,
   type RequestApprovalTemplateResponseDto,
@@ -18,7 +19,7 @@ export type { RequestApprovalMode };
 export type { ApiRequestType as RequestTypeOption };
 
 export function useApprovalAssignmentModel() {
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   const [templates, setTemplates] = React.useState<RequestApprovalTemplateResponseDto[]>([]);
   const [requestTypes, setRequestTypes] = React.useState<ApiRequestType[]>([]);
   const [employees, setEmployees] = React.useState<{ id: string; nameAr: string }[]>([]);

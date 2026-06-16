@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { formatLatinNumber } from '@/features/hr/payroll/lib/compensation-preview';
 
@@ -107,7 +108,7 @@ export function CompensationEditConfirmDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 border-t border-border/60 bg-muted/20 px-6 py-4 sm:justify-start">
+        <DialogFooter className={dialogFormFooterClass}>
           <Button
             type="button"
             disabled={!actionsReady}

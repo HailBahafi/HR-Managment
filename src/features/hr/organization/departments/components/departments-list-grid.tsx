@@ -24,6 +24,7 @@ type DepartmentsListGridProps = {
   departments: DepartmentRecord[];
   filtered: FlatNode[];
   branchLabel?: (branchId: string) => string | undefined;
+  companyLabel?: (companyId: string) => string;
   onEdit: (dept: HRDepartmentEntity) => void;
   onDelete: (id: string) => void;
 };
@@ -32,6 +33,7 @@ export function DepartmentsListGrid({
   departments,
   filtered,
   branchLabel,
+  companyLabel,
   onEdit,
   onDelete,
 }: DepartmentsListGridProps) {
@@ -43,33 +45,36 @@ export function DepartmentsListGrid({
         const subDepts = departments.filter((d) => d.parentId === dept.id);
         const branchName = branchLabel?.(record.branchId);
         return (
-          <DirectoryGridCard key={dept.id} interactive hoverLift onClick={() => onEdit(dept)}>
+          <DirectoryGridCard key={dept.id} interactive hoverLift onClick={() => onEdit(dept)} className="p-3.5 space-y-1.5">
             <DirectoryGridCardDecoration />
-            <div className="relative mb-4 flex items-start justify-between">
-              <DirectoryGridCardIconWrap active={dept.isActive}>
-                <Building2 className="h-5 w-5" />
+            <div className="relative mb-2 flex items-start justify-between">
+              <DirectoryGridCardIconWrap active={dept.isActive} className="h-7 w-7">
+                <Building2 className="h-4 w-4" />
               </DirectoryGridCardIconWrap>
               <ActiveBadge active={dept.isActive} />
             </div>
 
-            <div className="relative mb-4">
+            <div className="relative mb-2">
               {parent && (
                 <DirectoryGridCardEyebrow>
                   <Building2 className="h-3 w-3 shrink-0" />
                   <span className="truncate">{parent.nameAr}</span>
                 </DirectoryGridCardEyebrow>
               )}
-              <DirectoryGridCardHeading>{dept.nameAr}</DirectoryGridCardHeading>
+              <DirectoryGridCardHeading className="text-sm">{dept.nameAr}</DirectoryGridCardHeading>
               {record.code ? (
-                <p className="mt-1 text-[10px] text-muted-foreground" dir="ltr">{record.code}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground" dir="ltr">{record.code}</p>
               ) : null}
             </div>
 
             {record.description ? (
-              <p className="relative mb-3 line-clamp-2 text-xs text-muted-foreground">{record.description}</p>
+              <p className="relative mb-1 line-clamp-1 text-xs text-muted-foreground">{record.description}</p>
             ) : null}
 
-            <DirectoryGridCardMetaChips>
+            <DirectoryGridCardMetaChips className="pt-0.5 pb-1 gap-2">
+              {companyLabel ? (
+                <Badge variant="secondary" className="text-[10px] font-normal">{companyLabel(record.companyId)}</Badge>
+              ) : null}
               {branchName ? (
                 <Badge variant="outline" className="text-[10px] font-normal">{branchName}</Badge>
               ) : null}
@@ -97,7 +102,7 @@ export function DepartmentsListGrid({
               )}
             </DirectoryGridCardMetaChips>
 
-            <DirectoryGridCardFooter className="border-border/60 pt-2">
+            <DirectoryGridCardFooter className="border-border/60 pt-1">
               <Button
                 variant="ghost"
                 size="icon"

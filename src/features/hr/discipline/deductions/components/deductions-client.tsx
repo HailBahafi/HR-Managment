@@ -119,11 +119,10 @@ export function DeductionsClient() {
     setDateMeta(m);
   }, []);
 
-  const empPickerList = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const d of deductions) map.set(d.employeeId, d.employeeNameAr);
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [deductions]);
+  const empPickerList = React.useMemo(
+    () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [m.employees],
+  );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 

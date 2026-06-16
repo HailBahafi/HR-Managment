@@ -43,6 +43,7 @@ import {
 } from '@/features/hr/payroll/lib/compensation-preview';
 import { hrPayrollRoutes } from '@/features/hr/payroll/constants/routes';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { employeeAdvancesApi } from '@/features/hr/contracts/lib/api/employee-advances';
 import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-records';
@@ -515,7 +516,7 @@ export function CompensationReportPanel({
     try {
       await advanceReview(period.id);
       const actor = useAuthStore.getState().user?.email ?? undefined;
-      const companyId = useAuthStore.getState().activeCompanyId ?? '';
+      const companyId = getDefaultCompanyId() ?? '';
       const created = await payslipsApi.generate({
         payrollPeriodId: period.id,
         generatedBy: actor,

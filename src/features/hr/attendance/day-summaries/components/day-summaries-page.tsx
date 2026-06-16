@@ -16,6 +16,7 @@ import { DataTable, AppPagination, type ColumnDef } from '@/components/ui/data-t
 import { TableDateCell } from '@/components/ui/table-cells';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import {
   DAY_SUMMARY_STATUS_BADGE,
@@ -78,7 +79,7 @@ function DaySummaryDetailDialog({
 }
 
 export function DaySummariesPage() {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
   const model = useDaySummariesDirectoryModel();
   const [detailRow, setDetailRow] = React.useState<DaySummaryResponseDto | null>(null);
 

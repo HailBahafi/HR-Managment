@@ -28,19 +28,11 @@ export default function JobTitlesPage() {
         onSave={model.handleSave}
         error={model.error}
       >
-        <FormField label="المسمى الوظيفي بالعربية" required>
+        <FormField label="المسمى الوظيفي" required>
           <Input
             value={model.form.titleAr}
             onChange={(e) => model.patch({ titleAr: e.target.value })}
             placeholder="مثال: مدير مبيعات إقليمي"
-          />
-        </FormField>
-        <FormField label="المسمى بالإنجليزية">
-          <Input
-            dir="ltr"
-            value={model.form.titleEn}
-            onChange={(e) => model.patch({ titleEn: e.target.value })}
-            placeholder="Regional Sales Manager"
           />
         </FormField>
         <FormField label="وصف">
@@ -50,17 +42,12 @@ export default function JobTitlesPage() {
             rows={3}
           />
         </FormField>
-        <FormField label="ملاحظات">
-          <Textarea
-            value={model.form.notes}
-            onChange={(e) => model.patch({ notes: e.target.value })}
-            rows={2}
-          />
-        </FormField>
-        <div className="flex items-center justify-between rounded-xl border border-border p-4">
-          <span className="text-sm">نشط</span>
-          <Switch checked={model.form.isActive} onCheckedChange={(v) => model.patch({ isActive: v })} />
-        </div>
+        {model.editId && (
+          <div className="flex items-center justify-between rounded-xl border border-border p-4">
+            <span className="text-sm">نشط</span>
+            <Switch checked={model.form.isActive} onCheckedChange={(v) => model.patch({ isActive: v })} />
+          </div>
+        )}
       </HRSettingsFormDrawer>
 
       <ConfirmationModal

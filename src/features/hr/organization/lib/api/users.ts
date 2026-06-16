@@ -1,4 +1,5 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type { AccessProfile } from '@/features/auth/types/access-profile';
 
 export type UserCompanyLink = {
   id: string;
@@ -100,6 +101,10 @@ export type UsersListQuery = {
   limit?: number;
 };
 
+export type SetDefaultCompanyDto = {
+  companyId: string;
+};
+
 export const usersApi = {
   getAll(query?: UsersListQuery) {
     return apiRequest<PaginatedResult<UserResponseDto>>('/users', { query });
@@ -115,5 +120,11 @@ export const usersApi = {
   },
   remove(id: string) {
     return apiRequest<void>(`/users/${id}`, { method: 'DELETE' });
+  },
+  setDefaultCompany(userId: string, payload: SetDefaultCompanyDto) {
+    return apiRequest<AccessProfile>(`/users/${userId}/default-company`, {
+      method: 'PATCH',
+      body: payload,
+    });
   },
 };

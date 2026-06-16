@@ -9,17 +9,17 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PermissionGate } from '@/components/shared/permission-gate';
-import { companiesApi } from '@/features/hr/organization/lib/api/companies';
 import { branchesApi } from '@/features/hr/organization/lib/api/branches';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import {
   usersApi,
   type UserResponseDto,
   type CreateUserDto,
   type UpdateUserDto,
 } from '@/features/hr/organization/lib/api/users';
-import type { CompanyResponseDto } from '@/features/hr/organization/lib/api/companies';
 import type { BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import {
   EMPTY_USER_FORM,
@@ -40,6 +40,11 @@ export {
   TIMEZONE_OPTIONS,
 } from '@/features/hr/organization/contacts/constants/users-directory';
 
+function userBelongsToCompany(user: UserRecord, companyId: string): boolean {
+  if (user.defaultCompanyId === companyId) return true;
+  return user.companies.some((c) => c.companyId === companyId);
+}
+
 export function useContactsDirectoryModel() {
   useSetPageTitle({
     titleAr: 'المستخدمين',
@@ -47,8 +52,14 @@ export function useContactsDirectoryModel() {
     iconName: 'UserCircle',
   });
 
+  const defaultCompanyId = useDefaultCompanyId();
+  const { data: defaultCompany } = useDefaultCompany();
+  const companies = React.useMemo(
+    () => (defaultCompany ? [defaultCompany] : []),
+    [defaultCompany],
+  );
+
   const [users, setUsers] = React.useState<UserRecord[]>([]);
-  const [companies, setCompanies] = React.useState<CompanyResponseDto[]>([]);
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
@@ -62,17 +73,20 @@ export function useContactsDirectoryModel() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewRow, setViewRow] = React.useState<UserRecord | null>(null);
 
-  const loadData = React.useCallback(async () => {
+  const loadData = React.useCallback(async (companyId: string | null) => {
     setLoading(true);
     setListError(null);
     try {
-      const [res, companiesRes, branchesRes] = await Promise.all([
+      const [res, branchesRes] = await Promise.all([
         usersApi.getAll({ limit: 200 }),
-        companiesApi.getAll({ limit: 200 }),
-        branchesApi.getAll({ limit: 200 }),
+        companyId
+          ? branchesApi.getAll({ companyId, limit: 200 })
+          : Promise.resolve({ items: [] as BranchResponseDto[] }),
       ]);
-      setUsers(res.items);
-      setCompanies(companiesRes.items);
+      const scopedUsers = companyId
+        ? res.items.filter((u) => userBelongsToCompany(u, companyId))
+        : res.items;
+      setUsers(scopedUsers);
       setBranches(branchesRes.items);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'users.load');
@@ -83,8 +97,8 @@ export function useContactsDirectoryModel() {
   }, []);
 
   React.useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void loadData(defaultCompanyId);
+  }, [defaultCompanyId, loadData]);
 
   const patchUserInList = React.useCallback((updated: UserResponseDto) => {
     setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
@@ -97,10 +111,13 @@ export function useContactsDirectoryModel() {
 
   const openCreate = React.useCallback(() => {
     setEditId(null);
-    setForm(EMPTY_USER_FORM);
+    setForm({
+      ...EMPTY_USER_FORM,
+      defaultCompanyId: defaultCompanyId ?? '',
+    });
     setError(null);
     setDrawerOpen(true);
-  }, []);
+  }, [defaultCompanyId]);
 
   const openEdit = React.useCallback((row: UserRecord) => {
     setEditId(row.id);
@@ -109,32 +126,30 @@ export function useContactsDirectoryModel() {
     setDrawerOpen(true);
   }, []);
 
-  const branchesForDefault = React.useMemo(() => {
-    if (!form.defaultCompanyId) return branches;
-    return branches.filter((b) => b.companyId === form.defaultCompanyId);
-  }, [branches, form.defaultCompanyId]);
+  const branchesForDefault = React.useMemo(() => branches, [branches]);
 
-  const buildPayloadBase = () => ({
+  const buildPayloadBase = React.useCallback(() => ({
     email: form.email.trim(),
     fullNameAr: form.fullNameAr.trim() || null,
-    fullNameEn: form.fullNameEn.trim() || null,
     phone: form.phone.trim() || null,
-    avatarUrl: form.avatarUrl.trim() || null,
     userType: form.userType || null,
-    defaultCompanyId: form.defaultCompanyId || null,
+    defaultCompanyId: defaultCompanyId ?? (form.defaultCompanyId || null),
     defaultBranchId: form.defaultBranchId || null,
     employeeId: form.employeeId.trim() || null,
     languageCode: form.languageCode || null,
     timezone: form.timezone || null,
     status: form.status || null,
-    notes: form.notes.trim() || null,
     isActive: form.isActive,
     isVerified: form.isVerified,
-  });
+  }), [defaultCompanyId, form]);
 
   const handleSave = React.useCallback(async () => {
     if (!form.email.trim()) { setError('البريد الإلكتروني مطلوب'); return; }
     if (!editId && !form.password.trim()) { setError('كلمة المرور مطلوبة'); return; }
+    if (!defaultCompanyId && !editId) {
+      setError('لم يتم تحديد الشركة الافتراضية. سجّل الدخول مرة أخرى.');
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -154,7 +169,7 @@ export function useContactsDirectoryModel() {
         await usersApi.create(payload);
         toast.success('تم إنشاء المستخدم');
       }
-      await loadData();
+      await loadData(defaultCompanyId);
       setDrawerOpen(false);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'users.save');
@@ -162,13 +177,13 @@ export function useContactsDirectoryModel() {
     } finally {
       setSaving(false);
     }
-  }, [editId, form, loadData]);
+  }, [buildPayloadBase, defaultCompanyId, editId, form.password, loadData]);
 
   const handleDelete = React.useCallback(async () => {
     if (!confirmId) return;
     try {
       await usersApi.remove(confirmId);
-      await loadData();
+      await loadData(defaultCompanyId);
       setConfirmId(null);
       if (viewRow?.id === confirmId) setViewRow(null);
       toast.success('تم حذف المستخدم');
@@ -177,7 +192,7 @@ export function useContactsDirectoryModel() {
       toast.error(displayMessage);
       setConfirmId(null);
     }
-  }, [confirmId, loadData, viewRow?.id]);
+  }, [confirmId, defaultCompanyId, loadData, viewRow?.id]);
 
   usePageHeaderActions(
     () => (

@@ -4,6 +4,9 @@ import { Building2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   MinimalDropdown,
   ConfirmationModal,
   HRSettingsFormDrawer,
@@ -30,6 +33,7 @@ export default function DepartmentsPage() {
           departments={model.departments}
           filtered={model.filtered}
           branchLabel={model.branchLabel}
+          companyLabel={model.companyLabel}
           onEdit={model.openEdit}
           onDelete={model.confirmDelete}
         />
@@ -50,6 +54,25 @@ export default function DepartmentsPage() {
               placeholder="الموارد البشرية"
             />
           </FormField>
+          <FormField label="الفرع" required span2>
+            {model.editId ? (
+              <Input readOnly value={model.branchLabel(model.draft.branchId) ?? '—'} className="bg-muted/30" />
+            ) : (
+              <Select
+                value={model.draft.branchId || '_none'}
+                onValueChange={(v) => model.patch('branchId', v === '_none' ? '' : v)}
+              >
+                <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">— اختر الفرع —</SelectItem>
+                  {model.formBranches.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.nameAr}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </FormField>
+         
           <FormField label="القسم الأصل" span2>
             <MinimalDropdown
               value={model.draft.parentId}
@@ -59,17 +82,19 @@ export default function DepartmentsPage() {
               disabled={model.parentPickerLoading}
             />
           </FormField>
-          <FormField label="الحالة">
-            <label
-              className={cn(
-                'flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all h-10',
-                model.draft.isActive ? 'border-primary/30 bg-primary/5' : 'border-border',
-              )}
-            >
-              <span className="text-sm font-medium">نشط</span>
-              <Switch checked={model.draft.isActive} onCheckedChange={(v) => model.patch('isActive', v)} />
-            </label>
-          </FormField>
+          {model.editId && (
+            <FormField label="الحالة">
+              <label
+                className={cn(
+                  'flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all h-10',
+                  model.draft.isActive ? 'border-primary/30 bg-primary/5' : 'border-border',
+                )}
+              >
+                <span className="text-sm font-medium">نشط</span>
+                <Switch checked={model.draft.isActive} onCheckedChange={(v) => model.patch('isActive', v)} />
+              </label>
+            </FormField>
+          )}
         </div>
       </HRSettingsFormDrawer>
 

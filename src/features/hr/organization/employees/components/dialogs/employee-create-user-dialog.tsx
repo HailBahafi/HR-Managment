@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import type { EmployeeCreateUserModel } from '@/features/hr/organization/employees/hooks/useEmployeeCreateUser';
 import type { Employee } from '@/features/hr/organization/employees/types';
@@ -73,10 +74,7 @@ export function EmployeeCreateUserDialog({ employee, model }: Props) {
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="ghost" onClick={() => setCreateUserOpen(false)}>
-            إلغاء
-          </Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button
             type="button"
             className="gap-2"
@@ -89,6 +87,9 @@ export function EmployeeCreateUserDialog({ employee, model }: Props) {
               <UserPlus className="h-4 w-4" />
             )}
             إنشاء الحساب
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setCreateUserOpen(false)}>
+            إلغاء
           </Button>
         </DialogFooter>
       </DialogContent>

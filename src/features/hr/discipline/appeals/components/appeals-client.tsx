@@ -40,7 +40,7 @@ import {
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
 import { cn } from '@/shared/utils';
-import { companiesApi } from '@/features/hr/lib/api/companies';
+import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -91,17 +91,9 @@ export function AppealsClient() {
   const hook = useDisciplineAppealsDirectoryModel();
   const { appeals, employees, cases, loading, listError, createAppeal, updateAppeal, decideAppeal, deleteAppeal, reload } = hook;
 
-  const [companyNameAr, setCompanyNameAr] = React.useState('');
-  const [companyNameEn, setCompanyNameEn] = React.useState('');
-  React.useEffect(() => {
-    void (async () => {
-      try {
-        const res = await companiesApi.getAll({ limit: 1 });
-        const c = res.items[0];
-        if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
-      } catch { /* ignore */ }
-    })();
-  }, []);
+  const { data: defaultCompany } = useDefaultCompany();
+  const companyNameAr = defaultCompany?.nameAr ?? '';
+  const companyNameEn = defaultCompany?.nameEn ?? '';
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
@@ -627,7 +619,7 @@ export function AppealsClient() {
             </p>
           </FormField>
 
-          <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
+          <DialogFooter>
             <Button onClick={() => void handleDecide()} disabled={deciding}>
               {deciding ? 'جاري الحفظ…' : 'تأكيد وإرسال'}
             </Button>

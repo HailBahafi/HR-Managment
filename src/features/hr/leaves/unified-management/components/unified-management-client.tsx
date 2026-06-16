@@ -21,6 +21,7 @@ import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import {
   canActOnLeave, getApprovalStage,
@@ -38,6 +39,7 @@ import {
 } from '@/features/hr/requests/lib/api/correction-requests';
 import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { cn } from '@/shared/utils';
 import { toast } from 'sonner';
 import {
@@ -256,7 +258,7 @@ export function UnifiedManagementClient() {
   const { data: employeesResult } = useEmployees();
   const employeesList = React.useMemo(() => employeesResult?.items ?? [], [employeesResult]);
 
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
 
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   React.useEffect(() => {
@@ -861,15 +863,15 @@ function LeaveDetailDialog({ leave, employees, open, onClose, onApprove, onRejec
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 flex-wrap gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-          <Button variant="outline" onClick={onClose}>إغلاق</Button>
-          <Button variant="outline" onClick={onEdit}>تعديل</Button>
+        <DialogFooter className={dialogFormFooterClass}>
           {canAct && (
             <>
-              <Button variant="destructive" onClick={() => { onReject(); onClose(); }}>رفض</Button>
               <Button variant="luxe" onClick={() => { onApprove(); onClose(); }}>موافقة</Button>
+              <Button variant="destructive" onClick={() => { onReject(); onClose(); }}>رفض</Button>
             </>
           )}
+          <Button variant="outline" onClick={onEdit}>تعديل</Button>
+          <Button variant="outline" onClick={onClose}>إغلاق</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1050,9 +1052,9 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
 
           {error && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">{error}</p>}
         </div>
-        <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-          <Button variant="outline" onClick={onClose}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button variant="luxe" onClick={() => void submit()}>{editLeave ? 'حفظ التعديلات' : 'إضافة الإجازة'}</Button>
+          <Button variant="outline" onClick={onClose}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
