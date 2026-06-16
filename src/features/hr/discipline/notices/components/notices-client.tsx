@@ -20,7 +20,6 @@ import { useDisciplineNoticesDirectoryModel, type NoticeRecord } from '@/feature
 import type { HRDisciplineNoticeKind } from '@/features/hr/discipline/lib/types';
 import { NOTICE_KIND_LABELS, NOTICE_KIND_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -35,6 +34,7 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 
 const KIND_OPTIONS = (Object.entries(NOTICE_KIND_LABELS) as [HRDisciplineNoticeKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -48,7 +48,7 @@ const EMPTY: DraftForm = { employeeId: '', kind: 'verbal', reasonAr: '', date: '
 
 export function NoticesClient() {
   const hook = useDisciplineNoticesDirectoryModel();
-  const { notices, employees, cases, loading, listError, createNotice, deleteNotice, reloadNotices } = hook;
+  const { employees, cases, loading, listError, createNotice, deleteNotice, setListFilters, items, pagination, filteredItems, dateFilteredItems, sourceNotices } = hook;
 
   const { data: defaultCompany } = useDefaultCompany();
   const companyNameAr = defaultCompany?.nameAr ?? '';
@@ -69,9 +69,17 @@ export function NoticesClient() {
   );
 
   React.useEffect(() => {
-    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
-    void reloadNotices({ employeeId });
-  }, [selectedEmpIds, reloadNotices]);
+    setListFilters({
+      selectedEmpIds: [...selectedEmpIds],
+      kindFilter,
+      dateFrom: dateBounds.from,
+      dateTo: dateBounds.to,
+    });
+  }, [selectedEmpIds, kindFilter, dateBounds.from, dateBounds.to, setListFilters]);
+
+  const listFiltered = filteredItems;
+  const filtered = dateFilteredItems;
+  const searchFiltered = sourceNotices;
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -83,19 +91,6 @@ export function NoticesClient() {
 
   const empOptions = employees.map(e => ({ value: e.id, label: e.nameAr }));
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
-
-  // Employee filter is handled by the backend via reloadNotices; use notices directly.
-  const searchFiltered = notices;
-
-  const filtered = React.useMemo(
-    () => notices.filter((n) => matchesDateRange(n.date, dateBounds.from, dateBounds.to)),
-    [notices, dateBounds.from, dateBounds.to],
-  );
-
-  const listFiltered = React.useMemo(
-    () => (kindFilter === 'all' ? filtered : filtered.filter((n) => n.kind === kindFilter)),
-    [filtered, kindFilter],
-  );
 
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = { all: filtered.length };
@@ -291,9 +286,10 @@ export function NoticesClient() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير الإنذارات" fileName="discipline-notices.pdf" printable={printable} />
 
+      <DisciplineListViewport>
       {searchFiltered.length === 0 ? (
         <EmptyState title="لا توجد إنذارات مطابقة للبحث أو الموظفين المحددين." />
       ) : filtered.length === 0 ? (
@@ -314,9 +310,11 @@ export function NoticesClient() {
           <p className="text-sm text-muted-foreground">لا توجد إنذارات من نوع «{kindFilter === 'all' ? '' : NOTICE_KIND_LABELS[kindFilter]}» مع عوامل البحث الحالية.</p>
           <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>عرض الكل</Button>
         </div>
-      ) : viewMode === 'cards' ? (
-        <EntityActionCardGrid>
-          {listFiltered.map((n) => (
+      ) : (
+        <DisciplinePaginatedList pagination={pagination}>
+          {viewMode === 'cards' ? (
+          <EntityActionCardGrid>
+            {items.map((n) => (
             <EntityActionCard
               key={n.id}
               title={n.employeeNameAr ?? '—'}
@@ -333,19 +331,22 @@ export function NoticesClient() {
               onClick={() => setDetailRow(n)}
               onDelete={() => setDeleteId(n.id)}
             />
-          ))}
-        </EntityActionCardGrid>
-      ) : (
-        <DataTable
-          variant="directory"
-          alwaysShowTable
-          tableClassName="min-w-[640px]"
-          columns={columns}
-          data={listFiltered}
-          keyExtractor={(n) => n.id}
-          onRowClick={(n) => setDetailRow(n)}
-        />
+            ))}
+          </EntityActionCardGrid>
+          ) : (
+          <DataTable
+            variant="directory"
+            alwaysShowTable
+            tableClassName="min-w-[640px]"
+            columns={columns}
+            data={items}
+            keyExtractor={(n) => n.id}
+            onRowClick={(n) => setDetailRow(n)}
+          />
+          )}
+        </DisciplinePaginatedList>
       )}
+      </DisciplineListViewport>
 
       <HRSettingsFormDrawer open={drawerOpen} onOpenChange={setDrawerOpen} title="إضافة إنذار" size="lg" onSave={() => void handleSave()} saveDisabled={saving} error={formError}>
         <FormField label="الموظف" required>

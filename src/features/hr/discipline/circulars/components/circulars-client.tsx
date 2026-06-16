@@ -30,7 +30,6 @@ import {
 } from '@/features/hr/discipline/lib/types';
 import type { HRDisciplineCircularRecord } from '@/features/hr/discipline/lib/types';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -40,6 +39,7 @@ import { tryBuildCircularAudienceSnapshot } from '@/features/hr/discipline/circu
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 
 type AudienceFilter = 'all' | HRDisciplineCircularAudience;
 
@@ -60,49 +60,13 @@ const EMPTY: DraftForm = {
   executeSend: false,
 };
 
-function circularAppliesToEmployee(
-  c: HRDisciplineCircularRecord,
-  empId: string,
-  branchId: string | null,
-  departmentId: string | null,
-): boolean {
-  switch (c.audience) {
-    case 'all':
-      return true;
-    case 'employees':
-      return c.targetEmployeeIds.includes(empId);
-    case 'branch':
-      if (!branchId) return false;
-      return c.branchIds.length > 0 && c.branchIds.includes(branchId);
-    case 'department':
-      if (!departmentId) return false;
-      return c.departmentIds.length > 0 && c.departmentIds.includes(departmentId);
-    default:
-      return false;
-  }
-}
-
-function circularMatchesEmpToolbarFilter(
-  c: HRDisciplineCircularRecord,
-  selectedEmpIds: Set<string>,
-  employeeById: Map<string, { branchId: string | null; departmentId: string | null }>,
-): boolean {
-  if (selectedEmpIds.size === 0) return true;
-  for (const empId of selectedEmpIds) {
-    const emp = employeeById.get(empId);
-    if (!emp) continue;
-    if (circularAppliesToEmployee(c, empId, emp.branchId, emp.departmentId)) return true;
-  }
-  return false;
-}
-
 function canMutateCircular(c: HRDisciplineCircularRecord) {
   return !c.sentAt;
 }
 
 export function CircularsClient() {
   const m = useDisciplineCircularsDirectoryModel();
-  const { circulars } = m;
+  const { setListFilters } = m;
 
   const [q, setQ] = React.useState('');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
@@ -118,10 +82,6 @@ export function CircularsClient() {
     () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
     [m.employees],
   );
-  const employeeById = React.useMemo(
-    () => new Map(m.employees.map((e) => [e.id, e])),
-    [m.employees],
-  );
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -130,25 +90,19 @@ export function CircularsClient() {
 
   const [detailCircular, setDetailCircular] = React.useState<HRDisciplineCircularRecord | null>(null);
 
-  const searchFiltered = React.useMemo(
-    () =>
-      circulars.filter((c) => {
-        const hay = `${c.titleAr} ${c.bodyAr} ${c.audienceSummaryAr}`;
-        const matchQ = !q || hay.includes(q);
-        return matchQ && circularMatchesEmpToolbarFilter(c, selectedEmpIds, employeeById);
-      }),
-    [circulars, employeeById, q, selectedEmpIds],
-  );
+  React.useEffect(() => {
+    setListFilters({
+      q,
+      selectedEmpIds: [...selectedEmpIds],
+      audienceFilter,
+      dateFrom: dateBounds.from,
+      dateTo: dateBounds.to,
+    });
+  }, [q, selectedEmpIds, audienceFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
-  const filtered = React.useMemo(
-    () => searchFiltered.filter((c) => matchesDateRange(c.date, dateBounds.from, dateBounds.to)),
-    [searchFiltered, dateBounds.from, dateBounds.to],
-  );
-
-  const listFiltered = React.useMemo(
-    () => (audienceFilter === 'all' ? filtered : filtered.filter((c) => c.audience === audienceFilter)),
-    [filtered, audienceFilter],
-  );
+  const listFiltered = m.filteredItems;
+  const filtered = m.dateFilteredItems;
+  const searchFiltered = m.searchFilteredItems;
 
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = { all: filtered.length };
@@ -327,7 +281,7 @@ export function CircularsClient() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
 
       {/* Detail dialog */}
       <Dialog open={!!detailCircular} onOpenChange={(v) => !v && setDetailCircular(null)}>
@@ -368,6 +322,7 @@ export function CircularsClient() {
         </p>
       ) : null}
 
+      <DisciplineListViewport>
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
       ) : searchFiltered.length === 0 ? (
@@ -400,9 +355,11 @@ export function CircularsClient() {
             عرض الكل
           </Button>
         </div>
-      ) : viewMode === 'cards' ? (
-        <EntityActionCardGrid>
-          {listFiltered.map((c) => (
+      ) : (
+        <DisciplinePaginatedList pagination={m.pagination}>
+          {viewMode === 'cards' ? (
+          <EntityActionCardGrid>
+            {m.items.map((c) => (
             <EntityActionCard
               key={c.id}
               title={c.titleAr || 'تعميم'}
@@ -449,19 +406,22 @@ export function CircularsClient() {
                 ) : undefined
               }
             />
-          ))}
-        </EntityActionCardGrid>
-      ) : (
-        <DataTable
-          variant="directory"
-          alwaysShowTable
-          tableClassName="min-w-[880px]"
-          columns={columns}
-          data={listFiltered}
-          keyExtractor={(c) => c.id}
-          onRowClick={(c) => setDetailCircular(c)}
-        />
+            ))}
+          </EntityActionCardGrid>
+          ) : (
+          <DataTable
+            variant="directory"
+            alwaysShowTable
+            tableClassName="min-w-[880px]"
+            columns={columns}
+            data={m.items}
+            keyExtractor={(c) => c.id}
+            onRowClick={(c) => setDetailCircular(c)}
+          />
+          )}
+        </DisciplinePaginatedList>
       )}
+      </DisciplineListViewport>
 
       <HRSettingsFormDrawer
         open={drawerOpen}

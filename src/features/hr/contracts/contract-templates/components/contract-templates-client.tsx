@@ -23,6 +23,7 @@ import {
   TEMPLATE_WORK_ARRANGEMENT_LABELS,
 } from '@/features/hr/contracts/contract-templates/constants/contract-template-options';
 import { ContractTemplateFormDialog } from '@/features/hr/contracts/contract-templates/dialogs/contract-template-form-dialog';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 
 function fmtSalary(amount: string | null | undefined, currency: string): string {
   if (!amount) return '—';
@@ -44,33 +45,37 @@ export function ContractTemplatesClient() {
 
   const companyId = useDefaultCompanyId() ?? '';
 
-  const [items, setItems] = React.useState<ContractTemplateDto[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as ContractTemplateDto[], total: 0 };
+    setError(null);
+    try {
+      const res = await contractTemplatesApi.list({ companyId, page, limit: pageSize });
+      const items = [...res.items].sort(
+        (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.nameAr.localeCompare(b.nameAr, 'ar'),
+      );
+      return { items, total: res.pagination.total };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'contract-templates.load');
+      setError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [companyId]);
+
+  const {
+    items,
+    loading,
+    pagination,
+    reload: load,
+  } = useServerDirectoryPagination<ContractTemplateDto>(loadPage, {
+    enabled: !!companyId,
+  });
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editItem, setEditItem] = React.useState<ContractTemplateDto | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<ContractTemplateDto | null>(null);
   const [deleting, setDeleting] = React.useState(false);
-
-  const load = React.useCallback(async () => {
-    if (!companyId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await contractTemplatesApi.list({ companyId, limit: 200 });
-      setItems(
-        [...res.items].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.nameAr.localeCompare(b.nameAr, 'ar')),
-      );
-    } catch (err) {
-      const { displayMessage } = handleApiError(err, 'contract-templates.load');
-      setError(displayMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [companyId]);
-
-  React.useEffect(() => { void load(); }, [load]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -103,14 +108,12 @@ export function ContractTemplatesClient() {
   );
 
   return (
-    <div className="space-y-5">
-      {loading ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">جاري التحميل…</div>
-      ) : error ? (
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
+      {error ? (
         <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
         </div>
-      ) : items.length === 0 ? (
+      ) : !loading && items.length === 0 && pagination.total === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border py-20 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <FileStack className="h-7 w-7" />
@@ -127,8 +130,10 @@ export function ContractTemplatesClient() {
           </Button>
         </div>
       ) : (
+        <DirectoryPagedViews items={items} serverPagination={pagination} loading={loading}>
+          {(pageItems) => (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item) => {
+          {pageItems.map((item) => {
             const allowanceTotal = totalAllowances(item.allowanceLines);
             const nature = TEMPLATE_CONTRACT_NATURE_LABELS[item.defaultContractNature as keyof typeof TEMPLATE_CONTRACT_NATURE_LABELS] ?? item.defaultContractNature;
             const arrangement = TEMPLATE_WORK_ARRANGEMENT_LABELS[item.defaultWorkArrangement as keyof typeof TEMPLATE_WORK_ARRANGEMENT_LABELS] ?? item.defaultWorkArrangement;
@@ -238,6 +243,8 @@ export function ContractTemplatesClient() {
             );
           })}
         </div>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <ContractTemplateFormDialog

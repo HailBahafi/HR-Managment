@@ -14,6 +14,7 @@ import {
   EmptyState, ActiveBadge, MinimalDropdown,
 } from '@/features/hr/requests/components/shared-ui';
 import { useViolationTypesDirectoryModel } from '@/features/hr/discipline/violation-types/hooks/useViolationTypesDirectoryModel';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 import type { HRViolationDeductionKind } from '@/features/hr/discipline/lib/types';
 import { DEDUCTION_KIND_LABELS } from '@/features/hr/discipline/lib/types';
 import { cn } from '@/shared/utils';
@@ -24,23 +25,25 @@ export function ViolationTypesClient() {
   const m = useViolationTypesDirectoryModel();
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.listError}</p>
       ) : null}
-      <div className="flex justify-end">
+      <div className="flex justify-end shrink-0">
         <Button variant="luxe" size="sm" onClick={m.openCreate} disabled={m.loading}>
           <Plus className="h-4 w-4 ml-1" />إضافة نوع
         </Button>
       </div>
 
+      <DisciplineListViewport>
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
-      ) : m.types.length === 0 ? (
+      ) : m.types.length === 0 && !m.loading ? (
         <EmptyState icon={AlertTriangle} title="لا توجد أنواع مخالفات" />
       ) : (
-        <EntityActionCardGrid>
-          {m.types.map((t) => (
+        <DisciplinePaginatedList pagination={m.pagination}>
+          <EntityActionCardGrid>
+            {m.types.map((t) => (
             <EntityActionCard
               key={t.id}
               title={t?.nameAr ?? '—'}
@@ -60,9 +63,11 @@ export function ViolationTypesClient() {
               onEdit={() => m.openEdit(t)}
               onDelete={() => m.setDeleteId(t.id)}
             />
-          ))}
-        </EntityActionCardGrid>
+            ))}
+          </EntityActionCardGrid>
+        </DisciplinePaginatedList>
       )}
+      </DisciplineListViewport>
 
       <HRSettingsFormDrawer
         open={m.drawerOpen}

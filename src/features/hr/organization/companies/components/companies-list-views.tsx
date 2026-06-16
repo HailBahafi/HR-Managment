@@ -16,11 +16,12 @@ import {
   DirectoryGridCardTitle,
 } from '@/components/ui/directory-grid-card';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import type { CompanyRow } from '@/features/hr/organization/companies/constants/companies-directory';
 import type { CompaniesDirectoryModel } from '@/features/hr/organization/companies/hooks/useCompaniesDirectoryModel';
 
 export function CompaniesListViews({ model }: { model: CompaniesDirectoryModel }) {
-  const { companies, layoutView, setViewRow, openEdit, setConfirmId } = model;
+  const { companies, layoutView, pagination, loading, setViewRow, openEdit, setConfirmId } = model;
 
   const columns = React.useMemo((): ColumnDef<CompanyRow>[] => [
     {
@@ -77,13 +78,19 @@ export function CompaniesListViews({ model }: { model: CompaniesDirectoryModel }
     },
   ], [openEdit, setConfirmId]);
 
-  if (companies.length === 0) {
+  if (!loading && companies.length === 0) {
     return <EmptyState icon={Building2} title="لا توجد شركات" description="أضف شركة جديدة للبدء." />;
   }
 
-  return layoutView === 'grid' ? (
+  return (
+    <DirectoryPagedViews
+      items={companies}
+      serverPagination={pagination}
+      loading={loading}
+    >
+      {(pageItems) => layoutView === 'grid' ? (
     <DirectoryGrid>
-      {companies.map((row) => (
+      {pageItems.map((row) => (
         <DirectoryGridCard key={row.id} interactive onClick={() => setViewRow(row)}>
           <DirectoryGridCardHeader>
             <DirectoryGridCardTitle>{row.nameAr}</DirectoryGridCardTitle>
@@ -118,9 +125,11 @@ export function CompaniesListViews({ model }: { model: CompaniesDirectoryModel }
       variant="directory"
       alwaysShowTable
       columns={columns}
-      data={companies}
+      data={pageItems}
       keyExtractor={(row) => row.id}
       onRowClick={(row) => setViewRow(row)}
     />
+  )}
+    </DirectoryPagedViews>
   );
 }

@@ -34,14 +34,10 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
     openCpDialog,
     shiftOpen,
     setShiftOpen,
-    shiftMode,
-    setShiftMode,
     shiftTemplateId,
     setShiftTemplateId,
     shiftDate,
     setShiftDate,
-    shiftHours,
-    setShiftHours,
     shiftUnlinkTarget,
     setShiftUnlinkTarget,
     submitShift,
@@ -220,14 +216,10 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
         employeeName={employee.name}
         shiftOpen={shiftOpen}
         setShiftOpen={setShiftOpen}
-        shiftMode={shiftMode}
-        setShiftMode={setShiftMode}
         shiftTemplateId={shiftTemplateId}
         setShiftTemplateId={setShiftTemplateId}
         shiftDate={shiftDate}
         setShiftDate={setShiftDate}
-        shiftHours={shiftHours}
-        setShiftHours={setShiftHours}
         shiftUnlinkTarget={shiftUnlinkTarget}
         setShiftUnlinkTarget={setShiftUnlinkTarget}
         submitShift={submitShift}

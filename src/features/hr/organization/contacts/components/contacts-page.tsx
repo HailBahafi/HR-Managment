@@ -28,7 +28,7 @@ export default function ContactsPage() {
   const model = useContactsDirectoryModel();
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <ContactsListViews model={model} />
 
       <HRSettingsFormDrawer

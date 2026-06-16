@@ -12,7 +12,8 @@ import {
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
-import { DataTable, AppPagination, type ColumnDef } from '@/components/ui/data-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { TableDateCell } from '@/components/ui/table-cells';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -162,8 +163,17 @@ export function DaySummariesPage() {
           description="غيّر نطاق التاريخ أو نفّذ «تحديث البيانات» لإعادة الحساب من الأحداث."
         />
       ) : (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-          <div className="min-w-0">
+        <PagedListViewport>
+          <PaginatedListShell
+            pagination={{
+              page: model.page,
+              pageSize: model.limit,
+              total: model.total,
+              totalPages: Math.max(1, Math.ceil(model.total / model.limit)),
+              setPage: model.setPage,
+              setPageSize: model.setLimit,
+            }}
+          >
             <DataTable
               columns={columns}
               data={model.items}
@@ -172,18 +182,8 @@ export function DaySummariesPage() {
               alwaysShowTable
               onRowClick={(row) => setDetailRow(row)}
             />
-          </div>
-          <div className="sticky bottom-0 z-10 shrink-0 border-t border-border/60 bg-background/95 py-3 backdrop-blur-sm supports-backdrop-filter:bg-background/80">
-            <AppPagination
-              page={model.page}
-              pageSize={model.limit}
-              total={model.total}
-              onPageChange={model.setPage}
-              onPageSizeChange={model.setLimit}
-              pageSizeOptions={[50, 100, 150, 200]}
-            />
-          </div>
-        </div>
+          </PaginatedListShell>
+        </PagedListViewport>
       )}
 
       <DaySummaryDetailDialog

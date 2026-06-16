@@ -31,7 +31,7 @@ function mapDepartment(r: DepartmentResponseDto): HRDepartmentEntity {
 
 // ─── Mapping API → frontend type ─────────────────────────────────────────────
 
-function mapApiRequestType(r: ApiRequestType): HRRequestTypeEntity {
+export function mapApiRequestType(r: ApiRequestType): HRRequestTypeEntity {
   return {
     id: r.id,
     departmentId: r.departmentId ?? HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,

@@ -1,5 +1,8 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 import type { UserResponseDto } from '@/features/hr/organization/lib/api/users';
+import type { EmployeeAssignmentResponseDto } from '@/features/hr/organization/employees/lib/api/employee-assignments';
+
+export type { EmployeeAssignmentResponseDto };
 
 export type EmployeeResponseDto = {
   id: string;
@@ -46,6 +49,7 @@ export type EmployeeResponseDto = {
   departmentId: string | null;
   departmentNameAr: string | null;
   meta: Record<string, unknown> | null;
+  assignment?: EmployeeAssignmentResponseDto | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -69,6 +73,12 @@ export type CreateEmployeeDto = {
   birthDate?: string | null;
   maritalStatus?: string | null;
   role?: string | null;
+  /** Primary org assignment created with the employee. */
+  companyId?: string;
+  branchId?: string;
+  departmentId?: string | null;
+  jobTitleId?: string | null;
+  assignmentIsPrimary?: boolean;
 };
 
 /** Matches PATCH /hr/employees/{id} — no allowance fields (not in backend schema). */

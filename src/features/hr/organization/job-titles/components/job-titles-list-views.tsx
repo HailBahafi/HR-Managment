@@ -14,11 +14,12 @@ import {
   DirectoryGridCardTitle,
 } from '@/components/ui/directory-grid-card';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import type { JobTitlesDirectoryModel } from '@/features/hr/organization/job-titles/hooks/useJobTitlesDirectoryModel';
 import type { JobTitleTemplateRecord } from '@/features/hr/organization/job-titles/services/job-titles.service';
 
 export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }) {
-  const { templates, layoutView, setViewRow, openEdit, setConfirmId, companyLabel } = model;
+  const { templates, layoutView, pagination, loading, setViewRow, openEdit, setConfirmId, companyLabel } = model;
 
   const columns = React.useMemo((): ColumnDef<JobTitleTemplateRecord>[] => [
     {
@@ -70,12 +71,15 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
   ], [companyLabel, openEdit, setConfirmId]);
 
   return (
-    <>
-      {templates.length === 0 ? (
-        <EmptyState icon={Briefcase} title="لا توجد قوالب" description="أضف مسميات وظيفية شائعة في شركتك." />
-      ) : layoutView === 'grid' ? (
+    <DirectoryPagedViews
+      items={templates}
+      serverPagination={pagination}
+      loading={loading}
+      empty={<EmptyState icon={Briefcase} title="لا توجد قوالب" description="أضف مسميات وظيفية شائعة في شركتك." />}
+    >
+      {(pageItems) => layoutView === 'grid' ? (
         <DirectoryGrid>
-          {templates.map((row) => (
+          {pageItems.map((row) => (
             <DirectoryGridCard key={row.id} interactive onClick={() => setViewRow(row)}>
               <DirectoryGridCardHeader>
                 <DirectoryGridCardTitle className="leading-snug">{row.titleAr}</DirectoryGridCardTitle>
@@ -103,11 +107,11 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
           variant="directory"
           alwaysShowTable
           columns={columns}
-          data={templates}
+          data={pageItems}
           keyExtractor={(row) => row.id}
           onRowClick={(row) => setViewRow(row)}
         />
       )}
-    </>
+    </DirectoryPagedViews>
   );
 }

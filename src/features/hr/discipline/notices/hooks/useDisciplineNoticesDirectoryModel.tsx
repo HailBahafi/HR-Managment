@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-records';
@@ -11,6 +13,7 @@ import {
   type CreateDisciplineNoticeDto,
 } from '@/features/hr/discipline/lib/api/discipline-notices';
 import type { HRDisciplineNoticeKind } from '@/features/hr/discipline/lib/types';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 
 export type NoticeEmployee = { id: string; nameAr: string };
 export type NoticeCase = { id: string; caseNumber: string; employeeId: string; employeeNameAr: string };
@@ -27,6 +30,20 @@ export type NoticeRecord = {
   attachmentsNote: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type NoticeListFilters = {
+  selectedEmpIds: string[];
+  kindFilter: 'all' | HRDisciplineNoticeKind;
+  dateFrom: string;
+  dateTo: string;
+};
+
+const DEFAULT_LIST_FILTERS: NoticeListFilters = {
+  selectedEmpIds: [],
+  kindFilter: 'all',
+  dateFrom: '',
+  dateTo: '',
 };
 
 const NOTICE_KIND_MAP: Record<string, HRDisciplineNoticeKind> = {
@@ -55,75 +72,152 @@ function mapNotice(
   };
 }
 
+function applyNoticeClientFilters(
+  notices: NoticeRecord[],
+  filters: NoticeListFilters,
+): NoticeRecord[] {
+  const selected = new Set(filters.selectedEmpIds);
+  return notices.filter((n) => {
+    if (selected.size > 1 && !selected.has(n.employeeId)) return false;
+    if (!matchesDateRange(n.date, filters.dateFrom, filters.dateTo)) return false;
+    if (filters.kindFilter !== 'all' && n.kind !== filters.kindFilter) return false;
+    return true;
+  });
+}
+
 export function useDisciplineNoticesDirectoryModel() {
-  const [notices, setNotices] = React.useState<NoticeRecord[]>([]);
+  const [listFilters, setListFilters] = React.useState<NoticeListFilters>(DEFAULT_LIST_FILTERS);
+  const [sourceNotices, setSourceNotices] = React.useState<NoticeRecord[]>([]);
   const [employees, setEmployees] = React.useState<NoticeEmployee[]>([]);
   const [cases, setCases] = React.useState<NoticeCase[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
   const companyIdRef = React.useRef<string | null>(null);
   const employeeMapRef = React.useRef<Map<string, string>>(new Map());
 
-  const reloadNotices = React.useCallback(async (params?: { employeeId?: string }) => {
-    const cid = companyIdRef.current;
-    if (!cid) return;
-    setLoading(true);
-    setListError(null);
-    try {
-      const noticesRes = await disciplineNoticesApi.getAll({
-        companyId: cid,
-        limit: 200,
-        ...(params?.employeeId ? { employeeId: params.employeeId } : {}),
-      });
-      setNotices(noticesRes.items.map((n) => mapNotice(n, employeeMapRef.current)));
-    } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-notices.load');
-      setListError(displayMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const bulkMode = Boolean(
+    listFilters.dateFrom
+    || listFilters.dateTo
+    || listFilters.kindFilter !== 'all'
+    || listFilters.selectedEmpIds.length > 1,
+  );
 
-  const reload = React.useCallback(async () => {
-    setLoading(true);
-    setListError(null);
-    try {
-      const scope = await resolveOrganizationScope();
-      const cid = scope.companyId ?? null;
-      setCompanyId(cid);
-      companyIdRef.current = cid;
+  const apiEmployeeId = listFilters.selectedEmpIds.length === 1
+    ? listFilters.selectedEmpIds[0]
+    : undefined;
 
-      const [employeesRes, recordsRes, noticesRes] = await Promise.all([
-        employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-        violationRecordsApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-        disciplineNoticesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-      ]);
+  const loadReferenceData = React.useCallback(async () => {
+    const scope = await resolveOrganizationScope();
+    const cid = scope.companyId ?? null;
+    setCompanyId(cid);
+    companyIdRef.current = cid;
 
-      const employeeMap = new Map(employeesRes.items.map((e) => [e.id, e.nameAr]));
-      employeeMapRef.current = employeeMap;
-      setEmployees(employeesRes.items.map((e) => ({ id: e.id, nameAr: e.nameAr })));
-      setCases(
-        recordsRes.items.map((r) => ({
-          id: r.id,
-          caseNumber: r.recordNumber,
-          employeeId: r.employeeId,
-          employeeNameAr: employeeMap.get(r.employeeId) ?? r.employeeId,
-        })),
-      );
-      setNotices(noticesRes.items.map((n) => mapNotice(n, employeeMap)));
-    } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-notices.load');
-      setListError(displayMessage);
-    } finally {
-      setLoading(false);
-    }
+    const [employeesRes, recordsRes] = await Promise.all([
+      employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+      violationRecordsApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+    ]);
+
+    const employeeMap = new Map(employeesRes.items.map((e) => [e.id, e.nameAr]));
+    employeeMapRef.current = employeeMap;
+    setEmployees(employeesRes.items.map((e) => ({ id: e.id, nameAr: e.nameAr })));
+    setCases(
+      recordsRes.items.map((r) => ({
+        id: r.id,
+        caseNumber: r.recordNumber,
+        employeeId: r.employeeId,
+        employeeNameAr: employeeMap.get(r.employeeId) ?? r.employeeId,
+      })),
+    );
   }, []);
 
   React.useEffect(() => {
-    void reload();
-  }, [reload]);
+    void loadReferenceData().catch(() => undefined);
+  }, [loadReferenceData]);
+
+  const buildNoticesQuery = React.useCallback(
+    (page: number, limit: number) => ({
+      companyId: companyIdRef.current!,
+      page,
+      limit,
+      ...(apiEmployeeId ? { employeeId: apiEmployeeId } : {}),
+    }),
+    [apiEmployeeId],
+  );
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    setListError(null);
+    try {
+      if (!companyIdRef.current) {
+        const scope = await resolveOrganizationScope();
+        companyIdRef.current = scope.companyId ?? null;
+        setCompanyId(companyIdRef.current);
+      }
+      if (!companyIdRef.current) return { items: [], total: 0 };
+
+      const res = await disciplineNoticesApi.getAll(buildNoticesQuery(page, pageSize));
+      const items = res.items.map((n) => mapNotice(n, employeeMapRef.current));
+      setSourceNotices(items);
+      const filtered = applyNoticeClientFilters(items, listFilters);
+      return { items: filtered, total: res.pagination.total };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-notices.load');
+      setListError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [buildNoticesQuery, listFilters]);
+
+  const loadBulk = React.useCallback(async () => {
+    setListError(null);
+    try {
+      if (!companyIdRef.current) {
+        const scope = await resolveOrganizationScope();
+        companyIdRef.current = scope.companyId ?? null;
+        setCompanyId(companyIdRef.current);
+      }
+      if (!companyIdRef.current) return { items: [], total: 0 };
+
+      const res = await fetchAllPaginatedItems((page, limit) =>
+        disciplineNoticesApi.getAll(buildNoticesQuery(page, limit)),
+      );
+      const items = res.items.map((n) => mapNotice(n, employeeMapRef.current));
+      setSourceNotices(items);
+      const filtered = applyNoticeClientFilters(items, listFilters);
+      return { items: filtered, total: filtered.length };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-notices.load');
+      setListError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [buildNoticesQuery, listFilters]);
+
+  const {
+    items,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<NoticeRecord>(loadPage, {
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    enabled: !!companyIdRef.current || true,
+    resetDeps: [
+      apiEmployeeId,
+      listFilters.dateFrom,
+      listFilters.dateTo,
+      listFilters.kindFilter,
+      listFilters.selectedEmpIds.join(','),
+    ],
+  });
+
+  const filteredItems = React.useMemo(
+    () => applyNoticeClientFilters(sourceNotices, listFilters),
+    [listFilters, sourceNotices],
+  );
+
+  const dateFilteredItems = React.useMemo(
+    () => sourceNotices.filter((n) => matchesDateRange(n.date, listFilters.dateFrom, listFilters.dateTo)),
+    [listFilters.dateFrom, listFilters.dateTo, sourceNotices],
+  );
 
   const createNotice = React.useCallback(
     async (payload: {
@@ -134,9 +228,10 @@ export function useDisciplineNoticesDirectoryModel() {
       linkedCaseId?: string | null;
       attachmentsNote?: string | null;
     }) => {
-      if (!companyId) throw new Error('تعذر تحديد الشركة');
+      const cid = companyId ?? companyIdRef.current;
+      if (!cid) throw new Error('تعذر تحديد الشركة');
       const dto: CreateDisciplineNoticeDto = {
-        companyId,
+        companyId: cid,
         employeeId: payload.employeeId,
         noticeKind: payload.kind,
         reasonAr: payload.reasonAr,
@@ -158,5 +253,21 @@ export function useDisciplineNoticesDirectoryModel() {
     [reload],
   );
 
-  return { notices, employees, cases, companyId, loading, listError, createNotice, deleteNotice, reloadNotices };
+  return {
+    items,
+    filteredItems,
+    dateFilteredItems,
+    sourceNotices,
+    employees,
+    cases,
+    companyId,
+    loading,
+    pagination,
+    listError,
+    listFilters,
+    setListFilters,
+    createNotice,
+    deleteNotice,
+    reload,
+  };
 }

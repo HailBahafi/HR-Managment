@@ -20,7 +20,7 @@ interface Props {
 export function HRDisciplineSectionRoot({ section, titleAr }: Props) {
   useSetPageTitle({ titleAr, descriptionAr: 'الانضباط الوظيفي وإدارة المخالفات', iconName: 'ShieldAlert' });
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-0 flex-1 flex-col">
       {section === 'violation-types' && <ViolationTypesClient />}
       {section === 'approval-assignment' && <DisciplineApprovalClient />}
       {section === 'violation-cases' && <ViolationCasesClient />}

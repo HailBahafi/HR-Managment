@@ -10,6 +10,8 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PermissionGate } from '@/components/shared/permission-gate';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
+import type { DeptTreeNode } from '@/features/hr/requests/lib/hierarchy-utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
@@ -36,7 +38,6 @@ export function useDepartmentsDirectoryModel() {
   const { data: defaultCompany } = useDefaultCompany();
 
   const [departments, setDepartments] = React.useState<DepartmentRecord[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   const [formBranches, setFormBranches] = React.useState<BranchResponseDto[]>([]);
@@ -80,39 +81,40 @@ export function useDepartmentsDirectoryModel() {
   const [parentPickerDepartments, setParentPickerDepartments] = React.useState<DepartmentRecord[]>([]);
   const [parentPickerLoading, setParentPickerLoading] = React.useState(false);
 
-  const reload = React.useCallback(async (
-    companyId: string | null,
-    isActiveFilter?: boolean,
-    branchOverride?: string,
-  ) => {
-    if (!companyId) {
+  const loadBulk = React.useCallback(async () => {
+    if (!defaultCompanyId) {
       setDepartments([]);
       setBranches([]);
-      setLoading(false);
-      return;
+      return { items: [] as DeptTreeNode[], total: 0 };
     }
-    setLoading(true);
     setListError(null);
     try {
       const data = await loadDepartmentsDirectory({
-        companyId,
-        ...(isActiveFilter !== undefined ? { isActive: isActiveFilter } : {}),
-        branchId: branchOverride === 'all' || !branchOverride ? null : branchOverride,
+        companyId: defaultCompanyId,
+        ...(filterActive ? { isActive: true } : {}),
+        branchId: branchFilter === 'all' ? null : branchFilter,
       });
       setDepartments(data.departments);
-      const branchRes = await branchesApi.getAll({ companyId, limit: 200 });
+      const branchRes = await branchesApi.getAll({ companyId: defaultCompanyId, limit: 200 });
       setBranches(branchRes.items);
+      const flat = flattenDepartmentsTree(buildDepartmentForest(data.departments));
+      return { items: flat, total: flat.length };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'departments.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
-  }, []);
+  }, [branchFilter, defaultCompanyId, filterActive]);
 
-  React.useEffect(() => {
-    void reload(defaultCompanyId, filterActive ? true : undefined, branchFilter);
-  }, [reload, filterActive, branchFilter, defaultCompanyId]);
+  const {
+    items: filtered,
+    loading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<DeptTreeNode>(
+    async () => ({ items: [], total: 0 }),
+    { bulkMode: true, loadBulk, enabled: !!defaultCompanyId, resetDeps: [defaultCompanyId, branchFilter, filterActive] },
+  );
 
   const loadFormBranches = React.useCallback(async (companyId: string | null) => {
     if (!companyId) {
@@ -157,9 +159,6 @@ export function useDepartmentsDirectoryModel() {
   }, [drawerOpen, loadParentPickerDepartments]);
 
   const forest = React.useMemo(() => buildDepartmentForest(departments), [departments]);
-  const flat = React.useMemo(() => flattenDepartmentsTree(forest), [forest]);
-
-  const filtered = flat;
 
   const openCreate = React.useCallback(() => {
     setEditId(null);
@@ -228,13 +227,13 @@ export function useDepartmentsDirectoryModel() {
         };
         await createDepartment(payload);
       }
-      await reload(defaultCompanyId, filterActive ? true : undefined, branchFilter);
+      await reloadList();
       setDrawerOpen(false);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'departments.save');
       setFormError(displayMessage);
     }
-  }, [branchFilter, defaultCompanyId, draft, editId, filterActive, reload]);
+  }, [defaultCompanyId, draft, editId, reloadList]);
 
   const confirmDelete = React.useCallback(
     (id: string) => {
@@ -254,13 +253,13 @@ export function useDepartmentsDirectoryModel() {
     setFormError(null);
     try {
       await deleteDepartment(deleteId);
-      await reload(defaultCompanyId, filterActive ? true : undefined, branchFilter);
+      await reloadList();
       setDeleteId(null);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'departments.delete');
       setFormError(displayMessage);
     }
-  }, [branchFilter, defaultCompanyId, deleteId, filterActive, reload]);
+  }, [deleteId, reloadList]);
 
   const excludeIds = editId
     ? new Set([editId, ...getDescendantDepartmentIds(departments, editId)])
@@ -331,6 +330,7 @@ export function useDepartmentsDirectoryModel() {
   return {
     departments,
     loading,
+    pagination,
     listError,
     filtered,
     drawerOpen,

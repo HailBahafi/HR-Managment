@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import {
   attendanceEventsApi,
   type AttendanceEventResponseDto,
@@ -40,28 +42,19 @@ export function useAttendanceEventsModel() {
 
   const companyId = useDefaultCompanyId() ?? '';
 
-  const [events, setEvents] = React.useState<AttendanceEventResponseDto[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  // Filters
   const [dateBounds, setDateBounds] = React.useState(() => ({ from: todayYMD(), to: todayYMD() }));
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [eventTypeFilter, setEventTypeFilter] = React.useState('all');
   const [includeVoided, setIncludeVoided] = React.useState(false);
 
-  // Create dialog
   const [createOpen, setCreateOpen] = React.useState(false);
-
-  // Void dialog
   const [voidTarget, setVoidTarget] = React.useState<AttendanceEventResponseDto | null>(null);
-
-  // Detail dialog
   const [detailTarget, setDetailTarget] = React.useState<AttendanceEventResponseDto | null>(null);
 
-  // Load reference data once
   React.useEffect(() => {
     if (!companyId) return;
     void Promise.allSettled([
@@ -74,32 +67,73 @@ export function useAttendanceEventsModel() {
   }, [companyId]);
 
   const from = dateBounds.from || todayYMD();
-  const to   = dateBounds.to   || todayYMD();
+  const to = dateBounds.to || todayYMD();
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+  const bulkMode = selectedEmpIds.size > 1;
 
-  const reload = React.useCallback(async () => {
-    setLoading(true);
+  const buildListQuery = React.useCallback((page: number, pageSize: number): AttendanceEventListQuery => {
+    const query: AttendanceEventListQuery = {
+      page,
+      limit: pageSize,
+      workDateFrom: from,
+      workDateTo: to,
+      includeVoided: includeVoided || undefined,
+    };
+    if (companyId) query.companyId = companyId;
+    if (selectedEmpIds.size === 1) query.employeeId = [...selectedEmpIds][0];
+    if (eventTypeFilter !== 'all') query.eventType = eventTypeFilter as AttendanceEventType;
+    return query;
+  }, [companyId, from, to, includeVoided, selectedEmpIds, eventTypeFilter]);
+
+  const applyEmployeeFilter = React.useCallback(
+    (items: AttendanceEventResponseDto[]) => {
+      if (selectedEmpIds.size <= 1) return items;
+      return items.filter((e) => selectedEmpIds.has(e.employeeId));
+    },
+    [selectedEmpIds],
+  );
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as AttendanceEventResponseDto[], total: 0 };
     setListError(null);
     try {
-      const query: AttendanceEventListQuery = {
-        limit: 500,
-        workDateFrom: from,
-        workDateTo: to,
-        includeVoided: includeVoided || undefined,
-      };
-      if (companyId) query.companyId = companyId;
-      if (selectedEmpIds.size === 1) query.employeeId = [...selectedEmpIds][0];
-      if (eventTypeFilter !== 'all') query.eventType = eventTypeFilter as AttendanceEventType;
-      const res = await attendanceEventsApi.getAll(query);
-      setEvents(res.items);
+      const res = await attendanceEventsApi.getAll(buildListQuery(page, pageSize));
+      const items = applyEmployeeFilter(res.items);
+      return { items, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'attendance-events.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
-  }, [companyId, from, to, selectedEmpIds, eventTypeFilter, includeVoided]);
+  }, [applyEmployeeFilter, buildListQuery, companyId]);
 
-  React.useEffect(() => { void reload(); }, [reload]);
+  const loadBulk = React.useCallback(async () => {
+    if (!companyId) return { items: [] as AttendanceEventResponseDto[], total: 0 };
+    setListError(null);
+    try {
+      const res = await fetchAllPaginatedItems((page, limit) =>
+        attendanceEventsApi.getAll(buildListQuery(page, limit)),
+      );
+      const items = applyEmployeeFilter(res.items);
+      return { items, total: items.length };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'attendance-events.load');
+      setListError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [applyEmployeeFilter, buildListQuery, companyId]);
+
+  const {
+    items: events,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<AttendanceEventResponseDto>(loadPage, {
+    enabled: !!companyId,
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [companyId, from, to, selectedEmpKey, eventTypeFilter, includeVoided],
+  });
 
   const handleVoid = React.useCallback(async (id: string, reason: string) => {
     try {
@@ -131,8 +165,6 @@ export function useAttendanceEventsModel() {
     [employees],
   );
 
-  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
-
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -159,7 +191,7 @@ export function useAttendanceEventsModel() {
         ]}
       />
     ),
-    [selectedEmpKey, eventTypeFilter, dateBounds.from, dateBounds.to],
+    [selectedEmpKey, eventTypeFilter, dateBounds.from, dateBounds.to, allEmployeesForPicker],
   );
 
   usePageHeaderActions(
@@ -176,6 +208,7 @@ export function useAttendanceEventsModel() {
     employees,
     checkpoints,
     loading,
+    pagination,
     listError,
     from,
     to,

@@ -2,8 +2,9 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
-import type { HRDisciplineInvestigationRecord } from '@/features/hr/discipline/lib/types';
+import { ensurePaginatedResult, fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
+import type { HRDisciplineInvestigationRecord, HRInvestigationRecommendation, HRInvestigationResult } from '@/features/hr/discipline/lib/types';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { companiesApi } from '@/features/hr/organization/lib/api/companies';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
@@ -20,6 +21,7 @@ import {
   submitDisciplineInvestigationResults,
 } from '@/features/hr/discipline/investigations/services/discipline-investigations.service';
 import type { SubmitDisciplineInvestigationResultsDto } from '@/features/hr/discipline/lib/api/discipline-investigations';
+import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 
 const PAGE_LIMIT = 200;
 
@@ -35,107 +37,196 @@ export type InvestigationCaseOption = {
   employeeNameAr: string;
 };
 
+export type InvestigationListFilters = {
+  selectedEmpIds: string[];
+  resultFilter: 'all' | HRInvestigationResult;
+  recommendationFilter: 'all' | HRInvestigationRecommendation;
+  dateFrom: string;
+  dateTo: string;
+};
+
+const DEFAULT_LIST_FILTERS: InvestigationListFilters = {
+  selectedEmpIds: [],
+  resultFilter: 'all',
+  recommendationFilter: 'all',
+  dateFrom: '',
+  dateTo: '',
+};
+
+function applyInvestigationClientFilters(
+  investigations: HRDisciplineInvestigationRecord[],
+  filters: InvestigationListFilters,
+): HRDisciplineInvestigationRecord[] {
+  const selected = new Set(filters.selectedEmpIds);
+  return investigations.filter((inv) => {
+    if (selected.size > 1 && !selected.has(inv.employeeId)) return false;
+    if (!matchesDateRange(inv.date, filters.dateFrom, filters.dateTo)) return false;
+    if (filters.recommendationFilter !== 'all' && inv.recommendationType !== filters.recommendationFilter) {
+      return false;
+    }
+    return true;
+  });
+}
+
 export function useDisciplineInvestigationsDirectoryModel() {
-  const [investigations, setInvestigations] = React.useState<HRDisciplineInvestigationRecord[]>([]);
+  const [listFilters, setListFilters] = React.useState<InvestigationListFilters>(DEFAULT_LIST_FILTERS);
+  const [sourceInvestigations, setSourceInvestigations] = React.useState<HRDisciplineInvestigationRecord[]>([]);
   const [employees, setEmployees] = React.useState<InvestigationEmployeeOption[]>([]);
   const [cases, setCases] = React.useState<InvestigationCaseOption[]>([]);
   const [company, setCompany] = React.useState<{ id: string; nameAr: string; nameEn: string | null } | null>(null);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
   const companyIdRef = React.useRef<string | null>(null);
   const employeeNameByIdRef = React.useRef<Record<string, string>>({});
 
-  const reloadInvestigations = React.useCallback(
-    async (params?: { employeeId?: string; result?: InvestigationResultDto }) => {
-      const cid = companyIdRef.current;
-      if (!cid) return;
-      setLoading(true);
-      setListError(null);
-      try {
-        const investigationsRes = await disciplineInvestigationsApi.getAll({
-          companyId: cid,
-          limit: PAGE_LIMIT,
-          ...(params?.employeeId ? { subjectEmployeeId: params.employeeId } : {}),
-          ...(params?.result ? { result: params.result } : {}),
-        });
-        const items = ensurePaginatedResult(investigationsRes).items;
-        setInvestigations(items.map((inv) => mapDisciplineInvestigationResponse(inv, employeeNameByIdRef.current)));
-      } catch (err) {
-        const { displayMessage } = handleApiError(err, 'discipline-investigations.load');
-        setListError(displayMessage);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
+  const bulkMode = Boolean(
+    listFilters.dateFrom
+    || listFilters.dateTo
+    || listFilters.recommendationFilter !== 'all'
+    || listFilters.selectedEmpIds.length > 1,
   );
 
-  const reload = React.useCallback(async () => {
-    setLoading(true);
-    setListError(null);
-    try {
-      const scope = await resolveOrganizationScope();
-      const resolvedCompanyId = scope.companyId ?? null;
-      setCompanyId(resolvedCompanyId);
-      companyIdRef.current = resolvedCompanyId;
+  const apiEmployeeId = listFilters.selectedEmpIds.length === 1
+    ? listFilters.selectedEmpIds[0]
+    : undefined;
+  const apiResult = listFilters.resultFilter !== 'all' ? listFilters.resultFilter : undefined;
 
-      const [companiesRes, employeesRes, casesRes, investigationsRes] = await Promise.all([
-        companiesApi.getAll({ limit: 50 }),
-        employeesApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-        ),
-        violationRecordsApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-        ),
-        disciplineInvestigationsApi.getAll(
-          resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
-        ),
-      ]);
+  const loadReferenceData = React.useCallback(async () => {
+    const scope = await resolveOrganizationScope();
+    const resolvedCompanyId = scope.companyId ?? null;
+    setCompanyId(resolvedCompanyId);
+    companyIdRef.current = resolvedCompanyId;
 
-      const companies = ensurePaginatedResult(companiesRes).items;
-      const selectedCompany =
-        (resolvedCompanyId ? companies.find((c) => c.id === resolvedCompanyId) : companies[0]) ?? null;
-      setCompany(
-        selectedCompany
-          ? { id: selectedCompany.id, nameAr: selectedCompany.nameAr, nameEn: selectedCompany.nameEn }
-          : null,
-      );
+    const [companiesRes, employeesRes, casesRes] = await Promise.all([
+      companiesApi.getAll({ limit: 50 }),
+      employeesApi.getAll(
+        resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+      ),
+      violationRecordsApi.getAll(
+        resolvedCompanyId ? { companyId: resolvedCompanyId, limit: PAGE_LIMIT } : { limit: PAGE_LIMIT },
+      ),
+    ]);
 
-      const employeesItems = ensurePaginatedResult(employeesRes).items;
-      const employeeNameById = Object.fromEntries(
-        employeesItems.map((emp) => [emp.id, emp.nameAr]),
-      );
-      employeeNameByIdRef.current = employeeNameById;
-      setEmployees(employeesItems.map((emp) => ({ id: emp.id, nameAr: emp.nameAr })));
+    const companies = ensurePaginatedResult(companiesRes).items;
+    const selectedCompany =
+      (resolvedCompanyId ? companies.find((c) => c.id === resolvedCompanyId) : companies[0]) ?? null;
+    setCompany(
+      selectedCompany
+        ? { id: selectedCompany.id, nameAr: selectedCompany.nameAr, nameEn: selectedCompany.nameEn }
+        : null,
+    );
 
-      const caseItems = ensurePaginatedResult(casesRes).items;
-      const mappedCases = caseItems.map((c) => ({
-        id: c.id,
-        caseNumber: c.recordNumber,
-        employeeId: c.employeeId,
-        employeeNameAr: employeeNameById[c.employeeId] ?? c.employeeId,
-      }));
-      setCases(mappedCases);
+    const employeesItems = ensurePaginatedResult(employeesRes).items;
+    const employeeNameById = Object.fromEntries(employeesItems.map((emp) => [emp.id, emp.nameAr]));
+    employeeNameByIdRef.current = employeeNameById;
+    setEmployees(employeesItems.map((emp) => ({ id: emp.id, nameAr: emp.nameAr })));
 
-      const investigationItems = ensurePaginatedResult(investigationsRes).items;
-      setInvestigations(
-        investigationItems.map((inv) =>
-          mapDisciplineInvestigationResponse(inv, employeeNameById),
-        ),
-      );
-    } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-investigations.load');
-      setListError(displayMessage);
-    } finally {
-      setLoading(false);
-    }
+    const caseItems = ensurePaginatedResult(casesRes).items;
+    setCases(caseItems.map((c) => ({
+      id: c.id,
+      caseNumber: c.recordNumber,
+      employeeId: c.employeeId,
+      employeeNameAr: employeeNameById[c.employeeId] ?? c.employeeId,
+    })));
   }, []);
 
   React.useEffect(() => {
-    void reload();
-  }, [reload]);
+    void loadReferenceData().catch(() => undefined);
+  }, [loadReferenceData]);
+
+  const buildInvestigationsQuery = React.useCallback(
+    (page: number, limit: number) => ({
+      companyId: companyIdRef.current!,
+      page,
+      limit,
+      ...(apiEmployeeId ? { subjectEmployeeId: apiEmployeeId } : {}),
+      ...(apiResult ? { result: apiResult as InvestigationResultDto } : {}),
+    }),
+    [apiEmployeeId, apiResult],
+  );
+
+  const mapItems = React.useCallback(
+    (raw: Awaited<ReturnType<typeof disciplineInvestigationsApi.getAll>>['items']) =>
+      raw.map((inv) => mapDisciplineInvestigationResponse(inv, employeeNameByIdRef.current)),
+    [],
+  );
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    setListError(null);
+    try {
+      if (!companyIdRef.current) {
+        const scope = await resolveOrganizationScope();
+        companyIdRef.current = scope.companyId ?? null;
+        setCompanyId(companyIdRef.current);
+      }
+      if (!companyIdRef.current) return { items: [], total: 0 };
+
+      const res = await disciplineInvestigationsApi.getAll(buildInvestigationsQuery(page, pageSize));
+      const items = mapItems(res.items);
+      setSourceInvestigations(items);
+      const filtered = applyInvestigationClientFilters(items, listFilters);
+      return { items: bulkMode ? filtered : items, total: res.pagination.total };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-investigations.load');
+      setListError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [buildInvestigationsQuery, bulkMode, listFilters, mapItems]);
+
+  const loadBulk = React.useCallback(async () => {
+    setListError(null);
+    try {
+      if (!companyIdRef.current) {
+        const scope = await resolveOrganizationScope();
+        companyIdRef.current = scope.companyId ?? null;
+        setCompanyId(companyIdRef.current);
+      }
+      if (!companyIdRef.current) return { items: [], total: 0 };
+
+      const res = await fetchAllPaginatedItems((page, limit) =>
+        disciplineInvestigationsApi.getAll(buildInvestigationsQuery(page, limit)),
+      );
+      const items = mapItems(res.items);
+      setSourceInvestigations(items);
+      const filtered = applyInvestigationClientFilters(items, listFilters);
+      return { items: filtered, total: filtered.length };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-investigations.load');
+      setListError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [buildInvestigationsQuery, listFilters, mapItems]);
+
+  const {
+    items,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<HRDisciplineInvestigationRecord>(loadPage, {
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [
+      apiEmployeeId,
+      apiResult,
+      listFilters.dateFrom,
+      listFilters.dateTo,
+      listFilters.recommendationFilter,
+      listFilters.selectedEmpIds.join(','),
+    ],
+  });
+
+  const filteredItems = React.useMemo(
+    () => applyInvestigationClientFilters(sourceInvestigations, listFilters),
+    [listFilters, sourceInvestigations],
+  );
+
+  const dateFilteredItems = React.useMemo(
+    () => sourceInvestigations.filter((inv) =>
+      matchesDateRange(inv.date, listFilters.dateFrom, listFilters.dateTo),
+    ),
+    [listFilters.dateFrom, listFilters.dateTo, sourceInvestigations],
+  );
 
   const openInvestigation = React.useCallback(
     async (payload: Parameters<typeof openDisciplineInvestigation>[0]) => {
@@ -170,17 +261,23 @@ export function useDisciplineInvestigationsDirectoryModel() {
   );
 
   return {
-    investigations,
+    items,
+    filteredItems,
+    dateFilteredItems,
+    sourceInvestigations,
     employees,
     cases,
     company,
     companyId,
     loading,
+    pagination,
     listError,
+    listFilters,
+    setListFilters,
     add,
     openInvestigation,
     submitResults,
     remove,
-    reloadInvestigations,
+    reload,
   };
 }

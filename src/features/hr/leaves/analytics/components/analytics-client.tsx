@@ -36,6 +36,7 @@ import {
   loadCompanyLeaveTypes,
   resolveDefaultLeaveTypeId,
 } from '@/features/hr/leaves/lib/leave-types-utils';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -445,11 +446,10 @@ function EmployeeBalanceGroupCard({
 export function AnalyticsClient() {
   const companyId = useDefaultCompanyId() ?? '';
 
-  const [groups, setGroups] = React.useState<EmployeeLeaveBalanceGroupDto[]>([]);
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
   const [defaultLeaveTypeId, setDefaultLeaveTypeId] = React.useState<string | null>(null);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [metaLoading, setMetaLoading] = React.useState(true);
 
   const [employeeFilter, setEmployeeFilter] = React.useState('all');
 
@@ -457,36 +457,49 @@ export function AnalyticsClient() {
   const [dialogMode, setDialogMode] = React.useState<DialogMode>({ mode: 'create' });
   const [deleteTarget, setDeleteTarget] = React.useState<EmployeeLeaveBalanceResponseDto | null>(null);
 
-  const reloadBalances = React.useCallback(async () => {
-    if (!companyId) return;
-    const balRes = await leaveBalancesApi.getAll({ companyId, limit: 1000 });
-    setGroups(balRes.items);
-  }, [companyId]);
-
-  // Load all data
   React.useEffect(() => {
     if (!companyId) return;
     void (async () => {
-      setLoading(true);
+      setMetaLoading(true);
       try {
-        const [balRes, ltRes, empRes] = await Promise.all([
-          leaveBalancesApi.getAll({ companyId, limit: 1000 }),
+        const [ltRes, empRes] = await Promise.all([
           loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true }),
           employeesApi.getAll({ companyId, limit: 1000 }),
         ]);
-        setGroups(balRes.items);
         setLeaveTypes(ltRes.items);
         setDefaultLeaveTypeId(ltRes.defaultLeaveTypeId ?? resolveDefaultLeaveTypeId(ltRes.items));
         setEmployees(empRes.items);
       } catch { toast.error('فشل تحميل البيانات'); }
-      finally { setLoading(false); }
+      finally { setMetaLoading(false); }
     })();
   }, [companyId]);
 
-  const filteredGroups = React.useMemo(() => {
-    if (employeeFilter === 'all') return groups;
-    return groups.filter((g) => g.employeeId === employeeFilter);
-  }, [groups, employeeFilter]);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as EmployeeLeaveBalanceGroupDto[], total: 0 };
+    try {
+      const res = await leaveBalancesApi.getAll({
+        companyId,
+        page,
+        limit: pageSize,
+        ...(employeeFilter !== 'all' ? { employeeId: employeeFilter } : {}),
+      });
+      return { items: res.items, total: res.pagination.total };
+    } catch {
+      return { items: [], total: 0 };
+    }
+  }, [companyId, employeeFilter]);
+
+  const {
+    items: groups,
+    loading: listLoading,
+    pagination,
+    reload: reloadBalances,
+  } = useServerDirectoryPagination<EmployeeLeaveBalanceGroupDto>(loadPage, {
+    enabled: !!companyId && !metaLoading,
+    resetDeps: [companyId, employeeFilter],
+  });
+
+  const loading = metaLoading || listLoading;
 
   const handleSaved = async () => {
     await reloadBalances();
@@ -548,21 +561,22 @@ export function AnalyticsClient() {
   const deleteLtName = deleteTarget ? leaveTypeNameAr(leaveTypes, deleteTarget.leaveTypeId) : '';
 
   return (
-    <div className="space-y-5">
-      {/* Content */}
-      {loading ? (
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
+      {loading && groups.length === 0 ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : filteredGroups.length === 0 ? (
+      ) : groups.length === 0 && !loading ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
           <p className="text-sm text-muted-foreground">
-            {groups.length === 0 ? 'لا توجد أرصدة إجازات مسجّلة' : 'لا نتائج تطابق الفلاتر الحالية'}
+            {pagination.total === 0 ? 'لا توجد أرصدة إجازات مسجّلة' : 'لا نتائج تطابق الفلاتر الحالية'}
           </p>
         </div>
       ) : (
+        <DirectoryPagedViews items={groups} serverPagination={pagination} loading={loading} resetDeps={[employeeFilter]}>
+          {(pageItems) => (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {filteredGroups.map((group) => (
+          {pageItems.map((group) => (
             <EmployeeBalanceGroupCard
               key={group.employeeId}
               group={group}
@@ -572,6 +586,8 @@ export function AnalyticsClient() {
             />
           ))}
         </div>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <BalanceFormDialog

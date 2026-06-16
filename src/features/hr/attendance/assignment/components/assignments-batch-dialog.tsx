@@ -1,5 +1,6 @@
 'use client';
 
+import { Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
@@ -30,6 +31,7 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
     setSelectedIds,
     activeTemplates,
     multiOptions,
+    loadingUnassigned,
     submit,
   } = model;
 
@@ -37,12 +39,14 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         ref={setDialogContentEl}
-        className="flex max-h-[92vh] flex-col gap-0 overflow-hidden border-border p-0 sm:max-w-3xl"
+        className="flex max-h-[92vh] flex-col gap-0  border-border p-0 sm:max-w-3xl"
       >
         <div className="shrink-0 space-y-2 border-b border-border px-6 pb-4 pt-6">
           <DialogHeader className="space-y-2 text-right">
             <DialogTitle className="font-display text-lg">ربط قالب بالموظفين</DialogTitle>
-            <DialogDescription>اختر قالب الحضور وتاريخ التطبيق، ثم حدّد الموظفين المراد ربطهم.</DialogDescription>
+            <DialogDescription>
+              اختر قالب الحضور وتاريخ التطبيق، ثم حدّد الموظفين غير المرتبطين بدوام في هذا التاريخ.
+            </DialogDescription>
           </DialogHeader>
         </div>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
@@ -69,14 +73,21 @@ export function AssignmentsBatchDialog({ model }: { model: AssignmentsPanelModel
               onChange={setEffectiveFrom}
             />
           </div>
+          <div className="flex gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+            <p>
+              يظهر هنا الموظفون غير المرتبطين بأي دوام فعّال في تاريخ التطبيق فقط.
+              الموظفون المرتبطون مسبقاً بشيفت لن يظهروا في القائمة — ألغِ ربطهم من شاشة التعديل إن أردت نقلهم إلى هذا القالب.
+            </p>
+          </div>
           <MultiSelect
             label="الموظفون"
             options={multiOptions}
             value={[...selectedIds]}
             onChange={(ids) => setSelectedIds(new Set(ids))}
-            placeholder="اختر موظفين…"
+            placeholder={loadingUnassigned ? 'جاري تحميل الموظفين…' : 'اختر موظفين…'}
             searchPlaceholder="بحث بالاسم أو الرقم…"
-            emptyMessage="لا يوجد موظف مطابق"
+            emptyMessage={loadingUnassigned ? 'جاري التحميل…' : 'لا يوجد موظف غير مرتبط بدوام في هذا التاريخ'}
             selectAllLabel="تحديد الكل"
             deselectAllLabel="إلغاء التحديد"
             listMaxHeight="min(220px,36vh)"

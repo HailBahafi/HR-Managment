@@ -31,9 +31,8 @@ import {
 } from '@/features/hr/discipline/appeals/services/discipline-appeals.service';
 import type { HRAppealChannel, HRAppealStatus } from '@/features/hr/discipline/lib/types';
 import { APPEAL_CHANNEL_LABELS, APPEAL_STATUS_LABELS, APPEAL_STATUS_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
-import type { AppealChannelDto, AppealStatusDto, ProcessDisciplineAppealDecisionDto } from '@/features/hr/discipline/lib/api/discipline-appeals';
+import type { AppealChannelDto, ProcessDisciplineAppealDecisionDto } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -47,6 +46,7 @@ import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xls
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 
 const CHANNEL_OPTIONS = (Object.entries(APPEAL_CHANNEL_LABELS) as [HRAppealChannel, string][]).map(([v, l]) => ({ value: v, label: l }));
 
@@ -89,7 +89,7 @@ const EMPTY: DraftForm = { caseId: '', employeeNameAr: '', date: '', channel: 'i
 
 export function AppealsClient() {
   const hook = useDisciplineAppealsDirectoryModel();
-  const { appeals, employees, cases, loading, listError, createAppeal, updateAppeal, decideAppeal, deleteAppeal, reload } = hook;
+  const { employees, cases, loading, listError, createAppeal, updateAppeal, decideAppeal, deleteAppeal, setListFilters, items, pagination, filteredItems, sourceAppeals } = hook;
 
   const { data: defaultCompany } = useDefaultCompany();
   const companyNameAr = defaultCompany?.nameAr ?? '';
@@ -127,28 +127,23 @@ export function AppealsClient() {
 
   const caseOptions = cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
 
-  // Backend fetch whenever employee or status filters change
   React.useEffect(() => {
-    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
-    const status = statusFilter !== 'all' ? (statusFilter as AppealStatusDto) : undefined;
-    void reload({ employeeId, status });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEmpIds, statusFilter]);
+    setListFilters({
+      selectedEmpIds: [...selectedEmpIds],
+      statusFilter,
+      dateFrom: dateBounds.from,
+      dateTo: dateBounds.to,
+    });
+  }, [selectedEmpIds, statusFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
-  // Date range filter applied locally (API doesn't support it)
-  const filtered = React.useMemo(
-    () => appeals.filter((a) => matchesDateRange(a.date, dateBounds.from, dateBounds.to)),
-    [appeals, dateBounds.from, dateBounds.to],
-  );
-
-  const listFiltered = filtered;
+  const listFiltered = filteredItems;
 
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: appeals.length };
+    const counts: Record<string, number> = { all: sourceAppeals.length };
     for (const s of APPEAL_STATUS_FILTER_ORDER) counts[s] = 0;
-    for (const a of appeals) counts[a.status] = (counts[a.status] ?? 0) + 1;
+    for (const a of sourceAppeals) counts[a.status] = (counts[a.status] ?? 0) + 1;
     return counts;
-  }, [appeals]);
+  }, [sourceAppeals]);
 
   const dateRangeActive = dateMeta.hasRestriction;
 
@@ -491,12 +486,13 @@ export function AppealsClient() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير التظلمات" fileName="discipline-appeals.pdf" printable={printable} />
 
-      {appeals.length === 0 && !loading ? (
+      <DisciplineListViewport>
+      {sourceAppeals.length === 0 && !loading ? (
         <EmptyState title="لا توجد تظلمات مطابقة للفلاتر المحددة." />
-      ) : filtered.length === 0 && !loading ? (
+      ) : listFiltered.length === 0 && !loading && sourceAppeals.length > 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
             {dateMeta.tab === 'today' ? 'لا توجد تظلمات بتاريخ اليوم ضمن النتائج الحالية.'
@@ -509,9 +505,11 @@ export function AppealsClient() {
             <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>عرض كل الفترات</Button>
           ) : null}
         </div>
-      ) : viewMode === 'cards' ? (
-        <EntityActionCardGrid>
-          {listFiltered.map((a) => (
+      ) : (
+        <DisciplinePaginatedList pagination={pagination}>
+          {viewMode === 'cards' ? (
+          <EntityActionCardGrid>
+            {items.map((a) => (
             <EntityActionCard
               key={a.id}
               reference={a.caseNumber}
@@ -545,19 +543,22 @@ export function AppealsClient() {
               onClick={() => setDetailRow(a)}
               onDelete={canDeleteAppealRecord(a.status) ? () => setDeleteId(a.id) : undefined}
             />
-          ))}
-        </EntityActionCardGrid>
-      ) : (
-        <DataTable
-          variant="directory"
-          alwaysShowTable
-          tableClassName="min-w-[800px]"
-          columns={columns}
-          data={listFiltered}
-          keyExtractor={(a) => a.id}
-          onRowClick={(a) => setDetailRow(a)}
-        />
+            ))}
+          </EntityActionCardGrid>
+          ) : (
+          <DataTable
+            variant="directory"
+            alwaysShowTable
+            tableClassName="min-w-[800px]"
+            columns={columns}
+            data={items}
+            keyExtractor={(a) => a.id}
+            onRowClick={(a) => setDetailRow(a)}
+          />
+          )}
+        </DisciplinePaginatedList>
       )}
+      </DisciplineListViewport>
 
       <HRSettingsFormDrawer open={editAppeal != null} onOpenChange={(o) => { if (!o) { setEditAppeal(null); setEditDraft(EMPTY); setEditError(null); } }} title="تعديل التظلم" size="lg" onSave={() => void handleEditSave()} saveDisabled={editSaving} error={editError}>
         {editDraft.employeeNameAr ? (

@@ -12,6 +12,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { correctionRequestsApi } from '@/features/hr/requests/lib/api/correction-requests';
+import { mapCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
 import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
@@ -82,7 +86,7 @@ export function AttendanceCorrectionRequestsClient() {
   const fetchEmployees = useHREmployeeDirectoryStore((s) => s.fetch);
   const activeEmployees = React.useMemo(() => employees.filter((e) => e.status === 'active'), [employees]);
 
-  const { items, fetch: fetchItems, submit, approve, reject, cancel } = useAttendanceCorrectionRequestsStore();
+  const { submit, approve, reject, cancel } = useAttendanceCorrectionRequestsStore();
 
   React.useEffect(() => {
     if (!companyId) return;
@@ -120,43 +124,67 @@ export function AttendanceCorrectionRequestsClient() {
     [activeEmployees],
   );
 
-  // Debounce ref for backend fetch on filter changes
-  const fetchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+  const bulkMode = appliedDept !== 'all' || selectedEmpIds.size > 1;
 
-  React.useEffect(() => {
-    if (!companyId) return;
-    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
-    const status = statusFilter !== 'all' ? statusFilter : undefined;
-    const workDateFrom = dateBounds.from || undefined;
-    const workDateTo = dateBounds.to || undefined;
-    if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
-    fetchDebounceRef.current = setTimeout(() => {
-      fetchItems({ employeeId, status, workDateFrom, workDateTo });
-    }, 400);
-    return () => {
-      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
-    };
-  }, [companyId, selectedEmpIds, statusFilter, dateBounds.from, dateBounds.to]);
+  const buildListQuery = React.useCallback((page: number, pageSize: number) => ({
+    companyId: companyId!,
+    page,
+    limit: pageSize,
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    ...(dateBounds.from ? { workDateFrom: dateBounds.from } : {}),
+    ...(dateBounds.to ? { workDateTo: dateBounds.to } : {}),
+    ...(selectedEmpIds.size === 1 ? { employeeId: [...selectedEmpIds][0] } : {}),
+  }), [companyId, statusFilter, dateBounds.from, dateBounds.to, selectedEmpIds]);
 
-  // API doesn't support dept filter — apply locally after server response
-  const deptFiltered = React.useMemo(
-    () => appliedDept === 'all' ? items : items.filter((r) => r.departmentNameAr === appliedDept),
-    [items, appliedDept],
-  );
+  const applyDeptFilter = React.useCallback((rows: AttendanceCorrectionRequest[]) => {
+    if (appliedDept === 'all') return rows;
+    const deptName = departments.find((d) => d.id === appliedDept)?.nameAr ?? appliedDept;
+    return rows.filter((r) => r.departmentNameAr === deptName);
+  }, [appliedDept, departments]);
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as AttendanceCorrectionRequest[], total: 0 };
+    try {
+      const res = await correctionRequestsApi.list(buildListQuery(page, pageSize));
+      const items = applyDeptFilter(res.items.map(mapCorrectionRequest));
+      return { items, total: appliedDept === 'all' ? res.pagination.total : items.length };
+    } catch {
+      return { items: [], total: 0 };
+    }
+  }, [applyDeptFilter, appliedDept, buildListQuery, companyId]);
+
+  const loadBulk = React.useCallback(async () => {
+    if (!companyId) return { items: [] as AttendanceCorrectionRequest[], total: 0 };
+    const res = await fetchAllPaginatedItems((page, limit) => correctionRequestsApi.list(buildListQuery(page, limit)));
+    let items = res.items.map(mapCorrectionRequest);
+    if (selectedEmpIds.size > 1) {
+      items = items.filter((r) => selectedEmpIds.has(r.employeeId));
+    }
+    items = applyDeptFilter(items);
+    return { items, total: items.length };
+  }, [applyDeptFilter, buildListQuery, companyId, selectedEmpIds]);
+
+  const {
+    items: sorted,
+    loading: listLoading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<AttendanceCorrectionRequest>(loadPage, {
+    enabled: !!companyId,
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [companyId, appliedDept, statusFilter, dateBounds.from, dateBounds.to, selectedEmpKey],
+  });
 
   const statusCounts = React.useMemo(
     () => ({
-      all: deptFiltered.length,
-      pending: deptFiltered.filter((r) => r.status === 'pending').length,
-      approved: deptFiltered.filter((r) => r.status === 'approved').length,
-      rejected: deptFiltered.filter((r) => r.status === 'rejected').length,
+      all: pagination.total,
+      pending: sorted.filter((r) => r.status === 'pending').length,
+      approved: sorted.filter((r) => r.status === 'approved').length,
+      rejected: sorted.filter((r) => r.status === 'rejected').length,
     }),
-    [deptFiltered],
-  );
-
-  const sorted = React.useMemo(
-    () => [...deptFiltered].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
-    [deptFiltered],
+    [sorted, pagination.total],
   );
 
   const resetForm = React.useCallback(() => {
@@ -192,6 +220,7 @@ export function AttendanceCorrectionRequestsClient() {
     toast.success('تم تسجيل طلب التصحيح — قيد الموافقة.');
     resetForm();
     setDialogOpen(false);
+    await reloadList();
   };
 
   const activeFilterCount = React.useMemo(() => {
@@ -338,19 +367,19 @@ export function AttendanceCorrectionRequestsClient() {
                   label: 'موافقة',
                   variant: 'success',
                   icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-                  onClick: () => void approve(r.id).then(() => toast.success('تم اعتماد طلب التصحيح.')),
+                  onClick: () => void approve(r.id).then(async () => { toast.success('تم اعتماد طلب التصحيح.'); await reloadList(); }),
                 },
                 {
                   label: 'رفض',
                   variant: 'destructive',
                   icon: <XCircle className="h-3.5 w-3.5" />,
-                  onClick: () => void reject(r.id).then(() => toast.message('تم رفض الطلب.')),
+                  onClick: () => void reject(r.id).then(async () => { toast.message('تم رفض الطلب.'); await reloadList(); }),
                 },
               ]}
               menuItems={[
                 {
                   label: 'إلغاء',
-                  onClick: () => void cancel(r.id).then(() => toast.message('تم سحب الطلب.')),
+                  onClick: () => void cancel(r.id).then(async () => { toast.message('تم سحب الطلب.'); await reloadList(); }),
                   icon: <Ban className="h-3.5 w-3.5" />,
                   separator: true,
                 },
@@ -364,14 +393,20 @@ export function AttendanceCorrectionRequestsClient() {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
       <div className="space-y-2">
-        {sorted.length === 0 ? (
+        {!listLoading && sorted.length === 0 && pagination.total === 0 ? (
           <EmptyState title="لا توجد طلبات ضمن الفلاتر" />
         ) : (
+          <DirectoryPagedViews
+            items={sorted}
+            serverPagination={pagination}
+            loading={listLoading}
+          >
+            {(pageItems) => (
           <DataTable
             columns={columns}
-            data={sorted}
+            data={pageItems}
             keyExtractor={(r) => r.id}
             emptyText="لا توجد طلبات"
             onRowClick={(r) => setDetailRow(r)}
@@ -398,6 +433,8 @@ export function AttendanceCorrectionRequestsClient() {
               </div>
             )}
           />
+            )}
+          </DirectoryPagedViews>
         )}
       </div>
 

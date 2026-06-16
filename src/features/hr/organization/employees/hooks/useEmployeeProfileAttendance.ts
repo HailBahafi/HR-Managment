@@ -222,18 +222,14 @@ export function useEmployeeProfileAttendance(
   };
 
   const [shiftOpen, setShiftOpen] = React.useState(false);
-  const [shiftMode, setShiftMode] = React.useState<'template' | 'open'>('template');
   const [shiftTemplateId, setShiftTemplateId] = React.useState('');
   const [shiftDate, setShiftDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [shiftHours, setShiftHours] = React.useState('8');
   const [shiftUnlinkTarget, setShiftUnlinkTarget] = React.useState<string | null>(null);
 
   const openShiftDialog = () => {
     const active = shiftTemplates.filter((t) => t.isActive);
-    setShiftMode('template');
     setShiftTemplateId(active[0]?.id ?? '');
     setShiftDate(new Date().toISOString().slice(0, 10));
-    setShiftHours('8');
     setShiftOpen(true);
   };
 
@@ -242,11 +238,7 @@ export function useEmployeeProfileAttendance(
       toast.error('تعذر تحديد الشركة');
       return;
     }
-    if (shiftMode === 'template' && !shiftTemplateId) return;
-    if (shiftMode === 'open' && !shiftTemplateId) {
-      toast.error('اختر شيفت أساسي للدوام المفتوح');
-      return;
-    }
+    if (!shiftTemplateId) return;
 
     try {
       await shiftAssignmentsApi.create({
@@ -254,7 +246,6 @@ export function useEmployeeProfileAttendance(
         shiftTemplateId,
         employeeId: employee.id,
         effectiveFrom: shiftDate,
-        openShiftHours: shiftMode === 'open' ? Number(shiftHours) : null,
         isActive: true,
       });
       await reloadAttendanceLinks();
@@ -316,14 +307,10 @@ export function useEmployeeProfileAttendance(
     submitCpLink,
     shiftOpen,
     setShiftOpen,
-    shiftMode,
-    setShiftMode,
     shiftTemplateId,
     setShiftTemplateId,
     shiftDate,
     setShiftDate,
-    shiftHours,
-    setShiftHours,
     shiftUnlinkTarget,
     setShiftUnlinkTarget,
     openShiftDialog,

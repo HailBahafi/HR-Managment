@@ -21,10 +21,23 @@ interface MinimalDropdownProps {
   options: DropdownOption[];
   placeholder?: string;
   className?: string;
+  contentClassName?: string;
+  optionClassName?: string;
+  hideSelectedCheck?: boolean;
   disabled?: boolean;
 }
 
-export function MinimalDropdown({ value, onChange, options, placeholder = 'اختر…', className, disabled }: MinimalDropdownProps) {
+export function MinimalDropdown({
+  value,
+  onChange,
+  options,
+  placeholder = 'اختر…',
+  className,
+  contentClassName,
+  optionClassName,
+  hideSelectedCheck = false,
+  disabled,
+}: MinimalDropdownProps) {
   const [open, setOpen] = React.useState(false);
   const selected = options.find(o => o.value === value);
 
@@ -49,25 +62,42 @@ export function MinimalDropdown({ value, onChange, options, placeholder = 'اخ�
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          className="popover-match-trigger z-[200] max-h-64 min-w-[12rem] overflow-auto rounded-md border border-border bg-popover p-1 shadow-elevated"
+          className={cn(
+            'popover-match-trigger z-[200] max-h-64 min-w-[12rem] overflow-auto rounded-md border border-border bg-popover p-1 shadow-elevated',
+            contentClassName,
+          )}
           sideOffset={4}
           collisionPadding={12}
         >
-          {options.map(opt => (
+          {options.map(opt => {
+            const isSelected = opt.value === value;
+            return (
             <button
               key={opt.value || '__empty__'}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-2 text-sm text-right hover:bg-muted/60 transition-colors',
-                opt.value === value && 'bg-primary/10 text-primary font-medium',
+                'flex w-full items-center px-3 py-2 text-sm transition-colors',
+                hideSelectedCheck ? 'justify-center rounded-md' : 'gap-2 text-right hover:bg-muted/60',
+                isSelected
+                  ? cn(
+                      'font-medium text-primary',
+                      hideSelectedCheck ? 'bg-primary/15' : 'bg-primary/10',
+                    )
+                  : hideSelectedCheck
+                    ? 'text-foreground hover:bg-muted/50'
+                    : undefined,
+                optionClassName,
               )}
             >
-              <Check className={cn('h-4 w-4 shrink-0', opt.value === value ? 'opacity-100' : 'opacity-0')} />
-              <span className="flex-1 truncate">{opt.label}</span>
+              {!hideSelectedCheck ? (
+                <Check className={cn('h-4 w-4 shrink-0', isSelected ? 'opacity-100' : 'opacity-0')} />
+              ) : null}
+              <span className={cn('truncate', !hideSelectedCheck && 'flex-1')}>{opt.label}</span>
               {opt.sub && <span className="text-xs text-muted-foreground">{opt.sub}</span>}
             </button>
-          ))}
+            );
+          })}
           {options.length === 0 && (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">لا توجد خيارات</div>
           )}

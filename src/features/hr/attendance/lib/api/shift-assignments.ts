@@ -97,12 +97,36 @@ export type GroupedByTemplateQuery = {
   batchId?: string;
 };
 
+/** Active company employee with no effective shift assignment on the reference date. */
+export type UnassignedEmployeeResponseDto = {
+  id: string;
+  employeeCode: string;
+  nameAr: string;
+  nameEn: string | null;
+  branchId: string | null;
+  departmentId: string | null;
+  jobTitleId: string | null;
+};
+
+export type UnassignedEmployeesListQuery = {
+  page?: number;
+  limit?: number;
+  companyId: string;
+  asOfDate?: string;
+};
+
 export const shiftAssignmentsApi = {
   getAll(query?: ShiftAssignmentListQuery) {
     return apiRequest<PaginatedResult<ShiftAssignmentResponseDto>>('/attendance/shift-assignments', { query });
   },
   getGroupedByTemplate(query?: GroupedByTemplateQuery) {
     return apiRequest<PaginatedResult<GroupedByTemplateItem>>('/attendance/shift-assignments/grouped-by-template', { query });
+  },
+  getUnassignedEmployees(query: UnassignedEmployeesListQuery) {
+    return apiRequest<PaginatedResult<UnassignedEmployeeResponseDto>>(
+      '/attendance/shift-assignments/unassigned-employees',
+      { query },
+    );
   },
   getById(id: string) {
     return apiRequest<ShiftAssignmentResponseDto>(`/attendance/shift-assignments/${id}`);

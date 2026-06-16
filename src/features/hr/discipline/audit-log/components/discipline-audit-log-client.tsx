@@ -13,11 +13,9 @@ import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell } from '@/components/ui/table-cells';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 import { cn } from '@/shared/utils';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
-import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
-import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { auditLogsApi, type AuditLogResponseDto } from '@/features/hr/discipline/lib/api/audit-logs';
 import type { HRDisciplineAuditCategory, HRDisciplineAuditAction } from '@/features/hr/discipline/lib/discipline-audit-log';
 import {
   AUDIT_ACTION_FILTER_ORDER,
@@ -25,7 +23,6 @@ import {
   AUDIT_CATEGORY_LABELS_AR,
 } from '@/features/hr/discipline/lib/discipline-audit-log';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { dateToYMD, matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { DisciplineAuditLogPrintHtml } from '@/components/pdf/print/discipline-audit-log-print-html';
 import {
@@ -33,68 +30,13 @@ import {
   type DisciplineFilterToolbarHandle,
   type DisciplineViewMode,
 } from '@/features/hr/discipline/components/discipline-filter-toolbar';
+import {
+  useDisciplineAuditLogDirectoryModel,
+  type AuditLogEntry,
+} from '@/features/hr/discipline/audit-log/hooks/useDisciplineAuditLogDirectoryModel';
 
 type CatFilter = 'all' | HRDisciplineAuditCategory;
 type StatusFilter = 'all' | HRDisciplineAuditAction;
-
-const DISCIPLINE_ENTITY_NAMES = [
-  'hr_job_discipline_violation_records',
-  'hr_job_discipline_notices',
-  'hr_job_discipline_circulars',
-  'hr_job_discipline_investigations',
-  'hr_job_discipline_appeals',
-  'hr_job_discipline_payroll_deductions',
-  'hr_job_discipline_approval_templates',
-];
-
-const ENTITY_TO_CATEGORY: Record<string, HRDisciplineAuditCategory> = {
-  hr_job_discipline_violation_records: 'violation_case',
-  hr_job_discipline_notices: 'violation_case',
-  hr_job_discipline_investigations: 'investigation',
-  hr_job_discipline_appeals: 'appeal',
-};
-
-function mapAction(action: string): HRDisciplineAuditAction {
-  const upper = action.toUpperCase();
-  if (upper === 'CREATE') return 'create';
-  if (upper === 'UPDATE' || upper === 'PATCH') return 'update';
-  if (upper === 'DELETE' || upper === 'REMOVE') return 'delete';
-  if (upper === 'SUBMIT') return 'submit';
-  if (upper === 'APPROVE') return 'approve';
-  if (upper === 'REJECT') return 'reject';
-  if (upper === 'REQUEST_EDIT') return 'request_edit';
-  if (upper === 'PAYROLL_POSTED') return 'payroll_posted';
-  return 'update';
-}
-
-function mapCategory(entityName: string): HRDisciplineAuditCategory {
-  return ENTITY_TO_CATEGORY[entityName] ?? 'violation_case';
-}
-
-type AuditLogEntry = ReturnType<typeof dtoToEntry>;
-
-function dtoToEntry(dto: AuditLogResponseDto) {
-  const prev = dto.oldValues ? JSON.stringify(dto.oldValues, null, 2) : '';
-  const next = dto.newValues ? JSON.stringify(dto.newValues, null, 2) : '';
-  return {
-    id: dto.id,
-    occurredAt: typeof dto.occurredAt === 'string' ? dto.occurredAt : new Date(dto.occurredAt).toISOString(),
-    actorNameAr: dto.actorName ?? dto.actorEmail ?? 'غير محدد',
-    category: mapCategory(dto.entityName),
-    actionType: mapAction(dto.action),
-    recordId: dto.entityId ?? dto.id,
-    recordRefAr: dto.entityDisplayName ?? dto.entityId ?? '—',
-    recordStatusAfterAr: dto.description ?? dto.actionNameAr ?? dto.action,
-    previousSnapshotAr: prev,
-    currentSnapshotAr: next,
-  };
-}
-
-function occurredAtToYmd(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return dateToYMD(d);
-}
 
 function formatOccurred(iso: string): string {
   try {
@@ -150,40 +92,21 @@ function CompareToggle({ expanded, onToggle, compact }: { expanded: boolean; onT
 }
 
 export function DisciplineAuditLogClient() {
-  const [rawEntries, setRawEntries] = React.useState<ReturnType<typeof dtoToEntry>[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const m = useDisciplineAuditLogDirectoryModel();
+  const {
+    items,
+    filteredItems,
+    dateFilteredItems,
+    searchFilteredItems,
+    actorPickerList,
+    loading,
+    listError: loadError,
+    pagination,
+    setListFilters,
+  } = m;
   const { data: defaultCompany } = useDefaultCompany();
   const companyNameAr = defaultCompany?.nameAr ?? '';
   const companyNameEn = defaultCompany?.nameEn ?? '';
-
-  React.useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setLoading(true);
-      setLoadError(null);
-      try {
-        const scope = await resolveOrganizationScope();
-        const cid = scope.companyId ?? undefined;
-        const allResults = await Promise.all(
-          DISCIPLINE_ENTITY_NAMES.map((entityName) =>
-            auditLogsApi.getAll({ companyId: cid, entityName, limit: 200 }).catch(() => ({ items: [] as AuditLogResponseDto[], total: 0, page: 1, limit: 200 })),
-          ),
-        );
-        if (cancelled) return;
-        const all = allResults.flatMap((r) => r.items).map(dtoToEntry);
-        all.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
-        setRawEntries(all);
-      } catch (err) {
-        if (cancelled) return;
-        const { displayMessage } = handleApiError(err, 'audit-logs.load');
-        setLoadError(displayMessage);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   const { values } = usePageFilters([
     { key: 'q', label: 'بحث', type: 'text', placeholder: 'مرجع، اسم المُعدّل، محتوى…' },
@@ -210,44 +133,25 @@ export function DisciplineAuditLogClient() {
     });
   }, []);
 
-  const actorPickerList = React.useMemo(() => {
-    const names = new Set<string>();
-    for (const e of rawEntries) {
-      if (e.actorNameAr?.trim()) names.add(e.actorNameAr.trim());
-    }
-    return [...names].sort((a, b) => a.localeCompare(b, 'ar')).map((name) => ({ id: name, name }));
-  }, [rawEntries]);
-
-  const searchAndActorFiltered = React.useMemo(() => {
-    return rawEntries.filter((e) => {
-      if (catFilter !== 'all' && e.category !== catFilter) return false;
-      if (selectedActorIds.size > 0 && !selectedActorIds.has(e.actorNameAr.trim())) return false;
-      if (!q) return true;
-      const hay = [
-        e.recordRefAr, e.actorNameAr, e.recordStatusAfterAr,
-        e.previousSnapshotAr, e.currentSnapshotAr, e.recordId,
-        AUDIT_CATEGORY_LABELS_AR[e.category], AUDIT_ACTION_LABELS_AR[e.actionType],
-      ].join('\n').toLowerCase();
-      return hay.includes(q);
+  React.useEffect(() => {
+    setListFilters({
+      q,
+      catFilter,
+      selectedActorIds: [...selectedActorIds],
+      statusFilter,
+      dateFrom: dateBounds.from,
+      dateTo: dateBounds.to,
     });
-  }, [rawEntries, catFilter, selectedActorIds, q]);
+  }, [q, catFilter, selectedActorIds, statusFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
-  const dateFiltered = React.useMemo(
-    () => searchAndActorFiltered.filter((e) => matchesDateRange(occurredAtToYmd(e.occurredAt), dateBounds.from, dateBounds.to)),
-    [searchAndActorFiltered, dateBounds.from, dateBounds.to],
-  );
+  const listFiltered = filteredItems;
 
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: dateFiltered.length };
+    const counts: Record<string, number> = { all: dateFilteredItems.length };
     for (const a of AUDIT_ACTION_FILTER_ORDER) counts[a] = 0;
-    for (const e of dateFiltered) counts[e.actionType] = (counts[e.actionType] ?? 0) + 1;
+    for (const e of dateFilteredItems) counts[e.actionType] = (counts[e.actionType] ?? 0) + 1;
     return counts;
-  }, [dateFiltered]);
-
-  const listFiltered = React.useMemo(
-    () => dateFiltered.filter((e) => statusFilter === 'all' || e.actionType === statusFilter),
-    [dateFiltered, statusFilter],
-  );
+  }, [dateFilteredItems]);
 
   const pdfRows = React.useMemo(
     () => listFiltered.map((e) => ({
@@ -385,7 +289,7 @@ export function DisciplineAuditLogClient() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير سجل العمليات" fileName="discipline-audit-log.pdf" printable={printable} />
 
       <DisciplineFilterToolbar
@@ -418,6 +322,7 @@ export function DisciplineAuditLogClient() {
         onDateFilterMetaChange={setDateMeta}
       />
 
+      <DisciplineListViewport>
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -432,9 +337,9 @@ export function DisciplineAuditLogClient() {
             عرض فقط — سجل مرجعي للعمليات على المخالفات والتحقيقات والتظلمات. القيم التفصيلية السابقة والجديدة تظهر عند الطلب من جدول المقارنة.
           </p>
 
-          {searchAndActorFiltered.length === 0 ? (
+          {searchFilteredItems.length === 0 ? (
             <EmptyState title="لا توجد عمليات مطابقة للبحث أو المُعدّلين أو الفئة." />
-          ) : dateFiltered.length === 0 ? (
+          ) : dateFilteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center px-4">
               <p className="text-sm text-muted-foreground">لا توجد عمليات ضمن الفترة المحددة.</p>
               {dateMeta.hasRestriction ? (
@@ -445,22 +350,27 @@ export function DisciplineAuditLogClient() {
             </div>
           ) : listFiltered.length === 0 ? (
             <EmptyState title="لا توجد عمليات مطابقة لنوع العملية المحدد." />
-          ) : viewMode === 'cards' ? (
-            <EntityActionCardGrid className="sm:grid-cols-2 lg:grid-cols-3">
-              {listFiltered.map(renderEntryCard)}
-            </EntityActionCardGrid>
           ) : (
-            <DataTable
-              variant="directory"
-              alwaysShowTable
-              tableClassName="min-w-[860px]"
-              columns={columns}
-              data={listFiltered}
-              keyExtractor={(e) => e.id}
-            />
+            <DisciplinePaginatedList pagination={pagination}>
+              {viewMode === 'cards' ? (
+              <EntityActionCardGrid className="sm:grid-cols-2 lg:grid-cols-3">
+                {items.map(renderEntryCard)}
+              </EntityActionCardGrid>
+              ) : (
+              <DataTable
+                variant="directory"
+                alwaysShowTable
+                tableClassName="min-w-[860px]"
+                columns={columns}
+                data={items}
+                keyExtractor={(e) => e.id}
+              />
+              )}
+            </DisciplinePaginatedList>
           )}
         </>
       )}
+      </DisciplineListViewport>
     </div>
   );
 }

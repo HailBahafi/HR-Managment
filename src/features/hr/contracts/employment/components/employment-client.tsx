@@ -15,10 +15,13 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
   ConfirmationModal, EmptyState,
-  Pagination,
 } from '@/features/hr/requests/components/shared-ui';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { employeeContractsApi } from '@/features/hr/contracts/lib/contracts-api';
 import {
   useHRContractsStore,
+  mapEmployeeContractFromApi,
   CONTRACT_NATURE_LABELS,
   WORK_ARRANGEMENT_LABELS,
   CONTRACT_STATUS_LABELS,
@@ -79,7 +82,7 @@ export function EmploymentContractsClient() {
 
   const { data: activeCompany } = useActiveCompany();
   const companyId = useDefaultCompanyId();
-  const { contracts, add, update, remove, activate, terminate, archive, createAmendmentDraft, fetch: fetchContracts } = useHRContractsStore();
+  const { add, update, remove, activate, terminate, archive, createAmendmentDraft } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { items: allowanceTypes, fetch: fetchAllowanceTypes } = useHRAllowanceTypesStore();
   const { articles, fetch: fetchArticles } = useHRContractArticlesStore();
@@ -88,12 +91,11 @@ export function EmploymentContractsClient() {
 
   React.useEffect(() => {
     if (!companyId) return;
-    fetchContracts();
     fetchTemplates();
     fetchArticles();
     fetchEmployees();
     fetchAllowanceTypes();
-  }, [companyId, fetchContracts, fetchTemplates, fetchArticles, fetchEmployees, fetchAllowanceTypes]);
+  }, [companyId, fetchTemplates, fetchArticles, fetchEmployees, fetchAllowanceTypes]);
 
   const essentialArticleIds = React.useMemo(
     () => articles.filter(a => a.isActive && a.isBasic).map(a => a.id),
@@ -141,16 +143,60 @@ export function EmploymentContractsClient() {
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
-  const empPickerList = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of contracts) {
-      const name = allEmployees.find(e => e.id === c.employeeId)?.nameAr ?? c.employeeId;
-      map.set(c.employeeId, name);
-    }
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [contracts, allEmployees]);
+  const empPickerList = React.useMemo(
+    () => allEmployees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [allEmployees],
+  );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+  const bulkMode = selectedEmpIds.size > 1;
+
+  const buildListQuery = React.useCallback((page: number, pageSize: number) => ({
+    companyId: companyId!,
+    page,
+    limit: pageSize,
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    ...(kindFilter !== 'all' ? { contractNature: kindFilter } : {}),
+    ...(selectedEmpIds.size === 1 ? { employeeId: [...selectedEmpIds][0] } : {}),
+  }), [companyId, statusFilter, kindFilter, selectedEmpIds]);
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as HRContractRecord[], total: 0 };
+    try {
+      const res = await employeeContractsApi.list(buildListQuery(page, pageSize));
+      return { items: res.items.map(mapEmployeeContractFromApi), total: res.pagination.total };
+    } catch (err) {
+      handleApiError(err, 'contracts.list');
+      return { items: [], total: 0 };
+    }
+  }, [buildListQuery, companyId]);
+
+  const loadBulk = React.useCallback(async () => {
+    if (!companyId) return { items: [] as HRContractRecord[], total: 0 };
+    try {
+      const res = await fetchAllPaginatedItems((page, limit) => employeeContractsApi.list(buildListQuery(page, limit)));
+      const scoped = selectedEmpIds.size > 0
+        ? res.items.filter((c) => selectedEmpIds.has(c.employeeId))
+        : res.items;
+      const items = scoped.map(mapEmployeeContractFromApi);
+      return { items, total: items.length };
+    } catch (err) {
+      handleApiError(err, 'contracts.list');
+      return { items: [], total: 0 };
+    }
+  }, [buildListQuery, companyId, selectedEmpIds]);
+
+  const {
+    items: filtered,
+    loading: listLoading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<HRContractRecord>(loadPage, {
+    enabled: !!companyId,
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [companyId, statusFilter, kindFilter, selectedEmpKey],
+  });
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [panelMode, setPanelMode] = React.useState<PanelMode>('create');
@@ -164,8 +210,18 @@ export function EmploymentContractsClient() {
   const [terminateReason, setTerminateReason] = React.useState('');
   const [copyFromEmployeeId, setCopyFromEmployeeId] = React.useState('');
   const [copyFromContractId, setCopyFromContractId] = React.useState('');
-  const [page, setPage] = React.useState(1);
-  const [perPage, setPerPage] = React.useState(20);
+  const [copySourceContracts, setCopySourceContracts] = React.useState<HRContractRecord[]>([]);
+
+  React.useEffect(() => {
+    if (!copyFromEmployeeId || !companyId) {
+      setCopySourceContracts([]);
+      return;
+    }
+    void employeeContractsApi
+      .list({ companyId, employeeId: copyFromEmployeeId, limit: 200 })
+      .then((res) => setCopySourceContracts(res.items.map(mapEmployeeContractFromApi)))
+      .catch(() => setCopySourceContracts([]));
+  }, [copyFromEmployeeId, companyId]);
 
   React.useEffect(() => {
     if (drawerOpen && companyId && allowanceTypes.length === 0) {
@@ -263,20 +319,19 @@ export function EmploymentContractsClient() {
   }, []);
 
   const copySourceEmpOptions = React.useMemo(() => {
-    const ids = new Set(contracts.map(c => c.employeeId));
+    const ids = new Set(filtered.map(c => c.employeeId));
     return employees.filter(e => ids.has(e.id)).map(e => ({ value: e.id, label: `${e.nameAr} — ${e.jobTitleAr}` }));
-  }, [contracts, employees]);
+  }, [filtered, employees]);
 
   const copySourceContractOptions = React.useMemo(() => {
     if (!copyFromEmployeeId) return [];
-    return [...contracts]
-      .filter(c => c.employeeId === copyFromEmployeeId)
+    return [...copySourceContracts]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map(c => ({
         value: c.id,
         label: `${c.contractNumber} · ${CONTRACT_NATURE_LABELS[c.contractType]} · ${CONTRACT_STATUS_LABELS[c.status]} · ${c.startDate}`,
       }));
-  }, [contracts, copyFromEmployeeId]);
+  }, [copySourceContracts, copyFromEmployeeId]);
 
   /* ── URL mode sync ── */
   React.useEffect(() => {
@@ -312,7 +367,7 @@ export function EmploymentContractsClient() {
   };
 
   const handleApplyCopyFromContract = () => {
-    const src = contracts.find(c => c.id === copyFromContractId);
+    const src = copySourceContracts.find(c => c.id === copyFromContractId);
     if (!src) {
       toast.error('اختر عقد المصدر أولاً');
       return;
@@ -429,6 +484,7 @@ export function EmploymentContractsClient() {
         if (!ok) { setError('لا يمكن تعديل عقد غير مسودة'); return; }
       }
       closeDrawer();
+      await reloadList();
     } catch (e) {
       setError((e as Error).message);
     }
@@ -440,19 +496,26 @@ export function EmploymentContractsClient() {
     else {
       toast.success('تم تفعيل العقد.');
       setDetailRefreshKey((k) => k + 1);
+      await reloadList();
     }
   };
 
   const handleTerminate = async () => {
     if (!terminateId) return;
     const res = await terminate(terminateId, terminateReason);
-    if (!res.ok) toast.error(res.message); else toast.success('تم إنهاء العقد.');
+    if (!res.ok) toast.error(res.message); else {
+      toast.success('تم إنهاء العقد.');
+      await reloadList();
+    }
     setTerminateId(null); setTerminateReason('');
   };
 
   const handleArchive = async (id: string) => {
     const res = await archive(id);
-    if (!res.ok) toast.error(res.message); else toast.success('تم أرشفة العقد.');
+    if (!res.ok) toast.error(res.message); else {
+      toast.success('تم أرشفة العقد.');
+      await reloadList();
+    }
   };
 
   const patch = (p: Partial<FormValues>) => setForm(f => ({ ...f, ...p }));
@@ -513,47 +576,18 @@ export function EmploymentContractsClient() {
     }));
   };
 
-  const narrowedEmp = React.useMemo(
-    () => contracts.filter(c => selectedEmpIds.size === 0 || selectedEmpIds.has(c.employeeId)),
-    [contracts, selectedEmpIds],
-  );
-
-  const narrowedForKind = React.useMemo(
-    () => narrowedEmp.filter(c => kindFilter === 'all' || c.contractType === kindFilter),
-    [narrowedEmp, kindFilter],
-  );
-
   const employmentStatusOrder = React.useMemo(
     () => EMPLOYMENT_STATUS_FILTER_OPTIONS.filter((o): o is { value: HRContractLifecycleStatus; label: string } => o.value !== 'all').map(o => o.value),
     [],
   );
 
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: narrowedForKind.length };
+    const counts: Record<string, number> = { all: pagination.total };
     for (const s of employmentStatusOrder) {
-      counts[s] = narrowedForKind.filter(c => c.status === s).length;
+      counts[s] = filtered.filter(c => c.status === s).length;
     }
     return counts;
-  }, [narrowedForKind, employmentStatusOrder]);
-
-  const filtered = React.useMemo(
-    () =>
-      narrowedForKind
-        .filter(c => statusFilter === 'all' || c.status === statusFilter)
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [narrowedForKind, statusFilter],
-  );
-
-  const total = filtered.length;
-
-  React.useEffect(() => {
-    setPage(1);
-  }, [statusFilter, kindFilter, selectedEmpKey, perPage]);
-
-  const paged = React.useMemo(
-    () => filtered.slice((page - 1) * perPage, page * perPage),
-    [filtered, page, perPage],
-  );
+  }, [filtered, pagination.total, employmentStatusOrder]);
 
   useEntityFilterSlot(
     () => (
@@ -616,15 +650,20 @@ export function EmploymentContractsClient() {
   );
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle titleAr="عقود العمل" descriptionAr="إدارة دورة حياة عقود العمل الوظيفية." iconName="FileText" />
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && !listLoading ? (
         <EmptyState icon={FileText} title="لا توجد عقود" description="أنشئ عقد عمل جديداً للبدء." />
       ) : (
-        <>
+        <DirectoryPagedViews
+          items={filtered}
+          serverPagination={pagination}
+          loading={listLoading}
+        >
+          {(pageItems) => (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {paged.map(c => (
+            {pageItems.map(c => (
             <div
               key={c.id}
               className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col cursor-pointer"
@@ -676,18 +715,8 @@ export function EmploymentContractsClient() {
             </div>
           ))}
           </div>
-          {total > perPage ? (
-            <div className="mt-4 overflow-hidden rounded-xl border border-border">
-              <Pagination
-                page={page}
-                perPage={perPage}
-                total={total}
-                onPage={setPage}
-                onPerPage={setPerPage}
-              />
-            </div>
-          ) : null}
-        </>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <EmploymentContractDetailDialog
@@ -756,6 +785,6 @@ export function EmploymentContractsClient() {
         onConfirm={handleTerminate}
         onCancel={() => { setTerminateId(null); setTerminateReason(''); }}
       />
-    </>
+    </div>
   );
 }

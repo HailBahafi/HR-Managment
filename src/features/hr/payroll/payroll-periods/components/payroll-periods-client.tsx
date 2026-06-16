@@ -28,6 +28,11 @@ import {
   type HRPayrollPeriodDraft, type HRPayrollPeriodStatus,
 } from '@/features/hr/payroll/lib/payroll-periods-store';
 import { hrPayrollPeriodCompensationHref } from '@/features/hr/payroll/constants/routes';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { payrollPeriodsApi } from '@/features/hr/payroll/lib/api/payroll-periods';
+import { mapPayrollPeriodFromApi, type HRPayrollPeriodRecord } from '@/features/hr/payroll/lib/payroll-periods-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { cn } from '@/shared/utils';
 
 type StatusFilter = 'all' | HRPayrollPeriodStatus;
@@ -57,15 +62,11 @@ const EMPTY_DRAFT: HRPayrollPeriodDraft = {
 };
 
 export function PayrollPeriodsClient() {
+  const companyId = useDefaultCompanyId();
   const {
-    periods, add, update, remove,
+    add, update, remove,
     open: openPeriod, close: closePeriod,
-    fetch: fetchPeriods,
   } = useHRPayrollPeriodsStore();
-
-  React.useEffect(() => {
-    fetchPeriods();
-  }, [fetchPeriods]);
 
   const { values, setValue } = usePageFilters([
     {
@@ -80,6 +81,54 @@ export function PayrollPeriodsClient() {
   const statusFilter = (values.status as StatusFilter) || 'all';
 
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const hasDateFilter = Boolean(dateBounds.from || dateBounds.to);
+  const bulkMode = hasDateFilter;
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as HRPayrollPeriodRecord[], total: 0 };
+    const res = await payrollPeriodsApi.list({
+      companyId,
+      page,
+      limit: pageSize,
+      ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    });
+    let items = res.items.map(mapPayrollPeriodFromApi);
+    if (hasDateFilter) {
+      items = items.filter((p) =>
+        intervalOverlapsYmdRange(p.periodStart, p.periodEnd, dateBounds.from, dateBounds.to),
+      );
+    }
+    items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { items, total: hasDateFilter ? items.length : res.pagination.total };
+  }, [companyId, dateBounds.from, dateBounds.to, hasDateFilter, statusFilter]);
+
+  const loadBulk = React.useCallback(async () => {
+    if (!companyId) return { items: [] as HRPayrollPeriodRecord[], total: 0 };
+    const res = await fetchAllPaginatedItems((page, limit) => payrollPeriodsApi.list({
+      companyId,
+      page,
+      limit,
+      ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    }));
+    const items = res.items
+      .map(mapPayrollPeriodFromApi)
+      .filter((p) => intervalOverlapsYmdRange(p.periodStart, p.periodEnd, dateBounds.from, dateBounds.to))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { items, total: items.length };
+  }, [companyId, dateBounds.from, dateBounds.to, statusFilter]);
+
+  const {
+    items: filtered,
+    loading: listLoading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<HRPayrollPeriodRecord>(loadPage, {
+    enabled: !!companyId,
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [companyId, statusFilter, dateBounds.from, dateBounds.to],
+  });
+
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
     setDateBounds(b);
   }, []);
@@ -91,32 +140,13 @@ export function PayrollPeriodsClient() {
   const [error, setError] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
 
-  const narrowedByDate = React.useMemo(
-    () =>
-      periods.filter((p) =>
-        intervalOverlapsYmdRange(p.periodStart, p.periodEnd, dateBounds.from, dateBounds.to),
-      ),
-    [periods, dateBounds.from, dateBounds.to],
-  );
-
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: narrowedByDate.length };
+    const counts: Record<string, number> = { all: pagination.total };
     for (const status of PERIOD_STATUS_ORDER) {
-      counts[status] = 0;
-    }
-    for (const p of narrowedByDate) {
-      counts[p.status] = (counts[p.status] ?? 0) + 1;
+      counts[status] = filtered.filter((p) => p.status === status).length;
     }
     return counts;
-  }, [narrowedByDate]);
-
-  const filtered = React.useMemo(
-    () =>
-      narrowedByDate
-        .filter(p => statusFilter === 'all' || p.status === statusFilter)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [narrowedByDate, statusFilter],
-  );
+  }, [filtered, pagination.total]);
 
   const total = filtered.length;
 
@@ -137,7 +167,7 @@ export function PayrollPeriodsClient() {
     [activeFilterCount],
   );
   const openEdit   = (id: string) => {
-    const p = periods.find(x => x.id === id);
+    const p = filtered.find(x => x.id === id);
     if (!p) return;
     setEditId(id);
     setDraft({
@@ -167,12 +197,13 @@ export function PayrollPeriodsClient() {
     setError(null); setDrawerOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft.code.trim()) { setError('الكود مطلوب'); return; }
     if (!draft.nameAr.trim()) { setError('الاسم العربي مطلوب'); return; }
     if (!draft.periodStart || !draft.periodEnd) { setError('تواريخ الفترة مطلوبة'); return; }
-    if (editId) { update(editId, draft); } else { add(draft); }
+    if (editId) { await update(editId, draft); } else { await add(draft); }
     setDrawerOpen(false);
+    await reloadList();
   };
 
   const set = (patch: Partial<HRPayrollPeriodDraft>) => setDraft(d => ({ ...d, ...patch }));
@@ -200,7 +231,7 @@ export function PayrollPeriodsClient() {
     ],
   );
 
-  const PeriodActions = ({ p }: { p: typeof periods[0] }) => (
+  const PeriodActions = ({ p }: { p: HRPayrollPeriodRecord }) => (
     <div className="flex items-center gap-1 flex-wrap">
       <Link href={hrPayrollPeriodCompensationHref(p.id)}>
         <Button size="sm" variant="outline" className="h-7 gap-1 text-xs">
@@ -218,11 +249,13 @@ export function PayrollPeriodsClient() {
     <>
       <SetPageTitle titleAr="فترات الراتب" descriptionAr="إنشاء وإدارة فترات الرواتب الشهرية." iconName="CalendarRange" />
 
-      {filtered.length === 0 ? (
+      {!listLoading && filtered.length === 0 && pagination.total === 0 ? (
         <EmptyState icon={CalendarRange} title="لا توجد فترات" description="أنشئ فترة راتب جديدة للبدء." />
       ) : (
+        <DirectoryPagedViews items={filtered} serverPagination={pagination} loading={listLoading}>
+          {(pageItems) => (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map(p => (
+          {pageItems.map(p => (
             <div
               key={p.id}
               className={cn(
@@ -264,6 +297,8 @@ export function PayrollPeriodsClient() {
             </div>
           ))}
         </div>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <HRSettingsFormDrawer
@@ -309,7 +344,7 @@ export function PayrollPeriodsClient() {
         description="هل أنت متأكد من حذف هذه الفترة؟ لا يمكن التراجع."
         confirmLabel="حذف"
         variant="destructive"
-        onConfirm={() => { if (confirmId) { remove(confirmId); setConfirmId(null); } }}
+        onConfirm={async () => { if (confirmId) { await remove(confirmId); setConfirmId(null); await reloadList(); } }}
       />
     </>
   );

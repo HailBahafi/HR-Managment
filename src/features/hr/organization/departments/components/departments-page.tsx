@@ -16,12 +16,13 @@ import {
 import { cn } from '@/shared/utils';
 import { useDepartmentsDirectoryModel } from '@/features/hr/organization/departments/hooks/useDepartmentsDirectoryModel';
 import { DepartmentsListGrid } from '@/features/hr/organization/departments/components/departments-list-grid';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 
 export default function DepartmentsPage() {
   const model = useDepartmentsDirectoryModel();
 
   return (
-    <div className="w-full min-w-0 space-y-4 pt-2">
+    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 pt-2">
       {model.loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">جاري التحميل…</div>
       ) : model.listError ? (
@@ -29,14 +30,22 @@ export default function DepartmentsPage() {
       ) : model.filtered.length === 0 ? (
         <EmptyState icon={Building2} title="لا توجد أقسام" />
       ) : (
+        <DirectoryPagedViews
+          items={model.filtered}
+          serverPagination={model.pagination}
+          loading={model.loading}
+        >
+          {(pageItems) => (
         <DepartmentsListGrid
           departments={model.departments}
-          filtered={model.filtered}
+          filtered={pageItems}
           branchLabel={model.branchLabel}
           companyLabel={model.companyLabel}
           onEdit={model.openEdit}
           onDelete={model.confirmDelete}
         />
+          )}
+        </DirectoryPagedViews>
       )}
 
       <HRSettingsFormDrawer

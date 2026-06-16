@@ -39,19 +39,13 @@ export default function AttendancePage({ section }: { section: AttendanceSection
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="rounded-lg">
-        <div className="rounded-md">
-          <div>
-            {section === 'templates' && <ShiftTemplatesPanel />}
-            {section === 'assignment' && <AssignmentsPanel />}
-            {section === 'daily' && <DailyAttendancePanel />}
-            {section === 'checkpoints' && <CheckpointsPanel />}
-            {section === 'checkpoint-links' && <CheckpointLinksPanel />}
-            {section === 'events' && <AttendanceEventsPanel />}
-          </div>
-        </div>
-      </div>
+    <div className="flex min-h-0 flex-1 flex-col animate-fade-in">
+      {section === 'templates' && <ShiftTemplatesPanel />}
+      {section === 'assignment' && <AssignmentsPanel />}
+      {section === 'daily' && <DailyAttendancePanel />}
+      {section === 'checkpoints' && <CheckpointsPanel />}
+      {section === 'checkpoint-links' && <CheckpointLinksPanel />}
+      {section === 'events' && <AttendanceEventsPanel />}
     </div>
   );
 }

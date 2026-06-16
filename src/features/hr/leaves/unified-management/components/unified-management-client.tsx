@@ -42,6 +42,8 @@ import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { cn } from '@/shared/utils';
 import { toast } from 'sonner';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import {
   EntityActionCard,
   EntityActionCardChip,
@@ -275,17 +277,12 @@ export function UnifiedManagementClient() {
 
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
   const [leaveRequestTypes, setLeaveRequestTypes] = React.useState<ApiRequestType[]>([]);
-  const [leaves, setLeaves] = React.useState<UnifiedLeaveRecord[]>([]);
 
-  const reloadLeaves = React.useCallback(async () => {
+  const reloadLeaveTypes = React.useCallback(async () => {
     if (!companyId) return;
     try {
-      const [ltRes, lrRes] = await Promise.all([
-        loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true }),
-        leaveRequestsNewApi.list({ companyId, limit: 1000 }),
-      ]);
+      const ltRes = await loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true });
       setLeaveTypes(ltRes.items);
-      setLeaves(lrRes.items.map((r) => mapApiLeave(r, ltRes.items)));
       try {
         const rtRes = await requestTypesApi.list({ companyId, requestCategory: 'leave', isActive: true, limit: 200 });
         setLeaveRequestTypes(rtRes.items);
@@ -293,13 +290,14 @@ export function UnifiedManagementClient() {
         setLeaveRequestTypes([]);
       }
     } catch {
-      toast.error('فشل تحميل طلبات الإجازات');
+      toast.error('فشل تحميل أنواع الإجازات');
     }
   }, [companyId]);
 
   React.useEffect(() => {
-    void reloadLeaves();
-  }, [reloadLeaves]);
+    void reloadLeaveTypes();
+  }, [reloadLeaveTypes]);
+
   const [branchId, setBranchId] = React.useState('all');
   const [departmentId, setDepartmentId] = React.useState('all');
   const [leaveType, setLeaveType] = React.useState<string>('all');
@@ -315,13 +313,12 @@ export function UnifiedManagementClient() {
   );
   const typeInlineOptions = React.useMemo(() => {
     const options = new Map<string, string>();
-    for (const l of leaves) options.set(l.leaveTypeId, l.leaveTypeName);
     for (const lt of leaveTypes) options.set(lt.id, lt.nameAr);
     return [
       { value: 'all', label: 'جميع الأنواع' },
       ...[...options.entries()].map(([value, label]) => ({ value, label })),
     ];
-  }, [leaves, leaveTypes]);
+  }, [leaveTypes]);
   const stageInlineOptions = React.useMemo(
     () => [
       { value: 'all', label: 'الكل' },
@@ -356,46 +353,89 @@ export function UnifiedManagementClient() {
   const [addOpen, setAddOpen] = React.useState(false);
   const [editLeave, setEditLeave] = React.useState<UnifiedLeaveRecord | null>(null);
 
-  const statusCounts = React.useMemo(() => {
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  const bulkMode =
+    branchId !== 'all' ||
+    departmentId !== 'all' ||
+    approvalStageFilter !== 'all' ||
+    selectedEmpIds.size > 1;
+
+  const buildListQuery = React.useCallback((page: number, pageSize: number) => ({
+    companyId: companyId!,
+    page,
+    limit: pageSize,
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    ...(leaveType !== 'all' ? { leaveTypeId: leaveType } : {}),
+    ...(selectedEmpIds.size === 1 ? { employeeId: [...selectedEmpIds][0] } : {}),
+    ...(dateBounds.from ? { dateFrom: dateBounds.from } : {}),
+    ...(dateBounds.to ? { dateTo: dateBounds.to } : {}),
+  }), [companyId, statusFilter, leaveType, selectedEmpIds, dateBounds.from, dateBounds.to]);
+
+  const applyClientFilters = React.useCallback((items: UnifiedLeaveRecord[]) => {
     const empPick = [...selectedEmpIds];
-    const base = leaves.filter((l) => {
+    return items.filter((l) => {
       if (empPick.length > 0 && !empPick.includes(l.employeeId)) return false;
-      if (filters.type !== 'all' && l.leaveTypeId !== filters.type) return false;
-      if (filters.approvalStage !== 'all') {
+      if (branchId !== 'all' && l.requestBranchId !== branchId) return false;
+      if (approvalStageFilter !== 'all') {
         const stage = getApprovalStage(l);
-        if (stage !== filters.approvalStage && !(filters.approvalStage === 'fully_approved' && stage === 'fully_approved')) return false;
+        if (stage !== approvalStageFilter && !(approvalStageFilter === 'fully_approved' && stage === 'fully_approved')) return false;
       }
       if (!leaveOverlapsYmdRange(l, dateBounds.from, dateBounds.to)) return false;
       return true;
     });
-    return {
-      all: base.length,
-      pending: base.filter((l) => l.status === 'pending').length,
-      approved: base.filter((l) => l.status === 'approved').length,
-      rejected: base.filter((l) => l.status === 'rejected').length,
-      cancelled: base.filter((l) => l.status === 'cancelled').length,
-    };
-  }, [leaves, filters.branchId, filters.departmentId, filters.type, filters.approvalStage, selectedEmpIds, dateBounds.from, dateBounds.to]);
+  }, [approvalStageFilter, branchId, dateBounds.from, dateBounds.to, selectedEmpIds]);
 
-  // Apply filters (شريط الأدوات: فترة + حالة + موظفون؛ اللوحة: فرع، قسم، نوع، مرحلة)
-  const filtered = React.useMemo(() => {
-    const empPick = [...selectedEmpIds];
-    return leaves.filter((l) => {
-      if (empPick.length > 0 && !empPick.includes(l.employeeId)) return false;
-      if (filters.branchId !== 'all' && l.requestBranchId !== filters.branchId) return false;
-      if (filters.status !== 'all' && l.status !== filters.status) return false;
-      if (filters.type !== 'all' && l.leaveTypeId !== filters.type) return false;
-      if (filters.approvalStage !== 'all') {
-        const stage = getApprovalStage(l);
-        if (stage !== filters.approvalStage && !(filters.approvalStage === 'fully_approved' && stage === 'fully_approved')) return false;
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as UnifiedLeaveRecord[], total: 0 };
+    try {
+      const res = await leaveRequestsNewApi.list(buildListQuery(page, pageSize));
+      const mapped = res.items.map((r) => mapApiLeave(r, leaveTypes));
+      if (bulkMode) {
+        const items = applyClientFilters(mapped);
+        return { items, total: items.length };
       }
-      if (!leaveOverlapsYmdRange(l, dateBounds.from, dateBounds.to)) return false;
-      return true;
-    });
-  }, [leaves, filters.branchId, filters.departmentId, filters.status, filters.type, filters.approvalStage, selectedEmpIds, dateBounds.from, dateBounds.to]);
+      return { items: mapped, total: res.pagination.total };
+    } catch {
+      toast.error('فشل تحميل طلبات الإجازات');
+      return { items: [], total: 0 };
+    }
+  }, [applyClientFilters, buildListQuery, bulkMode, companyId, leaveTypes]);
 
-  const updateLeave = (updated: UnifiedLeaveRecord) =>
-    setLeaves((ls) => ls.map((l) => l.id === updated.id ? updated : l));
+  const loadBulk = React.useCallback(async () => {
+    if (!companyId) return { items: [] as UnifiedLeaveRecord[], total: 0 };
+    try {
+      const res = await fetchAllPaginatedItems((page, limit) =>
+        leaveRequestsNewApi.list({ ...buildListQuery(page, limit) }),
+      );
+      const mapped = res.items.map((r) => mapApiLeave(r, leaveTypes));
+      const items = applyClientFilters(mapped);
+      return { items, total: items.length };
+    } catch {
+      toast.error('فشل تحميل طلبات الإجازات');
+      return { items: [], total: 0 };
+    }
+  }, [applyClientFilters, buildListQuery, companyId, leaveTypes]);
+
+  const {
+    items: filtered,
+    loading: listLoading,
+    pagination,
+    reload: reloadLeaves,
+  } = useServerDirectoryPagination<UnifiedLeaveRecord>(loadPage, {
+    enabled: !!companyId,
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [companyId, branchId, departmentId, leaveType, approvalStageFilter, statusFilter, selectedEmpKey, dateBounds.from, dateBounds.to],
+  });
+
+  const statusCounts = React.useMemo(() => ({
+    all: pagination.total,
+    pending: filtered.filter((l) => l.status === 'pending').length,
+    approved: filtered.filter((l) => l.status === 'approved').length,
+    rejected: filtered.filter((l) => l.status === 'rejected').length,
+    cancelled: filtered.filter((l) => l.status === 'cancelled').length,
+  }), [filtered, pagination.total]);
 
   const handleApprove = async (leave: UnifiedLeaveRecord) => {
     const userId = useAuthStore.getState().user?.id ?? '';
@@ -405,8 +445,8 @@ export function UnifiedManagementClient() {
         updatedBy: userId || undefined,
       });
       const mapped = mapApiLeave(updated, leaveTypes);
-      updateLeave(mapped);
       if (detailLeave?.id === leave.id) setDetailLeave(mapped);
+      await reloadLeaves();
       toast.success('تمت الموافقة على الطلب');
     } catch {
       toast.error('فشل اعتماد الطلب');
@@ -421,15 +461,13 @@ export function UnifiedManagementClient() {
         updatedBy: userId || undefined,
       });
       const mapped = mapApiLeave(updated, leaveTypes);
-      updateLeave(mapped);
       if (detailLeave?.id === leave.id) setDetailLeave(mapped);
+      await reloadLeaves();
       toast.message('تم رفض الطلب');
     } catch {
       toast.error('فشل رفض الطلب');
     }
   };
-
-  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
   const activeFilterCount =
     (branchId !== 'all' ? 1 : 0) + (departmentId !== 'all' ? 1 : 0) +
@@ -498,13 +536,20 @@ export function UnifiedManagementClient() {
   );
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="flex min-h-0 flex-1 flex-col gap-5 animate-fade-in">
 
-      {/* Content */}
-      {view === 'table'
-        ? <LeaveTable leaves={filtered} employees={employeesList} branches={branches} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
-        : <LeaveCardGrid leaves={filtered} employees={employeesList} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
-      }
+      <DirectoryPagedViews
+        items={filtered}
+        serverPagination={pagination}
+        loading={listLoading}
+        resetDeps={[view, filters.branchId, filters.departmentId, filters.status, filters.type, filters.approvalStage, selectedEmpKey, dateBounds.from, dateBounds.to]}
+      >
+        {(pageItems) => (
+          view === 'table'
+            ? <LeaveTable leaves={pageItems} employees={employeesList} branches={branches} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
+            : <LeaveCardGrid leaves={pageItems} employees={employeesList} onDetail={setDetailLeave} onApprove={handleApprove} onReject={handleReject} />
+        )}
+      </DirectoryPagedViews>
 
       {/* Detail dialog */}
       {detailLeave && (

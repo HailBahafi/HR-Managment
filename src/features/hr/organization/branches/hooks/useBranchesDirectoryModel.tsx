@@ -13,12 +13,14 @@ import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
+import { branchesApi } from '@/features/hr/organization/lib/api/branches';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import {
   createBranch,
   deleteBranch,
-  loadBranchesDirectory,
   updateBranch,
 } from '@/features/hr/organization/branches/services/branches.service';
+import { mapBranchResponse } from '@/features/hr/organization/branches/constants/branches-directory';
 import { generateEntityCode } from '@/features/hr/requests/lib/types';
 import {
   BRANCH_EMPTY_FORM,
@@ -36,13 +38,11 @@ export function useBranchesDirectoryModel() {
   const { data: defaultCompany } = useDefaultCompany();
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
-  const [branches, setBranches] = React.useState<BranchRow[]>([]);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<BranchDraftForm>(BRANCH_EMPTY_FORM);
   const [error, setError] = React.useState<string | null>(null);
   const [listError, setListError] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewBranch, setViewBranch] = React.useState<BranchRow | null>(null);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
@@ -56,28 +56,28 @@ export function useBranchesDirectoryModel() {
     [defaultCompany],
   );
 
-  const loadBranches = React.useCallback(async (companyId: string | null) => {
-    if (!companyId) {
-      setBranches([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setListError(null);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!defaultCompanyId) return { items: [] as BranchRow[], total: 0 };
     try {
-      const data = await loadBranchesDirectory(companyId);
-      setBranches(data.branches);
+      const res = await branchesApi.getAll({ companyId: defaultCompanyId, page, limit: pageSize });
+      setListError(null);
+      return { items: res.items.map(mapBranchResponse), total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'branches.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
-  }, []);
+  }, [defaultCompanyId]);
 
-  React.useEffect(() => {
-    void loadBranches(defaultCompanyId);
-  }, [defaultCompanyId, loadBranches]);
+  const {
+    items: branches,
+    loading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<BranchRow>(loadPage, {
+    enabled: !!defaultCompanyId,
+    resetDeps: [defaultCompanyId, layoutView],
+  });
 
   React.useEffect(() => {
     if (!drawerOpen || !defaultCompanyId) {
@@ -178,26 +178,26 @@ export function useBranchesDirectoryModel() {
       } else {
         await createBranch(draftFormToCreatePayload(form, companyId, generateEntityCode(form.name.trim(), 'branch')));
       }
-      await loadBranches(defaultCompanyId);
+      await reloadList();
       setDrawerOpen(false);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'branches.save');
       setError(displayMessage);
     }
-  }, [defaultCompanyId, editId, form, loadBranches]);
+  }, [editId, form, reloadList]);
 
   const handleDelete = React.useCallback(async () => {
     if (!confirmId) return;
     setError(null);
     try {
       await deleteBranch(confirmId);
-      await loadBranches(defaultCompanyId);
+      await reloadList();
       setConfirmId(null);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'branches.delete');
       setError(displayMessage);
     }
-  }, [confirmId, defaultCompanyId, loadBranches]);
+  }, [confirmId, reloadList]);
 
   usePageHeaderActions(
     () => (
@@ -238,6 +238,7 @@ export function useBranchesDirectoryModel() {
     branches,
     filtered,
     loading,
+    pagination,
     listError,
     drawerOpen,
     setDrawerOpen,

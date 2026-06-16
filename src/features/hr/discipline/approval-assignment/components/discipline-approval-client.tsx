@@ -16,6 +16,7 @@ import {
 } from '@/features/hr/requests/components/shared-ui';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { useDisciplineApprovalTemplatesModel } from '../hooks/useDisciplineApprovalTemplatesModel';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 import type { ApprovalMode } from '../hooks/useDisciplineApprovalTemplatesModel';
 import { cn } from '@/shared/utils';
 
@@ -44,7 +45,7 @@ function buildNameAr(linkedIds: string[], violationTypes: { id: string; nameAr: 
 }
 
 export function DisciplineApprovalClient() {
-  const { templates, violationTypes, employees, loading, listError, createTemplate, updateTemplate, deleteTemplate } =
+  const { templates, violationTypes, employees, loading, listError, pagination, createTemplate, updateTemplate, deleteTemplate } =
     useDisciplineApprovalTemplatesModel();
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -146,18 +147,20 @@ export function DisciplineApprovalClient() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="flex justify-end shrink-0">
         <Button variant="luxe" size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4 ml-1" />إسناد جديد
         </Button>
       </div>
 
+      <DisciplineListViewport>
       {templates.length === 0 ? (
         <EmptyState title="لا توجد إسنادات" description="اربط أنواع المخالفات بمعتمدين." />
       ) : (
-        <EntityActionCardGrid>
-          {templates.map((t) => (
+        <DisciplinePaginatedList pagination={pagination}>
+          <EntityActionCardGrid>
+            {templates.map((t) => (
             <EntityActionCard
               key={t.id}
               title={t.violationTypes.length > 0 ? t.violationTypes[0]?.violationTypeNameAr ?? 'إسناد موافقات' : 'إسناد موافقات'}
@@ -189,9 +192,11 @@ export function DisciplineApprovalClient() {
                 )}
               </div>
             </EntityActionCard>
-          ))}
-        </EntityActionCardGrid>
+            ))}
+          </EntityActionCardGrid>
+        </DisciplinePaginatedList>
       )}
+      </DisciplineListViewport>
 
       <HRSettingsFormDrawer
         open={drawerOpen}

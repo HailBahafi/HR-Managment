@@ -41,7 +41,6 @@ import {
   validateInvestigationResultsDraft,
 } from '@/features/hr/discipline/investigations/services/submit-violation-investigation';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -55,6 +54,7 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 import type { HRDisciplineInvestigationRecord } from '@/features/hr/discipline/lib/types';
 
 type ResultFilter = 'all' | HRInvestigationResult;
@@ -83,7 +83,7 @@ const OPEN_EMPTY: OpenDraftForm = {
 
 export function InvestigationsClient() {
   const m = useDisciplineInvestigationsDirectoryModel();
-  const { investigations, reloadInvestigations } = m;
+  const { setListFilters, items, pagination, filteredItems, sourceInvestigations, dateFilteredItems } = m;
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
@@ -101,12 +101,18 @@ export function InvestigationsClient() {
   );
 
   React.useEffect(() => {
-    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
-    const result = resultFilter !== 'all' ? resultFilter : undefined;
-    void reloadInvestigations({ employeeId, result });
-  }, [selectedEmpIds, resultFilter, reloadInvestigations]);
+    setListFilters({
+      selectedEmpIds: [...selectedEmpIds],
+      resultFilter,
+      recommendationFilter,
+      dateFrom: dateBounds.from,
+      dateTo: dateBounds.to,
+    });
+  }, [selectedEmpIds, resultFilter, recommendationFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
-  const [openDrawerOpen, setOpenDrawerOpen] = React.useState(false);
+  const listFiltered = filteredItems;
+  const filtered = dateFilteredItems;
+  const searchFiltered = sourceInvestigations;
   const [openDraft, setOpenDraft] = React.useState<OpenDraftForm>(OPEN_EMPTY);
   const [openFormError, setOpenFormError] = React.useState<string | null>(null);
   const [resultsTarget, setResultsTarget] = React.useState<HRDisciplineInvestigationRecord | null>(null);
@@ -117,31 +123,17 @@ export function InvestigationsClient() {
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [detailRow, setDetailRow] = React.useState<HRDisciplineInvestigationRecord | null>(null);
 
+  const [openDrawerOpen, setOpenDrawerOpen] = React.useState(false);
+
   const caseOptions = m.cases.map(c => ({ value: c.id, label: c.caseNumber, sub: c.employeeNameAr }));
   const investigatorOptions = m.employees.map((e) => ({ value: e.id, label: e.nameAr }));
 
-  // Employee and result filters are handled by the backend via reloadInvestigations; use investigations directly.
-  const searchFiltered = investigations;
-
-  const filtered = React.useMemo(
-    () => investigations.filter((i) => matchesDateRange(i.date, dateBounds.from, dateBounds.to)),
-    [investigations, dateBounds.from, dateBounds.to],
-  );
-
-  const listFiltered = React.useMemo(
-    () => {
-      if (recommendationFilter === 'all') return filtered;
-      return filtered.filter((i) => i.recommendationType === recommendationFilter);
-    },
-    [filtered, recommendationFilter],
-  );
-
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: investigations.length };
+    const counts: Record<string, number> = { all: sourceInvestigations.length };
     for (const r of INVESTIGATION_RESULT_FILTER_ORDER) counts[r] = 0;
-    for (const i of investigations) counts[i.result] = (counts[i.result] ?? 0) + 1;
+    for (const i of sourceInvestigations) counts[i.result] = (counts[i.result] ?? 0) + 1;
     return counts;
-  }, [investigations]);
+  }, [sourceInvestigations]);
 
   const dateRangeActive = dateMeta.hasRestriction;
 
@@ -481,7 +473,7 @@ export function InvestigationsClient() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <PdfPreviewExportDialog
         open={pdfOpen}
         onOpenChange={setPdfOpen}
@@ -496,6 +488,7 @@ export function InvestigationsClient() {
         </p>
       ) : null}
 
+      <DisciplineListViewport>
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
       ) : searchFiltered.length === 0 ? (
@@ -528,9 +521,11 @@ export function InvestigationsClient() {
             عرض الكل
           </Button>
         </div>
-      ) : viewMode === 'cards' ? (
-        <EntityActionCardGrid>
-          {listFiltered.map((inv) => (
+      ) : (
+        <DisciplinePaginatedList pagination={pagination}>
+          {viewMode === 'cards' ? (
+          <EntityActionCardGrid>
+            {items.map((inv) => (
             <EntityActionCard
               key={inv.id}
               reference={inv.caseNumber}
@@ -592,19 +587,22 @@ export function InvestigationsClient() {
                 <p className="text-xs text-muted-foreground">التوصية: {INVESTIGATION_RECOMMENDATION_LABELS.warning}</p>
               ) : null}
             </EntityActionCard>
-          ))}
-        </EntityActionCardGrid>
-      ) : (
-        <DataTable
-          variant="directory"
-          alwaysShowTable
-          tableClassName="min-w-[720px]"
-          columns={columns}
-          data={listFiltered}
-          keyExtractor={(inv) => inv.id}
-          onRowClick={(inv) => setDetailRow(inv)}
-        />
+            ))}
+          </EntityActionCardGrid>
+          ) : (
+          <DataTable
+            variant="directory"
+            alwaysShowTable
+            tableClassName="min-w-[720px]"
+            columns={columns}
+            data={items}
+            keyExtractor={(inv) => inv.id}
+            onRowClick={(inv) => setDetailRow(inv)}
+          />
+          )}
+        </DisciplinePaginatedList>
       )}
+      </DisciplineListViewport>
 
       <HRSettingsFormDrawer
         open={openDrawerOpen}

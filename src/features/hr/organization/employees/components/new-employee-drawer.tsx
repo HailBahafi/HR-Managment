@@ -18,7 +18,6 @@ import { cn } from '@/shared/utils';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
-import { employeeAssignmentsApi } from '@/features/hr/organization/employees/lib/api/employee-assignments';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import { companiesApi, type CompanyResponseDto } from '@/features/hr/organization/lib/api/companies';
@@ -217,7 +216,7 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
     setSaving(true);
     setSaveError(null);
     try {
-      const emp = await employeesApi.create({
+      await employeesApi.create({
         employeeCode: `EMP-${Date.now()}`,
         nameAr: form.nameAr.trim(),
         email: form.email.trim() || null,
@@ -235,15 +234,10 @@ export function NewEmployeeDrawer({ open, onOpenChange, onCreated }: Props) {
         address: form.address.trim() || null,
         emergencyContact: form.emergencyContact.trim() || null,
         role: form.role || null,
-      });
-
-      await employeeAssignmentsApi.create(emp.id, {
         companyId: form.companyId,
         branchId: form.branchId,
         departmentId: form.departmentId || null,
-        isPrimary: true,
-        status: 'active',
-        startDate: form.startDate || null,
+        assignmentIsPrimary: true,
       });
 
       toast.success('تم إضافة الموظف بنجاح');

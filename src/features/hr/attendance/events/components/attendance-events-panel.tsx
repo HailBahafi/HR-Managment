@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { useAttendanceEventsModel } from '@/features/hr/attendance/events/hooks/useAttendanceEventsModel';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { attendanceEventsApi, type AttendanceEventResponseDto, type AttendanceEventType } from '@/features/hr/attendance/lib/api/attendance-events';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -360,41 +361,47 @@ function EventDetailDialog({
 export function AttendanceEventsPanel() {
   const m = useAttendanceEventsModel();
 
-  // Group events by date
-  const grouped = React.useMemo(() => {
+  const groupEvents = React.useCallback((events: AttendanceEventResponseDto[]) => {
     const map = new Map<string, AttendanceEventResponseDto[]>();
-    for (const e of m.events) {
+    for (const e of events) {
       const k = e.workDate;
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(e);
     }
     return [...map.entries()].sort(([a], [b]) => b.localeCompare(a));
-  }, [m.events]);
+  }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {/* Include voided toggle */}
       <div className="flex items-center gap-2 justify-end">
         <Label className="text-xs text-muted-foreground">إظهار الملغاة</Label>
         <Switch checked={m.includeVoided} onCheckedChange={m.setIncludeVoided} />
       </div>
 
-      {m.loading ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">جاري التحميل…</div>
-      ) : m.listError ? (
+      {m.listError ? (
         <EmptyStateCard icon={AlertTriangle} title="تعذر التحميل" description={m.listError} />
-      ) : grouped.length === 0 ? (
-        <EmptyStateCard
-          icon={Clock}
-          title="لا توجد أحداث"
-          description="لا توجد أحداث حضور في النطاق الزمني المحدد."
-        >
-          <Button variant="outline" size="sm" onClick={() => m.setCreateOpen(true)}>
-            <Plus className="h-3.5 w-3.5 ml-1" /> تسجيل حدث
-          </Button>
-        </EmptyStateCard>
       ) : (
-        grouped.map(([date, dayEvents]) => (
+        <DirectoryPagedViews
+          items={m.events}
+          serverPagination={m.pagination}
+          loading={m.loading}
+          resetDeps={[m.includeVoided]}
+          empty={(
+            <EmptyStateCard
+              icon={Clock}
+              title="لا توجد أحداث"
+              description="لا توجد أحداث حضور في النطاق الزمني المحدد."
+            >
+              <Button variant="outline" size="sm" onClick={() => m.setCreateOpen(true)}>
+                <Plus className="h-3.5 w-3.5 ml-1" /> تسجيل حدث
+              </Button>
+            </EmptyStateCard>
+          )}
+        >
+          {(pageItems) => (
+            <div className="space-y-4">
+              {groupEvents(pageItems).map(([date, dayEvents]) => (
           <div key={date} className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
             {/* Day header */}
             <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2.5">
@@ -421,7 +428,10 @@ export function AttendanceEventsPanel() {
               <EventRow key={e.id} event={e} onVoid={m.setVoidTarget} onDetail={m.setDetailTarget} />
             ))}
           </div>
-        ))
+            ))}
+          </div>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <CreateEventDialog

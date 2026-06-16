@@ -21,7 +21,7 @@ import {
 import type { NotificationAudienceKind } from '@/features/hr/notifications/lib/api/notifications';
 
 const REFERENCE_LIMIT = 200;
-const DEFAULT_LIMIT = 20;
+const DEFAULT_LIMIT = 30;
 
 export type NotificationsAdminFilters = {
   category: 'all' | NotificationCategory;

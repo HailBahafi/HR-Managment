@@ -16,6 +16,7 @@ import {
   type CreateCompanyDto,
   type UpdateCompanyDto,
 } from '@/features/hr/organization/lib/api/companies';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { slugify } from '@/features/hr/requests/lib/types';
 import {
   COMPANY_EMPTY_FORM,
@@ -31,8 +32,6 @@ export function useCompaniesDirectoryModel() {
     iconName: 'Building2',
   });
 
-  const [companies, setCompanies] = React.useState<CompanyRow[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('table');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -43,23 +42,24 @@ export function useCompaniesDirectoryModel() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewRow, setViewRow] = React.useState<CompanyRow | null>(null);
 
-  const loadData = React.useCallback(async () => {
-    setLoading(true);
-    setListError(null);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     try {
-      const res = await companiesApi.getAll({ limit: 200 });
-      setCompanies(res.items);
+      const res = await companiesApi.getAll({ page, limit: pageSize });
+      setListError(null);
+      return { items: res.items as CompanyRow[], total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'companies.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
   }, []);
 
-  React.useEffect(() => {
-    void loadData();
-  }, [loadData]);
+  const {
+    items: companies,
+    loading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<CompanyRow>(loadPage, { resetDeps: [layoutView] });
 
   const patch = React.useCallback((p: Partial<CompanyDraftForm>) => {
     setForm((f) => ({ ...f, ...p }));
@@ -100,7 +100,7 @@ export function useCompaniesDirectoryModel() {
         await companiesApi.create(base as CreateCompanyDto);
         toast.success('تم إنشاء الشركة');
       }
-      await loadData();
+      await reloadList();
       setDrawerOpen(false);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'companies.save');
@@ -108,13 +108,13 @@ export function useCompaniesDirectoryModel() {
     } finally {
       setSaving(false);
     }
-  }, [editId, form, loadData]);
+  }, [editId, form, reloadList]);
 
   const handleDelete = React.useCallback(async () => {
     if (!confirmId) return;
     try {
       await companiesApi.remove(confirmId);
-      await loadData();
+      await reloadList();
       setConfirmId(null);
       toast.success('تم حذف الشركة');
     } catch (err) {
@@ -122,7 +122,7 @@ export function useCompaniesDirectoryModel() {
       toast.error(displayMessage);
       setConfirmId(null);
     }
-  }, [confirmId, loadData]);
+  }, [confirmId, reloadList]);
 
   const formatDate = React.useCallback(
     (iso: string | null) => (iso ? new Date(iso).toLocaleString('ar-SA') : '—'),
@@ -167,6 +167,7 @@ export function useCompaniesDirectoryModel() {
     companies,
     loading,
     listError,
+    pagination,
     layoutView,
     drawerOpen,
     setDrawerOpen,

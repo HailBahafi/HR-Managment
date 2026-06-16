@@ -20,6 +20,7 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { cn, toWesternDigits } from '@/shared/utils';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { useLeaveBalanceCreditModel } from '@/features/hr/leaves/balance-credit/hooks/useLeaveBalanceCreditModel';
 import type { LeaveBalanceCreditRequest } from '@/features/hr/leaves/balance-credit/types';
 
@@ -204,22 +205,27 @@ export function LeaveBalanceCreditClient() {
   );
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="flex min-h-0 flex-1 flex-col gap-5 animate-fade-in">
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.listError}</p>
       ) : null}
-      {m.loading ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
-      ) : null}
 
       <div className="space-y-3">
-
-        {m.sortedRequests.length === 0 ? (
+        {m.loading && m.sortedRequests.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
+        ) : m.sortedRequests.length === 0 && !m.loading ? (
           <EmptyState title="لا توجد طلبات ضمن الفلاتر" />
         ) : (
+          <DirectoryPagedViews
+            items={m.sortedRequests}
+            serverPagination={m.pagination}
+            loading={m.loading}
+            resetDeps={[m.branchId, m.departmentId, m.statusFilter, m.selectedEmpKey, m.dateBounds.from, m.dateBounds.to]}
+          >
+            {(pageItems) => (
           <DataTable
             columns={columns}
-            data={m.sortedRequests}
+            data={pageItems}
             keyExtractor={(r) => r.id}
             emptyText="لا توجد طلبات"
             onRowClick={(r) => setDetailRow(r)}
@@ -290,6 +296,8 @@ export function LeaveBalanceCreditClient() {
               </div>
             )}
           />
+            )}
+          </DirectoryPagedViews>
         )}
       </div>
 

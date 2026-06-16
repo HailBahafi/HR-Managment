@@ -12,7 +12,7 @@ export default function JobTitlesPage() {
   const model = useJobTitlesDirectoryModel();
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {model.loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">جاري التحميل…</div>
       ) : model.listError ? (

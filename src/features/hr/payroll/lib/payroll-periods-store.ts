@@ -112,7 +112,7 @@ function defaultIncludeFlags(): HRPayrollPeriodIncludeFlags {
   };
 }
 
-function mapApi(r: PayrollPeriodResponseDto): HRPayrollPeriodRecord {
+export function mapPayrollPeriodFromApi(r: PayrollPeriodResponseDto): HRPayrollPeriodRecord {
   const m = r.periodMonth;
   const y = r.periodYear;
   const includes = defaultIncludeFlags();
@@ -218,6 +218,8 @@ interface State {
   /** Raw backend inputs keyed by periodId → employeeId → list. Used to populate lines after materialize. */
   _rawInputs: Record<string, Record<string, MonthlyInputResponseDto[]>>;
   fetch: () => Promise<void>;
+  /** Fetch a single period by id when it is missing from the cached list (e.g. deep link refresh). */
+  ensurePeriodLoaded: (id: string) => Promise<HRPayrollPeriodRecord | null>;
   materializeFromContracts: (contracts: HRContractRecord[]) => void;
   add: (data: HRPayrollPeriodDraft) => Promise<string>;
   update: (id: string, patch: Partial<HRPayrollPeriodDraft>) => Promise<boolean>;
@@ -255,12 +257,31 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       }
 
       set({
-        periods: periodsResult.items.map(mapApi),
+        periods: periodsResult.items.map(mapPayrollPeriodFromApi),
         _rawInputs: rawInputs,
         isLoading: false,
       });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
+    }
+  },
+
+  ensurePeriodLoaded: async (id) => {
+    const existing = get().periods.find((p) => p.id === id);
+    if (existing) return existing;
+    const companyId = getDefaultCompanyId();
+    if (!companyId) return null;
+    try {
+      const r = await payrollPeriodsApi.get(id);
+      const mapped = mapPayrollPeriodFromApi(r);
+      set((s) => ({
+        periods: s.periods.some((p) => p.id === id)
+          ? s.periods.map((p) => (p.id === id ? mergePeriodFromApi(p, mapped) : p))
+          : [...s.periods, mapped],
+      }));
+      return get().periods.find((p) => p.id === id) ?? mapped;
+    } catch {
+      return null;
     }
   },
 
@@ -334,7 +355,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
         : 'draft') as PayrollPeriodResponseDto['status'],
       notes: data.notes || undefined,
     });
-    const mapped = mapApi(created);
+    const mapped = mapPayrollPeriodFromApi(created);
     set(s => ({ periods: [mapped, ...s.periods] }));
     return mapped.id;
   },
@@ -359,7 +380,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       set(s => ({
         periods: s.periods.map(p => {
           if (p.id !== id) return p;
-          const base = mapApi(updated);
+          const base = mapPayrollPeriodFromApi(updated);
           return mergePeriodFromApi(p, {
             ...base,
             snapshotContractIds: patch.snapshotContractIds ?? p.snapshotContractIds,
@@ -389,7 +410,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     try {
       const updated = await payrollPeriodsApi.update(id, { status: 'open' });
       set(s => ({
-        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapPayrollPeriodFromApi(updated)) : p),
       }));
       return true;
     } catch {
@@ -401,7 +422,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     try {
       const updated = await payrollPeriodsApi.update(id, { status: 'closed' });
       set(s => ({
-        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapPayrollPeriodFromApi(updated)) : p),
       }));
       return true;
     } catch {
@@ -413,7 +434,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     const reviewedBy = useAuthStore.getState().user?.email ?? undefined;
     const updated = await payrollPeriodsApi.advanceReview(id, { reviewedBy, notes });
     set(s => ({
-      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapPayrollPeriodFromApi(updated)) : p),
     }));
   },
 
@@ -421,7 +442,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     const reviewedBy = useAuthStore.getState().user?.email ?? undefined;
     const updated = await payrollPeriodsApi.revertReview(id, { reviewedBy, notes });
     set(s => ({
-      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapPayrollPeriodFromApi(updated)) : p),
     }));
   },
 

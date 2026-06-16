@@ -27,6 +27,8 @@ import {
   EntityFilterToolbar,
 } from '@/components/ui/entity-filter-toolbar';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { TableRowActions } from '@/components/ui/table-cells';
 import { EmptyState, ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -97,9 +99,74 @@ export function PayrollSalaryApprovalClient() {
   const [periodId, setPeriodId] = React.useState(requestedPeriodId);
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(() => new Set());
-  const [allPayslips, setAllPayslips] = React.useState<PayslipResponseDto[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [metaPayslips, setMetaPayslips] = React.useState<PayslipResponseDto[]>([]);
   const [busy, setBusy] = React.useState<string | null>(null);
+
+  const bulkMode = selectedEmpIds.size > 1;
+
+  const loadMetaPayslips = React.useCallback(async () => {
+    if (!companyId || !periodId) {
+      setMetaPayslips([]);
+      return;
+    }
+    try {
+      const res = await fetchAllPaginatedItems((page, limit) =>
+        payslipsApi.list({ companyId, payrollPeriodId: periodId, page, limit }),
+      );
+      setMetaPayslips(res.items);
+    } catch (err) {
+      handleApiError(err, 'payslips.list');
+      setMetaPayslips([]);
+    }
+  }, [companyId, periodId]);
+
+  React.useEffect(() => { void loadMetaPayslips(); }, [loadMetaPayslips]);
+
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId || !periodId) return { items: [] as PayslipResponseDto[], total: 0 };
+    const res = await payslipsApi.list({
+      companyId,
+      payrollPeriodId: periodId,
+      page,
+      limit: pageSize,
+      ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+      ...(selectedEmpIds.size === 1 ? { employeeId: [...selectedEmpIds][0] } : {}),
+    });
+    return { items: res.items, total: res.pagination.total };
+  }, [companyId, periodId, statusFilter, selectedEmpIds]);
+
+  const loadBulk = React.useCallback(async () => {
+    if (!companyId || !periodId) return { items: [] as PayslipResponseDto[], total: 0 };
+    const res = await fetchAllPaginatedItems((page, limit) =>
+      payslipsApi.list({
+        companyId,
+        payrollPeriodId: periodId,
+        page,
+        limit,
+        ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+      }),
+    );
+    const items = res.items.filter(p => selectedEmpIds.has(p.employeeId));
+    return { items, total: items.length };
+  }, [companyId, periodId, statusFilter, selectedEmpIds]);
+
+  const {
+    items: payslips,
+    loading: listLoading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<PayslipResponseDto>(loadPage, {
+    enabled: !!companyId && !!periodId,
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [companyId, periodId, statusFilter, selectedEmpKey],
+  });
+
+  const reloadPayslips = React.useCallback(async () => {
+    await Promise.all([loadMetaPayslips(), reloadList()]);
+  }, [loadMetaPayslips, reloadList]);
 
   const [finalizeOpen, setFinalizeOpen] = React.useState(false);
   const [replaceExisting, setReplaceExisting] = React.useState(false);
@@ -134,7 +201,7 @@ export function PayrollSalaryApprovalClient() {
 
   const periodEmployees = React.useMemo(() => {
     const seen = new Map<string, string>();
-    for (const p of allPayslips) {
+    for (const p of metaPayslips) {
       if (!seen.has(p.employeeId)) seen.set(p.employeeId, p.employeeNameAr);
     }
     if (seen.size === 0 && period) {
@@ -143,7 +210,7 @@ export function PayrollSalaryApprovalClient() {
       }
     }
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [allPayslips, period]);
+  }, [metaPayslips, period]);
 
   const periodEmployeeIds = React.useMemo(
     () => new Set(periodEmployees.map(e => e.id)),
@@ -166,29 +233,7 @@ export function PayrollSalaryApprovalClient() {
     };
   }, [period]);
 
-  const loadPayslips = React.useCallback(async (overridePeriodId?: string) => {
-    const activePeriodId = overridePeriodId ?? periodId;
-    if (!companyId || !activePeriodId) {
-      setAllPayslips([]);
-      return;
-    }
-    setLoading(true);
-    try {
-      const result = await payslipsApi.list({
-        companyId,
-        payrollPeriodId: activePeriodId,
-        limit: 500,
-      });
-      setAllPayslips(result.items);
-    } catch (err) {
-      handleApiError(err, 'payslips.list');
-      setAllPayslips([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [companyId, periodId]);
-
-  React.useEffect(() => { void loadPayslips(); }, [loadPayslips]);
+  const loadPayslips = reloadPayslips;
 
   const getDecisionActor = React.useCallback(() => {
     const linked = user?.email
@@ -210,17 +255,17 @@ export function PayrollSalaryApprovalClient() {
   });
 
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: allPayslips.length };
+    const counts: Record<string, number> = { all: metaPayslips.length };
     for (const s of PAYSLIP_STATUS_ORDER) {
       if (s === 'all') continue;
-      counts[s] = allPayslips.filter(p => p.status === s).length;
+      counts[s] = metaPayslips.filter(p => p.status === s).length;
     }
     return counts;
-  }, [allPayslips]);
+  }, [metaPayslips]);
 
   const empPickerList = React.useMemo(() => {
     const seen = new Map<string, string>();
-    for (const p of allPayslips) {
+    for (const p of metaPayslips) {
       if (!seen.has(p.employeeId)) seen.set(p.employeeId, p.employeeNameAr);
     }
     if (seen.size === 0) {
@@ -229,18 +274,7 @@ export function PayrollSalaryApprovalClient() {
         .map(e => ({ id: e.id, name: e.nameAr?.trim() || e.nameEn?.trim() || '—' }));
     }
     return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [allPayslips, allEmployees]);
-
-  const filteredPayslips = React.useMemo(() => {
-    let list = allPayslips;
-    if (statusFilter !== 'all') {
-      list = list.filter(p => p.status === statusFilter);
-    }
-    if (selectedEmpIds.size > 0) {
-      list = list.filter(p => selectedEmpIds.has(p.employeeId));
-    }
-    return list;
-  }, [allPayslips, statusFilter, selectedEmpIds]);
+  }, [metaPayslips, allEmployees]);
 
   const activeFilterCount =
     (statusFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0);
@@ -469,7 +503,7 @@ export function PayrollSalaryApprovalClient() {
   ], [busy, period, employeeDecision]);
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="قسائم الرواتب"
         descriptionAr="توليد قسائم الموظفين، اعتمادها، ومتابعة دورة draft → approved → paid"
@@ -518,7 +552,7 @@ export function PayrollSalaryApprovalClient() {
           title="لا توجد فترات رواتب"
           description="أنشئ فترة راتب من صفحة فترات الراتب أولاً."
         />
-      ) : !loading && filteredPayslips.length === 0 ? (
+      ) : !listLoading && payslips.length === 0 && pagination.total === 0 ? (
         <EmptyState
           icon={Receipt}
           title="لا توجد قسائم"
@@ -529,11 +563,17 @@ export function PayrollSalaryApprovalClient() {
           }
         />
       ) : (
+        <DirectoryPagedViews
+          items={payslips}
+          serverPagination={pagination}
+          loading={listLoading}
+        >
+          {(pageItems) => (
         <DataTable
           columns={columns}
-          data={filteredPayslips}
+          data={pageItems}
           keyExtractor={row => row.id}
-          loading={loading}
+          loading={listLoading}
           onRowClick={row => openDetail(row.id)}
           mobileCard={row => {
             const acceptance = payslipAcceptanceStatus(row);
@@ -561,6 +601,8 @@ export function PayrollSalaryApprovalClient() {
             );
           }}
         />
+          )}
+        </DirectoryPagedViews>
       )}
 
       <Dialog open={finalizeOpen} onOpenChange={setFinalizeOpen}>
@@ -626,6 +668,6 @@ export function PayrollSalaryApprovalClient() {
             : undefined
         }
       />
-    </>
+    </div>
   );
 }

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
 import { mapCheckInPointResponse } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 import { checkInPointsApi } from '@/features/hr/attendance/lib/api/check-in-points';
@@ -11,13 +12,51 @@ import { checkInPointLinksApi, type GroupedByPointItem } from '@/features/hr/att
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
+type CheckpointLinkBatch = {
+  batchId: string;
+  checkInPointId: string;
+  checkInPointName: string;
+  eff: string | undefined;
+  rows: {
+    id: string;
+    batchId?: string;
+    checkInPointId: string;
+    employeeId: string;
+    employeeName: string;
+    employeeCode: string;
+    effectiveFrom: string | undefined;
+    linkActive: boolean;
+  }[];
+  totalLinks: number;
+  activeLinks: number;
+};
+
+function mapGroupedToBatch(group: GroupedByPointItem): CheckpointLinkBatch {
+  return {
+    batchId: group.checkInPoint.id,
+    checkInPointId: group.checkInPoint.id,
+    checkInPointName: group.checkInPoint.nameAr,
+    eff: group.employees[0]?.effectiveFrom ?? undefined,
+    rows: group.employees.map((emp) => ({
+      id: emp.linkId,
+      batchId: emp.batchId ?? undefined,
+      checkInPointId: group.checkInPoint.id,
+      employeeId: emp.employeeId,
+      employeeName: emp.employeeNameAr,
+      employeeCode: emp.employeeCode,
+      effectiveFrom: emp.effectiveFrom ?? undefined,
+      linkActive: emp.linkActive,
+    })),
+    totalLinks: group.totalLinks,
+    activeLinks: group.activeLinks,
+  };
+}
+
 export function useCheckpointLinksPanelModel() {
   const companyId = useDefaultCompanyId() ?? '';
 
-  const [grouped, setGrouped] = React.useState<GroupedByPointItem[]>([]);
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
   const [open, setOpen] = React.useState(false);
@@ -32,52 +71,42 @@ export function useCheckpointLinksPanelModel() {
   const [editBatchId, setEditBatchId] = React.useState<string | null>(null);
   const [editEff, setEditEff] = React.useState('');
   const [editLinkActive, setEditLinkActive] = React.useState(true);
+  const [unlinkTarget, setUnlinkTarget] = React.useState<{ linkId: string; employeeName: string } | null>(null);
+  const [unlinking, setUnlinking] = React.useState(false);
 
-  const reload = React.useCallback(async () => {
-    if (!companyId) return;
-    setLoading(true);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as CheckpointLinkBatch[], total: 0 };
     setListError(null);
     try {
-      const [groupedRes, pointsRes, empRes] = await Promise.all([
-        checkInPointLinksApi.getGroupedByPoint({ companyId, limit: 200 }),
-        checkInPointsApi.getAll({ limit: 200, companyId }),
-        employeesApi.getAll({ limit: 500, companyId }),
-      ]);
-      setGrouped(groupedRes.items);
-      setCheckpoints(pointsRes.items.map(mapCheckInPointResponse));
-      setEmployees(empRes.items);
+      const res = await checkInPointLinksApi.getGroupedByPoint({ companyId, page, limit: pageSize });
+      return { items: res.items.map(mapGroupedToBatch), total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'check-in-point-links.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
   }, [companyId]);
 
-  React.useEffect(() => { void reload(); }, [reload]);
+  const {
+    items: batches,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<CheckpointLinkBatch>(loadPage, {
+    enabled: !!companyId,
+    resetDeps: [companyId],
+  });
 
-  // Map grouped response → batches consumed by the card grid
-  // Each check-in point = one batch; checkInPoint.id is the stable group key
-  const batches = React.useMemo(() =>
-    grouped.map((group) => ({
-      batchId: group.checkInPoint.id,
-      checkInPointId: group.checkInPoint.id,
-      checkInPointName: group.checkInPoint.nameAr,
-      eff: group.employees[0]?.effectiveFrom ?? undefined,
-      rows: group.employees.map((emp) => ({
-        id: emp.linkId,
-        batchId: emp.batchId ?? undefined,
-        checkInPointId: group.checkInPoint.id,
-        employeeId: emp.employeeId,
-        employeeName: emp.employeeNameAr,
-        employeeCode: emp.employeeCode,
-        effectiveFrom: emp.effectiveFrom ?? undefined,
-        linkActive: emp.linkActive,
-      })),
-      totalLinks: group.totalLinks,
-      activeLinks: group.activeLinks,
-    })),
-  [grouped]);
+  React.useEffect(() => {
+    if (!companyId) return;
+    void Promise.allSettled([
+      checkInPointsApi.getAll({ limit: 200, companyId }),
+      employeesApi.getAll({ limit: 500, companyId }),
+    ]).then(([pointsRes, empRes]) => {
+      if (pointsRes.status === 'fulfilled') setCheckpoints(pointsRes.value.items.map(mapCheckInPointResponse));
+      if (empRes.status === 'fulfilled') setEmployees(empRes.value.items);
+    });
+  }, [companyId]);
 
   const toggle = React.useCallback((set: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) => {
     set((prev) => {
@@ -87,22 +116,25 @@ export function useCheckpointLinksPanelModel() {
     });
   }, []);
 
+  const editBatch = React.useMemo(
+    () => (editBatchId ? batches.find((b) => b.batchId === editBatchId) ?? null : null),
+    [batches, editBatchId],
+  );
+
   const openEditDialog = React.useCallback((batchId: string) => {
     const batch = batches.find((b) => b.batchId === batchId);
     if (!batch) return;
     setEditBatchId(batchId);
     setEditEff(batch.eff ?? new Date().toISOString().slice(0, 10));
-    setEditLinkActive(batch.rows[0]?.linkActive ?? true);
+    setEditLinkActive(batch.rows.some((r) => r.linkActive));
     setEditOpen(true);
   }, [batches]);
 
   const submitEdit = React.useCallback(async () => {
-    if (!editBatchId) return;
-    const batch = batches.find((b) => b.batchId === editBatchId);
-    if (!batch) return;
+    if (!editBatchId || !editBatch) return;
     try {
       await Promise.all(
-        batch.rows.map((row) =>
+        editBatch.rows.map((row) =>
           checkInPointLinksApi.update(row.id, {
             effectiveFrom: editEff || null,
             linkActive: editLinkActive,
@@ -117,7 +149,33 @@ export function useCheckpointLinksPanelModel() {
       const { displayMessage } = handleApiError(err, 'check-in-point-links.update');
       toast.error(displayMessage);
     }
-  }, [editBatchId, editEff, editLinkActive, batches, reload]);
+  }, [editBatchId, editBatch, editEff, editLinkActive, reload]);
+
+  const requestUnlink = React.useCallback((linkId: string, employeeName: string) => {
+    setUnlinkTarget({ linkId, employeeName });
+  }, []);
+
+  const confirmUnlink = React.useCallback(async () => {
+    if (!unlinkTarget) return;
+    setUnlinking(true);
+    try {
+      await checkInPointLinksApi.remove(unlinkTarget.linkId);
+      toast.success(`تم إلغاء ربط ${unlinkTarget.employeeName}`);
+      setUnlinkTarget(null);
+      await reload();
+
+      const remaining = editBatch?.rows.filter((r) => r.id !== unlinkTarget.linkId) ?? [];
+      if (editOpen && remaining.length === 0) {
+        setEditOpen(false);
+        setEditBatchId(null);
+      }
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'check-in-point-links.delete');
+      toast.error(displayMessage);
+    } finally {
+      setUnlinking(false);
+    }
+  }, [unlinkTarget, reload, editBatch, editOpen]);
 
   const openBatchDialog = React.useCallback(() => {
     setEff(new Date().toISOString().slice(0, 10));
@@ -195,10 +253,17 @@ export function useCheckpointLinksPanelModel() {
     checkpoints,
     employees,
     loading,
+    pagination,
     listError,
     removeCheckpointLinkBatch,
+    editBatch,
     openEditDialog,
     submitEdit,
+    requestUnlink,
+    confirmUnlink,
+    unlinkTarget,
+    setUnlinkTarget,
+    unlinking,
     editOpen,
     setEditOpen,
     editEff,

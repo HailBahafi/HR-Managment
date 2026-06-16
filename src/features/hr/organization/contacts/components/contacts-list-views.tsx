@@ -16,6 +16,7 @@ import {
   DirectoryGridCardTitle,
 } from '@/components/ui/directory-grid-card';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { USER_TYPE_LABELS } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 import type { UserRecord, ContactsDirectoryModel } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 
@@ -48,7 +49,7 @@ function primaryBranchLabel(row: UserRecord, model: ContactsDirectoryModel) {
 }
 
 export function ContactsListViews({ model }: Props) {
-  const { users, loading, listError, layoutView, setViewRow, openEdit, setConfirmId, formatDate } = model;
+  const { users, loading, pagination, listError, layoutView, setViewRow, openEdit, setConfirmId, formatDate } = model;
 
   const columns = React.useMemo((): ColumnDef<UserRecord>[] => [
     {
@@ -122,12 +123,15 @@ export function ContactsListViews({ model }: Props) {
   }
 
   return (
-    <>
-      {users.length === 0 ? (
-        <EmptyState icon={UserCircle} title="لا توجد مستخدمون" description="أضف حسابات مستخدمي النظام." />
-      ) : layoutView === 'grid' ? (
+    <DirectoryPagedViews
+      items={users}
+      serverPagination={pagination}
+      loading={loading}
+      empty={<EmptyState icon={UserCircle} title="لا توجد مستخدمون" description="أضف حسابات مستخدمي النظام." />}
+    >
+      {(pageItems) => layoutView === 'grid' ? (
         <DirectoryGrid>
-          {users.map((row) => (
+          {pageItems.map((row) => (
             <UserGridCard
               key={row.id}
               row={row}
@@ -143,12 +147,12 @@ export function ContactsListViews({ model }: Props) {
           variant="directory"
           alwaysShowTable
           columns={columns}
-          data={users}
+          data={pageItems}
           keyExtractor={(row) => row.id}
           onRowClick={(row) => setViewRow(row)}
         />
       )}
-    </>
+    </DirectoryPagedViews>
   );
 }
 

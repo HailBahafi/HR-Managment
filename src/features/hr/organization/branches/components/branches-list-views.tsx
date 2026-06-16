@@ -16,6 +16,7 @@ import {
   DirectoryGridCardTitle,
 } from '@/components/ui/directory-grid-card';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import type { BranchesDirectoryModel } from '@/features/hr/organization/branches/hooks/useBranchesDirectoryModel';
 import type { BranchRow } from '@/features/hr/organization/branches/constants/branches-directory';
 
@@ -28,7 +29,7 @@ function statusBadge(active: boolean) {
 }
 
 export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) {
-  const { filtered, layoutView, setViewBranch, openEdit, setConfirmId, companyLabel } = model;
+  const { filtered, layoutView, pagination, loading, setViewBranch, openEdit, setConfirmId, companyLabel } = model;
 
   const columns = React.useMemo((): ColumnDef<BranchRow>[] => [
     {
@@ -94,12 +95,15 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
   ], [companyLabel, openEdit, setConfirmId]);
 
   return (
-    <>
-      {filtered.length === 0 ? (
-        <EmptyState icon={Building2} title="لا توجد فروع" description="لا توجد فروع في القائمة." />
-      ) : layoutView === 'grid' ? (
+    <DirectoryPagedViews
+      items={filtered}
+      serverPagination={pagination}
+      loading={loading}
+      empty={<EmptyState icon={Building2} title="لا توجد فروع" description="لا توجد فروع في القائمة." />}
+    >
+      {(pageItems) => layoutView === 'grid' ? (
         <DirectoryGrid>
-          {filtered.map((b) => (
+          {pageItems.map((b) => (
             <DirectoryGridCard key={b.id} interactive onClick={() => setViewBranch(b)}>
               <DirectoryGridCardHeader>
                 <DirectoryGridCardTitle>{b.name}</DirectoryGridCardTitle>
@@ -145,11 +149,11 @@ export function BranchesListViews({ model }: { model: BranchesDirectoryModel }) 
           variant="directory"
           alwaysShowTable
           columns={columns}
-          data={filtered}
+          data={pageItems}
           keyExtractor={(b) => b.id}
           onRowClick={(b) => setViewBranch(b)}
         />
       )}
-    </>
+    </DirectoryPagedViews>
   );
 }

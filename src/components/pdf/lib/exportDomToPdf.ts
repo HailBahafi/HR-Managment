@@ -1,13 +1,22 @@
+export type ExportDomToPdfOptions = {
+  orientation?: 'portrait' | 'landscape';
+};
+
 /**
  * Client-side A4 PDF from a live DOM node (html2canvas + jsPDF via html2pdf.js).
  * Call only in the browser. Tailwind/global CSS is stripped in the html2canvas clone — use inline styles on printable content.
  */
-export async function exportDomToPdf(element: HTMLElement, filename: string): Promise<void> {
+export async function exportDomToPdf(
+  element: HTMLElement,
+  filename: string,
+  options?: ExportDomToPdfOptions,
+): Promise<void> {
   const { default: html2pdf } = await import('html2pdf.js');
+  const orientation = options?.orientation ?? 'portrait';
 
   await html2pdf()
     .set({
-      margin: [10, 15, 10, 15],
+      margin: [8, 10, 8, 10],
       filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
@@ -30,7 +39,7 @@ export async function exportDomToPdf(element: HTMLElement, filename: string): Pr
           clonedDoc.head.appendChild(reset);
         },
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation },
     })
     .from(element)
     .save();

@@ -37,7 +37,8 @@ import {
   MinimalDropdown,
 } from '@/features/hr/requests/components/shared-ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AppPagination, DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 import { useNotificationsAdminDirectoryModel } from '@/features/hr/notifications/admin/hooks/useNotificationsAdminDirectoryModel';
 import {
@@ -462,7 +463,7 @@ export function NotificationsAdminClient() {
   };
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="إدارة الإشعارات"
         descriptionAr="إرسال إشعارات للموظفين ومتابعة التسليم والقراءة"
@@ -485,24 +486,28 @@ export function NotificationsAdminClient() {
           }
         />
       ) : (
-        <>
-          <DataTable
-            variant="directory"
-            alwaysShowTable
-            columns={columns}
-            data={m.notifications}
-            keyExtractor={(n) => n.id}
-            loading={m.loading}
-            onRowClick={(n) => { void openDetail(n); }}
-          />
-          <AppPagination
-            page={m.page}
-            pageSize={m.limit}
-            total={m.total}
-            onPageChange={m.setPage}
-            onPageSizeChange={m.setLimit}
-          />
-        </>
+        <PagedListViewport>
+          <PaginatedListShell
+            pagination={{
+              page: m.page,
+              pageSize: m.limit,
+              total: m.total,
+              totalPages: Math.max(1, Math.ceil(m.total / m.limit)),
+              setPage: m.setPage,
+              setPageSize: m.setLimit,
+            }}
+          >
+            <DataTable
+              variant="directory"
+              alwaysShowTable
+              columns={columns}
+              data={m.notifications}
+              keyExtractor={(n) => n.id}
+              loading={m.loading}
+              onRowClick={(n) => { void openDetail(n); }}
+            />
+          </PaginatedListShell>
+        </PagedListViewport>
       )}
 
       <HRSettingsFormDrawer
@@ -587,7 +592,7 @@ export function NotificationsAdminClient() {
         confirmLabel="حذف"
         variant="destructive"
       />
-    </>
+    </div>
   );
 }
 

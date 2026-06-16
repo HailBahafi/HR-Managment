@@ -30,7 +30,7 @@ export function useMonthlyInputsDirectoryModel() {
   const [items, setItems] = React.useState<MonthlyInputResponseDto[]>([]);
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(1);
-  const [limit, setLimit] = React.useState(20);
+  const [limit, setLimit] = React.useState(30);
   const [loading, setLoading] = React.useState(true);
   const [periods, setPeriods] = React.useState<PayrollPeriodResponseDto[]>([]);
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());

@@ -62,6 +62,7 @@ import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-comp
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -334,7 +335,7 @@ interface EditForm { date: string; description: string; notes: string; attachmen
 
 export function ViolationCasesClient() {
   const hook = useViolationCasesDirectoryModel();
-  const { cases, employees, violationTypes, loading, listError, createCase, updateCase, decideCase, deleteCase, reload } = hook;
+  const { employees, violationTypes, loading, listError, createCase, updateCase, decideCase, deleteCase, reload, setListFilters, items, pagination, filteredItems, sourceCases } = hook;
   const companyId = useDefaultCompanyId() ?? '';
   const { data: defaultCompany } = useDefaultCompany();
   const companyNameAr = defaultCompany?.nameAr ?? '';
@@ -382,33 +383,29 @@ export function ViolationCasesClient() {
     [employees],
   );
 
-  // Debounced backend fetch whenever employee or date filters change
+  // Debounced filter sync to model (employee, date, status)
   const dateDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(() => {
-    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
     if (dateDebounceRef.current) clearTimeout(dateDebounceRef.current);
     dateDebounceRef.current = setTimeout(() => {
-      void reload({
-        employeeId,
-        violationDateFrom: dateBounds.from || undefined,
-        violationDateTo: dateBounds.to || undefined,
+      setListFilters({
+        selectedEmpIds: [...selectedEmpIds],
+        statusFilter,
+        dateFrom: dateBounds.from,
+        dateTo: dateBounds.to,
       });
     }, 400);
     return () => { if (dateDebounceRef.current) clearTimeout(dateDebounceRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEmpIds, dateBounds.from, dateBounds.to]);
+  }, [selectedEmpIds, statusFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
-  // Status filter applied locally (API doesn't support it)
-  const listFiltered = React.useMemo(
-    () => (statusFilter === 'all' ? cases : cases.filter((c) => c.status === statusFilter)),
-    [cases, statusFilter],
-  );
+  const listFiltered = filteredItems;
+
   const statusCounts = React.useMemo(() => {
-    const counts: Record<string, number> = { all: cases.length };
+    const counts: Record<string, number> = { all: sourceCases.length };
     for (const s of STATUS_ORDER) counts[s] = 0;
-    for (const c of cases) counts[c.status] = (counts[c.status] ?? 0) + 1;
+    for (const c of sourceCases) counts[c.status] = (counts[c.status] ?? 0) + 1;
     return counts;
-  }, [cases]);
+  }, [sourceCases]);
 
   const dateRangeActive = dateMeta.hasRestriction;
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
@@ -717,7 +714,11 @@ export function ViolationCasesClient() {
   );
 
   if (loading) {
-    return <EntityActionCardGridSkeleton count={6} />;
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <EntityActionCardGridSkeleton count={6} />
+      </div>
+    );
   }
 
   if (listError) {
@@ -725,10 +726,11 @@ export function ViolationCasesClient() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <PdfPreviewExportDialog open={pdfOpen} onOpenChange={setPdfOpen} title="معاينة تصدير سجل المخالفات" fileName="violation-cases.pdf" printable={printable} />
 
-      {cases.length === 0 && !loading ? (
+      <DisciplineListViewport>
+      {sourceCases.length === 0 && !loading ? (
         <EmptyState title="لا توجد مخالفات مطابقة للفلاتر المحددة." />
       ) : listFiltered.length === 0 && !loading ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
@@ -737,9 +739,11 @@ export function ViolationCasesClient() {
           </p>
           <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetStatusFilter()}>عرض الكل</Button>
         </div>
-      ) : viewMode === 'cards' ? (
-        <EntityActionCardGrid>
-          {listFiltered.map((c) => {
+      ) : (
+        <DisciplinePaginatedList pagination={pagination}>
+          {viewMode === 'cards' ? (
+          <EntityActionCardGrid>
+            {items.map((c) => {
             const isPending = c.status === 'pending';
             return (
               <EntityActionCard
@@ -827,19 +831,22 @@ export function ViolationCasesClient() {
                 }
               />
             );
-          })}
-        </EntityActionCardGrid>
-      ) : (
-        <DataTable
-          variant="directory"
-          alwaysShowTable
-          tableClassName="min-w-[900px]"
-          columns={columns}
-          data={listFiltered}
-          keyExtractor={(c) => c.id}
-          onRowClick={(c) => setViewCase(c)}
-        />
+            })}
+          </EntityActionCardGrid>
+          ) : (
+          <DataTable
+            variant="directory"
+            alwaysShowTable
+            tableClassName="min-w-[900px]"
+            columns={columns}
+            data={items}
+            keyExtractor={(c) => c.id}
+            onRowClick={(c) => setViewCase(c)}
+          />
+          )}
+        </DisciplinePaginatedList>
       )}
+      </DisciplineListViewport>
 
       {/* ── Create Drawer ── */}
       <HRSettingsFormDrawer open={createOpen} onOpenChange={setCreateOpen} title="مخالفة جديدة" size="lg"

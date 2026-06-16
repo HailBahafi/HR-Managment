@@ -29,8 +29,12 @@ import {
   EMPLOYEE_ASSIGNMENT_STATUS_ORDER,
 } from '@/features/hr/organization/employees/constants/employee-assignment-labels';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
+import { companiesApi, type CompanyResponseDto } from '@/features/hr/organization/lib/api/companies';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import { jobTitlesApi, type JobTitleResponseDto } from '@/features/hr/organization/lib/api/jobTitles';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getCompanyAccessLabel } from '@/features/auth/types/access-profile';
 import type { EmployeeProfileAssignmentsModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileAssignments';
 import type { Employee } from '@/features/hr/organization/employees/types';
 
@@ -70,12 +74,31 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
     assignmentCompanyContext,
   } = model;
 
+  const defaultCompanyId = useDefaultCompanyId();
+  const accessProfile = useAuthStore((s) => s.accessProfile);
+
   const [form, setForm] = React.useState<AssignmentForm>(EMPTY_FORM);
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [companies, setCompanies] = React.useState<CompanyResponseDto[]>([]);
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
   const [jobTitles, setJobTitles] = React.useState<JobTitleResponseDto[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = React.useState(false);
   const [loadingRefs, setLoadingRefs] = React.useState(false);
+
+  const companyOptions = React.useMemo(() => {
+    const fromProfile = accessProfile?.companies ?? [];
+    if (fromProfile.length > 0) {
+      return fromProfile.map((c) => ({
+        value: c.companyId,
+        label: getCompanyAccessLabel(c),
+      }));
+    }
+    return companies.map((c) => ({
+      value: c.id,
+      label: c.nameAr ?? c.nameEn ?? c.code ?? c.id.slice(0, 8),
+    }));
+  }, [accessProfile?.companies, companies]);
 
   const patch = <K extends keyof AssignmentForm>(key: K, value: AssignmentForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -94,24 +117,65 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
 
   React.useEffect(() => {
     if (!assignmentDialogOpen) return;
-    setForm(EMPTY_FORM);
-    setFormError(null);
+    if ((accessProfile?.companies.length ?? 0) > 0) return;
+    setLoadingCompanies(true);
+    void companiesApi
+      .getAll({ limit: 200 })
+      .then((res) => setCompanies(res.items))
+      .catch(() => setCompanies([]))
+      .finally(() => setLoadingCompanies(false));
+  }, [assignmentDialogOpen, accessProfile?.companies.length]);
 
-    const companyId = assignmentCompanyContext?.companyId;
-    if (!companyId) {
-      setFormError('تعذر تحديد الشركة — اختر الشركة النشطة من الشريط العلوي أو أضف إسناداً رئيسياً أولاً.');
+  React.useEffect(() => {
+    if (!assignmentDialogOpen) return;
+    setFormError(null);
+    setForm(EMPTY_FORM);
+  }, [assignmentDialogOpen]);
+
+  React.useEffect(() => {
+    if (!assignmentDialogOpen) return;
+    const initialCompanyId =
+      assignmentCompanyContext?.companyId
+      ?? defaultCompanyId
+      ?? companyOptions.find((o) => o.value)?.value
+      ?? '';
+    if (!initialCompanyId) return;
+    setForm((prev) => (prev.companyId ? prev : { ...prev, companyId: initialCompanyId }));
+  }, [
+    assignmentDialogOpen,
+    assignmentCompanyContext?.companyId,
+    defaultCompanyId,
+    companyOptions,
+  ]);
+
+  React.useEffect(() => {
+    if (!assignmentDialogOpen || !form.companyId) {
       setBranches([]);
       setDepartments([]);
       setJobTitles([]);
       return;
     }
-
+    let cancelled = false;
     setLoadingRefs(true);
-    setForm((prev) => ({ ...prev, companyId }));
-    void loadScopedOptions(companyId)
-      .catch((e) => setFormError(handleApiError(e).displayMessage))
-      .finally(() => setLoadingRefs(false));
-  }, [assignmentDialogOpen, assignmentCompanyContext?.companyId, loadScopedOptions]);
+    void loadScopedOptions(form.companyId)
+      .catch((e) => {
+        if (!cancelled) setFormError(handleApiError(e).displayMessage);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRefs(false);
+      });
+    return () => { cancelled = true; };
+  }, [assignmentDialogOpen, form.companyId, loadScopedOptions]);
+
+  const handleCompanyChange = (companyId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      companyId,
+      branchId: '',
+      departmentId: '',
+      jobTitleId: '',
+    }));
+  };
 
   const filteredDepartments = React.useMemo(() => {
     if (!form.branchId) return departments;
@@ -120,7 +184,7 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
 
   const validate = (): boolean => {
     if (!form.companyId) {
-      setFormError('تعذر تحديد الشركة من بروفايل الموظف');
+      setFormError('اختر الشركة');
       return false;
     }
     if (!form.branchId) {
@@ -160,7 +224,7 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
             ربط{' '}
             <span className="font-medium text-foreground">{employee?.name ?? '—'}</span>
             {' '}
-            بفرع وقسم ومسمى وظيفي ضمن شركته الحالية.
+            بشركة وفرع وقسم ومسمى وظيفي.
           </DialogDescription>
         </DialogHeader>
 
@@ -172,17 +236,22 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
           ) : null}
 
           <div className="space-y-2">
-            <Label>الشركة</Label>
-            <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2.5 text-sm">
-              <span className="font-medium">
-                {assignmentCompanyContext?.companyLabel ?? '—'}
-              </span>
-              {assignmentCompanyContext?.companyId ? (
-                <p className="mt-0.5 font-mono text-[10px] text-muted-foreground" dir="ltr">
-                  {assignmentCompanyContext.companyId}
-                </p>
-              ) : null}
-            </div>
+            <Label>الشركة *</Label>
+            <Select
+              value={form.companyId}
+              onValueChange={handleCompanyChange}
+              disabled={loadingCompanies || companyOptions.length === 0}
+            >
+              <SelectTrigger><SelectValue placeholder="اختر الشركة" /></SelectTrigger>
+              <SelectContent>
+                {companyOptions.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {companyOptions.length === 0 && !loadingCompanies ? (
+              <p className="text-[11px] text-muted-foreground">لا توجد شركات متاحة لحسابك.</p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -286,7 +355,7 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
           <Button
             type="button"
             className="gap-2"
-            disabled={savingAssignment || loadingRefs || !form.companyId}
+            disabled={savingAssignment || loadingRefs || loadingCompanies || !form.companyId}
             onClick={() => void handleSubmit()}
           >
             {savingAssignment ? (

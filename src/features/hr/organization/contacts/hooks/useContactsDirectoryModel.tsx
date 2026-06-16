@@ -12,6 +12,8 @@ import { PermissionGate } from '@/components/shared/permission-gate';
 import { branchesApi } from '@/features/hr/organization/lib/api/branches';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import {
@@ -59,9 +61,7 @@ export function useContactsDirectoryModel() {
     [defaultCompany],
   );
 
-  const [users, setUsers] = React.useState<UserRecord[]>([]);
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('table');
@@ -73,37 +73,54 @@ export function useContactsDirectoryModel() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewRow, setViewRow] = React.useState<UserRecord | null>(null);
 
-  const loadData = React.useCallback(async (companyId: string | null) => {
-    setLoading(true);
+  React.useEffect(() => {
+    if (!defaultCompanyId) {
+      setBranches([]);
+      return;
+    }
+    let cancelled = false;
+    void branchesApi
+      .getAll({ companyId: defaultCompanyId, limit: 200 })
+      .then((res) => {
+        if (!cancelled) setBranches(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setBranches([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [defaultCompanyId]);
+
+  const loadBulk = React.useCallback(async () => {
     setListError(null);
     try {
-      const [res, branchesRes] = await Promise.all([
-        usersApi.getAll({ limit: 200 }),
-        companyId
-          ? branchesApi.getAll({ companyId, limit: 200 })
-          : Promise.resolve({ items: [] as BranchResponseDto[] }),
-      ]);
-      const scopedUsers = companyId
-        ? res.items.filter((u) => userBelongsToCompany(u, companyId))
+      const res = await fetchAllPaginatedItems((page, limit) => usersApi.getAll({ page, limit }));
+      const scopedUsers = defaultCompanyId
+        ? res.items.filter((u) => userBelongsToCompany(u, defaultCompanyId))
         : res.items;
-      setUsers(scopedUsers);
-      setBranches(branchesRes.items);
+      return { items: scopedUsers, total: scopedUsers.length };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'users.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
-  }, []);
+  }, [defaultCompanyId]);
 
-  React.useEffect(() => {
-    void loadData(defaultCompanyId);
-  }, [defaultCompanyId, loadData]);
+  const {
+    items: pagedUsers,
+    loading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<UserRecord>(
+    async () => ({ items: [], total: 0 }),
+    { bulkMode: true, loadBulk, resetDeps: [defaultCompanyId] },
+  );
 
   const patchUserInList = React.useCallback((updated: UserResponseDto) => {
-    setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
     setViewRow((prev) => (prev?.id === updated.id ? updated : prev));
-  }, []);
+    void reloadList();
+  }, [reloadList]);
 
   const patch = React.useCallback((p: Partial<UserDraftForm>) => {
     setForm((f) => ({ ...f, ...p }));
@@ -169,7 +186,7 @@ export function useContactsDirectoryModel() {
         await usersApi.create(payload);
         toast.success('تم إنشاء المستخدم');
       }
-      await loadData(defaultCompanyId);
+      await reloadList();
       setDrawerOpen(false);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'users.save');
@@ -177,13 +194,13 @@ export function useContactsDirectoryModel() {
     } finally {
       setSaving(false);
     }
-  }, [buildPayloadBase, defaultCompanyId, editId, form.password, loadData]);
+  }, [buildPayloadBase, defaultCompanyId, editId, form.password, reloadList]);
 
   const handleDelete = React.useCallback(async () => {
     if (!confirmId) return;
     try {
       await usersApi.remove(confirmId);
-      await loadData(defaultCompanyId);
+      await reloadList();
       setConfirmId(null);
       if (viewRow?.id === confirmId) setViewRow(null);
       toast.success('تم حذف المستخدم');
@@ -192,7 +209,7 @@ export function useContactsDirectoryModel() {
       toast.error(displayMessage);
       setConfirmId(null);
     }
-  }, [confirmId, defaultCompanyId, loadData, viewRow?.id]);
+  }, [confirmId, reloadList, viewRow?.id]);
 
   usePageHeaderActions(
     () => (
@@ -229,11 +246,12 @@ export function useContactsDirectoryModel() {
   );
 
   return {
-    users,
+    users: pagedUsers,
     companies,
     branches,
     branchesForDefault,
     loading,
+    pagination,
     listError,
     layoutView,
     drawerOpen,

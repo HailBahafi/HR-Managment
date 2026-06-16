@@ -59,7 +59,7 @@ export function DailyAttendancePanel() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <PdfPreviewExportDialog
         open={model.pdfOpen}
         onOpenChange={model.setPdfOpen}
@@ -94,6 +94,7 @@ export function DailyAttendancePanel() {
       )}
 
       <DailySmartTimeline
+        className="min-h-0 flex-1"
         summaries={model.denseForView}
         events={model.eventsForView}
         dates={model.dates}

@@ -8,22 +8,20 @@ import { CHECKPOINT_GEO_DEBOUNCE_MS, CHECKPOINT_GEO_MIN_QUERY_LEN } from '@/feat
 import { validateCheckpointDraft } from '@/features/hr/attendance/checkpoints/utils/checkpoint-validate';
 import { publicConfig } from '@/shared/config';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { checkInPointsApi } from '@/features/hr/attendance/lib/api/check-in-points';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   createCheckInPoint,
   deleteCheckInPoint,
-  loadCheckInPoints,
+  mapCheckInPointResponse,
   updateCheckInPoint,
 } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 
 const r6 = (n: number) => parseFloat(n.toFixed(6));
 
 export function useCheckpointsPanelModel() {
-  const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
-  // companyId from auth store — never blocked by GET /companies 403
   const companyId = useDefaultCompanyId();
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<AttendanceCheckInPoint | null>(null);
@@ -37,24 +35,29 @@ export function useCheckpointsPanelModel() {
   const draftRef = React.useRef(draft);
   React.useEffect(() => { draftRef.current = draft; }, [draft]);
 
-  const reload = React.useCallback(async () => {
-    if (!companyId) return;
-    setLoading(true);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as AttendanceCheckInPoint[], total: 0 };
     setListError(null);
     try {
-      const data = await loadCheckInPoints(companyId);
-      setCheckpoints(data.items);
+      const res = await checkInPointsApi.getAll({ companyId, page, limit: pageSize });
+      const items = res.items.map(mapCheckInPointResponse);
+      return { items, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'check-in-points.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
   }, [companyId]);
 
-  React.useEffect(() => {
-    void reload();
-  }, [reload]);
+  const {
+    items: checkpoints,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<AttendanceCheckInPoint>(loadPage, {
+    enabled: !!companyId,
+    resetDeps: [companyId],
+  });
 
   const openCreate = React.useCallback(() => {
     setDraft({
@@ -210,6 +213,7 @@ export function useCheckpointsPanelModel() {
   return {
     checkpoints,
     loading,
+    pagination,
     listError,
     removeCheckpoint,
     open,

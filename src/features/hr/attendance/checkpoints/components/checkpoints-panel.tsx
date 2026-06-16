@@ -6,13 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { MapPicker } from '@/components/ui/map-picker';
 import { cn } from '@/shared/utils';
 import { useCheckpointsPanelModel } from '@/features/hr/attendance/checkpoints/hooks/useCheckpointsPanelModel';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { CheckpointsEditDialog } from '@/features/hr/attendance/checkpoints/components/checkpoints-edit-dialog';
 
 export function CheckpointsPanel() {
   const model = useCheckpointsPanelModel();
-  const { checkpoints, removeCheckpoint, selected, setSelected, openCreate, openEdit, selectedPoint } = model;
+  const { checkpoints, pagination, loading, removeCheckpoint, selected, setSelected, openCreate, openEdit, selectedPoint } = model;
 
   usePageHeaderActions(
     () => (
@@ -25,19 +26,20 @@ export function CheckpointsPanel() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
 
-      <div className="space-y-3">
+      <div className="space-y-3 shrink-0">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          النقاط (<span className="number-ar">{checkpoints.length}</span>)
+          النقاط (<span className="number-ar">{pagination.total}</span>)
         </p>
 
-        {checkpoints.length === 0 && (
+        {!loading && checkpoints.length === 0 && pagination.total === 0 ? (
           <EmptyStateCard icon={MapPin} title="لا توجد نقاط بعد" size="compact" />
-        )}
-
+        ) : (
+          <DirectoryPagedViews items={checkpoints} serverPagination={pagination} loading={loading}>
+            {(pageItems) => (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {checkpoints.map((p) => (
+          {pageItems.map((p) => (
             <div
               key={p.id}
               role="button"
@@ -118,6 +120,9 @@ export function CheckpointsPanel() {
             </div>
           ))}
         </div>
+            )}
+          </DirectoryPagedViews>
+        )}
 
         {checkpoints.length > 0 && !selectedPoint ? (
           <EmptyStateCard

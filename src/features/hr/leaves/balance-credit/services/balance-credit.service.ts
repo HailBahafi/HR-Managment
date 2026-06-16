@@ -28,7 +28,7 @@ export type LoadBalanceCreditParams = {
   status?: BalanceCreditStatus;
 };
 
-function mapBalanceCreditResponse(
+export function mapBalanceCreditResponse(
   dto: BalanceCreditRequestResponseDto,
   employeeNames: Map<string, string>,
   leaveTypes: LeaveTypeResponseDto[],

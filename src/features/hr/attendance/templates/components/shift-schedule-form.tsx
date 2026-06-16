@@ -119,7 +119,7 @@ export function ShiftScheduleForm({
                   onChange({ ...period, strictPenaltyBalanceDays: n });
                 }}
               />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">يوم من الرصيد</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">يوم من الراتب</span>
               <InfoTooltip
                 side="top"
                 content={
