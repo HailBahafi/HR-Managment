@@ -94,6 +94,10 @@ function canMutateViolationCase(status: ViolationRecordStatus) {
   return status === 'pending' || status === 'needs_edit';
 }
 
+function canAddDisciplineFollowUp(status: ViolationRecordStatus) {
+  return status !== 'approved';
+}
+
 // ─── Notice dialog (إنذار) ────────────────────────────────────────────────────
 
 type NoticeKind = 'verbal' | 'first' | 'second' | 'final';
@@ -644,17 +648,20 @@ export function ViolationCasesClient() {
       headerClassName: 'whitespace-nowrap',
       render: (c) => {
         const canMutate = canMutateViolationCase(c.status);
+        const canFollowUp = canAddDisciplineFollowUp(c.status);
         const menuItems = [
           ...(canMutate
             ? [{ label: 'تعديل', onClick: () => openEdit(c), icon: <Edit3 className="h-3.5 w-3.5" /> }]
             : []),
-          ...(c.typeNeedsWarning
+          ...(canFollowUp && c.typeNeedsWarning
             ? [{ label: 'إنذار', onClick: () => setNoticeCase(c), icon: <AlertTriangle className="h-3.5 w-3.5" /> }]
             : []),
-          ...(c.typeNeedsInvestigation
+          ...(canFollowUp && c.typeNeedsInvestigation
             ? [{ label: 'تحقيق', onClick: () => setInvestigationCase(c), icon: <Search className="h-3.5 w-3.5" /> }]
             : []),
-          { label: 'تظلم', onClick: () => setAppealCase(c), icon: <Scale className="h-3.5 w-3.5" /> },
+          ...(canFollowUp
+            ? [{ label: 'تظلم', onClick: () => setAppealCase(c), icon: <Scale className="h-3.5 w-3.5" /> }]
+            : []),
           ...(canMutate
             ? [{
                 label: 'حذف',
@@ -807,27 +814,29 @@ export function ViolationCasesClient() {
                 onEdit={canMutateViolationCase(c.status) ? () => openEdit(c) : undefined}
                 onDelete={canMutateViolationCase(c.status) ? () => setDeleteId(c.id) : undefined}
                 extraFooter={
-                  <div className="flex gap-1">
-                    {c.typeNeedsWarning ? (
+                  canAddDisciplineFollowUp(c.status) ? (
+                    <div className="flex gap-1">
+                      {c.typeNeedsWarning ? (
+                        <Button variant="ghost" size="sm" type="button"
+                          className="h-7 flex-1 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                          onClick={() => setNoticeCase(c)}>
+                          <AlertTriangle className="h-3 w-3" /> إنذار
+                        </Button>
+                      ) : null}
+                      {c.typeNeedsInvestigation ? (
+                        <Button variant="ghost" size="sm" type="button"
+                          className="h-7 flex-1 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                          onClick={() => setInvestigationCase(c)}>
+                          <Search className="h-3 w-3" /> تحقيق
+                        </Button>
+                      ) : null}
                       <Button variant="ghost" size="sm" type="button"
                         className="h-7 flex-1 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
-                        onClick={() => setNoticeCase(c)}>
-                        <AlertTriangle className="h-3 w-3" /> إنذار
+                        onClick={() => setAppealCase(c)}>
+                        <Scale className="h-3 w-3" /> تظلم
                       </Button>
-                    ) : null}
-                    {c.typeNeedsInvestigation ? (
-                      <Button variant="ghost" size="sm" type="button"
-                        className="h-7 flex-1 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
-                        onClick={() => setInvestigationCase(c)}>
-                        <Search className="h-3 w-3" /> تحقيق
-                      </Button>
-                    ) : null}
-                    <Button variant="ghost" size="sm" type="button"
-                      className="h-7 flex-1 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
-                      onClick={() => setAppealCase(c)}>
-                      <Scale className="h-3 w-3" /> تظلم
-                    </Button>
-                  </div>
+                    </div>
+                  ) : undefined
                 }
               />
             );

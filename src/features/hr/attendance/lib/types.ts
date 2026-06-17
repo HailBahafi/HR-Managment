@@ -56,8 +56,6 @@ export interface ShiftPeriod {
   /** خصم أيام من رصيد الحضور/الراتب */
   strictPenaltyBalanceEnabled: boolean;
   strictPenaltyBalanceDays: number;
-  /** خصم يوم واحد من رصيد الإجازة (ثابت — لا يُعدَّل) */
-  strictPenaltyVacationEnabled: boolean;
 }
 
 export interface TemplateDayConfig {

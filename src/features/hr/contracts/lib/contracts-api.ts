@@ -178,6 +178,14 @@ export type UpdateEmployeeContractDto = {
   articleIds?: string[];
   allowanceLines?: { allowanceTypeId: string; amount: number; sortOrder?: number }[];
   updatedBy?: string;
+  /** Required when activating a contract that credits annualLeaveDays */
+  leaveTypeId?: string;
+};
+
+export type EmployeeContractDecisionDto = {
+  decision: 'accept' | 'reject';
+  rejectionReason?: string | null;
+  decidedBy?: string | null;
 };
 
 export const employeeContractsApi = {
@@ -208,4 +216,10 @@ export const employeeContractsApi = {
 
   delete: (id: string) =>
     apiRequest<void>(`/payroll/contracts/${id}`, { method: 'DELETE' }),
+
+  employeeDecision: (id: string, body: EmployeeContractDecisionDto) =>
+    apiRequest<ApiEmployeeContract>(`/payroll/contracts/${id}/employee-decision`, {
+      method: 'POST',
+      body,
+    }),
 };

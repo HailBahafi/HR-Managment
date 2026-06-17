@@ -56,11 +56,6 @@ export function ShiftPeriodRow({
               رصيد −{period.strictPenaltyBalanceDays}
             </span>
           )}
-          {period.strictMode && period.strictPenaltyVacationEnabled && (
-            <span className="hidden rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-semibold text-primary sm:inline">
-              إجازة −1
-            </span>
-          )}
           {period.strictMode && period.strictPenaltyWarning && (
             <span className="hidden rounded-full bg-warning/15 px-2 py-0.5 text-[9px] font-semibold text-warning sm:inline">
               إنذار
@@ -86,7 +81,6 @@ export function ShiftPeriodRow({
                   ? {
                       strictPenaltyWarning: false,
                       strictPenaltyBalanceEnabled: false,
-                      strictPenaltyVacationEnabled: false,
                     }
                   : {}),
               })

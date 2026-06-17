@@ -26,7 +26,6 @@ export function defaultShiftPeriod(id: string): ShiftPeriod {
     strictPenaltyWarning: false,
     strictPenaltyBalanceEnabled: false,
     strictPenaltyBalanceDays: 1,
-    strictPenaltyVacationEnabled: false,
   };
 }
 
@@ -35,15 +34,23 @@ type LegacyPeriodFields = {
   strictAbsenceDeductEnabled?: boolean;
   strictAbsenceDeductDays?: number;
   strictAbsenceWarningEnabled?: boolean;
+  /** removed from backend — strip when normalizing legacy data */
+  strictPenaltyVacationEnabled?: boolean;
+  strictPenaltyVacationDays?: number;
 };
 
 /** يدمج الحقول الجديدة مع بيانات قديمة من التخزين المحلي */
 export function normalizeShiftPeriod(p: ShiftPeriod): ShiftPeriod {
   const base = defaultShiftPeriod(p.id);
-  const leg = p as ShiftPeriod & LegacyPeriodFields & { strictPenaltyVacationDays?: number };
-  const { strictPenaltyVacationDays: _legacyVacDays, ...rest } = leg as ShiftPeriod & {
-    strictPenaltyVacationDays?: number;
-  };
+  const leg = p as ShiftPeriod & LegacyPeriodFields;
+  const {
+    strictAbsenceDeductEnabled: _legacyDeduct,
+    strictAbsenceDeductDays: _legacyDeductDays,
+    strictAbsenceWarningEnabled: _legacyWarning,
+    strictPenaltyVacationEnabled: _legacyVacation,
+    strictPenaltyVacationDays: _legacyVacationDays,
+    ...rest
+  } = leg;
   const balanceDays = Math.min(
     99,
     Math.max(1, Number(leg.strictPenaltyBalanceDays ?? leg.strictAbsenceDeductDays) || 1),
@@ -57,7 +64,6 @@ export function normalizeShiftPeriod(p: ShiftPeriod): ShiftPeriod {
     strictPenaltyWarning: Boolean(leg.strictPenaltyWarning ?? leg.strictAbsenceWarningEnabled),
     strictPenaltyBalanceEnabled: Boolean(leg.strictPenaltyBalanceEnabled ?? leg.strictAbsenceDeductEnabled),
     strictPenaltyBalanceDays: balanceDays,
-    strictPenaltyVacationEnabled: Boolean(leg.strictPenaltyVacationEnabled),
   };
 }
 

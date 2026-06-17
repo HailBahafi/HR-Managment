@@ -112,7 +112,8 @@ interface HRContractsState {
   add: (data: HRContractDraft) => Promise<{ id: string; contractNumber: string }>;
   update: (id: string, patch: Partial<HRContractDraft>) => Promise<ActivateResult>;
   remove: (id: string) => Promise<ActivateResult>;
-  activate: (id: string) => Promise<ActivateResult>;
+  activate: (id: string, leaveTypeId?: string) => Promise<ActivateResult>;
+  employeeAccept: (id: string) => Promise<ActivateResult>;
   terminate: (id: string, reason: string) => Promise<ActivateResult>;
   archive: (id: string) => Promise<ActivateResult>;
   createAmendmentDraft: (activeContractId: string) => Promise<{ ok: true; id: string } | { ok: false; message: string }>;
@@ -204,9 +205,27 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
     }
   },
 
-  activate: async (id) => {
+  activate: async (id, leaveTypeId) => {
     try {
-      const updated = await employeeContractsApi.update(id, { status: 'active' });
+      const updated = await employeeContractsApi.update(id, {
+        status: 'active',
+        ...(leaveTypeId ? { leaveTypeId } : {}),
+      });
+      const row = mapEmployeeContractFromApi(updated);
+      set(s => ({ contracts: s.contracts.map(x => x.id === id ? row : x) }));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
+    }
+  },
+
+  employeeAccept: async (id) => {
+    try {
+      const userId = useAuthStore.getState().user?.id ?? undefined;
+      const updated = await employeeContractsApi.employeeDecision(id, {
+        decision: 'accept',
+        ...(userId ? { decidedBy: userId } : {}),
+      });
       const row = mapEmployeeContractFromApi(updated);
       set(s => ({ contracts: s.contracts.map(x => x.id === id ? row : x) }));
       return { ok: true };

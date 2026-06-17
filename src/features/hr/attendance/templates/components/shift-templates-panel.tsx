@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Clock } from 'lucide-react';
+import { Plus, Clock, AlertTriangle, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,6 +24,7 @@ import {
   validateTemplate,
 } from '@/features/hr/attendance/templates/utils/shift-template-helpers';
 import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
+import { formatApiErrorForDisplay } from '@/features/hr/lib/api/global-error-handler';
 import { companiesApi } from '@/features/hr/lib/api/companies';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
@@ -65,7 +66,6 @@ function dtoToLocal(dto: ShiftTemplateResponseDto): ShiftTemplate {
         strictPenaltyWarning: p.strictPenaltyWarning,
         strictPenaltyBalanceEnabled: p.strictPenaltyBalanceEnabled,
         strictPenaltyBalanceDays: p.strictPenaltyBalanceDays,
-        strictPenaltyVacationEnabled: p.strictPenaltyVacationEnabled,
       })),
     })),
   };
@@ -76,6 +76,9 @@ export function ShiftTemplatesPanel() {
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<ShiftTemplate | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<ShiftTemplate | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     try {
@@ -167,7 +170,6 @@ export function ShiftTemplatesPanel() {
         strictPenaltyWarning: p.strictPenaltyWarning,
         strictPenaltyBalanceEnabled: p.strictPenaltyBalanceEnabled,
         strictPenaltyBalanceDays: p.strictPenaltyBalanceDays,
-        strictPenaltyVacationEnabled: p.strictPenaltyVacationEnabled,
       })),
     }));
 
@@ -186,9 +188,26 @@ export function ShiftTemplatesPanel() {
         });
       }
       await reload();
-    } catch { /* ignore */ }
-    setOpen(false);
-    setDraft(null);
+      setOpen(false);
+      setDraft(null);
+    } catch (e) {
+      setError(formatApiErrorForDisplay(e));
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await shiftTemplatesApi.remove(deleteTarget.id);
+      await reload();
+      setDeleteTarget(null);
+    } catch (e) {
+      setDeleteError(formatApiErrorForDisplay(e));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   usePageHeaderActions(
@@ -218,11 +237,9 @@ export function ShiftTemplatesPanel() {
               key={t.id}
               t={t}
               onEdit={() => openEdit(t)}
-              onDelete={async () => {
-                if (window.confirm('حذف القالب؟')) {
-                  try { await shiftTemplatesApi.remove(t.id); } catch { /* ignore */ }
-                  await reload();
-                }
+              onDelete={() => {
+                setDeleteError(null);
+                setDeleteTarget(t);
               }}
             />
           ))}
@@ -260,6 +277,44 @@ export function ShiftTemplatesPanel() {
               حفظ القالب
             </Button>
             <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+              إلغاء
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(v) => {
+          if (!v && !deleting) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display text-base">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              حذف قالب الدوام
+            </DialogTitle>
+            <DialogDescription className="leading-relaxed">
+              هل أنت متأكد من حذف القالب{' '}
+              <span className="font-semibold text-foreground">{deleteTarget?.nameAr}</span>؟ لا يمكن
+              التراجع عن هذا الإجراء.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {deleteError}
+            </div>
+          )}
+          <DialogFooter className="pt-2">
+            <Button variant="destructive" onClick={() => void confirmDelete()} disabled={deleting} className="gap-2">
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              حذف
+            </Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
               إلغاء
             </Button>
           </DialogFooter>

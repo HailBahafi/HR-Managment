@@ -4,13 +4,12 @@ import { Plus, Pencil, Trash2, Check, Minus, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
-import { useLeaveTypesPanelModel, type LeaveTypeDraft } from '@/features/hr/leaves/leave-types/hooks/useLeaveTypesPanelModel';
+import { useLeaveTypesPanelModel, getLeaveTypeProperty, type LeaveTypeProperty } from '@/features/hr/leaves/leave-types/hooks/useLeaveTypesPanelModel';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { cn } from '@/shared/utils';
@@ -117,20 +116,35 @@ export function LeaveTypesPanel() {
             <Separator />
             <div className="space-y-3">
               <p className="text-sm font-semibold">الخصائص</p>
-              {([
-                ['paid', 'إجازة مدفوعة الأجر'],
-                ['deductsFromBalance', 'يخصم من رصيد الإجازات'],
-              ] as [keyof LeaveTypeDraft, string][]).map(([key, label]) => (
-                <label key={key} className={cn(
-                  'flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all',
-                  m.draft[key]
-                    ? 'border-primary/30 bg-primary/5'
-                    : 'border-border bg-muted/10 hover:border-border hover:bg-muted/20',
-                )}>
-                  <span className="text-sm font-medium">{label}</span>
-                  <Checkbox checked={m.draft[key] as boolean} onCheckedChange={(v) => m.patch(key, v === true)} />
-                </label>
-              ))}
+              <div className="space-y-2" role="radiogroup" aria-label="خصائص نوع الإجازة">
+                {([
+                  ['paid', 'إجازة مدفوعة الأجر'],
+                  ['deductsFromBalance', 'يخصم من رصيد الإجازات'],
+                ] as [LeaveTypeProperty, string][]).map(([value, label]) => {
+                  const selected = getLeaveTypeProperty(m.draft) === value;
+                  return (
+                    <label
+                      key={value}
+                      className={cn(
+                        'flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all',
+                        selected
+                          ? 'border-primary/30 bg-primary/5'
+                          : 'border-border bg-muted/10 hover:border-border hover:bg-muted/20',
+                      )}
+                    >
+                      <span className="text-sm font-medium">{label}</span>
+                      <input
+                        type="radio"
+                        name="leave-type-property"
+                        value={value}
+                        checked={selected}
+                        onChange={() => m.setProperty(value)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
             </div>
             {m.error && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.error}</p>}
           </div>

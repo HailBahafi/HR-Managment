@@ -15,18 +15,23 @@ import {
 } from '@/features/hr/leaves/leave-types/services/leave-types.service';
 
 export type LeaveTypeDraft = Omit<HRLeaveTypeRecord, 'id' | 'updatedAt'>;
+export type LeaveTypeProperty = 'paid' | 'deductsFromBalance';
 
 const EMPTY_DRAFT: LeaveTypeDraft = {
   code: '',
   nameAr: '',
   nameEn: '',
   paid: true,
-  deductsFromBalance: true,
+  deductsFromBalance: false,
   requiresApproval: true,
   maxDaysPerRequest: null,
   sortOrder: 0,
   isActive: true,
 };
+
+export function getLeaveTypeProperty(draft: LeaveTypeDraft): LeaveTypeProperty {
+  return draft.deductsFromBalance ? 'deductsFromBalance' : 'paid';
+}
 
 export function useLeaveTypesPanelModel() {
   const [items, setItems] = React.useState<HRLeaveTypeRecord[]>([]);
@@ -90,6 +95,14 @@ export function useLeaveTypesPanelModel() {
 
   const patch = React.useCallback(<K extends keyof LeaveTypeDraft>(k: K, v: LeaveTypeDraft[K]) => {
     setDraft((d) => ({ ...d, [k]: v }));
+  }, []);
+
+  const setProperty = React.useCallback((property: LeaveTypeProperty) => {
+    setDraft((d) => ({
+      ...d,
+      paid: property === 'paid',
+      deductsFromBalance: property === 'deductsFromBalance',
+    }));
   }, []);
 
   const save = React.useCallback(async () => {
@@ -165,6 +178,7 @@ export function useLeaveTypesPanelModel() {
     openCreate,
     openEdit,
     patch,
+    setProperty,
     save,
     remove,
   };

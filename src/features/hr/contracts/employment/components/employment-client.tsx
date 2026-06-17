@@ -14,7 +14,7 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
-  ConfirmationModal, EmptyState,
+  EmptyState,
 } from '@/features/hr/requests/components/shared-ui';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
@@ -56,6 +56,13 @@ import { EmploymentContractTerminateModal as TerminateModal } from '@/features/h
 import { EmploymentContractSignatureCard } from '@/features/hr/contracts/employment/components/employment-contract-signature-card';
 import { EmploymentContractDetailDialog } from '@/features/hr/contracts/employment/components/employment-contract-detail-dialog';
 import { EmploymentContractFormDialog } from '@/features/hr/contracts/employment/components/employment-contract-form-dialog';
+import { ContractLeaveTypePickerDialog } from '@/features/hr/contracts/employment/components/contract-leave-type-picker-dialog';
+import {
+  canActivateEmploymentContract,
+  canRecordEmployeeContractAcceptance,
+  contractCreditsLeaveDays,
+  isTerminatedEmploymentContract,
+} from '@/features/hr/contracts/employment/utils/contract-leave-credit';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
 import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
@@ -81,7 +88,7 @@ export function EmploymentContractsClient() {
 
   const { data: activeCompany } = useActiveCompany();
   const companyId = useDefaultCompanyId();
-  const { add, update, remove, activate, terminate, archive, createAmendmentDraft } = useHRContractsStore();
+  const { add, update, activate, employeeAccept, terminate, archive, createAmendmentDraft } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { items: allowanceTypes, fetch: fetchAllowanceTypes } = useHRAllowanceTypesStore();
   const { articles, fetch: fetchArticles } = useHRContractArticlesStore();
@@ -204,9 +211,12 @@ export function EmploymentContractsClient() {
   const [selected, setSelected] = React.useState<HRContractRecord | null>(null);
   const [form, setForm] = React.useState<FormValues>(() => emptyEmploymentContractForm());
   const [error, setError] = React.useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
   const [terminateId, setTerminateId] = React.useState<string | null>(null);
   const [terminateReason, setTerminateReason] = React.useState('');
+  const [leavePicker, setLeavePicker] = React.useState<{
+    contractId: string;
+    annualLeaveDays: number;
+  } | null>(null);
   const [copyFromEmployeeId, setCopyFromEmployeeId] = React.useState('');
   const [copyFromContractId, setCopyFromContractId] = React.useState('');
   const [copySourceContracts, setCopySourceContracts] = React.useState<HRContractRecord[]>([]);
@@ -485,14 +495,40 @@ export function EmploymentContractsClient() {
     }
   };
 
-  const handleActivate = async (id: string) => {
-    const res = await activate(id);
-    if (!res.ok) toast.error(res.message);
-    else {
-      toast.success('تم تفعيل العقد.');
-      setDetailRefreshKey((k) => k + 1);
-      await reloadList();
+  const runActivate = async (id: string, leaveTypeId?: string) => {
+    const res = await activate(id, leaveTypeId);
+    if (!res.ok) throw new Error(res.message);
+    toast.success('تم تفعيل العقد.');
+    setDetailRefreshKey((k) => k + 1);
+    await reloadList();
+  };
+
+  const runEmployeeAccept = async (id: string) => {
+    const res = await employeeAccept(id);
+    if (!res.ok) throw new Error(res.message);
+    toast.success('تم تسجيل موافقة الموظف على العقد.');
+    setDetailRefreshKey((k) => k + 1);
+    await reloadList();
+  };
+
+  const handleActivate = (contract: HRContractRecord) => {
+    if (contractCreditsLeaveDays(contract)) {
+      setLeavePicker({
+        contractId: contract.id,
+        annualLeaveDays: contract.annualLeaveDays ?? 0,
+      });
+      return;
     }
+    void runActivate(contract.id);
+  };
+
+  const handleEmployeeAccept = (contract: HRContractRecord) => {
+    void runEmployeeAccept(contract.id);
+  };
+
+  const handleLeavePickerConfirm = async (leaveTypeId: string) => {
+    if (!leavePicker) return;
+    await runActivate(leavePicker.contractId, leaveTypeId);
   };
 
   const handleTerminate = async () => {
@@ -619,15 +655,36 @@ export function EmploymentContractsClient() {
     ],
   );
 
-  const ContractActions = ({ c }: { c: HRContractRecord }) => (
-    <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-      <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c.id)}>تفعيل</Button>
-      <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => setConfirmDelete(c.id)}>حذف</Button>
-      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openAmendment(c)}>تعديل رسمي</Button>
-      <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}>إنهاء</Button>
-      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleArchive(c.id)}>أرشفة</Button>
-    </div>
-  );
+  const ContractActions = ({ c }: { c: HRContractRecord }) => {
+    if (isTerminatedEmploymentContract(c)) {
+      return (
+        <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleArchive(c.id)}>أرشفة</Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
+        {canRecordEmployeeContractAcceptance(c) ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs text-primary hover:text-primary"
+            onClick={() => handleEmployeeAccept(c)}
+          >
+            موافقة الموظف
+          </Button>
+        ) : null}
+        {canActivateEmploymentContract(c) ? (
+          <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c)}>تفعيل</Button>
+        ) : null}
+        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openAmendment(c)}>تعديل رسمي</Button>
+        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}>إنهاء</Button>
+        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleArchive(c.id)}>أرشفة</Button>
+      </div>
+    );
+  };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -748,28 +805,23 @@ export function EmploymentContractsClient() {
         emptyMessage="تعذر إعداد المعاينة — تحقق من بيانات النموذج."
       />
 
-      {/* Delete */}
-      <ConfirmationModal
-        open={!!confirmDelete}
-        onOpenChange={v => { if (!v) setConfirmDelete(null); }}
-        title="حذف العقد"
-        description="هل أنت متأكد من حذف هذا العقد؟ لا يمكن التراجع."
-        confirmLabel="حذف" variant="destructive"
-        onConfirm={async () => {
-          if (!confirmDelete) return;
-          const res = await remove(confirmDelete);
-          if (!res.ok) { toast.error(res.message); return; }
-          setConfirmDelete(null);
-          await reloadList();
-        }}
-      />
-
       {/* Terminate */}
       <TerminateModal
         open={!!terminateId} reason={terminateReason}
         onReasonChange={setTerminateReason}
         onConfirm={handleTerminate}
         onCancel={() => { setTerminateId(null); setTerminateReason(''); }}
+      />
+
+      <ContractLeaveTypePickerDialog
+        open={leavePicker != null}
+        onOpenChange={(open) => { if (!open) setLeavePicker(null); }}
+        companyId={companyId}
+        title="تفعيل العقد"
+        description="اختر نوع الإجازة الذي ستُضاف إليه أيام العقد عند التفعيل."
+        annualLeaveDays={leavePicker?.annualLeaveDays}
+        confirmLabel="تفعيل العقد"
+        onConfirm={handleLeavePickerConfirm}
       />
     </div>
   );

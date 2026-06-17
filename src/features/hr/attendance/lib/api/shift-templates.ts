@@ -17,7 +17,6 @@ export type ShiftTemplatePeriodResponse = {
   strictPenaltyWarning: boolean;
   strictPenaltyBalanceEnabled: boolean;
   strictPenaltyBalanceDays: number;
-  strictPenaltyVacationEnabled: boolean;
 };
 
 export type ShiftTemplateWeekDayResponse = {
@@ -64,7 +63,6 @@ type PeriodPayload = {
   strictPenaltyWarning?: boolean;
   strictPenaltyBalanceEnabled?: boolean;
   strictPenaltyBalanceDays?: number;
-  strictPenaltyVacationEnabled?: boolean;
 };
 
 export type CreateShiftTemplateDto = {
