@@ -18,10 +18,10 @@ const nextConfig = {
     },
   },
   reactStrictMode: true,
-  allowedDevOrigins: [
-    '10.192.172.199',
-    '192.168.61.1',
-  ],
+  allowedDevOrigins: (process.env.ALLOWED_DEV_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
