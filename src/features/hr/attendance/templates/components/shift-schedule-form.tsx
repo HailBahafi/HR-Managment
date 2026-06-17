@@ -130,32 +130,6 @@ export function ShiftScheduleForm({
                 }
               />
             </div>
-
-            <span className="hidden h-5 w-px shrink-0 bg-border/70 md:block" aria-hidden />
-
-            <div className="flex min-h-8 shrink-0 items-center gap-1">
-              <Switch
-                id={`sp-vac-${period.id}`}
-                className="scale-90 shrink-0"
-                checked={period.strictPenaltyVacationEnabled}
-                onCheckedChange={(v) => onChange({ ...period, strictPenaltyVacationEnabled: v })}
-              />
-              <label
-                htmlFor={`sp-vac-${period.id}`}
-                className="flex cursor-pointer items-center gap-x-1 whitespace-nowrap text-[11px] sm:text-xs"
-              >
-                <span className="font-medium text-foreground">خصم</span>
-                <span className="text-muted-foreground">يوم من رصيد الإجازة</span>
-              </label>
-              <InfoTooltip
-                side="top"
-                content={
-                  <>
-                    يُخصم <strong>يوم واحد فقط</strong> من رصيد إجازة الموظف عند غيابه عن هذه الفترة (بدون إدخال يدوي).
-                  </>
-                }
-              />
-            </div>
           </div>
         </div>
       )}

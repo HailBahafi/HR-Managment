@@ -11,15 +11,6 @@ import {
 } from '@/features/hr/contracts/lib/contracts-store';
 
 export const HR_CONTRACTS_MODE_PARAM = 'mode';
-export const CURRENCIES = ['SAR', 'USD', 'EUR', 'GBP'] as const;
-
-export function suggestContractNumber(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `CL-${y}${m}${day}-${Math.floor(1000 + Math.random() * 9000)}`;
-}
 
 export type AllowanceLine = { allowanceTypeId: string; amount: string };
 
@@ -102,7 +93,7 @@ export function cloneEmploymentFormFromContract(
   return {
     ...merged,
     employeeId: preserveEmployeeId,
-    contractNumber: suggestContractNumber(),
+    contractNumber: '',
     templateId: source.templateId ?? '',
   };
 }
@@ -123,7 +114,7 @@ export function employmentFormToDraft(
     employeeId: v.employeeId,
     employeeNameAr: '',
     branchNameAr: '',
-    contractNumber: v.contractNumber.trim(),
+    contractNumber: v.contractNumber.trim() || '',
     contractType: v.contractType,
     workArrangement: v.workArrangement,
     startDate: v.startDate,

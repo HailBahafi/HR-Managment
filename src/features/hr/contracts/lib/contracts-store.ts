@@ -1,5 +1,13 @@
 import { create } from 'zustand';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
+import {
+  TEMPLATE_CONTRACT_NATURE_LABELS,
+  TEMPLATE_WORK_ARRANGEMENT_LABELS,
+} from '@/features/hr/contracts/contract-templates/constants/contract-template-options';
+import type {
+  ContractNature,
+  WorkArrangement,
+} from '@/features/hr/contracts/contract-templates/types/contract-template';
 import { employeeContractsApi, type ApiEmployeeContract } from './contracts-api';
 import { fetchAllEmployeeContracts } from './fetch-all-employee-contracts';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -7,16 +15,11 @@ import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-comp
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type HRContractNature =
-  | 'fixed_term'
-  | 'indefinite'
-  | 'project_based'
-  | 'task_based'
-  | 'temporary'
-  | 'seasonal';
+/** مطابق لـ backend ContractNature enum */
+export type HRContractNature = ContractNature;
 
-/** مطابق لـ backend WorkArrangement (+ flexible للسجلات القديمة) */
-export type HRWorkArrangement = 'full_time' | 'part_time' | 'remote' | 'hybrid' | 'flexible';
+/** مطابق لـ backend WorkArrangement enum */
+export type HRWorkArrangement = WorkArrangement;
 
 export type HRContractLifecycleStatus = 'draft' | 'pending_signature' | 'active' | 'expired' | 'terminated' | 'superseded' | 'cancelled';
 
@@ -106,9 +109,9 @@ interface HRContractsState {
   isLoading: boolean;
   error: string | null;
   fetch: (params?: { employeeId?: string }) => Promise<void>;
-  add: (data: HRContractDraft) => Promise<string>;
-  update: (id: string, patch: Partial<HRContractDraft>) => Promise<boolean>;
-  remove: (id: string) => Promise<boolean>;
+  add: (data: HRContractDraft) => Promise<{ id: string; contractNumber: string }>;
+  update: (id: string, patch: Partial<HRContractDraft>) => Promise<ActivateResult>;
+  remove: (id: string) => Promise<ActivateResult>;
   activate: (id: string) => Promise<ActivateResult>;
   terminate: (id: string, reason: string) => Promise<ActivateResult>;
   archive: (id: string) => Promise<ActivateResult>;
@@ -135,10 +138,12 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
 
   add: async (data) => {
     const companyId = getDefaultCompanyId() ?? '';
+    const contractNumber = data.contractNumber?.trim();
+    const currency = data.currency?.trim().toUpperCase();
     const created = await employeeContractsApi.create({
       companyId,
       employeeId: data.employeeId,
-      contractNumber: data.contractNumber,
+      ...(contractNumber ? { contractNumber } : {}),
       contractNature: data.contractType,
       workArrangement: data.workArrangement,
       startDate: data.startDate,
@@ -146,7 +151,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
       probationDays: data.probationDays ?? undefined,
       annualLeaveDays: data.annualLeaveDays ?? undefined,
       baseSalary: data.baseSalary,
-      currency: data.currency,
+      ...(currency && currency !== 'SAR' ? { currency } : {}),
       status: data.status,
       allowancesNote: data.allowancesNote || undefined,
       deductionsNote: data.deductionsNote || undefined,
@@ -160,12 +165,10 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
     });
     const row = mapEmployeeContractFromApi(created);
     set(s => ({ contracts: [row, ...s.contracts] }));
-    return created.id;
+    return { id: created.id, contractNumber: created.contractNumber };
   },
 
   update: async (id, patch) => {
-    const current = get().contracts.find(c => c.id === id);
-    if (!current || current.status !== 'draft') return false;
     try {
       const updated = await employeeContractsApi.update(id, {
         contractNature: patch.contractType,
@@ -185,9 +188,9 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
       });
       const row = mapEmployeeContractFromApi(updated);
       set(s => ({ contracts: s.contracts.map(c => c.id === id ? row : c) }));
-      return true;
-    } catch {
-      return false;
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
     }
   },
 
@@ -195,15 +198,13 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
     try {
       await employeeContractsApi.delete(id);
       set(s => ({ contracts: s.contracts.filter(c => c.id !== id) }));
-      return true;
-    } catch {
-      return false;
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
     }
   },
 
   activate: async (id) => {
-    const c = get().contracts.find(x => x.id === id);
-    if (!c || c.status !== 'draft') return { ok: false, message: 'يمكن تفعيل المسودات فقط.' };
     try {
       const updated = await employeeContractsApi.update(id, { status: 'active' });
       const row = mapEmployeeContractFromApi(updated);
@@ -215,8 +216,6 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
   },
 
   terminate: async (id, reason) => {
-    const c = get().contracts.find(x => x.id === id);
-    if (!c || c.status !== 'active') return { ok: false, message: 'يمكن إنهاء العقود النشطة فقط.' };
     try {
       const updated = await employeeContractsApi.update(id, {
         status: 'terminated',
@@ -231,9 +230,6 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
   },
 
   archive: async (id) => {
-    const c = get().contracts.find(x => x.id === id);
-    if (!c || (c.status !== 'expired' && c.status !== 'terminated'))
-      return { ok: false, message: 'يمكن إلغاء العقود المنتهية أو المُنهية فقط.' };
     try {
       const updated = await employeeContractsApi.update(id, { status: 'cancelled' });
       const row = mapEmployeeContractFromApi(updated);
@@ -245,8 +241,14 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
   },
 
   createAmendmentDraft: async (activeContractId) => {
-    const parent = get().contracts.find(x => x.id === activeContractId);
-    if (!parent || parent.status !== 'active') return { ok: false, message: 'اختر عقداً نشطاً.' };
+    let parent = get().contracts.find(x => x.id === activeContractId);
+    if (!parent) {
+      try {
+        parent = mapEmployeeContractFromApi(await employeeContractsApi.get(activeContractId));
+      } catch (e) {
+        return { ok: false, message: (e as Error).message };
+      }
+    }
     const companyId = getDefaultCompanyId() ?? '';
     try {
       const created = await employeeContractsApi.create({
@@ -286,22 +288,17 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
 
 // ─── Labels & colors ──────────────────────────────────────────────────────────
 
-export const CONTRACT_NATURE_LABELS: Record<HRContractNature, string> = {
-  fixed_term: 'محدد المدة',
-  indefinite: 'غير محدد المدة',
-  project_based: 'عقد إنجاز / مشروع',
-  task_based: 'عقد إنجاز مهام',
-  temporary: 'مؤقت',
-  seasonal: 'موسمي',
-};
+export const CONTRACT_NATURE_LABELS = TEMPLATE_CONTRACT_NATURE_LABELS;
 
-export const WORK_ARRANGEMENT_LABELS: Record<HRWorkArrangement, string> = {
-  full_time: 'دوام كامل',
-  part_time: 'دوام جزئي',
-  remote: 'عن بُعد',
-  hybrid: 'هجين (مختلط)',
-  flexible: 'دوام مرن',
-};
+export const WORK_ARRANGEMENT_LABELS = TEMPLATE_WORK_ARRANGEMENT_LABELS;
+
+export function contractNatureLabel(value: string): string {
+  return (CONTRACT_NATURE_LABELS as Record<string, string>)[value] ?? value;
+}
+
+export function workArrangementLabel(value: string): string {
+  return (WORK_ARRANGEMENT_LABELS as Record<string, string>)[value] ?? value;
+}
 
 export const CONTRACT_STATUS_LABELS: Record<HRContractLifecycleStatus, string> = {
   draft: 'مسودة',

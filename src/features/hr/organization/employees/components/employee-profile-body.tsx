@@ -1,7 +1,7 @@
 'use client';
 
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { NewRequestDialog } from '@/components/requests/new-request-dialog';
+import { EmployeeLeaveRequestDialog } from '@/features/hr/organization/employees/components/dialogs/employee-leave-request-dialog';
 import { useEmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { EmployeeProfileShell } from '@/features/hr/organization/employees/components/employee-profile-shell';
 import { EmployeePersonalSection } from '@/features/hr/organization/employees/components/sections/employee-personal-section';
@@ -79,10 +79,16 @@ export function EmployeeProfileBody({ employee, onUpdated }: { employee: Employe
         printable={model.rosePdfPreviewPayload.printable}
       />
 
-      <NewRequestDialog
+      <EmployeeLeaveRequestDialog
         open={model.leaveRequestOpen}
         onOpenChange={model.setLeaveRequestOpen}
-        initialType="leave"
+        companyId={model.companyId}
+        employeeId={model.employee.id}
+        employeeName={model.employee.name}
+        leaveTypes={model.leaveTypes}
+        leaveRequestTypes={model.leaveRequestTypes}
+        presetLeaveTypeId={model.presetLeaveTypeId}
+        onSuccess={() => void model.reloadLeaves()}
       />
     </div>
   );

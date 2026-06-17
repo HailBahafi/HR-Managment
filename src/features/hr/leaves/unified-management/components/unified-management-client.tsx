@@ -33,11 +33,12 @@ import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/org
 import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/features/hr/leaves/unified-management/types';
 import type { LeaveTypeResponseDto } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
 import { loadCompanyLeaveTypes } from '@/features/hr/leaves/lib/leave-types-utils';
+import { pickDefaultLeaveRequestTypeId, loadLeaveRequestTypes } from '@/features/hr/requests/lib/load-leave-request-types';
 import {
   leaveRequestsNewApi,
   type ApiLeaveRequest,
 } from '@/features/hr/requests/lib/api/correction-requests';
-import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
+import type { ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { cn } from '@/shared/utils';
@@ -283,12 +284,7 @@ export function UnifiedManagementClient() {
     try {
       const ltRes = await loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true });
       setLeaveTypes(ltRes.items);
-      try {
-        const rtRes = await requestTypesApi.list({ companyId, requestCategory: 'leave', isActive: true, limit: 200 });
-        setLeaveRequestTypes(rtRes.items);
-      } catch {
-        setLeaveRequestTypes([]);
-      }
+      setLeaveRequestTypes(await loadLeaveRequestTypes(companyId));
     } catch {
       toast.error('فشل تحميل أنواع الإجازات');
     }
@@ -945,7 +941,7 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
   const [reasonAr, setReasonAr] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
 
-  const defaultRequestTypeId = leaveRequestTypes[0]?.id ?? '';
+  const defaultRequestTypeId = pickDefaultLeaveRequestTypeId(leaveRequestTypes);
 
   React.useEffect(() => {
     if (open && editLeave) {
@@ -971,11 +967,12 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
   const submit = async () => {
     if (!empId || !leaveTypeId) { setError('اختر الموظف ونوع الإجازة'); return; }
     if (!start || !end || start > end) { setError('تحقق من التواريخ'); return; }
-    if (!editLeave && (!requestTypeId || reasonAr.trim().length < 3)) {
-      setError('اختر نوع الطلب وأدخل سبباً (3 أحرف على الأقل)');
+    if (!editLeave && reasonAr.trim().length < 3) {
+      setError('أدخل سبباً (3 أحرف على الأقل)');
       return;
     }
     const userId = useAuthStore.getState().user?.id ?? '';
+    const resolvedRequestTypeId = requestTypeId || defaultRequestTypeId;
     try {
       if (editLeave) {
         await leaveRequestsNewApi.update(editLeave.id, {
@@ -990,7 +987,7 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
         await leaveRequestsNewApi.create({
           companyId,
           employeeId: empId,
-          requestTypeId,
+          requestTypeId: resolvedRequestTypeId,
           leaveTypeId,
           startDate: start,
           endDate: end,
@@ -1043,20 +1040,6 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
               </SelectContent>
             </Select>
           </div>
-
-          {!editLeave && leaveRequestTypes.length > 0 ? (
-            <div className="space-y-2">
-              <Label>نوع الطلب <span className="text-destructive">*</span></Label>
-              <Select value={requestTypeId} onValueChange={setRequestTypeId}>
-                <SelectTrigger><SelectValue placeholder="اختر نوع الطلب" /></SelectTrigger>
-                <SelectContent>
-                  {leaveRequestTypes.map((rt) => (
-                    <SelectItem key={rt.id} value={rt.id}>{rt.nameAr}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
 
           <div className="space-y-2">
             <Label>نوع الإجازة <span className="text-destructive">*</span></Label>

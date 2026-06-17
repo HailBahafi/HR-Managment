@@ -16,11 +16,14 @@ import {
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { MinimalDropdown, SearchableDropdown } from '@/features/hr/requests/components/shared-ui';
 import {
-  CONTRACT_NATURE_LABELS, WORK_ARRANGEMENT_LABELS,
-  type HRContractNature, type HRWorkArrangement,
-} from '@/features/hr/contracts/lib/contracts-store';
+  CONTRACT_NATURE_DROPDOWN_OPTIONS,
+  WORK_ARRANGEMENT_DROPDOWN_OPTIONS,
+} from '@/features/hr/contracts/contract-templates/constants/contract-template-options';
+import type {
+  ContractNature,
+  WorkArrangement,
+} from '@/features/hr/contracts/contract-templates/types/contract-template';
 import {
-  CURRENCIES,
   type AllowanceLine,
   type EmploymentContractFormValues,
 } from '@/features/hr/contracts/employment/utils/employment-contract-form';
@@ -259,23 +262,14 @@ export function EmploymentContractFormDialog({
           <section className="space-y-3">
             <SectionHeader icon={User} title="الموظف" description="ربط العقد بالموظف المعني" />
             <SectionCard>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="الموظف" required span2={!isCreate}>
-                  <SearchableDropdown
-                    value={form.employeeId}
-                    onChange={(v) => onPatch({ employeeId: v })}
-                    options={empOptions}
-                    placeholder="اختر الموظف…"
-                  />
-                </Field>
-                <Field label="رقم العقد" required>
-                  <Input
-                    value={form.contractNumber}
-                    onChange={(e) => onPatch({ contractNumber: e.target.value })}
-                    className="font-mono text-sm"
-                  />
-                </Field>
-              </div>
+              <Field label="الموظف" required span2>
+                <SearchableDropdown
+                  value={form.employeeId}
+                  onChange={(v) => onPatch({ employeeId: v })}
+                  options={empOptions}
+                  placeholder="اختر الموظف…"
+                />
+              </Field>
 
               {isCreate ? (
                 <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-primary/15 bg-primary/5 px-3.5 py-3">
@@ -302,20 +296,20 @@ export function EmploymentContractFormDialog({
                   <MinimalDropdown
                     value={form.contractType}
                     onChange={(v) => {
-                      const contractType = v as HRContractNature;
+                      const contractType = v as ContractNature;
                       onPatch({
                         contractType,
                         ...(contractType !== 'fixed_term' ? { endDate: '' } : {}),
                       });
                     }}
-                    options={Object.entries(CONTRACT_NATURE_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+                    options={CONTRACT_NATURE_DROPDOWN_OPTIONS}
                   />
                 </Field>
                 <Field label="نوع الدوام">
                   <MinimalDropdown
                     value={form.workArrangement}
-                    onChange={(v) => onPatch({ workArrangement: v as HRWorkArrangement })}
-                    options={Object.entries(WORK_ARRANGEMENT_LABELS).map(([v, l]) => ({ value: v, label: l }))}
+                    onChange={(v) => onPatch({ workArrangement: v as WorkArrangement })}
+                    options={WORK_ARRANGEMENT_DROPDOWN_OPTIONS}
                   />
                 </Field>
                 <Field label="تاريخ البداية" required>
@@ -364,24 +358,15 @@ export function EmploymentContractFormDialog({
           <section className="space-y-3">
             <SectionHeader icon={Coins} title="التعويضات" description="الراتب الأساسي والبدلات" />
             <SectionCard>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="الراتب الأساسي" required>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={form.baseSalary}
-                    onChange={(e) => onPatch({ baseSalary: e.target.value })}
-                    placeholder="0"
-                  />
-                </Field>
-                <Field label="العملة">
-                  <MinimalDropdown
-                    value={form.currency}
-                    onChange={(v) => onPatch({ currency: v })}
-                    options={CURRENCIES.map((c) => ({ value: c, label: c }))}
-                  />
-                </Field>
-              </div>
+              <Field label="الراتب الأساسي" required span2>
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.baseSalary}
+                  onChange={(e) => onPatch({ baseSalary: e.target.value })}
+                  placeholder="0"
+                />
+              </Field>
 
               <Separator className="my-4" />
 

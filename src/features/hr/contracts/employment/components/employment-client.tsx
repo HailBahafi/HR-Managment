@@ -22,10 +22,10 @@ import { employeeContractsApi } from '@/features/hr/contracts/lib/contracts-api'
 import {
   useHRContractsStore,
   mapEmployeeContractFromApi,
-  CONTRACT_NATURE_LABELS,
-  WORK_ARRANGEMENT_LABELS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_STATUS_COLORS,
+  contractNatureLabel,
+  workArrangementLabel,
   type HRContractDraft,
   type HRContractLifecycleStatus,
   type HRContractNature,
@@ -42,7 +42,6 @@ import { cn, formatNumber } from '@/shared/utils';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 import {
   HR_CONTRACTS_MODE_PARAM,
-  suggestContractNumber,
   type AllowanceLine,
   type EmploymentContractFormValues,
   emptyEmploymentContractForm,
@@ -282,8 +281,8 @@ export function EmploymentContractsClient() {
         company={company}
         employeeNameAr={empAr}
         contractNumber={values.contractNumber.trim() || '—'}
-        natureLabelAr={CONTRACT_NATURE_LABELS[values.contractType]}
-        arrangementLabelAr={WORK_ARRANGEMENT_LABELS[values.workArrangement]}
+        natureLabelAr={contractNatureLabel(values.contractType)}
+        arrangementLabelAr={workArrangementLabel(values.workArrangement)}
         startDate={values.startDate}
         endDate={values.endDate}
         probationDaysLabel={values.probationDays.trim() ? `${values.probationDays} يوم` : 'بدون'}
@@ -329,17 +328,14 @@ export function EmploymentContractsClient() {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map(c => ({
         value: c.id,
-        label: `${c.contractNumber} · ${CONTRACT_NATURE_LABELS[c.contractType]} · ${CONTRACT_STATUS_LABELS[c.status]} · ${c.startDate}`,
+        label: `${c.contractNumber} · ${contractNatureLabel(c.contractType)} · ${CONTRACT_STATUS_LABELS[c.status]} · ${c.startDate}`,
       }));
   }, [copySourceContracts, copyFromEmployeeId]);
 
   /* ── URL mode sync ── */
   React.useEffect(() => {
     if (modeParam === 'createContract') {
-      const f = {
-        ...emptyEmploymentContractForm(essentialArticleIds),
-        contractNumber: suggestContractNumber(),
-      };
+      const f = emptyEmploymentContractForm(essentialArticleIds);
       setSelected(null); setForm(f); setPanelMode('create'); setError(null);
       setCopyFromEmployeeId(''); setCopyFromContractId('');
       setDrawerOpen(true);
@@ -437,7 +433,6 @@ export function EmploymentContractsClient() {
 
   const handleSave = async () => {
     if (!form.employeeId) { setError('اختر الموظف'); return; }
-    if (!form.contractNumber.trim()) { setError('رقم العقد مطلوب'); return; }
     if (!form.startDate) { setError('تاريخ البداية مطلوب'); return; }
     if (form.contractType === 'fixed_term' && !form.endDate) { setError('تاريخ الانتهاء مطلوب للعقود محددة المدة'); return; }
     const alRaw = form.annualLeaveDays.trim();
@@ -452,7 +447,7 @@ export function EmploymentContractsClient() {
         articleIds: mergeEssentialArticleIds(form.articleIds, essentialArticleIds),
       };
       if (panelMode === 'create') {
-        const contractId = await add(formToDraft(payload, 'draft'));
+        const { id: contractId, contractNumber } = await add(formToDraft(payload, 'draft'));
         const companyId = getDefaultCompanyId() ?? '';
         const actor = useAuthStore.getState().user?.email ?? undefined;
 
@@ -463,7 +458,7 @@ export function EmploymentContractsClient() {
               companyId,
               contractId,
               employeeId: form.employeeId,
-              contractNumber: form.contractNumber.trim(),
+              contractNumber,
               startDate: form.startDate,
               createdBy: actor,
             });
@@ -480,8 +475,8 @@ export function EmploymentContractsClient() {
             : 'تم إنشاء العقد كمسودة.',
         );
       } else if (panelMode === 'edit' && selected) {
-        const ok = await update(selected.id, formToDraft(payload, selected.status));
-        if (!ok) { setError('لا يمكن تعديل عقد غير مسودة'); return; }
+        const res = await update(selected.id, formToDraft(payload, selected.status));
+        if (!res.ok) { setError(res.message); return; }
       }
       closeDrawer();
       await reloadList();
@@ -626,26 +621,11 @@ export function EmploymentContractsClient() {
 
   const ContractActions = ({ c }: { c: HRContractRecord }) => (
     <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-      {c.status === 'draft' && (
-        <>
-          {c.employeeSigned ? (
-            <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c.id)}>تفعيل</Button>
-          ) : null}
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => setConfirmDelete(c.id)}>حذف</Button>
-        </>
-      )}
-      {c.status === 'pending_signature' && c.employeeSigned ? (
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c.id)}>تفعيل</Button>
-      ) : null}
-      {c.status === 'active' && (
-        <>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openAmendment(c)}>تعديل رسمي</Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}>إنهاء</Button>
-        </>
-      )}
-      {(c.status === 'expired' || c.status === 'terminated') && (
-        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleArchive(c.id)}>أرشفة</Button>
-      )}
+      <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c.id)}>تفعيل</Button>
+      <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => setConfirmDelete(c.id)}>حذف</Button>
+      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openAmendment(c)}>تعديل رسمي</Button>
+      <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}>إنهاء</Button>
+      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleArchive(c.id)}>أرشفة</Button>
     </div>
   );
 
@@ -687,9 +667,9 @@ export function EmploymentContractsClient() {
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
                   <FileText className="h-3 w-3 shrink-0" />
                   <span className="min-w-0 leading-tight">
-                    {CONTRACT_NATURE_LABELS[c.contractType]}
+                    {contractNatureLabel(c.contractType)}
                     <span className="text-muted-foreground"> · </span>
-                    {WORK_ARRANGEMENT_LABELS[c.workArrangement]}
+                    {workArrangementLabel(c.workArrangement)}
                   </span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-mono text-muted-foreground">
@@ -775,7 +755,13 @@ export function EmploymentContractsClient() {
         title="حذف العقد"
         description="هل أنت متأكد من حذف هذا العقد؟ لا يمكن التراجع."
         confirmLabel="حذف" variant="destructive"
-        onConfirm={async () => { if (confirmDelete) { await remove(confirmDelete); setConfirmDelete(null); } }}
+        onConfirm={async () => {
+          if (!confirmDelete) return;
+          const res = await remove(confirmDelete);
+          if (!res.ok) { toast.error(res.message); return; }
+          setConfirmDelete(null);
+          await reloadList();
+        }}
       />
 
       {/* Terminate */}

@@ -1,21 +1,25 @@
-import type { ContractTemplateDto } from '@/features/hr/contracts/contract-templates/types/contract-template';
+import type {
+  ContractNature,
+  ContractTemplateDto,
+  WorkArrangement,
+} from '@/features/hr/contracts/contract-templates/types/contract-template';
 import type { EmploymentContractFormValues } from '@/features/hr/contracts/employment/utils/employment-contract-form';
-import type { HRContractNature, HRWorkArrangement } from '@/features/hr/contracts/lib/contracts-store';
 
-function toContractNature(value: string): HRContractNature {
-  const valid: HRContractNature[] = ['indefinite', 'fixed_term', 'project_based', 'task_based', 'temporary', 'seasonal'];
-  if (valid.includes(value as HRContractNature)) return value as HRContractNature;
+const CONTRACT_NATURE_VALUES: ContractNature[] = ['indefinite', 'fixed_term', 'project_based'];
+const WORK_ARRANGEMENT_VALUES: WorkArrangement[] = ['full_time', 'part_time', 'remote', 'hybrid'];
+
+function toContractNature(value: string): ContractNature {
+  if (CONTRACT_NATURE_VALUES.includes(value as ContractNature)) return value as ContractNature;
   return 'fixed_term';
 }
 
-function toWorkArrangement(value: string): HRWorkArrangement {
-  const valid: HRWorkArrangement[] = ['full_time', 'part_time', 'remote', 'hybrid', 'flexible'];
-  if (valid.includes(value as HRWorkArrangement)) return value as HRWorkArrangement;
+function toWorkArrangement(value: string): WorkArrangement {
+  if (WORK_ARRANGEMENT_VALUES.includes(value as WorkArrangement)) return value as WorkArrangement;
   return 'full_time';
 }
 
 export function computeTemplateEndDate(
-  nature: HRContractNature,
+  nature: ContractNature,
   durationMonths: number | null,
   startDate: string,
 ): string | undefined {

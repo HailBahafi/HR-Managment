@@ -9,20 +9,13 @@ import { Empty, SectionH } from '@/features/hr/organization/employees/components
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 
-const NATURE_LABELS: Record<string, string> = {
-  indefinite: 'غير محدد المدة',
-  fixed_term: 'محدد المدة',
-  temporary: 'مؤقت',
-  seasonal: 'موسمي',
-};
+import {
+  TEMPLATE_CONTRACT_NATURE_LABELS,
+  TEMPLATE_WORK_ARRANGEMENT_LABELS,
+} from '@/features/hr/contracts/contract-templates/constants/contract-template-options';
 
-const ARRANGEMENT_LABELS: Record<string, string> = {
-  full_time: 'دوام كامل',
-  part_time: 'دوام جزئي',
-  remote: 'عن بُعد',
-  hybrid: 'مرن/هجين',
-  flexible: 'مرن',
-};
+const NATURE_LABELS: Record<string, string> = TEMPLATE_CONTRACT_NATURE_LABELS;
+const ARRANGEMENT_LABELS: Record<string, string> = TEMPLATE_WORK_ARRANGEMENT_LABELS;
 
 export function EmployeeContractsSection({ model }: { model: EmployeeProfileModel }) {
   const { employeeContracts } = model;

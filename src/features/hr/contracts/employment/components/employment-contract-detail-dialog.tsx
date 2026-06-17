@@ -14,10 +14,10 @@ import { DisplayDate } from '@/components/ui/table-cells';
 import { employeeContractsApi, type ApiContractArticleRef } from '@/features/hr/contracts/lib/contracts-api';
 import {
   mapEmployeeContractFromApi,
-  CONTRACT_NATURE_LABELS,
-  WORK_ARRANGEMENT_LABELS,
   CONTRACT_STATUS_LABELS,
   CONTRACT_STATUS_COLORS,
+  contractNatureLabel,
+  workArrangementLabel,
   type HRContractRecord,
 } from '@/features/hr/contracts/lib/contracts-store';
 import { EmploymentContractSignatureCard } from '@/features/hr/contracts/employment/components/employment-contract-signature-card';
@@ -137,10 +137,10 @@ export function EmploymentContractDetailDialog({
                 {CONTRACT_STATUS_LABELS[contract.status]}
               </Badge>
               <Badge variant="outline" className="rounded-lg px-2 py-0.5 text-[10px] font-medium">
-                {CONTRACT_NATURE_LABELS[contract.contractType]}
+                {contractNatureLabel(contract.contractType)}
               </Badge>
               <Badge variant="outline" className="rounded-lg px-2 py-0.5 text-[10px] font-medium">
-                {WORK_ARRANGEMENT_LABELS[contract.workArrangement]}
+                {workArrangementLabel(contract.workArrangement)}
               </Badge>
             </div>
           ) : null}
@@ -197,8 +197,8 @@ export function EmploymentContractDetailDialog({
               </Section>
 
               <Section title="بيانات العقد" icon={FileText}>
-                <DetailRow label="نوع العقد" value={CONTRACT_NATURE_LABELS[contract.contractType]} />
-                <DetailRow label="نوع الدوام" value={WORK_ARRANGEMENT_LABELS[contract.workArrangement]} />
+                <DetailRow label="نوع العقد" value={contractNatureLabel(contract.contractType)} />
+                <DetailRow label="نوع الدوام" value={workArrangementLabel(contract.workArrangement)} />
                 <DetailRow label="تاريخ البداية" value={contract.startDate} />
                 <DetailRow label="تاريخ الانتهاء" value={contract.endDate || '—'} />
                 <DetailRow
@@ -284,7 +284,7 @@ export function EmploymentContractDetailDialog({
 
         {contract ? (
           <DialogFooter className={dialogFormFooterClass}>
-            {contract.status === 'draft' && onEditDraft ? (
+            {onEditDraft ? (
               <Button
                 type="button"
                 variant="secondary"
