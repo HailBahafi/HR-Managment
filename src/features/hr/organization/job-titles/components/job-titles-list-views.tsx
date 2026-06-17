@@ -14,28 +14,28 @@ import {
   DirectoryGridCardTitle,
 } from '@/components/ui/directory-grid-card';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import type { JobTitlesDirectoryModel } from '@/features/hr/organization/job-titles/hooks/useJobTitlesDirectoryModel';
 import type { JobTitleTemplateRecord } from '@/features/hr/organization/job-titles/services/job-titles.service';
 
 export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }) {
-  const { templates, layoutView, setViewRow, openEdit, setConfirmId } = model;
+  const { templates, layoutView, pagination, loading, setViewRow, openEdit, setConfirmId, companyLabel } = model;
 
   const columns = React.useMemo((): ColumnDef<JobTitleTemplateRecord>[] => [
+    {
+      key: 'company',
+      title: 'الشركة',
+      className: 'text-muted-foreground',
+      render: (row) => companyLabel(row.companyId),
+    },
     {
       key: 'titleAr',
       title: 'المسمى الوظيفي',
       render: (row) => (
         <div className="flex flex-col gap-0.5">
           <span className="font-medium">{row.titleAr}</span>
-          {row.code ? <span className="text-[10px] text-muted-foreground" dir="ltr">{row.code}</span> : null}
         </div>
       ),
-    },
-    {
-      key: 'titleEn',
-      title: 'الاسم (EN)',
-      className: 'text-muted-foreground',
-      render: (row) => <span dir="ltr">{row.titleEn ?? '—'}</span>,
     },
     {
       key: 'description',
@@ -68,22 +68,25 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
         />
       ),
     },
-  ], [openEdit, setConfirmId]);
+  ], [companyLabel, openEdit, setConfirmId]);
 
   return (
-    <>
-      {templates.length === 0 ? (
-        <EmptyState icon={Briefcase} title="لا توجد قوالب" description="أضف مسميات وظيفية شائعة في شركتك." />
-      ) : layoutView === 'grid' ? (
+    <DirectoryPagedViews
+      items={templates}
+      serverPagination={pagination}
+      loading={loading}
+      empty={<EmptyState icon={Briefcase} title="لا توجد قوالب" description="أضف مسميات وظيفية شائعة في شركتك." />}
+    >
+      {(pageItems) => layoutView === 'grid' ? (
         <DirectoryGrid>
-          {templates.map((row) => (
+          {pageItems.map((row) => (
             <DirectoryGridCard key={row.id} interactive onClick={() => setViewRow(row)}>
               <DirectoryGridCardHeader>
                 <DirectoryGridCardTitle className="leading-snug">{row.titleAr}</DirectoryGridCardTitle>
                 <Briefcase className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               </DirectoryGridCardHeader>
-              {row.titleEn ? <p className="text-xs text-muted-foreground" dir="ltr">{row.titleEn}</p> : null}
               {row.descriptionAr ? <p className="line-clamp-2 text-xs text-muted-foreground">{row.descriptionAr}</p> : null}
+              <p className="text-[10px] text-muted-foreground">{companyLabel(row.companyId)}</p>
               <DirectoryGridCardFooter>
                 {row.isActive ? (
                   <Badge variant="outline" className="text-[10px]">نشط</Badge>
@@ -104,11 +107,11 @@ export function JobTitlesListViews({ model }: { model: JobTitlesDirectoryModel }
           variant="directory"
           alwaysShowTable
           columns={columns}
-          data={templates}
+          data={pageItems}
           keyExtractor={(row) => row.id}
           onRowClick={(row) => setViewRow(row)}
         />
       )}
-    </>
+    </DirectoryPagedViews>
   );
 }

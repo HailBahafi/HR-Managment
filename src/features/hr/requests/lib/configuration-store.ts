@@ -7,6 +7,7 @@ import { HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID, normalizeRequestCategory, slugify }
 import { requestTypesApi, type ApiRequestType } from './api/request-types';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 function uid() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; }
 function now() { return new Date().toISOString(); }
@@ -30,7 +31,7 @@ function mapDepartment(r: DepartmentResponseDto): HRDepartmentEntity {
 
 // ─── Mapping API → frontend type ─────────────────────────────────────────────
 
-function mapApiRequestType(r: ApiRequestType): HRRequestTypeEntity {
+export function mapApiRequestType(r: ApiRequestType): HRRequestTypeEntity {
   return {
     id: r.id,
     departmentId: r.departmentId ?? HR_REQUEST_TYPE_ALL_DEPARTMENTS_ID,
@@ -96,7 +97,7 @@ export const useHRConfigurationStore = create<HRConfigState>()((set, get) => ({
       // ── Departments (API-backed) ────────────────────────────────────────────
 
       fetchDepartments: async () => {
-        const companyId = useAuthStore.getState().activeCompanyId;
+        const companyId = getDefaultCompanyId();
         if (!companyId) return;
         set({ departmentsLoading: true });
         try {
@@ -110,7 +111,7 @@ export const useHRConfigurationStore = create<HRConfigState>()((set, get) => ({
       // ── Request types (API-backed) ──────────────────────────────────────────
 
       fetchRequestTypes: async (params?: { requestCategory?: string; isActive?: boolean }) => {
-        const companyId = useAuthStore.getState().activeCompanyId;
+        const companyId = getDefaultCompanyId();
         if (!companyId) return;
         set({ requestTypesLoading: true, requestTypesError: null });
         try {
@@ -122,7 +123,7 @@ export const useHRConfigurationStore = create<HRConfigState>()((set, get) => ({
       },
 
       addRequestType: async (draft) => {
-        const companyId = useAuthStore.getState().activeCompanyId ?? '';
+        const companyId = getDefaultCompanyId() ?? '';
         // POST only accepts basic fields — departmentId, approvalStages, subtypes are PATCH-only
         let created = await requestTypesApi.create({
           companyId,

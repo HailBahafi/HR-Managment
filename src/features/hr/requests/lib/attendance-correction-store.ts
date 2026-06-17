@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { correctionRequestsApi, type ApiCorrectionRequest, type CorrectionRequestStatus } from './api/correction-requests';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 export type AttendanceCorrectionRequest = {
   id: string;
@@ -70,7 +71,7 @@ function translateAttendanceStatus(s: string | null | undefined): string {
   return ATTENDANCE_STATUS_AR[s] ?? s;
 }
 
-function mapApi(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
+export function mapCorrectionRequest(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
   return {
     id: r.id,
     employeeId: r.employeeId,
@@ -122,19 +123,19 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
   error: null,
 
   fetch: async (params) => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
       const result = await correctionRequestsApi.list({ companyId, limit: 200, ...params });
-      set({ items: result.items.map(mapApi), isLoading: false });
+      set({ items: result.items.map(mapCorrectionRequest), isLoading: false });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
     }
   },
 
   submit: async (input) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const userId = useAuthStore.getState().user?.id;
     if (!input.employeeId.trim()) return { ok: false, error: 'اختر الموظف.' };
     if (!input.requestTypeId.trim()) return { ok: false, error: 'اختر نوع الطلب.' };
@@ -150,7 +151,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
         reasonAr: input.reasonAr,
         createdBy: userId,
       });
-      set(s => ({ items: [mapApi(created), ...s.items] }));
+      set(s => ({ items: [mapCorrectionRequest(created), ...s.items] }));
       return { ok: true };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
@@ -163,7 +164,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
       decision: 'approve',
       updatedBy: userId || undefined,
     });
-    set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
+    set(s => ({ items: s.items.map(r => r.id === id ? mapCorrectionRequest(updated) : r) }));
   },
 
   reject: async (id) => {
@@ -172,13 +173,13 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
       decision: 'reject',
       updatedBy: userId || undefined,
     });
-    set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
+    set(s => ({ items: s.items.map(r => r.id === id ? mapCorrectionRequest(updated) : r) }));
   },
 
   cancel: async (id, notes) => {
     const userId = useAuthStore.getState().user?.id ?? '';
     const updated = await correctionRequestsApi.cancel(id, { decisionNotesAr: notes, updatedBy: userId });
-    set(s => ({ items: s.items.map(r => r.id === id ? mapApi(updated) : r) }));
+    set(s => ({ items: s.items.map(r => r.id === id ? mapCorrectionRequest(updated) : r) }));
   },
 }));
 

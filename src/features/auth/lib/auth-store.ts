@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AccessProfile } from '@/features/auth/types/access-profile';
 import type { AuthUser } from '@/features/auth/types/access-profile';
+import {
+  clearDefaultCompanyId,
+  persistDefaultCompanyId,
+} from '@/features/hr/organization/lib/default-company-id';
 
 interface AuthState {
   user: AuthUser | null;
@@ -25,23 +29,27 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user) => set({ user }),
 
-      setAccessProfile: (profile) =>
-        set((state) => ({
+      setAccessProfile: (profile) => {
+        persistDefaultCompanyId(profile.defaultCompanyId);
+        return set({
           accessProfile: profile,
-          activeCompanyId: state.activeCompanyId ?? profile.defaultCompanyId,
-          activeBranchId: state.activeBranchId ?? profile.defaultBranchId,
-        })),
+          activeCompanyId: profile.defaultCompanyId,
+          activeBranchId: profile.defaultBranchId,
+        });
+      },
 
       setActiveContext: (companyId, branchId = null) =>
         set({ activeCompanyId: companyId, activeBranchId: branchId }),
 
-      clear: () =>
+      clear: () => {
+        clearDefaultCompanyId();
         set({
           user: null,
           accessProfile: null,
           activeCompanyId: null,
           activeBranchId: null,
-        }),
+        });
+      },
     }),
     {
       name: 'rose-hr-auth',
@@ -53,6 +61,11 @@ export const useAuthStore = create<AuthState>()(
         activeCompanyId: state.activeCompanyId,
         activeBranchId: state.activeBranchId,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.accessProfile?.defaultCompanyId) {
+          persistDefaultCompanyId(state.accessProfile.defaultCompanyId);
+        }
+      },
     },
   ),
 );

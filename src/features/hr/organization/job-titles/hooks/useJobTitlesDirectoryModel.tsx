@@ -11,15 +11,17 @@ import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { PermissionGate } from '@/components/shared/permission-gate';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import type { CreateJobTitleDto, UpdateJobTitleDto } from '@/features/hr/organization/lib/api/jobTitles';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
+import { jobTitlesApi, type CreateJobTitleDto, type JobTitleResponseDto, type UpdateJobTitleDto } from '@/features/hr/organization/lib/api/jobTitles';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import {
   createJobTitle,
   deleteJobTitle,
-  loadJobTitlesDirectory,
   updateJobTitle,
   type JobTitleTemplateRecord,
 } from '@/features/hr/organization/job-titles/services/job-titles.service';
-import { slugify } from '@/features/hr/requests/lib/types';
+import { generateEntityCode } from '@/features/hr/requests/lib/types';
 import {
   JOB_TITLE_EMPTY_FORM,
   type JobTitleDraftForm,
@@ -32,11 +34,11 @@ export function useJobTitlesDirectoryModel() {
     iconName: 'Briefcase',
   });
 
-  const [templates, setTemplates] = React.useState<JobTitleTemplateRecord[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [listError, setListError] = React.useState<string | null>(null);
-  const [defaultCompanyId, setDefaultCompanyId] = React.useState<string | null>(null);
+  const defaultCompanyId = useDefaultCompanyId();
+  const { data: defaultCompany } = useDefaultCompany();
 
+  const [templates, setTemplates] = React.useState<JobTitleTemplateRecord[]>([]);
+  const [listError, setListError] = React.useState<string | null>(null);
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('table');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
@@ -45,24 +47,53 @@ export function useJobTitlesDirectoryModel() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [viewRow, setViewRow] = React.useState<JobTitleTemplateRecord | null>(null);
 
-  const loadData = React.useCallback(async () => {
-    setLoading(true);
-    setListError(null);
+  const companyLabel = React.useCallback(
+    (companyId: string) =>
+      defaultCompany?.nameAr
+      ?? defaultCompany?.code
+      ?? companyId.slice(0, 8),
+    [defaultCompany],
+  );
+
+  function mapTemplateRow(row: JobTitleResponseDto, index: number, page: number, pageSize: number): JobTitleTemplateRecord {
+    return {
+      id: row.id,
+      companyId: row.companyId,
+      code: row.code,
+      titleAr: row.nameAr,
+      titleEn: row.nameEn,
+      descriptionAr: row.description ?? undefined,
+      isActive: row.isActive,
+      notes: row.notes,
+      sortOrder: (page - 1) * pageSize + index + 1,
+      updatedAt: row.updatedAt,
+    };
+  }
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!defaultCompanyId) return { items: [] as JobTitleTemplateRecord[], total: 0 };
     try {
-      const data = await loadJobTitlesDirectory();
-      setTemplates(data.templates);
-      setDefaultCompanyId(data.scope.companyId);
+      const res = await jobTitlesApi.getAll({ companyId: defaultCompanyId, page, limit: pageSize });
+      setListError(null);
+      const items = res.items.map((row, index) => mapTemplateRow(row, index, page, pageSize));
+      setTemplates(items);
+      return { items, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'job-titles.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
-  }, []);
+  }, [defaultCompanyId]);
 
-  React.useEffect(() => {
-    void loadData();
-  }, [loadData]);
+  const {
+    items: pagedTemplates,
+    loading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<JobTitleTemplateRecord>(loadPage, {
+    enabled: !!defaultCompanyId,
+    resetDeps: [defaultCompanyId, layoutView],
+  });
 
   const patch = React.useCallback((p: Partial<JobTitleDraftForm>) => {
     setForm((f) => ({ ...f, ...p }));
@@ -70,18 +101,21 @@ export function useJobTitlesDirectoryModel() {
 
   const openCreate = React.useCallback(() => {
     setEditId(null);
-    setForm(JOB_TITLE_EMPTY_FORM);
+    setForm({
+      ...JOB_TITLE_EMPTY_FORM,
+      companyId: defaultCompanyId ?? '',
+    });
     setError(null);
     setDrawerOpen(true);
-  }, []);
+  }, [defaultCompanyId]);
 
   const openEdit = React.useCallback((row: JobTitleTemplateRecord) => {
     setEditId(row.id);
     setForm({
+      companyId: row.companyId,
       titleAr: row.titleAr,
       titleEn: row.titleEn ?? '',
       descriptionAr: row.descriptionAr ?? '',
-      notes: row.notes ?? '',
       isActive: row.isActive,
     });
     setError(null);
@@ -90,40 +124,38 @@ export function useJobTitlesDirectoryModel() {
 
   const handleSave = React.useCallback(async () => {
     const titleAr = form.titleAr.trim();
+    const companyId = defaultCompanyId ?? form.companyId;
+
     if (!titleAr) {
       setError('المسمى الوظيفي مطلوب');
       return;
     }
-    if (!defaultCompanyId) {
-      setError('تعذر تحديد الشركة لهذا المسمى');
+    if (!companyId) {
+      setError('لم يتم تحديد الشركة الافتراضية. سجّل الدخول مرة أخرى.');
       return;
     }
+
     const descriptionAr = form.descriptionAr.trim() || undefined;
 
     try {
       if (editId) {
         const payload: UpdateJobTitleDto = {
-          code: slugify(titleAr),
           nameAr: titleAr,
-          nameEn: form.titleEn.trim() || null,
           description: descriptionAr ?? null,
-          notes: form.notes.trim() || null,
           isActive: form.isActive,
         };
         await updateJobTitle(editId, payload);
       } else {
         const payload: CreateJobTitleDto = {
-          companyId: defaultCompanyId,
-          code: slugify(titleAr),
+          companyId,
+          code: generateEntityCode(titleAr, 'job'),
           nameAr: titleAr,
-          nameEn: form.titleEn.trim() || null,
           description: descriptionAr ?? null,
-          notes: form.notes.trim() || null,
-          isActive: form.isActive,
+          isActive: true,
         };
         await createJobTitle(payload);
       }
-      await loadData();
+      await reloadList();
       setDrawerOpen(false);
       setError(null);
       toast.success(editId ? 'تم تحديث القالب' : 'تمت إضافة القالب');
@@ -131,20 +163,20 @@ export function useJobTitlesDirectoryModel() {
       const { displayMessage } = handleApiError(err, 'job-titles.save');
       setError(displayMessage);
     }
-  }, [defaultCompanyId, editId, form.descriptionAr, form.isActive, form.notes, form.titleAr, form.titleEn, loadData]);
+  }, [defaultCompanyId, editId, form.companyId, form.descriptionAr, form.isActive, form.titleAr, reloadList]);
 
   const handleDelete = React.useCallback(async () => {
     if (!confirmId) return;
     try {
       await deleteJobTitle(confirmId);
-      await loadData();
+      await reloadList();
       setConfirmId(null);
       toast.success('تم حذف القالب');
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'job-titles.delete');
       setError(displayMessage);
     }
-  }, [confirmId, loadData]);
+  }, [confirmId, reloadList]);
 
   usePageHeaderActions(
     () => (
@@ -181,8 +213,9 @@ export function useJobTitlesDirectoryModel() {
   );
 
   return {
-    templates,
+    templates: pagedTemplates,
     loading,
+    pagination,
     listError,
     layoutView,
     drawerOpen,
@@ -199,6 +232,7 @@ export function useJobTitlesDirectoryModel() {
     openEdit,
     handleSave,
     handleDelete,
+    companyLabel,
   };
 }
 

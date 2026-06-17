@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { cn } from '@/shared/utils';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
@@ -20,15 +21,28 @@ interface MinimalDropdownProps {
   options: DropdownOption[];
   placeholder?: string;
   className?: string;
+  contentClassName?: string;
+  optionClassName?: string;
+  hideSelectedCheck?: boolean;
   disabled?: boolean;
 }
 
-export function MinimalDropdown({ value, onChange, options, placeholder = 'اختر…', className, disabled }: MinimalDropdownProps) {
+export function MinimalDropdown({
+  value,
+  onChange,
+  options,
+  placeholder = 'اختر…',
+  className,
+  contentClassName,
+  optionClassName,
+  hideSelectedCheck = false,
+  disabled,
+}: MinimalDropdownProps) {
   const [open, setOpen] = React.useState(false);
   const selected = options.find(o => o.value === value);
 
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
+    <PopoverPrimitive.Root open={open} onOpenChange={setOpen} modal={false}>
       <PopoverPrimitive.Trigger asChild>
         <button
           type="button"
@@ -48,24 +62,42 @@ export function MinimalDropdown({ value, onChange, options, placeholder = 'اخ�
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          className="popover-match-trigger z-50 max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-elevated"
+          className={cn(
+            'popover-match-trigger z-[200] max-h-64 min-w-[12rem] overflow-auto rounded-md border border-border bg-popover p-1 shadow-elevated',
+            contentClassName,
+          )}
           sideOffset={4}
+          collisionPadding={12}
         >
-          {options.map(opt => (
+          {options.map(opt => {
+            const isSelected = opt.value === value;
+            return (
             <button
-              key={opt.value}
+              key={opt.value || '__empty__'}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-2 text-sm text-right hover:bg-muted/60 transition-colors',
-                opt.value === value && 'bg-primary/10 text-primary font-medium',
+                'flex w-full items-center px-3 py-2 text-sm transition-colors',
+                hideSelectedCheck ? 'justify-center rounded-md' : 'gap-2 text-right hover:bg-muted/60',
+                isSelected
+                  ? cn(
+                      'font-medium text-primary',
+                      hideSelectedCheck ? 'bg-primary/15' : 'bg-primary/10',
+                    )
+                  : hideSelectedCheck
+                    ? 'text-foreground hover:bg-muted/50'
+                    : undefined,
+                optionClassName,
               )}
             >
-              <Check className={cn('h-4 w-4 shrink-0', opt.value === value ? 'opacity-100' : 'opacity-0')} />
-              <span className="flex-1 truncate">{opt.label}</span>
+              {!hideSelectedCheck ? (
+                <Check className={cn('h-4 w-4 shrink-0', isSelected ? 'opacity-100' : 'opacity-0')} />
+              ) : null}
+              <span className={cn('truncate', !hideSelectedCheck && 'flex-1')}>{opt.label}</span>
               {opt.sub && <span className="text-xs text-muted-foreground">{opt.sub}</span>}
             </button>
-          ))}
+            );
+          })}
           {options.length === 0 && (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">لا توجد خيارات</div>
           )}
@@ -89,7 +121,7 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
   const filtered = q ? options.filter(o => o.label.toLowerCase().includes(q.toLowerCase()) || (o.sub?.toLowerCase().includes(q.toLowerCase()))) : options;
 
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={(v) => { setOpen(v); if (!v) setQ(''); }}>
+    <PopoverPrimitive.Root open={open} onOpenChange={(v) => { setOpen(v); if (!v) setQ(''); }} modal={false}>
       <PopoverPrimitive.Trigger asChild>
         <button
           type="button"
@@ -120,8 +152,9 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          className="popover-match-trigger z-50 overflow-hidden rounded-md border border-border bg-popover shadow-elevated"
+          className="popover-match-trigger z-[200] min-w-[12rem] overflow-hidden rounded-md border border-border bg-popover shadow-elevated"
           sideOffset={4}
+          collisionPadding={12}
         >
           <div className="border-b border-border p-2">
             <div className="relative">
@@ -138,7 +171,7 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
           <div className="max-h-52 overflow-auto">
             {filtered.map(opt => (
               <button
-                key={opt.value}
+                key={opt.value || '__empty__'}
                 type="button"
                 onClick={() => { onChange(opt.value); setOpen(false); setQ(''); }}
                 className={cn(
@@ -187,9 +220,9 @@ export function ConfirmationModal({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        <DialogFooter>
           <Button variant={variant} onClick={() => { onConfirm(); onOpenChange(false); }}>{confirmLabel}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -241,11 +274,11 @@ export function HRSettingsFormDrawer({ open, onOpenChange, title, description, s
             </div>
           )}
         </div>
-        <div className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 flex flex-row-reverse flex-wrap justify-end sm:justify-start sm:flex-row items-center gap-2">
-          {footerExtra ? <div className="me-auto flex flex-wrap gap-2 sm:me-0 sm:order-first">{footerExtra}</div> : null}
-          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
+          {footerExtra ? <div className="flex flex-wrap gap-2">{footerExtra}</div> : null}
           <Button variant="luxe" type="button" onClick={onSave} disabled={saveDisabled}>{saveLabel}</Button>
-        </div>
+          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

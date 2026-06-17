@@ -34,14 +34,10 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
     openCpDialog,
     shiftOpen,
     setShiftOpen,
-    shiftMode,
-    setShiftMode,
     shiftTemplateId,
     setShiftTemplateId,
     shiftDate,
     setShiftDate,
-    shiftHours,
-    setShiftHours,
     shiftUnlinkTarget,
     setShiftUnlinkTarget,
     submitShift,
@@ -59,6 +55,7 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
     submitCpLink,
     removeCheckpointLink,
     employeeEvents,
+    linksLoadError,
   } = model;
 
   return (
@@ -104,6 +101,12 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
         earlyLeaveDays={attendanceStats.earlyLeaveDays}
       />
 
+      {linksLoadError ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+          {linksLoadError}
+        </p>
+      ) : null}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-xl border border-border/60 bg-card/50">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40">
@@ -114,24 +117,26 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
           </div>
           <div className="p-2 space-y-1.5">
             {employeeAssignments.length > 0 ? employeeAssignments.map((asg) => {
-              const isOpen = asg.templateId === '__open__';
+              const isOpen = asg.openShiftHours != null && asg.openShiftHours > 0;
               const tpl = !isOpen ? shiftTemplates.find((t) => t.id === asg.templateId) : null;
+              const templateName = tpl?.nameAr ?? asg.templateNameAr ?? 'شيفت';
+              const templateColor = tpl?.colorHex ?? asg.templateColorHex;
               return (
                 <div
                   key={asg.id}
                   className="flex items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 border-r-2"
-                  style={{ borderRightColor: !isOpen && tpl ? tpl.colorHex : undefined }}
+                  style={{ borderRightColor: !isOpen && templateColor ? templateColor : undefined }}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
-                      style={!isOpen && tpl ? { background: `${tpl.colorHex}22`, color: tpl.colorHex } : undefined}
+                      style={!isOpen && templateColor ? { background: `${templateColor}22`, color: templateColor } : undefined}
                     >
                       {isOpen ? <Clock className="h-3.5 w-3.5 text-primary" /> : <Layers className="h-3.5 w-3.5" />}
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-medium truncate">
-                        {isOpen ? `شيفت مفتوح · ${asg.openShiftHours ?? '?'} ساعة` : (tpl?.nameAr ?? 'شيفت')}
+                        {isOpen ? `شيفت مفتوح · ${asg.openShiftHours ?? '?'} ساعة` : templateName}
                       </div>
                       <div className="text-[10px] text-muted-foreground font-mono" dir="ltr">{asg.effectiveFrom}</div>
                     </div>
@@ -211,14 +216,10 @@ export function EmployeeAttendanceSection({ model }: { model: EmployeeProfileMod
         employeeName={employee.name}
         shiftOpen={shiftOpen}
         setShiftOpen={setShiftOpen}
-        shiftMode={shiftMode}
-        setShiftMode={setShiftMode}
         shiftTemplateId={shiftTemplateId}
         setShiftTemplateId={setShiftTemplateId}
         shiftDate={shiftDate}
         setShiftDate={setShiftDate}
-        shiftHours={shiftHours}
-        setShiftHours={setShiftHours}
         shiftUnlinkTarget={shiftUnlinkTarget}
         setShiftUnlinkTarget={setShiftUnlinkTarget}
         submitShift={submitShift}

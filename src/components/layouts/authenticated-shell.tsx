@@ -40,5 +40,5 @@ export function AuthenticatedShell({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return <div className="flex min-h-full flex-col">{children}</div>;
 }

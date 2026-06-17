@@ -6,6 +6,7 @@ import type { EmployeeHrPdfPrepKind } from '@/features/hr/organization/employees
 import type { RoseTradingHrPdfOverrides } from '@/components/pdf/lib/build-rose-trading-hr-pdf-props';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -158,8 +159,7 @@ export function EmployeeHrPdfPrepDialog(props: Props) {
           </div>
         ) : null}
 
-        <DialogFooter className="flex flex-row-reverse flex-wrap gap-2 sm:justify-start">
-          <Button type="button" variant="outline" onClick={onCancel}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button
             type="button"
             variant="luxe"
@@ -204,6 +204,7 @@ export function EmployeeHrPdfPrepDialog(props: Props) {
           >
             إنشاء معاينة PDF
           </Button>
+          <Button type="button" variant="outline" onClick={onCancel}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

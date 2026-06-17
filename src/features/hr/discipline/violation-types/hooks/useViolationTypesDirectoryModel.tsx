@@ -3,12 +3,15 @@
 import * as React from 'react';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { violationTypesApi } from '@/features/hr/discipline/lib/api/violation-types';
+import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { HRViolationDeductionKind, HRViolationTypeRecord } from '@/features/hr/discipline/lib/types';
 import { slugify } from '@/features/hr/requests/lib/types';
 import {
   createViolationType,
   deleteViolationType,
-  loadViolationTypes,
+  mapViolationTypeResponse,
   updateViolationType,
 } from '@/features/hr/discipline/violation-types/services/violation-types.service';
 
@@ -38,7 +41,6 @@ const EMPTY: ViolationTypeDraftForm = {
 
 export function useViolationTypesDirectoryModel() {
   const [types, setTypes] = React.useState<HRViolationTypeRecord[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -47,24 +49,31 @@ export function useViolationTypesDirectoryModel() {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async () => {
-    setLoading(true);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     setListError(null);
     try {
-      const data = await loadViolationTypes();
-      setTypes(data.items);
-      setCompanyId(data.companyId);
+      const scope = await resolveOrganizationScope();
+      const cid = scope.companyId ?? null;
+      setCompanyId(cid);
+      const res = await violationTypesApi.getAll(
+        cid ? { companyId: cid, page, limit: pageSize } : { page, limit: pageSize },
+      );
+      const items = res.items.map(mapViolationTypeResponse);
+      setTypes(items);
+      return { items, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'violation-types.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
   }, []);
 
-  React.useEffect(() => {
-    void reload();
-  }, [reload]);
+  const {
+    items: pagedTypes,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<HRViolationTypeRecord>(loadPage);
 
   const openCreate = React.useCallback(() => {
     setDraft(EMPTY);
@@ -161,8 +170,9 @@ export function useViolationTypesDirectoryModel() {
   }, [deleteId, reload]);
 
   return {
-    types,
+    types: pagedTypes,
     loading,
+    pagination,
     listError,
     drawerOpen,
     setDrawerOpen,

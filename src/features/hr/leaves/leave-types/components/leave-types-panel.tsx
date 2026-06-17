@@ -8,8 +8,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { useLeaveTypesPanelModel, type LeaveTypeDraft } from '@/features/hr/leaves/leave-types/hooks/useLeaveTypesPanelModel';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { cn } from '@/shared/utils';
 
@@ -27,22 +29,23 @@ export function LeaveTypesPanel() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.listError}</p>
       ) : null}
 
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
-      ) : m.sorted.length === 0 ? (
+      ) : m.sorted.length === 0 && !m.loading ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
           <FileCheck className="mb-3 h-10 w-10 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">لا توجد أنواع إجازة. ابدأ بإضافة نوع جديد.</p>
         </div>
       ) : (
-        <>
+        <DirectoryPagedViews items={m.sorted} serverPagination={m.pagination} loading={m.loading}>
+          {(pageItems) => (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {m.sorted.map((item) => (
+            {pageItems.map((item) => (
               <div
                 key={item.id}
                 role="button"
@@ -94,7 +97,8 @@ export function LeaveTypesPanel() {
               </div>
             ))}
           </div>
-        </>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <Dialog open={m.open} onOpenChange={m.setOpen}>
@@ -130,9 +134,9 @@ export function LeaveTypesPanel() {
             </div>
             {m.error && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.error}</p>}
           </div>
-          <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" type="button" onClick={() => m.setOpen(false)}>إلغاء</Button>
+          <DialogFooter className={dialogFormFooterClass}>
             <Button variant="luxe" type="button" onClick={() => void m.save()}>{m.editId ? 'حفظ التعديلات' : 'إضافة النوع'}</Button>
+            <Button variant="outline" type="button" onClick={() => m.setOpen(false)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -143,9 +147,9 @@ export function LeaveTypesPanel() {
             <DialogTitle>حذف نوع الإجازة</DialogTitle>
             <DialogDescription>هل أنت متأكد من حذف هذا النوع؟ لا يمكن التراجع عن هذا الإجراء.</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" onClick={() => m.setConfirmId(null)}>إلغاء</Button>
+          <DialogFooter>
             <Button variant="destructive" onClick={() => void m.remove()}>حذف</Button>
+            <Button variant="outline" onClick={() => m.setConfirmId(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

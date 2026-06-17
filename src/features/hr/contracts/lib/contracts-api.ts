@@ -124,6 +124,8 @@ export type ApiEmployeeContract = {
   earlyTerminationReason: string | null;
   signedAt: string | null;
   terminatedAt: string | null;
+  employeeSigned: boolean;
+  rejectionReason: string | null;
   allowanceLines: ApiContractAllowanceLine[];
   articles: ApiContractArticleRef[];
   createdAt: string;

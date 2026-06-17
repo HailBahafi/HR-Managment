@@ -12,10 +12,12 @@ import {
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
-import { DataTable, AppPagination, type ColumnDef } from '@/components/ui/data-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { TableDateCell } from '@/components/ui/table-cells';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import {
   DAY_SUMMARY_STATUS_BADGE,
@@ -78,7 +80,7 @@ function DaySummaryDetailDialog({
 }
 
 export function DaySummariesPage() {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
   const model = useDaySummariesDirectoryModel();
   const [detailRow, setDetailRow] = React.useState<DaySummaryResponseDto | null>(null);
 
@@ -147,7 +149,7 @@ export function DaySummariesPage() {
   ], []);
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="ملخص الحضور اليومي"
         descriptionAr="سجلات الحضور المحسوبة لكل موظف — إعادة الحساب من الأحداث والورديات."
@@ -161,22 +163,27 @@ export function DaySummariesPage() {
           description="غيّر نطاق التاريخ أو نفّذ «تحديث البيانات» لإعادة الحساب من الأحداث."
         />
       ) : (
-        <>
-          <DataTable
-            columns={columns}
-            data={model.items}
-            keyExtractor={(row) => row.id}
-            loading={model.loading}
-            onRowClick={(row) => setDetailRow(row)}
-          />
-          <AppPagination
-            page={model.page}
-            pageSize={model.limit}
-            total={model.total}
-            onPageChange={model.setPage}
-            onPageSizeChange={model.setLimit}
-          />
-        </>
+        <PagedListViewport>
+          <PaginatedListShell
+            pagination={{
+              page: model.page,
+              pageSize: model.limit,
+              total: model.total,
+              totalPages: Math.max(1, Math.ceil(model.total / model.limit)),
+              setPage: model.setPage,
+              setPageSize: model.setLimit,
+            }}
+          >
+            <DataTable
+              columns={columns}
+              data={model.items}
+              keyExtractor={(row) => row.id}
+              loading={model.loading}
+              alwaysShowTable
+              onRowClick={(row) => setDetailRow(row)}
+            />
+          </PaginatedListShell>
+        </PagedListViewport>
       )}
 
       <DaySummaryDetailDialog
@@ -197,6 +204,6 @@ export function DaySummariesPage() {
           onSuccess={model.reload}
         />
       ) : null}
-    </>
+    </div>
   );
 }

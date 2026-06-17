@@ -21,16 +21,16 @@ describe('resolveAssignmentCompanyContextFromProfile', () => {
           companyId: 'c-primary',
           companyNameAr: 'شركة النخيل',
         } as never,
-        activeCompanyId: 'c-session',
+        defaultCompanyId: 'c-session',
       }),
     ).toEqual({ companyId: 'c-primary', companyLabel: 'شركة النخيل' });
   });
 
-  it('falls back to active company when no primary assignment', () => {
+  it('falls back to default company when no primary assignment', () => {
     expect(
       resolveAssignmentCompanyContextFromProfile({
         primaryAssignment: null,
-        activeCompanyId: 'c-session',
+        defaultCompanyId: 'c-session',
       }),
     ).toEqual({ companyId: 'c-session', companyLabel: 'الشركة النشطة' });
   });
@@ -39,7 +39,7 @@ describe('resolveAssignmentCompanyContextFromProfile', () => {
     expect(
       resolveAssignmentCompanyContextFromProfile({
         primaryAssignment: null,
-        activeCompanyId: null,
+        defaultCompanyId: null,
       }),
     ).toBeNull();
   });

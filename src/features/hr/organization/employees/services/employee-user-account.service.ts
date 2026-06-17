@@ -1,9 +1,10 @@
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   employeesApi,
   type CreateEmployeeUserAccountDto,
-  type EmployeeResponseDto,
 } from '@/features/hr/organization/employees/lib/api/employees';
+import type { UserResponseDto } from '@/features/hr/organization/lib/api/users';
 import { resolveEmployeeCompanyId } from '@/features/hr/organization/employees/services/employee-company.service';
 import {
   linkedCompanyIdSet,
@@ -11,7 +12,8 @@ import {
 } from '@/features/hr/organization/employees/utils/resolve-linked-company-id';
 
 export async function resolveEmployeeUserAccountCompanyId(employeeId: string): Promise<string> {
-  const { activeCompanyId, accessProfile } = useAuthStore.getState();
+  const { accessProfile } = useAuthStore.getState();
+  const defaultCompanyId = getDefaultCompanyId();
   const linked = linkedCompanyIdSet(accessProfile?.companies.map((c) => c.companyId) ?? []);
 
   let assignmentCompanyId: string | null = null;
@@ -30,7 +32,7 @@ export async function resolveEmployeeUserAccountCompanyId(employeeId: string): P
   const resolved = pickLinkedCompanyId(
     [
       assignmentCompanyId,
-      activeCompanyId,
+      defaultCompanyId,
       accessProfile?.defaultCompanyId,
       accessProfile?.companies[0]?.companyId,
     ],
@@ -48,10 +50,12 @@ export async function resolveEmployeeUserAccountCompanyId(employeeId: string): P
 
 export async function createEmployeeUserAccount(
   payload: CreateEmployeeUserAccountDto,
-): Promise<EmployeeResponseDto> {
+): Promise<UserResponseDto> {
   return employeesApi.createUserAccount(payload);
 }
 
-export function resolveCreatedUserId(response: EmployeeResponseDto): string | null {
-  return response.userId ?? response.user?.id ?? null;
+export function resolveCreatedUserId(
+  response: UserResponseDto | { userId?: string | null; user?: { id?: string } | null; id?: string },
+): string | null {
+  return response.userId ?? response.user?.id ?? response.id ?? null;
 }

@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -172,6 +173,8 @@ export function PushFromAdvancesDialog({
                 {scope === 'selected' ? (
                   <div className="space-y-2">
                     <EmployeePicker
+                      variant="form"
+                      selectionMode="target"
                       employees={employees}
                       selected={selectedEmpIds}
                       onChange={setSelectedEmpIds}
@@ -213,7 +216,7 @@ export function PushFromAdvancesDialog({
             </section>
           </div>
 
-          <DialogFooter className="gap-2 border-t border-border/60 bg-muted/20 px-6 py-4 sm:justify-start">
+          <DialogFooter className={dialogFormFooterClass}>
             <Button type="submit" disabled={fieldDisabled} className="min-w-[7.5rem] gap-1.5">
               {pushing && <Loader2 className="h-4 w-4 animate-spin" />}
               تنفيذ الدفع

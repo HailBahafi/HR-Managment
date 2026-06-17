@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -361,12 +362,12 @@ export function ContractTemplateFormDialog({ open, onOpenChange, editItem, compa
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button variant="luxe" onClick={handleSave} disabled={saving} className="gap-2">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {editItem ? 'حفظ التعديلات' : 'إضافة القالب'}
           </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

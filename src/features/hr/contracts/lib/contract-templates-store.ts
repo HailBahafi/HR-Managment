@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { contractTemplatesApi } from '@/features/hr/contracts/contract-templates/lib/api/contract-templates';
 import type { ContractTemplateDto as ApiContractTemplate } from '@/features/hr/contracts/contract-templates/types/contract-template';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import type { HRContractNature, HRWorkArrangement } from './contracts-store';
 
 export type HRContractTemplateRecord = {
@@ -63,7 +64,7 @@ export const useHRContractTemplatesStore = create<State>()((set) => ({
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {

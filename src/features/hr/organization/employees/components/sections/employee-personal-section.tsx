@@ -140,7 +140,6 @@ export function EmployeePersonalSection({ model }: { model: EmployeeProfileModel
       <FieldGroup title="الهوية">
         <Prop icon={Hash} label="رقم الموظف" mono>{draft.employeeCode}</Prop>
         <EmployeeProfileField draft={draft} editingPersonal={editingPersonal} updateField={updateField} editable icon={User} field="name" label="الاسم" />
-        <EmployeeProfileField draft={draft} editingPersonal={editingPersonal} updateField={updateField} editable icon={User} field="nameEn" label="الاسم بالإنجليزية" />
         <EmployeeProfileField draft={draft} editingPersonal={editingPersonal} updateField={updateField} editable icon={Hash} field="nationalId" label="رقم الهوية" mono />
         <EmployeeProfileField draft={draft} editingPersonal={editingPersonal} updateField={updateField} editable icon={Globe} field="nationality" label="الجنسية" />
         <EmployeeProfileField draft={draft} editingPersonal={editingPersonal} updateField={updateField} editable icon={Calendar} field="birthDate" label="تاريخ الميلاد" type="date" format={(v) => formatDate(v as string)} />

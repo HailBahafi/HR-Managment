@@ -20,6 +20,7 @@ import {
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { useApprovalAssignmentModel } from '@/features/hr/requests/approval-assignment/hooks/useApprovalAssignmentModel';
 import type { RequestApprovalMode } from '@/features/hr/requests/approval-assignment/hooks/useApprovalAssignmentModel';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { cn } from '@/shared/utils';
 
 const MODE_OPTIONS: { value: RequestApprovalMode; label: string }[] = [
@@ -47,11 +48,12 @@ function buildNameAr(linkedIds: string[], requestTypes: { id: string; nameAr: st
 }
 
 export function ApprovalAssignmentClient() {
-  const { templates, requestTypes, employees, loading, listError, reload, createTemplate, updateTemplate, deleteTemplate } =
-    useApprovalAssignmentModel();
+  const {
+    templates, requestTypes, employees, loading, listError, pagination,
+    statusFilter, setStatusFilter,
+    createTemplate, updateTemplate, deleteTemplate,
+  } = useApprovalAssignmentModel();
 
-  const [statusFilter, setStatusFilter] = React.useState('all');
-  const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<DraftForm>(() => ({
@@ -65,21 +67,13 @@ export function ApprovalAssignmentClient() {
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [dialogContentEl, setDialogContentEl] = React.useState<HTMLElement | null>(null);
 
-  React.useEffect(() => {
-    const isActive = statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined;
-    void reload(isActive !== undefined ? { isActive } : {});
-  }, [statusFilter]);
-
   const statusCounts = React.useMemo(() => ({
     all: templates.length,
     active: templates.filter((t) => t.isActive).length,
     inactive: templates.filter((t) => !t.isActive).length,
   }), [templates]);
 
-  const PER = 9;
   const filtered = templates;
-  const paginated = filtered.slice((page - 1) * PER, page * PER);
-  const pages = Math.max(1, Math.ceil(templates.length / PER));
 
   const usedRequestTypeIds = React.useMemo(() => {
     const set = new Set<string>();
@@ -179,7 +173,7 @@ export function ApprovalAssignmentClient() {
         showDateSection={false}
         showEmployeePicker={false}
         statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
+        onStatusFilterChange={(v) => setStatusFilter(v as typeof statusFilter)}
         statusOrder={['active', 'inactive']}
         statusLabels={{ active: 'نشط', inactive: 'غير نشط' }}
         statusCounts={statusCounts}
@@ -204,12 +198,18 @@ export function ApprovalAssignmentClient() {
   }
 
   return (
-    <div className="space-y-4">
-      {filtered.length === 0 ? (
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {templates.length === 0 && !loading ? (
         <EmptyState title="لا توجد إسنادات" description="اربط أنواع الطلبات بمعتمدين." />
       ) : (
+        <DirectoryPagedViews
+          items={filtered}
+          serverPagination={pagination}
+          loading={loading}
+        >
+          {(pageItems) => (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {paginated.map((t) => (
+          {pageItems.map((t) => (
             <div key={t.id} className="rounded-xl border border-border bg-card p-5 shadow-soft space-y-3 flex flex-col">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 space-y-2 flex-1">
@@ -245,14 +245,8 @@ export function ApprovalAssignmentClient() {
             </div>
           ))}
         </div>
-      )}
-
-      {pages > 1 && (
-        <div className="flex justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>السابق</Button>
-          <span className="text-sm text-muted-foreground self-center">{page} / {pages}</span>
-          <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>التالي</Button>
-        </div>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) setDialogOpen(false); }}>

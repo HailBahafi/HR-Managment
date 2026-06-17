@@ -12,7 +12,8 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
-import { DataTable, AppPagination, type ColumnDef } from '@/components/ui/data-table';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import type { MonthlyInputResponseDto } from '@/features/hr/payroll/lib/api/monthly-inputs';
@@ -247,7 +248,7 @@ export function MonthlyInputsPage() {
   ], []);
 
   return (
-    <>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="مدخلات الرواتب الشهرية"
         descriptionAr="إضافات وخصومات شهرية مجمّعة لكل موظف ضمن فترة الراتب — عرض فقط."
@@ -269,22 +270,26 @@ export function MonthlyInputsPage() {
           description="جرّب تغيير الفلاتر أو اختيار فترة راتب مختلفة."
         />
       ) : (
-        <>
-          <DataTable
-            columns={columns}
-            data={items}
-            keyExtractor={(row) => row.id}
-            loading={loading}
-            onRowClick={(row) => setDetailRow(row)}
-          />
-          <AppPagination
-            page={page}
-            pageSize={limit}
-            total={total}
-            onPageChange={setPage}
-            onPageSizeChange={setLimit}
-          />
-        </>
+        <PagedListViewport>
+          <PaginatedListShell
+            pagination={{
+              page,
+              pageSize: limit,
+              total,
+              totalPages: Math.max(1, Math.ceil(total / limit)),
+              setPage,
+              setPageSize: setLimit,
+            }}
+          >
+            <DataTable
+              columns={columns}
+              data={items}
+              keyExtractor={(row) => row.id}
+              loading={loading}
+              onRowClick={(row) => setDetailRow(row)}
+            />
+          </PaginatedListShell>
+        </PagedListViewport>
       )}
 
       <MonthlyInputDetailDialog
@@ -292,6 +297,6 @@ export function MonthlyInputsPage() {
         open={Boolean(detailRow)}
         onOpenChange={(v) => { if (!v) setDetailRow(null); }}
       />
-    </>
+    </div>
   );
 }

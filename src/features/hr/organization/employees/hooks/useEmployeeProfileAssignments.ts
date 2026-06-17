@@ -16,11 +16,11 @@ import {
   type EnrichedEmployeeAssignment,
 } from '@/features/hr/organization/employees/services/employee-assignments.service';
 import type { Employee } from '@/features/hr/organization/employees/types';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { resolveAssignmentCompanyContextFromProfile } from '@/features/hr/organization/employees/services/employee-company.service';
 
 export function useEmployeeProfileAssignments(employee: Employee, enabled = true) {
-  const activeCompanyId = useAuthStore((s) => s.activeCompanyId);
+  const defaultCompanyId = useDefaultCompanyId();
   const [assignments, setAssignments] = React.useState<EnrichedEmployeeAssignment[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -131,9 +131,9 @@ export function useEmployeeProfileAssignments(employee: Employee, enabled = true
   const assignmentCompanyContext = React.useMemo(
     () => resolveAssignmentCompanyContextFromProfile({
       primaryAssignment: primaryEnriched,
-      activeCompanyId,
+      defaultCompanyId,
     }),
-    [activeCompanyId, primaryEnriched],
+    [defaultCompanyId, primaryEnriched],
   );
 
   const confirmDeleteAssignment = React.useCallback(async () => {

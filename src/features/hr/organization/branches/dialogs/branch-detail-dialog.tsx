@@ -40,7 +40,6 @@ export function BranchDetailDialog({ branch, onOpenChange, onEdit }: Props) {
               {branch.isHeadquarters ? <Badge variant="secondary" className="text-[10px]">المقر الرئيسي</Badge> : null}
             </div>
             <DetailField label="الرمز" value={branch.code} dir="ltr" />
-            <DetailField label="الاسم (EN)" value={branch.nameEn} dir="ltr" />
             <DetailField label="المدينة" value={branch.city} />
             <DetailField label="الحي" value={branch.district} />
             <DetailField label="العنوان" value={branch.address} />
@@ -59,8 +58,7 @@ export function BranchDetailDialog({ branch, onOpenChange, onEdit }: Props) {
             <DetailField label="ملاحظات" value={branch.notes} />
           </div>
         )}
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
+        <DialogFooter>
           <Button
             onClick={() => {
               if (branch) {
@@ -74,6 +72,7 @@ export function BranchDetailDialog({ branch, onOpenChange, onEdit }: Props) {
             <Pencil className="h-3.5 w-3.5" />
             تعديل
           </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

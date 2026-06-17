@@ -2,12 +2,15 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { publicHolidaysApi } from '@/features/hr/leaves/public-holidays/lib/api/public-holidays';
+import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { HRPublicHolidayRecord } from '@/features/hr/leaves/public-holidays/types';
 import { slugify } from '@/features/hr/requests/lib/types';
 import {
   createPublicHoliday,
   deletePublicHoliday,
-  loadPublicHolidays,
+  mapPublicHolidayResponse,
   updatePublicHoliday,
 } from '@/features/hr/leaves/public-holidays/services/public-holidays.service';
 
@@ -24,8 +27,6 @@ const EMPTY_DRAFT: PublicHolidayDraft = {
 };
 
 export function usePublicHolidaysPanelModel() {
-  const [items, setItems] = React.useState<HRPublicHolidayRecord[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
@@ -34,36 +35,38 @@ export function usePublicHolidaysPanelModel() {
   const [error, setError] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async () => {
-    setLoading(true);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     setListError(null);
     try {
-      const data = await loadPublicHolidays();
-      setItems(data.items);
-      setCompanyId(data.companyId);
+      const scope = await resolveOrganizationScope();
+      const cid = scope.companyId ?? null;
+      setCompanyId(cid);
+      const res = await publicHolidaysApi.getAll(
+        cid ? { companyId: cid, page, limit: pageSize } : { page, limit: pageSize },
+      );
+      const mapped = res.items.map(mapPublicHolidayResponse).sort((a, b) => a.sortOrder - b.sortOrder);
+      return { items: mapped, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'public-holidays.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
   }, []);
 
-  React.useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const sorted = React.useMemo(
-    () => [...items].sort((a, b) => a.sortOrder - b.sortOrder),
-    [items],
-  );
+  const {
+    items: sorted,
+    loading,
+    pagination,
+    reload,
+    total,
+  } = useServerDirectoryPagination<HRPublicHolidayRecord>(loadPage);
 
   const openCreate = React.useCallback(() => {
     setEditId(null);
-    setDraft({ ...EMPTY_DRAFT, sortOrder: items.length + 1 });
+    setDraft({ ...EMPTY_DRAFT, sortOrder: total + 1 });
     setError(null);
     setOpen(true);
-  }, [items.length]);
+  }, [total]);
 
   const openEdit = React.useCallback((item: HRPublicHolidayRecord) => {
     setEditId(item.id);
@@ -142,9 +145,9 @@ export function usePublicHolidaysPanelModel() {
   }, [confirmId, reload]);
 
   return {
-    items,
     sorted,
     loading,
+    pagination,
     listError,
     open,
     setOpen,

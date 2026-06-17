@@ -4,7 +4,6 @@ import {
   type JobTitleResponseDto,
   type UpdateJobTitleDto,
 } from '@/features/hr/organization/lib/api/jobTitles';
-import { resolveOrganizationScope, type OrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 
 export type JobTitleTemplateRecord = {
   id: string;
@@ -21,7 +20,7 @@ export type JobTitleTemplateRecord = {
 
 export type JobTitlesDirectoryData = {
   templates: JobTitleTemplateRecord[];
-  scope: OrganizationScope;
+  scope: { companyId: string | null; branchId: string | null };
 };
 
 function mapTemplate(row: JobTitleResponseDto, index: number): JobTitleTemplateRecord {
@@ -39,15 +38,16 @@ function mapTemplate(row: JobTitleResponseDto, index: number): JobTitleTemplateR
   };
 }
 
-export async function loadJobTitlesDirectory(): Promise<JobTitlesDirectoryData> {
-  const scope = await resolveOrganizationScope();
-  const companyId = scope.companyId ?? undefined;
-  const jobs = await jobTitlesApi.getAll(companyId ? { companyId, limit: 200 } : { limit: 200 });
+export async function loadJobTitlesDirectory(companyId?: string | null): Promise<JobTitlesDirectoryData> {
+  const scopedCompanyId = companyId && companyId !== 'all' ? companyId : undefined;
+  const jobs = await jobTitlesApi.getAll(
+    scopedCompanyId ? { companyId: scopedCompanyId, limit: 200 } : { limit: 200 },
+  );
   return {
     templates: jobs.items.map(mapTemplate),
     scope: {
-      companyId: scope.companyId ?? jobs.items[0]?.companyId ?? null,
-      branchId: scope.branchId,
+      companyId: scopedCompanyId ?? jobs.items[0]?.companyId ?? null,
+      branchId: null,
     },
   };
 }

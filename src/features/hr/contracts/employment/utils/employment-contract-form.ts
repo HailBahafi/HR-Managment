@@ -41,7 +41,15 @@ export type EmploymentContractFormValues = {
   articleIds: string[];
 };
 
-export function emptyEmploymentContractForm(): EmploymentContractFormValues {
+export function mergeEssentialArticleIds(
+  articleIds: string[],
+  essentialArticleIds: string[],
+): string[] {
+  if (essentialArticleIds.length === 0) return articleIds;
+  return [...new Set([...essentialArticleIds, ...articleIds])];
+}
+
+export function emptyEmploymentContractForm(essentialArticleIds: string[] = []): EmploymentContractFormValues {
   return {
     employeeId: '',
     contractNumber: '',
@@ -57,7 +65,7 @@ export function emptyEmploymentContractForm(): EmploymentContractFormValues {
     allowanceLines: [{ allowanceTypeId: '', amount: '' }],
     allowancesNote: '',
     deductionsNote: '',
-    articleIds: [],
+    articleIds: [...essentialArticleIds],
   };
 }
 

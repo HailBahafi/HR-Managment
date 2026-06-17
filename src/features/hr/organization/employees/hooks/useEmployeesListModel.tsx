@@ -22,9 +22,11 @@ import {
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 
 function empStartYmd(e: EmployeeResponseDto): string {
   const s = e.startDate;
@@ -36,15 +38,13 @@ function empStartYmd(e: EmployeeResponseDto): string {
 export function useEmployeesListModel() {
   useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
   const router = useRouter();
-  // companyId comes directly from the auth store — never blocks on GET /companies
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   // company details are optional (used only for PDF header); 403 is silently ignored
   const { data: activeCompany } = useActiveCompany();
 
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [totalCount, setTotalCount] = React.useState(0);
 
@@ -78,30 +78,65 @@ export function useEmployeesListModel() {
     });
   }, [companyId]);
 
-  const loadEmployees = React.useCallback(async () => {
-    setLoading(true);
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
+  const bulkMode = selectedEmpIds.size > 1;
+
+  const buildListQuery = React.useCallback((page: number, pageSize: number): Parameters<typeof employeesApi.getAll>[0] => ({
+    page,
+    limit: pageSize,
+    companyId: companyId!,
+    ...(branchFilter !== 'all' ? { branchId: branchFilter } : {}),
+    ...(deptFilter !== 'all' ? { departmentId: deptFilter } : {}),
+    ...(toolbarStatus !== 'all' ? { contractStatus: toolbarStatus } : {}),
+    ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+    ...(dateBounds.from ? { startDateFrom: dateBounds.from } : {}),
+    ...(dateBounds.to ? { startDateTo: dateBounds.to } : {}),
+  }), [companyId, branchFilter, deptFilter, toolbarStatus, debouncedSearch, dateBounds.from, dateBounds.to]);
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as EmployeeResponseDto[], total: 0 };
     setListError(null);
     try {
-      const query: Parameters<typeof employeesApi.getAll>[0] = { limit: 200 };
-      if (branchFilter !== 'all') query.branchId = branchFilter;
-      if (deptFilter !== 'all') query.departmentId = deptFilter;
-      if (toolbarStatus !== 'all') query.contractStatus = toolbarStatus;
-      if (debouncedSearch.trim()) query.search = debouncedSearch.trim();
-      if (dateBounds.from) query.startDateFrom = dateBounds.from;
-      if (dateBounds.to) query.startDateTo = dateBounds.to;
-
-      const res = await employeesApi.getAll(query);
+      const res = await employeesApi.getAll(buildListQuery(page, pageSize));
       setEmployees(res.items);
       setTotalCount(res.pagination.total);
+      return { items: res.items, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'employees.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
-  }, [companyId, branchFilter, deptFilter, toolbarStatus, debouncedSearch, dateBounds.from, dateBounds.to]);
+  }, [buildListQuery, companyId]);
 
-  React.useEffect(() => { void loadEmployees(); }, [loadEmployees]);
+  const loadBulk = React.useCallback(async () => {
+    if (!companyId) return { items: [] as EmployeeResponseDto[], total: 0 };
+    setListError(null);
+    try {
+      const res = await fetchAllPaginatedItems((page, limit) => employeesApi.getAll(buildListQuery(page, limit)));
+      const scoped = selectedEmpIds.size > 0
+        ? res.items.filter((e) => selectedEmpIds.has(e.id))
+        : res.items;
+      setEmployees(res.items);
+      setTotalCount(res.total);
+      return { items: scoped, total: scoped.length };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'employees.load');
+      setListError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [buildListQuery, companyId, selectedEmpIds]);
+
+  const {
+    items: pagedEmployees,
+    loading,
+    pagination,
+    reload: reloadEmployees,
+  } = useServerDirectoryPagination<EmployeeResponseDto>(loadPage, {
+    enabled: !!companyId,
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [companyId, branchFilter, deptFilter, toolbarStatus, debouncedSearch, dateBounds.from, dateBounds.to, selectedEmpKey, view],
+  });
 
   const getBranch = React.useCallback(
     (id: string | null | undefined) => branches.find((b) => b.id === id),
@@ -117,10 +152,14 @@ export function useEmployeesListModel() {
     [employees],
   );
 
-  // Server handles all filters; only selectedEmpIds (export picker) is applied client-side
+  // Server handles filters; bulkMode applies multi-employee picker client-side
   const filtered = React.useMemo(
-    () => (selectedEmpIds.size > 0 ? employees.filter((e) => selectedEmpIds.has(e.id)) : employees),
-    [employees, selectedEmpIds],
+    () => (bulkMode ? pagedEmployees : (
+      selectedEmpIds.size === 1
+        ? pagedEmployees.filter((e) => selectedEmpIds.has(e.id))
+        : pagedEmployees
+    )),
+    [bulkMode, pagedEmployees, selectedEmpIds],
   );
 
   const contractStatusCounts = React.useMemo(
@@ -167,13 +206,13 @@ export function useEmployeesListModel() {
     try {
       await employeesApi.remove(deleteId);
       setDeleteId(null);
-      await loadEmployees();
+      await reloadEmployees();
       toast.success('تم حذف الموظف');
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'employees.delete');
       toast.error(displayMessage);
     }
-  }, [deleteId, loadEmployees]);
+  }, [deleteId, reloadEmployees]);
 
   const handleExportExcel = React.useCallback(async () => {
     if (filtered.length === 0) {
@@ -182,7 +221,7 @@ export function useEmployeesListModel() {
     }
     const rows: XlsxCell[][] = [[
       'الموظف', 'رقم الموظف', 'المسمى', 'القسم', 'الفرع',
-      'نوع العقد', 'تاريخ الالتحاق', 'الراتب الأساسي', 'حالة العقد',
+      'نوع العقد', 'تاريخ الالتحاق', 'حالة العقد',
     ]];
     for (const emp of filtered) {
       rows.push([
@@ -193,7 +232,6 @@ export function useEmployeesListModel() {
         emp.branchNameAr ?? '—',
         CONTRACT_TYPE_AR[emp.contractType ?? ''] ?? emp.contractType ?? '—',
         empStartYmd(emp),
-        formatCurrency(parseFloat(emp.baseSalary ?? '0') || 0),
         EMP_CONTRACT_STATUS_LABELS[emp.contractStatus ?? ''] ?? emp.contractStatus ?? '—',
       ]);
     }
@@ -223,8 +261,6 @@ export function useEmployeesListModel() {
     () => [{ value: 'all', label: 'كل الأقسام' }, ...departments.map((d) => ({ value: d.id, label: d.nameAr }))],
     [departments],
   );
-
-  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
   usePageHeaderActions(
     () => (
@@ -316,6 +352,7 @@ export function useEmployeesListModel() {
     employees,
     filtered,
     loading,
+    pagination,
     listError,
     view,
     newEmpOpen,
@@ -325,7 +362,7 @@ export function useEmployeesListModel() {
     employeesPrintable,
     getBranch,
     getDepartment,
-    reloadEmployees: loadEmployees,
+    reloadEmployees,
     deleteId,
     setDeleteId,
     handleDelete,

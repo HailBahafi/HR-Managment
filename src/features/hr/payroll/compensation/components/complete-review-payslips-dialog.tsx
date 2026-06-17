@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 
 type Props = {
@@ -74,7 +75,7 @@ export function CompleteReviewPayslipsDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 border-t border-border/60 bg-muted/15 px-6 py-4 sm:justify-start">
+        <DialogFooter className={dialogFormFooterClass}>
           <Button disabled={busy} onClick={onConfirm}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تأكيد وإنشاء القسائم والإشعار'}
           </Button>

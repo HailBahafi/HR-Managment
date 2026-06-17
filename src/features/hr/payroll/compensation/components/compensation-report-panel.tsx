@@ -43,6 +43,7 @@ import {
 } from '@/features/hr/payroll/lib/compensation-preview';
 import { hrPayrollRoutes } from '@/features/hr/payroll/constants/routes';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { employeeAdvancesApi } from '@/features/hr/contracts/lib/api/employee-advances';
 import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-records';
@@ -56,13 +57,14 @@ import { PayrollPeriodReviewBar } from '@/features/hr/payroll/compensation/compo
 import { CompleteReviewPayslipsDialog } from '@/features/hr/payroll/compensation/components/complete-review-payslips-dialog';
 import { sendPayslipGeneratedNotification } from '@/features/hr/payroll/compensation/services/payslip-notification.service';
 import { payslipsApi } from '@/features/hr/payroll/lib/api/payslips';
-import { PayrollPrintHtml } from '@/features/hr/payroll/reports/components/payroll-print-html';
+import { CompensationPrintHtml } from '@/features/hr/payroll/compensation/components/compensation-print-html';
 import {
   buildCompensationExportLines,
-  buildPayrollPrintPayload,
+  buildCompensationPrintPayload,
   downloadCompensationExcel,
   downloadCompensationPdf,
 } from '@/features/hr/payroll/lib/compensation-period-export';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 
 const EDIT_FIELD_LABELS: Record<keyof CompensationEditValues, string> = {
   overtime: 'أوفر تايم',
@@ -185,8 +187,11 @@ export function CompensationReportPanel({
   embedded?: boolean;
   employeeIdsFilter?: string[] | undefined;
 }) {
+  const companyId             = useDefaultCompanyId();
   const periods               = useHRPayrollPeriodsStore(s => s.periods);
+  const periodsLoading        = useHRPayrollPeriodsStore(s => s.isLoading);
   const fetchPeriods          = useHRPayrollPeriodsStore(s => s.fetch);
+  const ensurePeriodLoaded    = useHRPayrollPeriodsStore(s => s.ensurePeriodLoaded);
   const materialize           = useHRPayrollPeriodsStore(s => s.materializeFromContracts);
   const advanceReview           = useHRPayrollPeriodsStore(s => s.advanceReview);
   const revertReview            = useHRPayrollPeriodsStore(s => s.revertReview);
@@ -194,27 +199,73 @@ export function CompensationReportPanel({
   const updatePeriod          = useHRPayrollPeriodsStore(s => s.update);
   const refreshMonthlyInputs  = useHRPayrollPeriodsStore(s => s.refreshMonthlyInputsForPeriod);
   const contracts             = useHRContractsStore(s => s.contracts);
+  const contractsLoading      = useHRContractsStore(s => s.isLoading);
   const fetchContracts        = useHRContractsStore(s => s.fetch);
   const allowanceTypes        = useHRAllowanceTypesStore(s => s.items);
   const fetchAllowanceTypes   = useHRAllowanceTypesStore(s => s.fetch);
   const allEmployees          = useHREmployeeDirectoryStore(s => s.employees);
   const fetchEmployees        = useHREmployeeDirectoryStore(s => s.fetch);
+  const [bootstrapping, setBootstrapping] = React.useState(true);
 
-  // Load all data on mount if not already loaded
+  // Load payroll context once when company + period are known (avoid refetch loops).
   React.useEffect(() => {
-    if (periods.length === 0) fetchPeriods();
-    if (contracts.length === 0) fetchContracts({});
-    if (allowanceTypes.length === 0) fetchAllowanceTypes();
-    if (allEmployees.length === 0) void fetchEmployees();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Derive employment lines from contracts whenever both are available
-  React.useEffect(() => {
-    if (contracts.length > 0 && periods.length > 0) {
-      materialize(contracts);
+    if (!companyId || !periodId) {
+      setBootstrapping(false);
+      return;
     }
-  }, [contracts, periods.length, materialize]);
+
+    let cancelled = false;
+    setBootstrapping(true);
+
+    void (async () => {
+      try {
+        const periodsState = useHRPayrollPeriodsStore.getState();
+        const contractsState = useHRContractsStore.getState();
+        const hasPeriod = periodsState.periods.some((p) => p.id === periodId);
+        const pending: Promise<void>[] = [];
+
+        if (!hasPeriod && !periodsState.isLoading) {
+          pending.push(fetchPeriods());
+        }
+        if (contractsState.contracts.length === 0 && !contractsState.isLoading) {
+          pending.push(fetchContracts({}));
+        }
+        if (pending.length > 0) {
+          await Promise.all(pending);
+        }
+        if (cancelled) return;
+
+        const stillMissing = !useHRPayrollPeriodsStore.getState().periods.some((p) => p.id === periodId);
+        if (stillMissing) {
+          await ensurePeriodLoaded(periodId);
+        }
+      } finally {
+        if (!cancelled) setBootstrapping(false);
+      }
+    })();
+
+    const allowanceState = useHRAllowanceTypesStore.getState();
+    if (allowanceState.items.length === 0 && !allowanceState.isLoading) {
+      void fetchAllowanceTypes();
+    }
+
+    const employeesState = useHREmployeeDirectoryStore.getState();
+    if (employeesState.employees.length === 0 && !employeesState.isLoading) {
+      void fetchEmployees();
+    }
+
+    return () => { cancelled = true; };
+  }, [companyId, periodId, fetchPeriods, fetchContracts, ensurePeriodLoaded, fetchAllowanceTypes, fetchEmployees]);
+
+  const targetPeriod = periods.find((p) => p.id === periodId);
+  const needsMaterialize = Boolean(
+    targetPeriod && (targetPeriod.employmentLines?.length ?? 0) === 0,
+  );
+
+  React.useEffect(() => {
+    if (!needsMaterialize || contracts.length === 0) return;
+    materialize(contracts);
+  }, [needsMaterialize, contracts, materialize]);
 
   const [pushDialogOpen, setPushDialogOpen] = React.useState(false);
   const [advancesPushDialogOpen, setAdvancesPushDialogOpen] = React.useState(false);
@@ -334,6 +385,16 @@ export function CompensationReportPanel({
     savedBaselines.current[lineId] = { ...locked, bonus: editRow.bonus, admin: editRow.admin };
   }, [edits, period, periodId, previews, setMonthlyInputs]);
 
+  const exportLines = React.useMemo(
+    () => (period ? buildCompensationExportLines(period, previews, edits, cols) : []),
+    [period, previews, edits, cols],
+  );
+
+  const payrollPrintData = React.useMemo(
+    () => (period && exportLines.length > 0 ? buildCompensationPrintPayload(period, exportLines, cols) : null),
+    [period, exportLines, cols],
+  );
+
   const attemptEditCommit = (
     lineId: string,
     field: keyof EditRow,
@@ -388,6 +449,35 @@ export function CompensationReportPanel({
     </Link>
   );
 
+  const isResolvingPeriod = Boolean(
+    periodId && (
+      !companyId
+      || periodsLoading
+      || contractsLoading
+      || (bootstrapping && !raw)
+    ),
+  );
+
+  if (isResolvingPeriod) {
+    if (embedded) {
+      return (
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          جاري تحميل بيانات الفترة...
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col items-start gap-4 p-6 animate-fade-in">
+        {backBtn}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          جاري تحميل بيانات الفترة...
+        </div>
+      </div>
+    );
+  }
+
   if (!periodId || !period) {
     if (embedded) return <p className="text-sm text-muted-foreground py-4">الفترة غير موجودة.</p>;
     return (
@@ -425,16 +515,6 @@ export function CompensationReportPanel({
     previews.reduce((s, r) => s + pick(r), 0);
   const totalDedNoAdmin = previews.reduce((s, r) => s + r.dedAbsenceSar + r.dedLateSar + r.dedPenaltiesSar + r.dedAdvancesSar, 0);
   const totalNetSar   = previews.reduce((s, r) => s + r.lineNetSar, 0);
-
-  const exportLines = React.useMemo(
-    () => buildCompensationExportLines(period, previews, edits, cols),
-    [period, previews, edits, cols],
-  );
-
-  const payrollPrintData = React.useMemo(
-    () => (exportLines.length > 0 ? buildPayrollPrintPayload(period, exportLines, cols) : null),
-    [period, exportLines, cols],
-  );
 
   const handleDownloadExcel = async () => {
     if (!hasLines || exportLines.length === 0) {
@@ -515,7 +595,7 @@ export function CompensationReportPanel({
     try {
       await advanceReview(period.id);
       const actor = useAuthStore.getState().user?.email ?? undefined;
-      const companyId = useAuthStore.getState().activeCompanyId ?? '';
+      const companyId = getDefaultCompanyId() ?? '';
       const created = await payslipsApi.generate({
         payrollPeriodId: period.id,
         generatedBy: actor,
@@ -750,11 +830,11 @@ export function CompensationReportPanel({
             aria-hidden
             className="pointer-events-none fixed start-0 top-0 -z-[9999] size-0 overflow-hidden"
           >
-            <PayrollPrintHtml
+            <CompensationPrintHtml
               ref={payrollPrintRef}
               monthNameAr={payrollPrintData.monthNameAr}
               branchNameAr={payrollPrintData.branchNameAr}
-              rows={payrollPrintData.rows}
+              table={payrollPrintData.table}
             />
           </div>
         )}
@@ -934,6 +1014,11 @@ export function CompensationReportPanel({
             </p>
           </div>
         ) : (
+          <DirectoryPagedViews
+            items={previews}
+            resetDeps={[period?.id, filterKey]}
+          >
+            {(pageItems) => (
           <div className="overflow-hidden rounded-2xl border border-border shadow-elevated animate-fade-in">
             <div className="overflow-x-auto">
               <table className={cn('w-full border-collapse text-[11.5px]', embedded ? 'min-w-[680px]' : 'min-w-[860px]')}>
@@ -957,7 +1042,7 @@ export function CompensationReportPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {previews.map((row, i) => {
+                  {pageItems.map((row, i) => {
                     const e = edits[row.lineId] ?? rowToEdits(row);
                     const baseline = savedBaselines.current[row.lineId] ?? rowToEdits(row);
                     const netEdit: CompensationEditValues = {
@@ -992,8 +1077,9 @@ export function CompensationReportPanel({
                                     <span className="font-mono font-semibold tabular-nums text-primary">{fmt(a.amount)}</span>
                                   </div>
                                 ))}
-                                <div className="mt-0.5 border-t border-border/40 pt-0.5 text-right text-[10px] font-bold">
-                                  ∑ <span className="font-mono text-primary">{fmt(row.allowancesMonthlyTotal)}</span>
+                                <div className="mt-0.5 border-t pt-1 text-right text-[10px] font-bold flex items-center justify-between gap-1">
+                                  المجموع: 
+                                  <span className="font-mono font-bold text-primary">{fmt(row.allowancesMonthlyTotal)}</span>
                                 </div>
                               </div>
                             )}
@@ -1076,6 +1162,8 @@ export function CompensationReportPanel({
               </table>
             </div>
           </div>
+            )}
+          </DirectoryPagedViews>
         )}
 
       </div>

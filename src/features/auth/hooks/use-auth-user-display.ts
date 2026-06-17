@@ -28,7 +28,7 @@ function hasDisplayName(user: AuthUser): boolean {
 export function useAuthUserDisplay() {
   const user = useAuthStore((s) => s.user);
   const accessProfile = useAuthStore((s) => s.accessProfile);
-  const activeCompanyId = useAuthStore((s) => s.activeCompanyId);
+  const defaultCompanyId = useAuthStore((s) => s.accessProfile?.defaultCompanyId ?? s.activeCompanyId);
   const activeBranchId = useAuthStore((s) => s.activeBranchId);
   const [enriched, setEnriched] = React.useState<AuthUser | null>(null);
   React.useEffect(() => {
@@ -66,13 +66,13 @@ export function useAuthUserDisplay() {
   }, [user?.id, user?.fullNameAr, user?.fullNameEn]);
 
   const resolved = user ? mergeUserProfile(user, enriched) : null;
-  const roleLabel = getActiveRoleLabel(accessProfile, activeCompanyId);
+  const roleLabel = getActiveRoleLabel(accessProfile, defaultCompanyId);
   const subtitle = getAuthSubtitle(resolved) ?? roleLabel;
 
   return {
     user: resolved,
     accessProfile,
-    activeCompanyId,
+    defaultCompanyId,
     activeBranchId,
     displayName: getAuthDisplayName(resolved),
     subtitle,

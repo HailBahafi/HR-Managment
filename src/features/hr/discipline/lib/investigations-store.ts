@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { disciplineInvestigationsApi } from './api/discipline-investigations';
 import type { DisciplineInvestigationResponseDto } from './api/discipline-investigations';
 import type { HRDisciplineInvestigationRecord, HRInvestigationRecommendation } from './types';
@@ -43,7 +44,7 @@ export const useHRDisciplineInvestigationsStore = create<InvestigationsState>()(
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -55,7 +56,7 @@ export const useHRDisciplineInvestigationsStore = create<InvestigationsState>()(
   },
 
   add: async (d) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const created = await disciplineInvestigationsApi.create({
       companyId,
       violationRecordId: d.caseId || undefined,

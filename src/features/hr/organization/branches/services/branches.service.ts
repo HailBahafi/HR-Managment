@@ -1,10 +1,9 @@
 import {
   branchesApi,
-  type BranchResponseDto,
   type CreateBranchDto,
   type UpdateBranchDto,
 } from '@/features/hr/organization/lib/api/branches';
-import { resolveOrganizationScope, type OrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
+import type { OrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { mapBranchResponse, type BranchRow } from '@/features/hr/organization/branches/constants/branches-directory';
 
 export type BranchesDirectoryData = {
@@ -12,14 +11,16 @@ export type BranchesDirectoryData = {
   scope: OrganizationScope;
 };
 
-export async function loadBranchesDirectory(): Promise<BranchesDirectoryData> {
-  const scope = await resolveOrganizationScope();
-  const res = await branchesApi.getAll(scope.companyId ? { companyId: scope.companyId } : undefined);
+export async function loadBranchesDirectory(companyId?: string | null): Promise<BranchesDirectoryData> {
+  const res = await branchesApi.getAll({
+    ...(companyId && companyId !== 'all' ? { companyId } : {}),
+    limit: 200,
+  });
   return {
     branches: res.items.map(mapBranchResponse),
     scope: {
-      companyId: scope.companyId ?? res.items[0]?.companyId ?? null,
-      branchId: scope.branchId,
+      companyId: companyId && companyId !== 'all' ? companyId : null,
+      branchId: null,
     },
   };
 }

@@ -15,20 +15,22 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
-import {
-  allowanceTypesApi,
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { allowanceTypesApi,
   type AllowanceTypeDto,
   type CreateAllowanceTypeDto,
   type UpdateAllowanceTypeDto,
   type AllowanceCalculationType,
 } from '@/features/hr/contracts/lib/api/allowance-types';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { TableRowActions } from '@/components/ui/table-cells';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -220,12 +222,12 @@ function AllowanceTypeDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button variant="luxe" onClick={handleSave} disabled={saving} className="gap-2">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {editItem ? 'حفظ التعديلات' : 'إضافة'}
           </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -309,32 +311,38 @@ export function AllowanceTypesClient() {
     iconName: 'Coins',
   });
 
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
-  const [items, setItems] = React.useState<AllowanceTypeDto[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [viewMode, setViewMode] = React.useState<'card' | 'table'>('card');
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as AllowanceTypeDto[], total: 0 };
+    try {
+      const res = await allowanceTypesApi.getAll({ companyId, page, limit: pageSize });
+      setError(null);
+      return { items: res.items, total: res.pagination.total };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'allowance-types.load');
+      setError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [companyId]);
+
+  const {
+    items,
+    loading,
+    pagination,
+    reload: load,
+  } = useServerDirectoryPagination<AllowanceTypeDto>(loadPage, {
+    enabled: !!companyId,
+    resetDeps: [companyId, viewMode],
+  });
 
   const [formOpen, setFormOpen] = React.useState(false);
   const [editItem, setEditItem] = React.useState<AllowanceTypeDto | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<AllowanceTypeDto | null>(null);
   const [deleting, setDeleting] = React.useState(false);
-
-  const load = React.useCallback(async () => {
-    setLoading(true); setError(null);
-    try {
-      const res = await allowanceTypesApi.getAll({ companyId, limit: 200 });
-      setItems(res.items);
-    } catch (err) {
-      const { displayMessage } = handleApiError(err, 'allowance-types.load');
-      setError(displayMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [companyId]);
-
-  React.useEffect(() => { void load(); }, [load]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -457,16 +465,12 @@ export function AllowanceTypesClient() {
   );
 
   return (
-    <div className="space-y-5">
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : error ? (
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
+      {error ? (
         <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
         </div>
-      ) : items.length === 0 ? (
+      ) : !loading && items.length === 0 && pagination.total === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border py-20 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Coins className="h-7 w-7" />
@@ -477,9 +481,12 @@ export function AllowanceTypesClient() {
             <Plus className="h-3.5 w-3.5" /> نوع بدل جديد
           </Button>
         </div>
-      ) : viewMode === 'card' ? (
+      ) : (
+        <DirectoryPagedViews items={items} serverPagination={pagination} loading={loading}>
+          {(pageItems) => (
+            viewMode === 'card' ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item) => (
+          {pageItems.map((item) => (
             <AllowanceCard
               key={item.id}
               item={item}
@@ -488,15 +495,18 @@ export function AllowanceTypesClient() {
             />
           ))}
         </div>
-      ) : (
+            ) : (
         <DataTable
           variant="directory"
           alwaysShowTable
           columns={columns}
-          data={items}
+          data={pageItems}
           keyExtractor={(item) => item.id}
           onRowClick={(item) => openEdit(item)}
         />
+            )
+          )}
+        </DirectoryPagedViews>
       )}
 
       {/* Form dialog */}
@@ -519,12 +529,12 @@ export function AllowanceTypesClient() {
               هل أنت متأكد من حذف «{deleteTarget?.nameAr}»؟ لا يمكن التراجع عن هذا الإجراء.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>إلغاء</Button>
+          <DialogFooter>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
               {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               <Trash2 className="h-4 w-4" /> حذف
             </Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

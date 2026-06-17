@@ -55,8 +55,16 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 );
 DialogHeader.displayName = 'DialogHeader';
 
+/** Row footer for confirm/delete dialogs — primary action first, cancel second (RTL start). */
+export const dialogConfirmFooterClass =
+  'flex flex-row flex-wrap items-center justify-start gap-2';
+
+/** Extra styling for form dialogs with scrollable body. */
+export const dialogFormFooterClass =
+  'shrink-0 border-t border-border bg-muted/20 px-6 py-4';
+
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('flex flex-col-reverse sm:flex-row sm:justify-start sm:space-x-2 sm:space-x-reverse', className)} {...props} />
+  <div className={cn(dialogConfirmFooterClass, className)} {...props} />
 );
 DialogFooter.displayName = 'DialogFooter';
 
@@ -76,4 +84,17 @@ const DialogDescription = React.forwardRef<
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
-export { Dialog, DialogPortal, DialogOverlay, DialogClose, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription };
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  dialogConfirmFooterClass,
+  dialogFormFooterClass,
+};

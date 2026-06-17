@@ -31,6 +31,21 @@ export function ensurePaginatedResult<T>(
   return value;
 }
 
+/** Fetches every page from a paginated list endpoint (200 items per request by default). */
+export async function fetchAllPaginatedItems<T>(
+  fetchPage: (page: number, limit: number) => Promise<PaginatedResult<T>>,
+  limit = 200,
+): Promise<{ items: T[]; total: number }> {
+  const first = ensurePaginatedResult(await fetchPage(1, limit));
+  const items = [...first.items];
+  const totalPages = Math.max(first.pagination.totalPages, 1);
+  for (let page = 2; page <= totalPages; page += 1) {
+    const next = ensurePaginatedResult(await fetchPage(page, limit));
+    items.push(...next.items);
+  }
+  return { items, total: first.pagination.total };
+}
+
 export class ApiError extends Error {
   status: number;
   /** Raw JSON body from fetch (same as Network tab). */
@@ -118,7 +133,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers['Content-Type'] = 'application/json';
   }
   const token = typeof document !== 'undefined'
-    ? document.cookie.split('; ').find(r => r.startsWith('access_token='))?.split('=')[1] ?? null
+    ? document.cookie.split('; ').find(r => r.startsWith('access_token='))?.slice('access_token='.length) ?? null
     : null;
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

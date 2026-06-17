@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { notificationsApi, type InboxItemResponseDto } from './api/notifications';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ export const useHRNotificationsStore = create<NotificationsState>()((set, get) =
   unreadTotal: 0,
 
   fetch: async (employeeId) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? undefined;
+    const companyId = getDefaultCompanyId() ?? undefined;
     set({ isLoading: true, error: null });
     try {
       const [result, unreadRes] = await Promise.all([
@@ -107,7 +108,7 @@ export const useHRNotificationsStore = create<NotificationsState>()((set, get) =
   },
 
   markAllReadForRecipient: async (employeeId) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? undefined;
+    const companyId = getDefaultCompanyId() ?? undefined;
     try {
       await notificationsApi.markAllRead(employeeId, companyId);
       const now = new Date().toISOString();

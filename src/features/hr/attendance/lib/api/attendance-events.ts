@@ -1,5 +1,17 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 
+export type DailyBreakdownCheckInWindow = {
+  beforeStartMinutes: number;
+  graceMinutes: number;
+  afterStartMinutes: number;
+};
+
+export type DailyBreakdownCheckOutWindow = {
+  beforeEndMinutes: number;
+  allowedShortageMinutes: number;
+  afterEndMinutes: number;
+};
+
 export type DailyBreakdownPeriod = {
   expected: {
     periodId: string;
@@ -10,23 +22,45 @@ export type DailyBreakdownPeriod = {
     endAt: string;
     durationMinutes: number;
     flexibilityEnabled: boolean;
-    flexibilityMinutes: number;
+    flexibilityMinutes: number | null;
+    checkInWindow: DailyBreakdownCheckInWindow;
+    checkOutWindow: DailyBreakdownCheckOutWindow;
+    checkInWindowStartAt: string;
+    checkInWindowEndAt: string;
+    lateThresholdAt: string;
+    checkOutWindowStartAt: string;
+    checkOutWindowEndAt: string;
+    earlyLeaveThresholdAt: string;
     breakEnabled: boolean;
     breakStart: string | null;
     breakEnd: string | null;
+    checkOutNotRequired: boolean;
+    autoOvertime: boolean;
+    strictMode: boolean;
   };
   actual: {
     checkInAt: string | null;
     checkOutAt: string | null;
     checkInEventId: string | null;
     checkOutEventId: string | null;
+    breakStartAt: string | null;
+    breakEndAt: string | null;
     breakMinutes: number;
     workedMinutes: number;
   };
   analysis: {
     hasCheckIn: boolean;
     hasCheckOut: boolean;
+    checkInWithinWindow: boolean | null;
+    checkOutWithinWindow: boolean | null;
+    checkInBeforeWindow: boolean;
+    checkInAfterWindow: boolean;
+    checkOutBeforeWindow: boolean;
+    checkOutAfterWindow: boolean;
+    rawLateMinutes: number;
     lateMinutes: number;
+    earlyArrivalMinutes: number;
+    rawEarlyLeaveMinutes: number;
     earlyLeaveMinutes: number;
     overtimeMinutes: number;
     shortageMinutes: number;
@@ -34,6 +68,7 @@ export type DailyBreakdownPeriod = {
     isEarlyLeave: boolean;
     isAbsent: boolean;
     isComplete: boolean;
+    strictModeViolation: boolean;
     status: string;
   };
   events: AttendanceEventResponseDto[];
@@ -44,10 +79,12 @@ export type DailyBreakdownResponseDto = {
   employeeNameAr: string;
   workDate: string;
   weekDay: number;
+  timezoneOffsetMinutes: number;
   status: string;
   isRestDay: boolean;
   isUnscheduled: boolean;
-  shiftTemplate: { id: string; nameAr: string; colorHex: string } | null;
+  shiftAssignment: { id: string; effectiveFrom: string; effectiveTo: string | null } | null;
+  shiftTemplate: { id: string; nameAr: string; nameEn: string | null; colorHex: string | null } | null;
   totals: {
     expectedMinutes: number;
     workedMinutes: number;
@@ -58,6 +95,7 @@ export type DailyBreakdownResponseDto = {
     shortageMinutes: number;
     periodsTotal: number;
     periodsAttended: number;
+    periodsLate: number;
     periodsMissed: number;
   };
   periods: DailyBreakdownPeriod[];

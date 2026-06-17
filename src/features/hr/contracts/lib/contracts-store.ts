@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
 import { employeeContractsApi, type ApiEmployeeContract } from './contracts-api';
+import { fetchAllEmployeeContracts } from './fetch-all-employee-contracts';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +51,9 @@ export type HRContractRecord = {
   earlyTerminationReason: string | null;
   articleIds: string[];
   annualLeaveDays: number | null;
+  employeeSigned: boolean;
+  rejectionReason: string | null;
+  signedAt: string | null;
   updatedAt: string;
 };
 
@@ -87,6 +92,9 @@ export function mapEmployeeContractFromApi(c: ApiEmployeeContract): HRContractRe
     earlyTerminationReason: c.earlyTerminationReason ?? null,
     articleIds: (c.articles ?? []).map(a => a.contractArticleId),
     annualLeaveDays: c.annualLeaveDays ?? null,
+    employeeSigned: c.employeeSigned ?? false,
+    rejectionReason: c.rejectionReason ?? null,
+    signedAt: c.signedAt ?? null,
     updatedAt: c.updatedAt,
   };
 }
@@ -114,19 +122,19 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
   error: null,
 
   fetch: async (params) => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
-      const result = await employeeContractsApi.list({ companyId, limit: 500, ...params });
-      set({ contracts: result.items.map(mapEmployeeContractFromApi), isLoading: false });
+      const contracts = await fetchAllEmployeeContracts(params);
+      set({ contracts, isLoading: false });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
     }
   },
 
   add: async (data) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const created = await employeeContractsApi.create({
       companyId,
       employeeId: data.employeeId,
@@ -239,7 +247,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
   createAmendmentDraft: async (activeContractId) => {
     const parent = get().contracts.find(x => x.id === activeContractId);
     if (!parent || parent.status !== 'active') return { ok: false, message: 'اختر عقداً نشطاً.' };
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     try {
       const created = await employeeContractsApi.create({
         companyId,
@@ -297,7 +305,7 @@ export const WORK_ARRANGEMENT_LABELS: Record<HRWorkArrangement, string> = {
 
 export const CONTRACT_STATUS_LABELS: Record<HRContractLifecycleStatus, string> = {
   draft: 'مسودة',
-  pending_signature: 'بانتظار التوقيع',
+  pending_signature: 'بانتظار الموافقة',
   active: 'نشط',
   expired: 'منتهي',
   terminated: 'مُنهى مبكراً',
@@ -314,6 +322,10 @@ export const CONTRACT_STATUS_COLORS: Record<HRContractLifecycleStatus, string> =
   superseded: STATUS_PILL.calculated,
   cancelled: STATUS_PILL.cancelled,
 };
+
+export function formatEmployeeSignedLabel(signed: boolean): string {
+  return signed ? 'وافق على العقد' : 'لم يوافق بعد';
+}
 
 export function normalizeContractRow(raw: Record<string, unknown>): HRContractRecord {
   return raw as HRContractRecord;

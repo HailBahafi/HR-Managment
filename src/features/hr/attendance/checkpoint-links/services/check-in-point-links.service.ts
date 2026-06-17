@@ -4,6 +4,7 @@ import {
 } from '@/features/hr/attendance/lib/api/check-in-point-links';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
+import { randomUUID } from '@/shared/utils';
 
 export function mapCheckInPointLinkResponse(dto: CheckInPointLinkResponseDto): AttendanceCheckInPointLink {
   return {
@@ -32,7 +33,7 @@ export async function createCheckInPointLinkBatch(input: {
   effectiveFrom: string;
   pairs: { employeeId: string; checkInPointId: string }[];
 }) {
-  const batchId = crypto.randomUUID();
+  const batchId = randomUUID();
   const res = await checkInPointLinksApi.createBulk({
     companyId: input.companyId,
     links: input.pairs,

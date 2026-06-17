@@ -3,6 +3,8 @@ import type { HRDepartmentEntity } from '@/features/hr/requests/lib/types';
 import { slugify } from '@/features/hr/requests/lib/types';
 
 export type DepartmentDraftForm = {
+  companyId: string;
+  branchId: string;
   nameAr: string;
   parentId: string;
   sortOrder: number;
@@ -19,6 +21,8 @@ export type DepartmentRecord = HRDepartmentEntity & {
 };
 
 export const DEPARTMENT_EMPTY_FORM: DepartmentDraftForm = {
+  companyId: '',
+  branchId: '',
   nameAr: '',
   parentId: '',
   sortOrder: 1,

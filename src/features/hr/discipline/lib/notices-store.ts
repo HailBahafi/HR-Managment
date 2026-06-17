@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { disciplineNoticesApi } from './api/discipline-notices';
 import type { DisciplineNoticeResponseDto } from './api/discipline-notices';
 import type { HRDisciplineNoticeRecord, HRDisciplineNoticeKind } from './types';
@@ -33,7 +34,7 @@ export const useHRDisciplineNoticesStore = create<NoticesState>()((set) => ({
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -45,7 +46,7 @@ export const useHRDisciplineNoticesStore = create<NoticesState>()((set) => ({
   },
 
   add: async (d) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const created = await disciplineNoticesApi.create({
       companyId,
       employeeId: d.employeeId,

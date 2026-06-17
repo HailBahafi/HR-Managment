@@ -6,10 +6,9 @@ import { violationRecordsApi, type ViolationRecordResponseDto } from '@/features
 import { leaveRequestsApi, type LeaveRequestResponseDto } from '@/features/hr/leaves/lib/api/leave-requests';
 import { employeeContractsApi } from '@/features/hr/contracts/lib/contracts-api';
 import { mapEmployeeContractFromApi, type HRContractRecord } from '@/features/hr/contracts/lib/contracts-store';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import type { EmployeeProfileSectionId } from '@/features/hr/organization/employees/constants/EmployeeProfileSections';
-import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 import { payslipsApi } from '@/features/hr/payroll/lib/api/payslips';
 import type { Payslip } from '@/features/hr/payroll/types';
 import { employeePayslipsApi } from '@/features/hr/organization/employees/lib/api/employee-payslips';
@@ -33,7 +32,7 @@ export function useEmployeeProfileData(
   employee: Employee,
   activeSection: EmployeeProfileSectionId,
 ) {
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   const [violations, setViolations] = React.useState<ViolationRecordResponseDto[]>([]);
   const [requestLeaveRows, setRequestLeaveRows] = React.useState<LeaveRequestResponseDto[]>([]);
   const [employeeContracts, setEmployeeContracts] = React.useState<HRContractRecord[]>([]);
@@ -44,6 +43,7 @@ export function useEmployeeProfileData(
 
   const attendance = useEmployeeProfileAttendance(
     employee,
+    companyId,
     activeSection === 'attendance',
   );
 
@@ -133,6 +133,8 @@ export function useEmployeeProfileData(
       attendance.shiftAssignments.map((a) => ({
         id: a.id,
         templateId: a.shiftTemplateId,
+        templateNameAr: a.shiftTemplateNameAr,
+        templateColorHex: a.shiftTemplateColorHex,
         openShiftHours: a.openShiftHours ?? undefined,
         targetType: 'employee' as const,
         targetId: a.employeeId,
@@ -240,8 +242,9 @@ export function useEmployeeProfileData(
     shiftTemplates,
     employeeSummaries: allEmployeeSummaries,
     employeeEvents: allEmployeeEvents,
-    employeeCheckpoints: [] as AttendanceCheckInPointLink[],
-    checkpoints: [] as AttendanceCheckInPoint[],
+    employeeCheckpoints: attendance.checkpointLinks,
+    checkpoints: attendance.checkpoints,
+    linksLoadError: attendance.linksLoadError,
     violations,
     employeeViolations,
     employeeContracts,

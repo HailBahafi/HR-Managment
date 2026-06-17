@@ -17,7 +17,7 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
-  EmptyState, MinimalDropdown,
+  EmptyState,
 } from '@/features/hr/requests/components/shared-ui';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmployeePicker } from '@/components/ui/employee-picker';
@@ -30,7 +30,6 @@ import {
 } from '@/features/hr/discipline/lib/types';
 import type { HRDisciplineCircularRecord } from '@/features/hr/discipline/lib/types';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -40,10 +39,7 @@ import { tryBuildCircularAudienceSnapshot } from '@/features/hr/discipline/circu
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
-
-const AUDIENCE_OPTIONS = (Object.entries(CIRCULAR_AUDIENCE_LABELS) as [HRDisciplineCircularAudience, string][]).map(
-  ([v, l]) => ({ value: v, label: l }),
-);
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 
 type AudienceFilter = 'all' | HRDisciplineCircularAudience;
 
@@ -51,9 +47,6 @@ interface DraftForm {
   titleAr: string;
   bodyAr: string;
   date: string;
-  audience: HRDisciplineCircularAudience;
-  branchIds: Set<string>;
-  departmentIds: Set<string>;
   targetEmployeeIds: Set<string>;
   /** تنفيذ الإرسال فور الحفظ — الافتراضي لا */
   executeSend: boolean;
@@ -63,78 +56,9 @@ const EMPTY: DraftForm = {
   titleAr: '',
   bodyAr: '',
   date: new Date().toISOString().slice(0, 10),
-  audience: 'all',
-  branchIds: new Set(),
-  departmentIds: new Set(),
   targetEmployeeIds: new Set(),
   executeSend: false,
 };
-
-function IdCheckboxList({
-  options,
-  selected,
-  onSelectedChange,
-}: {
-  options: { id: string; label: string }[];
-  selected: Set<string>;
-  onSelectedChange: (next: Set<string>) => void;
-}) {
-  const toggle = (id: string, checked: boolean) => {
-    const next = new Set(selected);
-    if (checked) next.add(id);
-    else next.delete(id);
-    onSelectedChange(next);
-  };
-  return (
-    <div className="max-h-52 space-y-2 overflow-y-auto rounded-md border border-border bg-muted/15 p-3">
-      {options.map((o) => (
-        <label key={o.id} className="flex cursor-pointer items-center gap-2.5 text-sm">
-          <Checkbox
-            checked={selected.has(o.id)}
-            onCheckedChange={(v) => toggle(o.id, v === true)}
-          />
-          <span className="leading-snug">{o.label}</span>
-        </label>
-      ))}
-    </div>
-  );
-}
-
-function circularAppliesToEmployee(
-  c: HRDisciplineCircularRecord,
-  empId: string,
-  branchId: string | null,
-  departmentId: string | null,
-): boolean {
-  switch (c.audience) {
-    case 'all':
-      return true;
-    case 'employees':
-      return c.targetEmployeeIds.includes(empId);
-    case 'branch':
-      if (!branchId) return false;
-      return c.branchIds.length > 0 && c.branchIds.includes(branchId);
-    case 'department':
-      if (!departmentId) return false;
-      return c.departmentIds.length > 0 && c.departmentIds.includes(departmentId);
-    default:
-      return false;
-  }
-}
-
-function circularMatchesEmpToolbarFilter(
-  c: HRDisciplineCircularRecord,
-  selectedEmpIds: Set<string>,
-  employeeById: Map<string, { branchId: string | null; departmentId: string | null }>,
-): boolean {
-  if (selectedEmpIds.size === 0) return true;
-  for (const empId of selectedEmpIds) {
-    const emp = employeeById.get(empId);
-    if (!emp) continue;
-    if (circularAppliesToEmployee(c, empId, emp.branchId, emp.departmentId)) return true;
-  }
-  return false;
-}
 
 function canMutateCircular(c: HRDisciplineCircularRecord) {
   return !c.sentAt;
@@ -142,7 +66,7 @@ function canMutateCircular(c: HRDisciplineCircularRecord) {
 
 export function CircularsClient() {
   const m = useDisciplineCircularsDirectoryModel();
-  const { circulars } = m;
+  const { setListFilters } = m;
 
   const [q, setQ] = React.useState('');
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
@@ -158,20 +82,6 @@ export function CircularsClient() {
     () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
     [m.employees],
   );
-  const employeeById = React.useMemo(
-    () => new Map(m.employees.map((e) => [e.id, e])),
-    [m.employees],
-  );
-  const branchOptions = m.branchOptions;
-  const departmentOptions = m.departmentOptions;
-  const branchNameById = React.useMemo(
-    () => Object.fromEntries(branchOptions.map((o) => [o.value, o.label])),
-    [branchOptions],
-  );
-  const departmentNameById = React.useMemo(
-    () => Object.fromEntries(departmentOptions.map((o) => [o.value, o.label])),
-    [departmentOptions],
-  );
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<DraftForm>(EMPTY);
@@ -180,25 +90,19 @@ export function CircularsClient() {
 
   const [detailCircular, setDetailCircular] = React.useState<HRDisciplineCircularRecord | null>(null);
 
-  const searchFiltered = React.useMemo(
-    () =>
-      circulars.filter((c) => {
-        const hay = `${c.titleAr} ${c.bodyAr} ${c.audienceSummaryAr}`;
-        const matchQ = !q || hay.includes(q);
-        return matchQ && circularMatchesEmpToolbarFilter(c, selectedEmpIds, employeeById);
-      }),
-    [circulars, employeeById, q, selectedEmpIds],
-  );
+  React.useEffect(() => {
+    setListFilters({
+      q,
+      selectedEmpIds: [...selectedEmpIds],
+      audienceFilter,
+      dateFrom: dateBounds.from,
+      dateTo: dateBounds.to,
+    });
+  }, [q, selectedEmpIds, audienceFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
-  const filtered = React.useMemo(
-    () => searchFiltered.filter((c) => matchesDateRange(c.date, dateBounds.from, dateBounds.to)),
-    [searchFiltered, dateBounds.from, dateBounds.to],
-  );
-
-  const listFiltered = React.useMemo(
-    () => (audienceFilter === 'all' ? filtered : filtered.filter((c) => c.audience === audienceFilter)),
-    [filtered, audienceFilter],
-  );
+  const listFiltered = m.filteredItems;
+  const filtered = m.dateFilteredItems;
+  const searchFiltered = m.searchFilteredItems;
 
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = { all: filtered.length };
@@ -343,20 +247,15 @@ export function CircularsClient() {
     if (!draft.date) { setFormError('التاريخ مطلوب'); return; }
     if (!m.companyId) { setFormError('تعذر تحديد الشركة'); return; }
 
-    const built = tryBuildCircularAudienceSnapshot(draft, { branchNameById, departmentNameById });
+    const built = tryBuildCircularAudienceSnapshot({
+      audience: 'employees',
+      branchIds: new Set(),
+      departmentIds: new Set(),
+      targetEmployeeIds: draft.targetEmployeeIds,
+    });
     if (!built.ok) { setFormError(built.error); return; }
 
-    const { branchIds, departmentIds, targetEmployeeIds } = built.data;
-
-    const audienceType = toCircularAudienceType(draft.audience);
-    const audienceTargetIds =
-      draft.audience === 'employees'
-        ? targetEmployeeIds
-        : draft.audience === 'branch'
-          ? branchIds
-          : draft.audience === 'department'
-            ? departmentIds
-            : undefined;
+    const { targetEmployeeIds } = built.data;
 
     try {
       await m.add({
@@ -364,8 +263,8 @@ export function CircularsClient() {
         titleAr: draft.titleAr.trim() ? draft.titleAr.trim() : null,
         bodyAr: draft.bodyAr.trim(),
         issueDate: draft.date,
-        audienceType,
-        audienceTargetIds,
+        audienceType: toCircularAudienceType('employees'),
+        audienceTargetIds: targetEmployeeIds,
         sendOnSave: draft.executeSend,
       });
       toast.success(
@@ -382,7 +281,7 @@ export function CircularsClient() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
 
       {/* Detail dialog */}
       <Dialog open={!!detailCircular} onOpenChange={(v) => !v && setDetailCircular(null)}>
@@ -423,6 +322,7 @@ export function CircularsClient() {
         </p>
       ) : null}
 
+      <DisciplineListViewport>
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
       ) : searchFiltered.length === 0 ? (
@@ -455,9 +355,11 @@ export function CircularsClient() {
             عرض الكل
           </Button>
         </div>
-      ) : viewMode === 'cards' ? (
-        <EntityActionCardGrid>
-          {listFiltered.map((c) => (
+      ) : (
+        <DisciplinePaginatedList pagination={m.pagination}>
+          {viewMode === 'cards' ? (
+          <EntityActionCardGrid>
+            {m.items.map((c) => (
             <EntityActionCard
               key={c.id}
               title={c.titleAr || 'تعميم'}
@@ -504,19 +406,22 @@ export function CircularsClient() {
                 ) : undefined
               }
             />
-          ))}
-        </EntityActionCardGrid>
-      ) : (
-        <DataTable
-          variant="directory"
-          alwaysShowTable
-          tableClassName="min-w-[880px]"
-          columns={columns}
-          data={listFiltered}
-          keyExtractor={(c) => c.id}
-          onRowClick={(c) => setDetailCircular(c)}
-        />
+            ))}
+          </EntityActionCardGrid>
+          ) : (
+          <DataTable
+            variant="directory"
+            alwaysShowTable
+            tableClassName="min-w-[880px]"
+            columns={columns}
+            data={m.items}
+            keyExtractor={(c) => c.id}
+            onRowClick={(c) => setDetailCircular(c)}
+          />
+          )}
+        </DisciplinePaginatedList>
       )}
+      </DisciplineListViewport>
 
       <HRSettingsFormDrawer
         open={drawerOpen}
@@ -540,48 +445,15 @@ export function CircularsClient() {
         <FormField label="تاريخ الإصدار" required>
           <DatePickerInput value={draft.date} onChange={(ymd) => set({ date: ymd })} />
         </FormField>
-        <FormField label="المستلمون" required>
-          <MinimalDropdown
-            value={draft.audience}
-            onChange={(v) => {
-              const next = v as HRDisciplineCircularAudience;
-              set({
-                audience: next,
-                branchIds: new Set(),
-                departmentIds: new Set(),
-                targetEmployeeIds: new Set(),
-              });
-            }}
-            options={AUDIENCE_OPTIONS}
+        <FormField label={`الموظفون المستهدفون${draft.targetEmployeeIds.size > 0 ? ` (${draft.targetEmployeeIds.size})` : ''}`} required>
+          <EmployeePicker
+            variant="form"
+            selectionMode="target"
+            employees={empPickerList}
+            selected={draft.targetEmployeeIds}
+            onChange={(s) => set({ targetEmployeeIds: s })}
           />
         </FormField>
-        {draft.audience === 'branch' ? (
-          <FormField label="الفروع (اختيار متعدد)" required>
-            <IdCheckboxList
-              options={branchOptions.map((o) => ({ id: o.value, label: o.label }))}
-              selected={draft.branchIds}
-              onSelectedChange={(s) => set({ branchIds: s })}
-            />
-          </FormField>
-        ) : null}
-        {draft.audience === 'department' ? (
-          <FormField label="الأقسام (اختيار متعدد)" required>
-            <IdCheckboxList
-              options={departmentOptions.map((o) => ({ id: o.value, label: o.label }))}
-              selected={draft.departmentIds}
-              onSelectedChange={(s) => set({ departmentIds: s })}
-            />
-          </FormField>
-        ) : null}
-        {draft.audience === 'employees' ? (
-          <FormField label="اختيار الموظفين" required>
-            <EmployeePicker
-              employees={empPickerList}
-              selected={draft.targetEmployeeIds}
-              onChange={(s) => set({ targetEmployeeIds: s })}
-            />
-          </FormField>
-        ) : null}
         <FormField label="تنفيذ">
           <p className="mb-2 text-[11px] text-muted-foreground">
             الافتراضي: لا إرسال — يُحفظ التعميم فقط حتى تختار الإرسال من هنا أو من عرض الجدول.

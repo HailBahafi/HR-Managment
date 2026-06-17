@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Loader2, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
 import { usePayslipEmployeeDecision } from '@/features/hr/payroll/components/payslip-employee-decision-actions';
@@ -21,7 +22,7 @@ function periodLabel(row: PayslipResponseDto): string {
 }
 
 export function EmployeePendingPayslipsSection() {
-  const companyId = useAuthStore(s => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   const user = useAuthStore(s => s.user);
   const { data: currentEmployee } = useCurrentEmployee();
   const [pending, setPending] = React.useState<PayslipResponseDto[]>([]);

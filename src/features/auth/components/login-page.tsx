@@ -30,6 +30,11 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [rememberDevice, setRememberDevice] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const {
     register,
@@ -58,7 +63,7 @@ export function LoginPage() {
         const maxAge = 7 * 24 * 60 * 60; // 7 days in seconds
         document.cookie = `access_token=${result.access_token}; path=/; max-age=${maxAge}; SameSite=Lax`;
       }
-      router.push('/hr/dashboard');
+      router.replace('/hr/dashboard');
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'auth.login');
       toast.error(displayMessage);
@@ -149,10 +154,6 @@ export function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.25em] text-gold">
-                <Sparkles className="h-3 w-3" />
-                <span>مرحباً بعودتك</span>
-              </div>
               <h2 className="font-display text-4xl font-bold tracking-tight text-foreground">
                 سجّل دخولك
               </h2>
@@ -161,7 +162,15 @@ export function LoginPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-5">
+            <form
+              method="post"
+              action="/login"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleSubmit(onSubmit)(event);
+              }}
+              className="mt-10 space-y-5"
+            >
               <div className="space-y-2">
                 <Label htmlFor="email">البريد الإلكتروني</Label>
                 <div className="relative">
@@ -205,20 +214,14 @@ export function LoginPage() {
                 </div>
                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberDevice}
-                  onCheckedChange={(v) => setRememberDevice(v === true)}
-                />
-                <Label htmlFor="remember" className="cursor-pointer text-sm font-normal">
-                  إبقني مسجلاً في هذا الجهاز
-                </Label>
-              </div>
-
-              <Button type="submit" variant="luxe" size="lg" className="w-full gap-2" disabled={loading}>
-                {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+              <Button
+                type="submit"
+                variant="luxe"
+                size="lg"
+                className="w-full gap-2"
+                disabled={loading || !hydrated}
+              >
+                {!hydrated ? 'جاري التحميل...' : loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
                 <ArrowLeft className="h-4 w-4" />
               </Button>
 
@@ -226,14 +229,6 @@ export function LoginPage() {
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-border" />
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-background px-4 text-muted-foreground">أو</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 rounded-md border border-border bg-muted/30 p-3 text-sm">
-                <ShieldCheck className="h-4 w-4 text-success" />
-                <span className="text-muted-foreground">جلستك محمية بتشفير SSL 256-bit</span>
               </div>
             </form>
 

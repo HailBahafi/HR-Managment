@@ -10,12 +10,14 @@ import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, dialogFormFooterClass } from '@/components/ui/dialog';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   attendanceEventsApi,
   type AttendanceEventResponseDto,
   type AttendanceEventType,
+  type AttendanceEventSource,
 } from '@/features/hr/attendance/lib/api/attendance-events';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -111,16 +113,52 @@ function HourAxis({ activeBucket }: { activeBucket: number | null }) {
 // Hex colors for event ticks (used in inline styles only — not theme tokens)
 const EVENT_TICK_COLOR: Record<AttendanceEventType, string> = {
   check_in:    '#22c55e',
-  check_out:   '#38bdf8',
+  check_out:   '#ef4444',
   break_start: '#f59e0b',
   break_end:   '#f97316',
 };
+
+const SOURCE_LABEL: Partial<Record<AttendanceEventSource, string>> = {
+  mobile_app: 'تطبيق الجوال',
+  manual_hr:  'يدوي HR',
+};
+
+function getMarkerStyle(
+  eventType: 'check_in' | 'check_out',
+  source: AttendanceEventSource | null | undefined,
+): { badgeBg: string; lineColor: string; textColor: string } {
+  const isHr = source === 'manual_hr';
+  const isMobile = source === 'mobile_app';
+
+  if (eventType === 'check_in') {
+    if (isHr) return { badgeBg: '#15803d', lineColor: '#15803d', textColor: '#ffffff' };
+    if (isMobile) return { badgeBg: '#bbf7d0', lineColor: '#86efac', textColor: '#14532d' };
+    return { badgeBg: '#22c55e', lineColor: '#22c55e', textColor: '#ffffff' };
+  }
+
+  if (isHr) return { badgeBg: '#b91c1c', lineColor: '#b91c1c', textColor: '#ffffff' };
+  if (isMobile) return { badgeBg: '#fecaca', lineColor: '#fca5a5', textColor: '#7f1d1d' };
+  return { badgeBg: '#ef4444', lineColor: '#ef4444', textColor: '#ffffff' };
+}
 
 const EVENT_TYPE_META: Record<AttendanceEventType, { labelAr: string; icon: React.ElementType }> = {
   check_in:    { labelAr: 'دخول',           icon: LogIn  },
   check_out:   { labelAr: 'خروج',           icon: LogOut },
   break_start: { labelAr: 'بداية استراحة',  icon: Coffee },
   break_end:   { labelAr: 'نهاية استراحة',  icon: Coffee },
+};
+
+const REGISTERABLE_EVENT_TYPES = ['check_in', 'check_out'] as const;
+type RegisterableEventType = (typeof REGISTERABLE_EVENT_TYPES)[number];
+
+const REGISTER_EVENT_TYPE_META: Record<RegisterableEventType, { labelAr: string; icon: React.ElementType }> = {
+  check_in:  { labelAr: 'تسجيل حضور',   icon: LogIn  },
+  check_out: { labelAr: 'تسجيل انصراف', icon: LogOut },
+};
+
+const REGISTER_SUCCESS_MSG: Record<RegisterableEventType, string> = {
+  check_in:  'تم تسجيل الحضور بنجاح',
+  check_out: 'تم تسجيل الانصراف بنجاح',
 };
 
 // Status → timeline fill class (using Tailwind design-token colors)
@@ -140,6 +178,70 @@ function pct(mins: number) { return minsToPct(mins); }
 function isoToHHMM(iso: string): string {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+type TimelineMarker = {
+  id: string;
+  mins: number;
+  timeLabel: string;
+  eventType: 'check_in' | 'check_out';
+  source?: AttendanceEventSource | null;
+  event?: AttendanceEventResponseDto;
+  stackOffset?: number;
+};
+
+function EventTickMarker({
+  marker,
+  onVoid,
+}: {
+  marker: TimelineMarker;
+  onVoid: (e: AttendanceEventResponseDto) => void;
+}) {
+  const style = getMarkerStyle(marker.eventType, marker.source);
+  const label = EVENT_TYPE_META[marker.eventType]?.labelAr;
+  const sourceLabel = marker.source ? SOURCE_LABEL[marker.source] : undefined;
+  const title = [label, marker.timeLabel, sourceLabel].filter(Boolean).join(' — ');
+  const voidable = !!marker.event;
+  const stackShift = marker.stackOffset ?? 0;
+
+  const content = (
+    <>
+      <span
+        className="shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums leading-none shadow-sm ring-1 ring-black/10"
+        style={{ backgroundColor: style.badgeBg, color: style.textColor }}
+      >
+        {marker.timeLabel}
+      </span>
+      <span
+        className="mt-px w-2.5 flex-1 rounded-full transition-all group-hover/tick:w-3"
+        style={{ backgroundColor: style.lineColor }}
+      />
+    </>
+  );
+
+  if (!voidable) {
+    return (
+      <div
+        title={title}
+        className="pointer-events-none absolute bottom-0 top-0 z-[4] flex w-0 flex-col items-center"
+        style={{ insetInlineStart: pct(marker.mins), transform: `translateX(calc(-50% + ${stackShift}px))` }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={() => marker.event && onVoid(marker.event)}
+      className="group/tick absolute bottom-0 top-0 z-[4] flex w-0 cursor-pointer flex-col items-center opacity-90 transition-opacity hover:opacity-100"
+      style={{ insetInlineStart: pct(marker.mins), transform: `translateX(calc(-50% + ${stackShift}px))` }}
+    >
+      {content}
+    </button>
+  );
 }
 
 // ─── void dialog ───────────────────────────────────────────────────────────────
@@ -194,8 +296,8 @@ function VoidDialog({
             </div>
           </div>
         )}
-        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
-          <Button variant="destructive" onClick={handleVoid} disabled={saving} className="flex-1 gap-2">
+        <DialogFooter>
+          <Button variant="destructive" onClick={handleVoid} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
             تأكيد الإلغاء
           </Button>
@@ -240,12 +342,52 @@ function TimelineBar({
 
   const activeEvents = events.filter((e) => !e.isVoided);
   const sorted = [...activeEvents].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
-  const checkIn = sorted.find((e) => e.eventType === 'check_in');
-  const checkOut = [...sorted].reverse().find((e) => e.eventType === 'check_out');
-  const inMins = checkIn ? minutesFromMidnight(checkIn.occurredAt) : null;
-  const outMins = checkOut ? minutesFromMidnight(checkOut.occurredAt) : null;
   const expectedIn = summary.expectedStartAt ? minutesFromMidnight(summary.expectedStartAt) : null;
   const expectedOut = summary.expectedEndAt ? minutesFromMidnight(summary.expectedEndAt) : null;
+
+  const markers = React.useMemo(() => {
+    const result: TimelineMarker[] = sorted
+      .filter((e) => e.eventType === 'check_in' || e.eventType === 'check_out')
+      .map((e) => ({
+        id: e.id,
+        mins: minutesFromMidnight(e.occurredAt),
+        timeLabel: isoToHHMM(e.occurredAt),
+        eventType: e.eventType as 'check_in' | 'check_out',
+        source: e.source,
+        event: e,
+      }));
+
+    const hasCheckIn = result.some((m) => m.eventType === 'check_in');
+    const hasCheckOut = result.some((m) => m.eventType === 'check_out');
+
+    if (!hasCheckIn && summary.actualCheckInAt) {
+      result.push({
+        id: 'summary-check-in',
+        mins: minutesFromMidnight(summary.actualCheckInAt),
+        timeLabel: isoToHHMM(summary.actualCheckInAt),
+        eventType: 'check_in',
+      });
+    }
+    if (!hasCheckOut && summary.actualCheckOutAt) {
+      result.push({
+        id: 'summary-check-out',
+        mins: minutesFromMidnight(summary.actualCheckOutAt),
+        timeLabel: isoToHHMM(summary.actualCheckOutAt),
+        eventType: 'check_out',
+      });
+    }
+
+    return result.sort((a, b) => a.mins - b.mins);
+  }, [sorted, summary.actualCheckInAt, summary.actualCheckOutAt]);
+
+  const markersWithStack = React.useMemo(() => {
+    const minsSeen = new Map<number, number>();
+    return markers.map((m) => {
+      const idx = minsSeen.get(m.mins) ?? 0;
+      minsSeen.set(m.mins, idx + 1);
+      return { ...m, stackOffset: idx * 14 };
+    });
+  }, [markers]);
 
   const hoverBucket = hoverMins !== null ? minsToHourBucket(hoverMins) : null;
 
@@ -266,7 +408,7 @@ function TimelineBar({
         </div>
       )}
 
-      <div className="relative h-14 w-full overflow-hidden rounded-xl border border-border/50 bg-muted/20" dir="rtl">
+      <div className="relative h-14 w-full overflow-visible rounded-xl border border-border/50 bg-muted/20" dir="rtl">
         {/* Hour grid — every hour boundary */}
         {Array.from({ length: 25 }, (_, h) => (
           <div
@@ -309,32 +451,10 @@ function TimelineBar({
           />
         )}
 
-        {/* Actual worked band */}
-        {inMins !== null && (
-          <div
-            className={cn('absolute top-2 h-10 rounded-lg border', barClass)}
-            style={{
-              insetInlineStart: pct(inMins),
-              width: outMins !== null ? pct(Math.max(outMins - inMins, 5)) : pct(8),
-            }}
-          />
-        )}
-
-        {/* Event ticks */}
-        {sorted.map((e) => {
-          const mins = minutesFromMidnight(e.occurredAt);
-          const color = EVENT_TICK_COLOR[e.eventType];
-          return (
-            <button
-              key={e.id}
-              type="button"
-              title={`${EVENT_TYPE_META[e.eventType]?.labelAr} — ${isoToHHMM(e.occurredAt)}`}
-              onClick={() => onVoid(e)}
-              className="absolute top-0 z-[1] h-full w-1.5 cursor-pointer opacity-80 transition-all hover:w-2 hover:opacity-100"
-              style={{ insetInlineStart: pct(mins), transform: 'translateX(-50%)', backgroundColor: color }}
-            />
-          );
-        })}
+        {/* Check-in / check-out markers — one green line, one red line */}
+        {markersWithStack.map((marker) => (
+          <EventTickMarker key={marker.id} marker={marker} onVoid={onVoid} />
+        ))}
 
         {/* Voided ticks */}
         {events.filter((e) => e.isVoided).map((e) => {
@@ -360,20 +480,35 @@ function TimelineBar({
 
 function NowCursor({ workDate }: { workDate: string }) {
   const [nowMins, setNowMins] = React.useState<number | null>(null);
+  const [nowLabel, setNowLabel] = React.useState('');
+
   React.useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     if (workDate !== today) return;
-    const tick = () => { const n = new Date(); setNowMins(n.getHours() * 60 + n.getMinutes()); };
+
+    const tick = () => {
+      const n = new Date();
+      setNowMins(n.getHours() * 60 + n.getMinutes());
+      setNowLabel(`${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`);
+    };
+
     tick();
     const id = setInterval(tick, 30_000);
     return () => clearInterval(id);
   }, [workDate]);
+
   if (nowMins === null) return null;
+
   return (
     <div
-      className="absolute top-0 z-[1] h-full w-px bg-primary/70"
+      className="pointer-events-none absolute bottom-0 top-0 z-[5] flex w-0 -translate-x-1/2 flex-col items-center"
       style={{ insetInlineStart: pct(nowMins) }}
-    />
+    >
+      <span className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums leading-none text-muted-foreground shadow-sm">
+        {nowLabel}
+      </span>
+      <span className="mt-px w-px flex-1 bg-primary/70" />
+    </div>
   );
 }
 
@@ -468,7 +603,7 @@ export function RegisterEventComboDialog({
   const [search, setSearch] = React.useState('');
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [selectedDate, setSelectedDate] = React.useState(workDate);
-  const [eventType, setEventType] = React.useState<AttendanceEventType>('check_in');
+  const [eventType, setEventType] = React.useState<RegisterableEventType>('check_in');
   const [time, setTime] = React.useState(nowTimeLocal);
   const [notes, setNotes] = React.useState('');
   const [saving, setSaving] = React.useState(false);
@@ -502,7 +637,7 @@ export function RegisterEventComboDialog({
         companyId, employeeId: selectedId, eventType, occurredAt, workDate: selectedDate,
         source: 'manual_hr', notes: notes.trim() || null,
       });
-      toast.success(`تم تسجيل ${EVENT_TYPE_META[eventType].labelAr} بنجاح`);
+      toast.success(REGISTER_SUCCESS_MSG[eventType]);
       onCreated(selectedId, res);
       onOpenChange(false);
     } catch {
@@ -583,8 +718,8 @@ export function RegisterEventComboDialog({
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">نوع الحدث</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {(Object.keys(EVENT_TYPE_META) as AttendanceEventType[]).map((t) => {
-                    const meta = EVENT_TYPE_META[t];
+                  {REGISTERABLE_EVENT_TYPES.map((t) => {
+                    const meta = REGISTER_EVENT_TYPE_META[t];
                     const Icon = meta.icon;
                     return (
                       <button key={t} type="button" onClick={() => setEventType(t)}
@@ -613,8 +748,8 @@ export function RegisterEventComboDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:flex-row-reverse">
-          <Button onClick={handleSave} disabled={saving || !selectedId || !time} className="flex-1 gap-2">
+        <DialogFooter className={dialogFormFooterClass}>
+          <Button onClick={handleSave} disabled={saving || !selectedId || !time} className="gap-2">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             تسجيل
           </Button>
@@ -627,6 +762,42 @@ export function RegisterEventComboDialog({
 
 // ─── main component ────────────────────────────────────────────────────────────
 
+function toEventDto(e: AttendanceEvent): AttendanceEventResponseDto {
+  return {
+    id: e.id,
+    companyId: '',
+    employeeId: e.employeeId,
+    employeeNameAr: e.employeeName,
+    workDate: e.date,
+    eventType: e.type as AttendanceEventType,
+    occurredAt: e.at,
+    source: (e.source as AttendanceEventResponseDto['source']) ?? 'manual_hr',
+    checkInPointId: null,
+    checkInPointNameAr: null,
+    shiftAssignmentId: null,
+    latitude: null,
+    longitude: null,
+    distanceMeters: null,
+    withinRadius: null,
+    periodSortOrder: null,
+    notes: null,
+    isVoided: false,
+    voidReason: null,
+    voidedAt: null,
+    recordedBy: null,
+    createdAt: e.at,
+  };
+}
+
+function buildEventsMap(events: AttendanceEvent[]): Map<string, AttendanceEventResponseDto[]> {
+  const m = new Map<string, AttendanceEventResponseDto[]>();
+  for (const e of events) {
+    if (!m.has(e.employeeId)) m.set(e.employeeId, []);
+    m.get(e.employeeId)!.push(toEventDto(e));
+  }
+  return m;
+}
+
 export function DailyOneDayView({
   summaries,
   initialEvents,
@@ -638,24 +809,15 @@ export function DailyOneDayView({
   workDate: string;
   allEmployees: { id: string; name: string }[];
 }) {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
-  const [eventsMap, setEventsMap] = React.useState<Map<string, AttendanceEventResponseDto[]>>(() => {
-    const m = new Map<string, AttendanceEventResponseDto[]>();
-    for (const e of initialEvents) {
-      if (!m.has(e.employeeId)) m.set(e.employeeId, []);
-      m.get(e.employeeId)!.push({
-        id: e.id, companyId: '', employeeId: e.employeeId, employeeNameAr: e.employeeName,
-        workDate: e.date, eventType: e.type as AttendanceEventType, occurredAt: e.at,
-        source: (e.source as AttendanceEventResponseDto['source']) ?? 'manual_hr',
-        checkInPointId: null, checkInPointNameAr: null, shiftAssignmentId: null,
-        latitude: null, longitude: null, distanceMeters: null, withinRadius: null,
-        periodSortOrder: null, notes: null, isVoided: false, voidReason: null,
-        voidedAt: null, recordedBy: null, createdAt: e.at,
-      });
-    }
-    return m;
-  });
+  const [eventsMap, setEventsMap] = React.useState<Map<string, AttendanceEventResponseDto[]>>(
+    () => buildEventsMap(initialEvents),
+  );
+
+  React.useEffect(() => {
+    setEventsMap(buildEventsMap(initialEvents));
+  }, [initialEvents]);
 
   const handleEventsChange = React.useCallback((employeeId: string, newEvents: AttendanceEventResponseDto[]) => {
     setEventsMap((prev) => new Map(prev).set(employeeId, newEvents));
@@ -776,19 +938,25 @@ export function DailyOneDayView({
           {allDayEvents.map(({ event, employeeName }, i) => {
             const meta = EVENT_TYPE_META[event.eventType];
             const Icon = meta.icon;
-            const color = EVENT_TICK_COLOR[event.eventType];
+            const isCheckEvent = event.eventType === 'check_in' || event.eventType === 'check_out';
+            const markerStyle = isCheckEvent
+              ? getMarkerStyle(event.eventType as 'check_in' | 'check_out', event.source)
+              : null;
+            const dotColor = markerStyle?.lineColor ?? EVENT_TICK_COLOR[event.eventType];
+            const sourceLabel = event.source ? SOURCE_LABEL[event.source] : undefined;
             return (
               <div
                 key={event.id}
                 className={cn('flex items-center justify-between gap-3 py-2 text-xs', i > 0 && 'border-t border-border/40')}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                  <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
                   <span className="shrink-0 font-medium text-foreground">{employeeName}</span>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Icon className="h-3 w-3" />
                     <span>{meta.labelAr}</span>
                   </div>
+                  {sourceLabel && <span className="text-[10px] text-muted-foreground/80">{sourceLabel}</span>}
                   <span className="font-mono tabular-nums" dir="ltr">{isoToHHMM(event.occurredAt)}</span>
                 </div>
               </div>

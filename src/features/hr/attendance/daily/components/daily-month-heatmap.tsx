@@ -13,6 +13,7 @@ import { DAILY_ATTENDANCE_NO_RECORDS } from '@/features/hr/attendance/daily/cons
 import { DailyDayDetailDialog } from '@/features/hr/attendance/daily/components/daily-day-detail-dialog';
 import type { AttendanceViewMode } from '@/features/hr/attendance/daily/hooks/useDailyAttendanceModel';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 // ─── Full Arabic day names (col 0=Sat … col 6=Fri) ───────────────────────────
 
@@ -406,7 +407,7 @@ export function DailyMonthHeatmap({
   const rows = React.useMemo(() => buildRows(summaries, dates), [summaries, dates]);
   const [detailSummary, setDetailSummary] = React.useState<AttendanceDaySummary | null>(null);
   const [detailOpen, setDetailOpen] = React.useState(false);
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
   const handleDayClick = React.useCallback((s: AttendanceDaySummary, _date: string) => {
     setDetailSummary(s);

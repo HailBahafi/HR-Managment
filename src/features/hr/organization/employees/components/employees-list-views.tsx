@@ -20,6 +20,7 @@ import { NewEmployeeDrawer } from '@/features/hr/organization/employees/componen
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { formatCurrency, getInitials } from '@/shared/utils';
 import type { EmployeesListModel } from '@/features/hr/organization/employees/hooks/useEmployeesListModel';
 import { hrOrganizationRoutes } from '@/features/hr/organization/constants/routes';
@@ -29,7 +30,7 @@ type FilteredRow = EmployeesListModel['filtered'][number];
 
 export function EmployeesListViews({ model }: Props) {
   const {
-    router, employees, filtered, loading, listError,
+    router, employees, filtered, loading, pagination, listError,
     view, newEmpOpen, setNewEmpOpen, pdfOpen, setPdfOpen,
     employeesPrintable, reloadEmployees,
     deleteId, setDeleteId, handleDelete,
@@ -47,7 +48,7 @@ export function EmployeesListViews({ model }: Props) {
           </Avatar>
           <div className="min-w-0">
             <p className="font-semibold truncate">{emp.nameAr}</p>
-            <p className="text-xs text-muted-foreground truncate">{emp.employeeCode} · {emp.position ?? '—'}</p>
+            {emp.position && <p className="text-xs text-muted-foreground truncate">{emp.position}</p>}
           </div>
         </div>
       ),
@@ -68,12 +69,6 @@ export function EmployeesListViews({ model }: Props) {
       title: 'تاريخ الالتحاق',
       className: 'text-muted-foreground',
       render: (emp) => <TableDateCell value={emp.startDate} />,
-    },
-    {
-      key: 'baseSalary',
-      title: 'الراتب الأساسي',
-      className: 'font-semibold number-ar',
-      render: (emp) => emp.baseSalary ? formatCurrency(parseFloat(emp.baseSalary)) : '—',
     },
     {
       key: 'nationality',
@@ -115,7 +110,7 @@ export function EmployeesListViews({ model }: Props) {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 animate-fade-in">
       <PdfPreviewExportDialog
         open={pdfOpen}
         onOpenChange={setPdfOpen}
@@ -135,20 +130,26 @@ export function EmployeesListViews({ model }: Props) {
         onConfirm={handleDelete}
       />
 
-      {filtered.length === 0 ? (
+      {!loading && filtered.length === 0 ? (
         <EmptyState title="لا توجد نتائج — جرّب تعديل الفلاتر" />
-      ) : view === 'table' ? (
+      ) : (
+        <DirectoryPagedViews
+          items={filtered}
+          serverPagination={pagination}
+          loading={loading}
+        >
+          {(pageItems) => view === 'table' ? (
         <DataTable
           variant="directory"
           alwaysShowTable
           columns={columns}
-          data={filtered}
+          data={pageItems}
           keyExtractor={(emp) => emp.id}
           onRowClick={(emp) => router.push(hrOrganizationRoutes.employee(emp.id))}
         />
       ) : (
         <DirectoryGrid>
-          {filtered.map((emp) => (
+          {pageItems.map((emp) => (
             <EmployeeGridCard
               key={emp.id}
               emp={emp}
@@ -157,6 +158,8 @@ export function EmployeesListViews({ model }: Props) {
             />
           ))}
         </DirectoryGrid>
+      )}
+        </DirectoryPagedViews>
       )}
     </div>
   );

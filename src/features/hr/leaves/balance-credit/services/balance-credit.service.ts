@@ -28,7 +28,7 @@ export type LoadBalanceCreditParams = {
   status?: BalanceCreditStatus;
 };
 
-function mapBalanceCreditResponse(
+export function mapBalanceCreditResponse(
   dto: BalanceCreditRequestResponseDto,
   employeeNames: Map<string, string>,
   leaveTypes: LeaveTypeResponseDto[],
@@ -93,14 +93,14 @@ export async function loadBalanceCreditDirectory(params?: LoadBalanceCreditParam
   const defaultLeaveTypeId = typesRes.defaultLeaveTypeId ?? resolveDefaultLeaveTypeId(leaveTypes);
 
   const balancesByEmployeeType: Record<string, Record<string, { used: number; total: number }>> = {};
-  for (const row of balances.items) {
-    if (!balancesByEmployeeType[row.employeeId]) {
-      balancesByEmployeeType[row.employeeId] = {};
+  for (const group of balances.items) {
+    balancesByEmployeeType[group.employeeId] ??= {};
+    for (const row of group.leaveTypes) {
+      balancesByEmployeeType[group.employeeId][row.leaveTypeId] = {
+        used: row.usedDays,
+        total: row.totalDays,
+      };
     }
-    balancesByEmployeeType[row.employeeId][row.leaveTypeId] = {
-      used: row.usedDays,
-      total: row.totalDays,
-    };
   }
 
   return {

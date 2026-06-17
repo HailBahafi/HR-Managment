@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   monthlyInputsApi,
@@ -24,12 +25,12 @@ export type MonthlyInputsFilters = {
 
 export function useMonthlyInputsDirectoryModel() {
   const searchParams = useSearchParams();
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
 
   const [items, setItems] = React.useState<MonthlyInputResponseDto[]>([]);
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(1);
-  const [limit, setLimit] = React.useState(20);
+  const [limit, setLimit] = React.useState(30);
   const [loading, setLoading] = React.useState(true);
   const [periods, setPeriods] = React.useState<PayrollPeriodResponseDto[]>([]);
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());

@@ -31,6 +31,10 @@ import {
 } from '@/features/hr/requests/lib/types';
 import { cn } from '@/shared/utils';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { requestTypesApi } from '@/features/hr/requests/lib/api/request-types';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { mapApiRequestType } from '@/features/hr/requests/lib/configuration-store';
 import { TableRowActions } from '@/components/ui/table-cells';
 
 interface DraftForm {
@@ -58,9 +62,10 @@ const CATEGORY_FILTER_OPTIONS = [
 ];
 
 export function RequestTypesClient() {
-  const { departments, requestTypes, addRequestType, updateRequestType, deleteRequestType, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
+  const companyId = useDefaultCompanyId();
+  const { departments, addRequestType, updateRequestType, deleteRequestType, fetchDepartments } = useHRConfigurationStore();
 
-  React.useEffect(() => { fetchRequestTypes(); fetchDepartments(); }, []);
+  React.useEffect(() => { fetchDepartments(); }, [fetchDepartments]);
 
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('grid');
   const [typeStatusFilter, setTypeStatusFilter] = React.useState<string>('all');
@@ -71,23 +76,42 @@ export function RequestTypesClient() {
   const [error, setError] = React.useState<string | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    const requestCategory = categoryFilter !== 'all' ? categoryFilter : undefined;
-    const isActive = typeStatusFilter === 'active' ? true : typeStatusFilter === 'inactive' ? false : undefined;
-    fetchRequestTypes({ requestCategory, isActive });
-  }, [categoryFilter, typeStatusFilter]);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as HRRequestTypeEntity[], total: 0 };
+    try {
+      const res = await requestTypesApi.list({
+        companyId,
+        page,
+        limit: pageSize,
+        ...(categoryFilter !== 'all' ? { requestCategory: categoryFilter } : {}),
+        ...(typeStatusFilter === 'active' ? { isActive: true } : typeStatusFilter === 'inactive' ? { isActive: false } : {}),
+      });
+      const items = res.items.map(mapApiRequestType).sort((a, b) => a.sortOrder - b.sortOrder);
+      return { items, total: res.pagination.total };
+    } catch {
+      return { items: [], total: 0 };
+    }
+  }, [categoryFilter, companyId, typeStatusFilter]);
+
+  const {
+    items: requestTypes,
+    loading: listLoading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<HRRequestTypeEntity>(loadPage, {
+    enabled: !!companyId,
+    resetDeps: [companyId, categoryFilter, typeStatusFilter, layoutView],
+  });
 
   const activeDepts = departments.filter(d => d.isActive);
 
   const typeStatusCounts = React.useMemo(() => ({
-    all: requestTypes.length,
+    all: pagination.total,
     active: requestTypes.filter((rt) => rt.isActive).length,
     inactive: requestTypes.filter((rt) => !rt.isActive).length,
-  }), [requestTypes]);
+  }), [requestTypes, pagination.total]);
 
-  const filtered = React.useMemo(() => {
-    return [...requestTypes].sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [requestTypes]);
+  const filtered = requestTypes;
 
   const openCreate = React.useCallback(() => {
     setEditId(null);
@@ -131,6 +155,7 @@ export function RequestTypesClient() {
         });
       }
       setDrawerOpen(false);
+      await reloadList();
     } catch (e) {
       setError((e as Error).message);
     }
@@ -246,17 +271,19 @@ export function RequestTypesClient() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
 
-      {filtered.length === 0 ? (
+      {!listLoading && filtered.length === 0 && pagination.total === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-16 text-center">
           <Filter className="mb-3 h-10 w-10 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">لا توجد أنواع. أضف نوعاً جديداً أو عدّل الفلاتر</p>
         </div>
-      ) : layoutView === 'grid' ? (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map(rt => {
+      ) : (
+        <DirectoryPagedViews items={filtered} serverPagination={pagination} loading={listLoading}>
+          {(pageItems) => (
+            layoutView === 'grid' ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {pageItems.map(rt => {
               return (
                 <div
                   key={rt.id}
@@ -296,16 +323,18 @@ export function RequestTypesClient() {
               );
             })}
           </div>
-        </>
-      ) : (
+            ) : (
         <DataTable
           variant="directory"
           alwaysShowTable
           columns={columns}
-          data={filtered}
+          data={pageItems}
           keyExtractor={(rt) => rt.id}
           onRowClick={openEdit}
         />
+            )
+          )}
+        </DirectoryPagedViews>
       )}
 
       {/* Create / Edit dialog */}
@@ -406,7 +435,7 @@ export function RequestTypesClient() {
         </DialogContent>
       </Dialog>
 
-      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} title="حذف نوع الطلب" onConfirm={async () => { if (deleteId) { await deleteRequestType(deleteId); setDeleteId(null); } }} />
+      <ConfirmationModal open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)} title="حذف نوع الطلب" onConfirm={async () => { if (deleteId) { await deleteRequestType(deleteId); setDeleteId(null); await reloadList(); } }} />
     </div>
   );
 }

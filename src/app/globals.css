@@ -13,7 +13,6 @@
   max-width: min(var(--radix-popover-trigger-width), calc(100vw - 2rem));
 }
 .select-match-trigger {
-  height: var(--radix-select-trigger-height);
   width: 100%;
   min-width: var(--radix-select-trigger-width);
 }

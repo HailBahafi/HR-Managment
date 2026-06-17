@@ -104,11 +104,11 @@ export function usePayslipEmployeeDecision(options: {
           rows={3}
           className="resize-none"
         />
-        <DialogFooter className="gap-2 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-          <Button variant="outline" onClick={() => setRejectOpen(false)}>إلغاء</Button>
+        <DialogFooter>
           <Button variant="destructive" disabled={busyId !== null} onClick={() => void confirmReject()}>
             تأكيد الرفض
           </Button>
+          <Button variant="outline" onClick={() => setRejectOpen(false)}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -21,9 +21,34 @@ type Props = {
 };
 
 export function ContractTemplateAllowanceLinesEditor({ lines, allowanceTypes, onChange }: Props) {
+  const usedTypeIds = React.useMemo(
+    () => new Set(lines.map((l) => l.allowanceTypeId).filter(Boolean)),
+    [lines],
+  );
+
+  const optionsForLine = React.useCallback(
+    (lineIndex: number) => {
+      const currentId = lines[lineIndex]?.allowanceTypeId;
+      return allowanceTypes.filter(
+        (t) => t.id === currentId || !usedTypeIds.has(t.id),
+      );
+    },
+    [allowanceTypes, lines, usedTypeIds],
+  );
+
+  const firstUnusedTypeId = React.useCallback(() => {
+    const used = new Set(lines.map((l) => l.allowanceTypeId).filter(Boolean));
+    return allowanceTypes.find((t) => !used.has(t.id))?.id ?? '';
+  }, [allowanceTypes, lines]);
+
+  const canAddLine = allowanceTypes.some(
+    (t) => !usedTypeIds.has(t.id),
+  );
+
   const addLine = () => {
-    const firstId = allowanceTypes[0]?.id ?? '';
-    onChange([...lines, { allowanceTypeId: firstId, amount: '', sortOrder: lines.length }]);
+    const nextId = firstUnusedTypeId();
+    if (!nextId) return;
+    onChange([...lines, { allowanceTypeId: nextId, amount: '', sortOrder: lines.length }]);
   };
 
   const patchLine = (index: number, patch: Partial<AllowanceLineDraft>) => {
@@ -44,7 +69,7 @@ export function ContractTemplateAllowanceLinesEditor({ lines, allowanceTypes, on
           size="sm"
           className="h-7 gap-1 text-xs"
           onClick={addLine}
-          disabled={allowanceTypes.length === 0}
+          disabled={allowanceTypes.length === 0 || !canAddLine}
         >
           <Plus className="h-3 w-3" /> إضافة بدل
         </Button>
@@ -75,7 +100,7 @@ export function ContractTemplateAllowanceLinesEditor({ lines, allowanceTypes, on
                     <SelectValue placeholder="اختر نوع البدل" />
                   </SelectTrigger>
                   <SelectContent>
-                    {allowanceTypes.map((t) => (
+                    {optionsForLine(index).map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.nameAr}
                       </SelectItem>

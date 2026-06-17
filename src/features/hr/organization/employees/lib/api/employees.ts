@@ -1,4 +1,8 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type { UserResponseDto } from '@/features/hr/organization/lib/api/users';
+import type { EmployeeAssignmentResponseDto } from '@/features/hr/organization/employees/lib/api/employee-assignments';
+
+export type { EmployeeAssignmentResponseDto };
 
 export type EmployeeResponseDto = {
   id: string;
@@ -45,6 +49,7 @@ export type EmployeeResponseDto = {
   departmentId: string | null;
   departmentNameAr: string | null;
   meta: Record<string, unknown> | null;
+  assignment?: EmployeeAssignmentResponseDto | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -59,19 +64,21 @@ export type CreateEmployeeDto = {
   nationality?: string | null;
   position?: string | null;
   managerId?: string | null;
-  contractType?: string | null;
   startDate?: string | null;
-  baseSalary?: string | null;
-  housingAllowance?: string | null;
-  transportAllowance?: string | null;
-  otherAllowances?: string | null;
   bankAccount?: string | null;
   iban?: string | null;
   address?: string | null;
+  emergencyContact?: string | null;
   gender?: string | null;
   birthDate?: string | null;
   maritalStatus?: string | null;
   role?: string | null;
+  /** Primary org assignment created with the employee. */
+  companyId?: string;
+  branchId?: string;
+  departmentId?: string | null;
+  jobTitleId?: string | null;
+  assignmentIsPrimary?: boolean;
 };
 
 /** Matches PATCH /hr/employees/{id} — no allowance fields (not in backend schema). */
@@ -142,7 +149,7 @@ export const employeesApi = {
     return apiRequest<void>(`/hr/employees/${id}`, { method: 'DELETE' });
   },
   createUserAccount(payload: CreateEmployeeUserAccountDto) {
-    return apiRequest<EmployeeResponseDto>('/hr/employees/user-account', {
+    return apiRequest<UserResponseDto>('/hr/employees/user-account', {
       method: 'POST',
       body: payload,
     });

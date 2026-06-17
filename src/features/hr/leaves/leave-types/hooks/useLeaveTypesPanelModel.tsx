@@ -2,12 +2,15 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { leaveTypesApi } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
+import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { HRLeaveTypeRecord } from '@/features/hr/leaves/leave-types/types';
 import { slugify } from '@/features/hr/requests/lib/types';
 import {
   createLeaveType,
   deleteLeaveType,
-  loadLeaveTypes,
+  mapLeaveTypeResponse,
   updateLeaveType,
 } from '@/features/hr/leaves/leave-types/services/leave-types.service';
 
@@ -27,7 +30,6 @@ const EMPTY_DRAFT: LeaveTypeDraft = {
 
 export function useLeaveTypesPanelModel() {
   const [items, setItems] = React.useState<HRLeaveTypeRecord[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
@@ -36,29 +38,31 @@ export function useLeaveTypesPanelModel() {
   const [error, setError] = React.useState<string | null>(null);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async () => {
-    setLoading(true);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     setListError(null);
     try {
-      const data = await loadLeaveTypes();
-      setItems(data.items);
-      setCompanyId(data.companyId);
+      const scope = await resolveOrganizationScope();
+      const cid = scope.companyId ?? null;
+      setCompanyId(cid);
+      const res = await leaveTypesApi.getAll(
+        cid ? { companyId: cid, page, limit: pageSize } : { page, limit: pageSize },
+      );
+      const mapped = res.items.map(mapLeaveTypeResponse).sort((a, b) => a.sortOrder - b.sortOrder);
+      setItems(mapped);
+      return { items: mapped, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'leave-types.load');
       setListError(displayMessage);
-    } finally {
-      setLoading(false);
+      return { items: [], total: 0 };
     }
   }, []);
 
-  React.useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const sorted = React.useMemo(
-    () => [...items].sort((a, b) => a.sortOrder - b.sortOrder),
-    [items],
-  );
+  const {
+    items: sorted,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<HRLeaveTypeRecord>(loadPage);
 
   const openCreate = React.useCallback(() => {
     setEditId(null);
@@ -149,6 +153,7 @@ export function useLeaveTypesPanelModel() {
     items,
     sorted,
     loading,
+    pagination,
     listError,
     open,
     setOpen,

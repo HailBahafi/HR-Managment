@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { disciplineApprovalTemplatesApi } from './api/discipline-approval-templates';
 import type { DisciplineApprovalTemplateResponseDto } from './api/discipline-approval-templates';
 import type { HRApprovalAssignmentTemplate } from '@/features/hr/requests/lib/types';
@@ -51,7 +52,7 @@ export const useHRDisciplineApprovalAssignmentTemplatesStore = create<AAState>()
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -64,7 +65,7 @@ export const useHRDisciplineApprovalAssignmentTemplatesStore = create<AAState>()
 
   add: async (draft) => {
     try {
-      const companyId = useAuthStore.getState().activeCompanyId ?? '';
+      const companyId = getDefaultCompanyId() ?? '';
       const stage = draft.stages[0];
       const created = await disciplineApprovalTemplatesApi.create({
         companyId,

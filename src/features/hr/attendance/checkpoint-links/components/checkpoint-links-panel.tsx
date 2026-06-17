@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Link2, Plus, Search, Trash2, Pencil, Users, MapPin, CalendarDays, AlertTriangle, Check } from 'lucide-react';
+import { Link2, Link2Off, Plus, Search, Trash2, Pencil, Users, MapPin, CalendarDays, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SingleDatePicker } from '@/components/ui/single-date-picker';
@@ -15,23 +15,90 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ContractStatus } from '@/features/hr/contracts/types';
 import { cn } from '@/shared/utils';
 import {
   CONTRACT_STATUS_AR,
-  CP_LINKS_ALL_DEPARTMENTS,
 } from '@/features/hr/attendance/checkpoint-links/constants/checkpoint-links-panel';
 import { useCheckpointLinksPanelModel } from '@/features/hr/attendance/checkpoint-links/hooks/useCheckpointLinksPanelModel';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
+import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
+
+type CheckpointLinkRow = {
+  id: string;
+  employeeName: string;
+  employeeCode: string;
+  linkActive: boolean;
+};
+
+function CheckpointLinkEmployeeRows({
+  rows,
+  onUnlink,
+}: {
+  rows: CheckpointLinkRow[];
+  onUnlink: (linkId: string, employeeName: string) => void;
+}) {
+  if (rows.length === 0) {
+    return <p className="py-6 text-center text-sm text-muted-foreground">لا يوجد موظفون مرتبطون</p>;
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row) => (
+        <div
+          key={row.id}
+          className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/10 px-3 py-2.5"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            {row.employeeName.slice(0, 1)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{row.employeeName}</p>
+            <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">{row.employeeCode}</p>
+          </div>
+          <Badge variant={row.linkActive ? 'success' : 'secondary'} className="shrink-0 text-[10px]">
+            {row.linkActive ? 'نشط' : 'غير نشط'}
+          </Badge>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 shrink-0 gap-1 px-2 text-xs text-destructive hover:text-destructive"
+            onClick={() => onUnlink(row.id, row.employeeName)}
+          >
+            <Link2Off className="h-3 w-3" />
+            إلغاء الربط
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function CheckpointLinksPanel() {
   const m = useCheckpointLinksPanelModel();
   const [viewBatchId, setViewBatchId] = React.useState<string | null>(null);
 
   const viewBatch = viewBatchId ? m.batches.find((b) => b.batchId === viewBatchId) : null;
+
+  React.useEffect(() => {
+    if (viewBatchId && !viewBatch) setViewBatchId(null);
+  }, [viewBatchId, viewBatch]);
+
+  React.useEffect(() => {
+    if (m.editOpen && !m.editBatch) m.setEditOpen(false);
+  }, [m.editOpen, m.editBatch, m.setEditOpen]);
+
+  const handleUnlink = React.useCallback(
+    (linkId: string, employeeName: string) => {
+      m.requestUnlink(linkId, employeeName);
+    },
+    [m],
+  );
 
   usePageHeaderActions(
     () => (
@@ -43,10 +110,14 @@ export function CheckpointLinksPanel() {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
 
       {/* ── Empty state ── */}
-      {m.batches.length === 0 ? (
+      {m.listError ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">{m.listError}</p>
+      ) : null}
+
+      {m.loading && m.batches.length === 0 ? null : m.batches.length === 0 && !m.loading ? (
         <EmptyStateCard
           icon={Link2}
           title="لا توجد دفعات ربط بعد"
@@ -57,8 +128,10 @@ export function CheckpointLinksPanel() {
           </Button>
         </EmptyStateCard>
       ) : (
+        <DirectoryPagedViews items={m.batches} serverPagination={m.pagination} loading={m.loading}>
+          {(pageItems) => (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {m.batches.map((batch) => {
+          {pageItems.map((batch) => {
             const visibleEmps = batch.rows.slice(0, 3);
             const overflow = batch.rows.length - visibleEmps.length;
             return (
@@ -149,6 +222,8 @@ export function CheckpointLinksPanel() {
             );
           })}
         </div>
+          )}
+        </DirectoryPagedViews>
       )}
 
       {/* ── Detail dialog ── */}
@@ -173,40 +248,15 @@ export function CheckpointLinksPanel() {
                 </div>
               </DialogHeader>
 
-              <div className="max-h-[60vh] overflow-y-auto">
-                {viewBatch.rows.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground">لا يوجد موظفون مرتبطون</p>
-                ) : (
-                  <div className="space-y-1.5 py-2">
-                    {viewBatch.rows.map((row) => (
-                      <div
-                        key={row.id}
-                        className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/10 px-3 py-2.5"
-                      >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                          {row.employeeName.slice(0, 1)}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{row.employeeName}</p>
-                          <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">{row.employeeCode}</p>
-                        </div>
-                        <Badge
-                          variant={row.linkActive ? 'success' : 'secondary'}
-                          className="shrink-0 text-[10px]"
-                        >
-                          {row.linkActive ? 'نشط' : 'غير نشط'}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="max-h-[60vh] overflow-y-auto py-2">
+                <CheckpointLinkEmployeeRows rows={viewBatch.rows} onUnlink={handleUnlink} />
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setViewBatchId(null)}>إغلاق</Button>
                 <Button variant="luxe" onClick={() => { setViewBatchId(null); m.openEditDialog(viewBatch.batchId); }}>
                   <Pencil className="h-4 w-4" /> تعديل
                 </Button>
+                <Button variant="outline" onClick={() => setViewBatchId(null)}>إغلاق</Button>
               </DialogFooter>
             </>
           )}
@@ -259,25 +309,14 @@ export function CheckpointLinksPanel() {
                   </button>
                 </div>
 
-                {/* dept filter + search in a single flex row */}
-                <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-                  <Select value={m.employeeDepartmentFilter} onValueChange={(v) => { m.setEmployeeDepartmentFilter(v); m.setEmpSel(new Set()); }}>
-                    <SelectTrigger className="h-8 w-36 shrink-0 text-xs">
-                      <SelectValue placeholder="كل الأقسام" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={CP_LINKS_ALL_DEPARTMENTS}>كل الأقسام</SelectItem>
-                      {m.departments.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>{d.nameAr}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="relative flex-1">
+                {/* search */}
+                <div className="border-b border-border px-3 py-2">
+                  <div className="relative">
                     <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={m.eq}
                       onChange={(e) => m.setEq(e.target.value)}
-                      placeholder="اسم، رقم، قسم…"
+                      placeholder="بحث بالاسم أو الرقم…"
                       className="h-8 bg-background pr-8 text-xs"
                     />
                   </div>
@@ -434,43 +473,77 @@ export function CheckpointLinksPanel() {
 
       {/* ── Edit batch dialog ── */}
       <Dialog open={m.editOpen} onOpenChange={m.setEditOpen}>
-        <DialogContent className="max-w-sm border-border">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Link2 className="h-5 w-5" />
+        <DialogContent className="max-w-lg border-border" dir="rtl">
+          {m.editBatch && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <DialogTitle className="font-display text-lg">تعديل الربط — {m.editBatch.checkInPointName}</DialogTitle>
+                    <DialogDescription className="text-xs">
+                      عدّل تاريخ السريان والحالة، أو ألغِ ربط موظفين من هذه النقطة.
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5 text-sm">
+                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                    ساري من
+                  </Label>
+                  <SingleDatePicker value={m.editEff} onChange={m.setEditEff} />
+                </div>
+
+                <label className="flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all border-border hover:bg-muted/20">
+                  <span className="text-sm font-medium">الروابط مفعّلة</span>
+                  <Checkbox
+                    checked={m.editLinkActive}
+                    onCheckedChange={(v) => m.setEditLinkActive(v === true)}
+                  />
+                </label>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">الموظفون المرتبطون</Label>
+                  <div className="max-h-[40vh] overflow-y-auto rounded-xl border border-border/60 p-2">
+                    <CheckpointLinkEmployeeRows rows={m.editBatch.rows} onUnlink={handleUnlink} />
+                  </div>
+                </div>
               </div>
-              <div>
-                <DialogTitle className="font-display text-lg">تعديل الدفعة</DialogTitle>
-                <DialogDescription className="text-xs">تعديل تاريخ السريان وحالة تفعيل الروابط</DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5 text-sm">
-                <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                ساري من
-              </Label>
-              <SingleDatePicker value={m.editEff} onChange={m.setEditEff} />
-            </div>
-
-            <label className="flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all border-border hover:bg-muted/20">
-              <span className="text-sm font-medium">الروابط مفعّلة</span>
-              <Checkbox
-                checked={m.editLinkActive}
-                onCheckedChange={(v) => m.setEditLinkActive(v === true)}
-              />
-            </label>
-          </div>
-
-          <DialogFooter className="gap-2 border-t border-border bg-muted/20 pt-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" type="button" onClick={() => m.setEditOpen(false)}>إلغاء</Button>
-            <Button variant="luxe" type="button" onClick={() => void m.submitEdit()}>حفظ التعديلات</Button>
-          </DialogFooter>
+              <DialogFooter className={dialogFormFooterClass}>
+                <Button
+                  variant="luxe"
+                  type="button"
+                  onClick={() => void m.submitEdit()}
+                  disabled={!m.editBatch.rows.length}
+                >
+                  حفظ التعديلات
+                </Button>
+                <Button variant="outline" type="button" onClick={() => m.setEditOpen(false)}>إلغاء</Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmationModal
+        open={!!m.unlinkTarget}
+        onOpenChange={(open) => { if (!open && !m.unlinking) m.setUnlinkTarget(null); }}
+        title="إلغاء ربط الموظف"
+        description={
+          m.unlinkTarget
+            ? `هل أنت متأكد من إلغاء ربط «${m.unlinkTarget.employeeName}» بهذه النقطة؟ لا يمكن التراجع عن هذا الإجراء.`
+            : ''
+        }
+        confirmLabel={m.unlinking ? 'جاري الإلغاء…' : 'إلغاء الربط'}
+        variant="destructive"
+        onConfirm={() => void m.confirmUnlink()}
+      />
 
       {/* ── Delete confirmation dialog ── */}
       <Dialog open={!!m.deleteTarget} onOpenChange={(o) => !o && m.setDeleteTarget(null)}>
@@ -483,8 +556,7 @@ export function CheckpointLinksPanel() {
               هل أنت متأكد من حذف كل عناصر هذه الدفعة؟ لا يمكن التراجع عن هذا الإجراء.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 pt-2">
-            <Button variant="outline" onClick={() => m.setDeleteTarget(null)}>إلغاء</Button>
+          <DialogFooter className="pt-2">
             <Button
               variant="destructive"
               onClick={() => {
@@ -496,6 +568,7 @@ export function CheckpointLinksPanel() {
             >
               <Trash2 className="h-4 w-4" /> حذف
             </Button>
+            <Button variant="outline" onClick={() => m.setDeleteTarget(null)}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

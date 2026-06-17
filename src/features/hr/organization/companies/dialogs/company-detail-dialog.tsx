@@ -39,7 +39,6 @@ export function CompanyDetailDialog({ row, formatDate, onOpenChange, onEdit }: P
               <Badge variant="outline" className="mb-2 text-[10px] border-destructive/40 text-destructive">غير نشط</Badge>
             )}
             <DetailField label="الرمز" value={row.code} dir="ltr" />
-            <DetailField label="الاسم (EN)" value={row.nameEn} dir="ltr" />
             <DetailField label="السجل التجاري" value={row.commercialRegistrationNo} dir="ltr" />
             <DetailField label="الرقم الضريبي" value={row.taxNumber} dir="ltr" />
             <DetailField label="البريد" value={row.email} dir="ltr" />
@@ -59,8 +58,7 @@ export function CompanyDetailDialog({ row, formatDate, onOpenChange, onEdit }: P
             <DetailField label="ملاحظات" value={row.notes} />
           </div>
         )}
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
+        <DialogFooter>
           <Button
             onClick={() => {
               if (row) {
@@ -73,6 +71,7 @@ export function CompanyDetailDialog({ row, formatDate, onOpenChange, onEdit }: P
             <Pencil className="h-3.5 w-3.5" />
             تعديل
           </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

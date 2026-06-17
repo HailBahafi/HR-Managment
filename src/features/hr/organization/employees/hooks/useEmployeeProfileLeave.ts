@@ -3,7 +3,7 @@
 import * as React from 'react';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import { leaveRequestsApi, type LeaveRequestResponseDto } from '@/features/hr/leaves/lib/api/leave-requests';
-import { leaveBalancesApi, type EmployeeLeaveBalanceResponseDto } from '@/features/hr/leaves/lib/api/leave-balances';
+import { leaveBalancesApi, flattenLeaveBalanceGroups, type EmployeeLeaveBalanceResponseDto } from '@/features/hr/leaves/lib/api/leave-balances';
 import { leaveTypesApi, type LeaveTypeResponseDto } from '@/features/hr/leaves/lib/api/leave-types';
 
 export type { LeaveRequestResponseDto, EmployeeLeaveBalanceResponseDto, LeaveTypeResponseDto };
@@ -43,10 +43,11 @@ export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
         ]);
         if (cancelled) return;
         setLeaveRequests(reqRes.items);
-        setLeaveBalances(balRes.items);
+        setLeaveBalances(flattenLeaveBalanceGroups(balRes.items));
 
+        const flatBalances = flattenLeaveBalanceGroups(balRes.items);
         const typeIds = [...new Set([
-          ...balRes.items.map((b) => b.leaveTypeId),
+          ...flatBalances.map((b) => b.leaveTypeId),
           ...reqRes.items.map((r) => r.leaveTypeId),
         ])];
         if (typeIds.length > 0) {

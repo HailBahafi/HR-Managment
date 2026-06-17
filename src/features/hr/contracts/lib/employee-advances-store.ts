@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   employeeAdvancesApi,
   type EmployeeAdvanceResponseDto,
@@ -107,7 +108,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
   error: null,
 
   fetch: async (params) => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -127,7 +128,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
   },
 
   add: async (a) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const created = await employeeAdvancesApi.create({
       companyId,
       employeeId: a.employeeId,

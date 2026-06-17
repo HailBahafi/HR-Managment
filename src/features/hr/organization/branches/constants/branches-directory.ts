@@ -22,35 +22,25 @@ export type BranchRow = {
 };
 
 export type BranchDraftForm = {
+  companyId: string;
   name: string;
   nameEn: string;
   city: string;
-  district: string;
-  address: string;
-  postalCode: string;
-  email: string;
-  phone: string;
-  mobile: string;
+  managerEmployeeId: string;
   managerName: string;
   isHeadquarters: boolean;
   isActive: boolean;
-  notes: string;
 };
 
 export const BRANCH_EMPTY_FORM: BranchDraftForm = {
+  companyId: '',
   name: '',
   nameEn: '',
   city: '',
-  district: '',
-  address: '',
-  postalCode: '',
-  email: '',
-  phone: '',
-  mobile: '',
+  managerEmployeeId: '',
   managerName: '',
   isHeadquarters: false,
   isActive: true,
-  notes: '',
 };
 
 export function mapBranchResponse(branch: BranchResponseDto): BranchRow {
@@ -76,21 +66,22 @@ export function mapBranchResponse(branch: BranchResponseDto): BranchRow {
   };
 }
 
-export function branchRowToDraftForm(branch: BranchRow): BranchDraftForm {
+export function branchRowToDraftForm(
+  branch: BranchRow,
+  employees?: { id: string; nameAr: string }[],
+): BranchDraftForm {
+  const matched = employees?.find(
+    (e) => e.nameAr.trim() === branch.manager.trim(),
+  );
   return {
+    companyId: branch.companyId,
     name: branch.name,
     nameEn: branch.nameEn ?? '',
     city: branch.city,
-    district: branch.district ?? '',
-    address: branch.address ?? '',
-    postalCode: branch.postalCode ?? '',
-    email: branch.email ?? '',
-    phone: branch.phone ?? '',
-    mobile: branch.mobile ?? '',
+    managerEmployeeId: matched?.id ?? '',
     managerName: branch.manager,
     isHeadquarters: branch.isHeadquarters,
     isActive: branch.isActive,
-    notes: branch.notes ?? '',
   };
 }
 
@@ -99,35 +90,19 @@ export function draftFormToCreatePayload(form: BranchDraftForm, companyId: strin
     companyId,
     code,
     nameAr: form.name.trim(),
-    nameEn: form.nameEn.trim() || null,
     city: form.city.trim() || null,
-    district: form.district.trim() || null,
-    address: form.address.trim() || null,
-    postalCode: form.postalCode.trim() || null,
-    email: form.email.trim() || null,
-    phone: form.phone.trim() || null,
-    mobile: form.mobile.trim() || null,
     managerName: form.managerName.trim() || null,
     isHeadquarters: form.isHeadquarters,
     isActive: form.isActive,
-    notes: form.notes.trim() || null,
   };
 }
 
 export function draftFormToUpdatePayload(form: BranchDraftForm) {
   return {
     nameAr: form.name.trim(),
-    nameEn: form.nameEn.trim() || null,
     city: form.city.trim() || null,
-    district: form.district.trim() || null,
-    address: form.address.trim() || null,
-    postalCode: form.postalCode.trim() || null,
-    email: form.email.trim() || null,
-    phone: form.phone.trim() || null,
-    mobile: form.mobile.trim() || null,
     managerName: form.managerName.trim() || null,
     isHeadquarters: form.isHeadquarters,
     isActive: form.isActive,
-    notes: form.notes.trim() || null,
   };
 }

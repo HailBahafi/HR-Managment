@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { allowanceTypesApi, type AllowanceTypeDto } from './api/allowance-types';
 
 export type HRAllowanceTypeRecord = {
@@ -44,7 +45,7 @@ export const useHRAllowanceTypesStore = create<State>()((set) => ({
   error: null,
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -56,7 +57,7 @@ export const useHRAllowanceTypesStore = create<State>()((set) => ({
   },
 
   add: async (data) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const created = await allowanceTypesApi.create({
       companyId,
       code: data.code,

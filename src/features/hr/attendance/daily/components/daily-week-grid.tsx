@@ -12,9 +12,10 @@ import { DAILY_ATTENDANCE_NO_RECORDS } from '@/features/hr/attendance/daily/cons
 import { DailyAttendanceLegend } from '@/features/hr/attendance/daily/components/daily-attendance-legend';
 import { DailyDayDetailDialog } from '@/features/hr/attendance/daily/components/daily-day-detail-dialog';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 export function DailyWeekGrid({ summaries, dates }: { summaries: AttendanceDaySummary[]; dates: string[] }) {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
   const [detailSummary, setDetailSummary] = React.useState<AttendanceDaySummary | null>(null);
   const [detailOpen, setDetailOpen] = React.useState(false);
 

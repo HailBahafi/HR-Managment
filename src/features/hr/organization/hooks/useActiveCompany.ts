@@ -1,11 +1,11 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { companiesApi } from '@/features/hr/organization/lib/api/companies';
 
 export function useActiveCompany() {
-  const companyId = useAuthStore((s) => s.activeCompanyId);
+  const companyId = useDefaultCompanyId();
   return useQuery({
     queryKey: ['company', companyId],
     queryFn: () => companiesApi.getById(companyId!),
@@ -14,3 +14,6 @@ export function useActiveCompany() {
     gcTime: Infinity,
   });
 }
+
+/** Alias for pages scoped to the logged-in user's default company. */
+export const useDefaultCompany = useActiveCompany;

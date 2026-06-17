@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { payrollPeriodsApi, type PayrollPeriodResponseDto } from './api/payroll-periods';
 import {
   monthlyInputsApi,
@@ -111,7 +112,7 @@ function defaultIncludeFlags(): HRPayrollPeriodIncludeFlags {
   };
 }
 
-function mapApi(r: PayrollPeriodResponseDto): HRPayrollPeriodRecord {
+export function mapPayrollPeriodFromApi(r: PayrollPeriodResponseDto): HRPayrollPeriodRecord {
   const m = r.periodMonth;
   const y = r.periodYear;
   const includes = defaultIncludeFlags();
@@ -217,6 +218,8 @@ interface State {
   /** Raw backend inputs keyed by periodId → employeeId → list. Used to populate lines after materialize. */
   _rawInputs: Record<string, Record<string, MonthlyInputResponseDto[]>>;
   fetch: () => Promise<void>;
+  /** Fetch a single period by id when it is missing from the cached list (e.g. deep link refresh). */
+  ensurePeriodLoaded: (id: string) => Promise<HRPayrollPeriodRecord | null>;
   materializeFromContracts: (contracts: HRContractRecord[]) => void;
   add: (data: HRPayrollPeriodDraft) => Promise<string>;
   update: (id: string, patch: Partial<HRPayrollPeriodDraft>) => Promise<boolean>;
@@ -236,7 +239,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
   _rawInputs: {},
 
   fetch: async () => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
     set({ isLoading: true, error: null });
     try {
@@ -254,12 +257,31 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       }
 
       set({
-        periods: periodsResult.items.map(mapApi),
+        periods: periodsResult.items.map(mapPayrollPeriodFromApi),
         _rawInputs: rawInputs,
         isLoading: false,
       });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
+    }
+  },
+
+  ensurePeriodLoaded: async (id) => {
+    const existing = get().periods.find((p) => p.id === id);
+    if (existing) return existing;
+    const companyId = getDefaultCompanyId();
+    if (!companyId) return null;
+    try {
+      const r = await payrollPeriodsApi.get(id);
+      const mapped = mapPayrollPeriodFromApi(r);
+      set((s) => ({
+        periods: s.periods.some((p) => p.id === id)
+          ? s.periods.map((p) => (p.id === id ? mergePeriodFromApi(p, mapped) : p))
+          : [...s.periods, mapped],
+      }));
+      return get().periods.find((p) => p.id === id) ?? mapped;
+    } catch {
+      return null;
     }
   },
 
@@ -317,7 +339,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
   },
 
   add: async (data) => {
-    const companyId = useAuthStore.getState().activeCompanyId ?? '';
+    const companyId = getDefaultCompanyId() ?? '';
     const [yearStr, monthStr] = data.periodStart.split('-');
     const periodYear = parseInt(yearStr ?? '0', 10);
     const periodMonth = parseInt(monthStr ?? '0', 10);
@@ -333,7 +355,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
         : 'draft') as PayrollPeriodResponseDto['status'],
       notes: data.notes || undefined,
     });
-    const mapped = mapApi(created);
+    const mapped = mapPayrollPeriodFromApi(created);
     set(s => ({ periods: [mapped, ...s.periods] }));
     return mapped.id;
   },
@@ -358,7 +380,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       set(s => ({
         periods: s.periods.map(p => {
           if (p.id !== id) return p;
-          const base = mapApi(updated);
+          const base = mapPayrollPeriodFromApi(updated);
           return mergePeriodFromApi(p, {
             ...base,
             snapshotContractIds: patch.snapshotContractIds ?? p.snapshotContractIds,
@@ -388,7 +410,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     try {
       const updated = await payrollPeriodsApi.update(id, { status: 'open' });
       set(s => ({
-        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapPayrollPeriodFromApi(updated)) : p),
       }));
       return true;
     } catch {
@@ -400,7 +422,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     try {
       const updated = await payrollPeriodsApi.update(id, { status: 'closed' });
       set(s => ({
-        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+        periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapPayrollPeriodFromApi(updated)) : p),
       }));
       return true;
     } catch {
@@ -412,7 +434,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     const reviewedBy = useAuthStore.getState().user?.email ?? undefined;
     const updated = await payrollPeriodsApi.advanceReview(id, { reviewedBy, notes });
     set(s => ({
-      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapPayrollPeriodFromApi(updated)) : p),
     }));
   },
 
@@ -420,7 +442,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
     const reviewedBy = useAuthStore.getState().user?.email ?? undefined;
     const updated = await payrollPeriodsApi.revertReview(id, { reviewedBy, notes });
     set(s => ({
-      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapApi(updated)) : p),
+      periods: s.periods.map(p => p.id === id ? mergePeriodFromApi(p, mapPayrollPeriodFromApi(updated)) : p),
     }));
   },
 
@@ -436,7 +458,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
       }),
     }));
 
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
 
     const state = get();
@@ -511,7 +533,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
   },
 
   refreshMonthlyInputsForPeriod: async (periodId) => {
-    const companyId = useAuthStore.getState().activeCompanyId;
+    const companyId = getDefaultCompanyId();
     if (!companyId) return;
 
     try {

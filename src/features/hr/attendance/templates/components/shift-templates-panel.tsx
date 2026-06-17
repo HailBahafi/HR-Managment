@@ -10,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { defaultShiftPeriod, normalizeShiftTemplate } from '@/features/hr/attendance/lib/defaults';
@@ -24,7 +25,9 @@ import {
 } from '@/features/hr/attendance/templates/utils/shift-template-helpers';
 import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
 import { companiesApi } from '@/features/hr/lib/api/companies';
+import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 
 function dtoToLocal(dto: ShiftTemplateResponseDto): ShiftTemplate {
   return {
@@ -69,28 +72,35 @@ function dtoToLocal(dto: ShiftTemplateResponseDto): ShiftTemplate {
 }
 
 export function ShiftTemplatesPanel() {
-  const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplate[]>([]);
   const [companyId, setCompanyId] = React.useState('');
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<ShiftTemplate | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async () => {
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     try {
-      const res = await shiftTemplatesApi.getAll({ limit: 200 });
-      setShiftTemplates(res.items.map(dtoToLocal));
-    } catch { /* ignore */ }
-  }, []);
+      const res = await shiftTemplatesApi.getAll(
+        companyId ? { companyId, page, limit: pageSize } : { page, limit: pageSize },
+      );
+      return { items: res.items.map(dtoToLocal), total: res.pagination.total };
+    } catch {
+      return { items: [] as ShiftTemplate[], total: 0 };
+    }
+  }, [companyId]);
+
+  const {
+    items: shiftTemplates,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<ShiftTemplate>(loadPage, {
+    enabled: !!companyId,
+    resetDeps: [companyId],
+  });
 
   React.useEffect(() => {
-    void (async () => {
-      try {
-        const cRes = await companiesApi.getAll({ limit: 1 });
-        setCompanyId(cRes.items[0]?.id ?? '');
-      } catch { /* ignore */ }
-    })();
-    void reload();
-  }, [reload]);
+    setCompanyId(getDefaultCompanyId() ?? '');
+  }, []);
 
   const buildDefault = (): ShiftTemplate => {
     const per = defaultShiftPeriod(genId('per'));
@@ -191,17 +201,19 @@ export function ShiftTemplatesPanel() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
 
-      {shiftTemplates.length === 0 ? (
+      {loading && shiftTemplates.length === 0 ? null : shiftTemplates.length === 0 && !loading ? (
         <EmptyStateCard
           icon={Clock}
           title="لا توجد قوالب بعد"
           description="أضف قالباً جديداً لتحديد أوقات الدوام"
         />
       ) : (
+        <DirectoryPagedViews items={shiftTemplates} serverPagination={pagination} loading={loading}>
+          {(pageItems) => (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {shiftTemplates.map((t) => (
+          {pageItems.map((t) => (
             <ShiftTemplateCard
               key={t.id}
               t={t}
@@ -215,6 +227,8 @@ export function ShiftTemplatesPanel() {
             />
           ))}
         </div>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -241,12 +255,12 @@ export function ShiftTemplatesPanel() {
             </div>
           )}
 
-          <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/20 px-6 py-4 sm:justify-start sm:space-x-2 sm:space-x-reverse">
-            <Button variant="outline" type="button" onClick={() => setOpen(false)}>
-              إلغاء
-            </Button>
+          <DialogFooter className={dialogFormFooterClass}>
             <Button variant="luxe" type="button" onClick={() => void save()}>
               حفظ القالب
+            </Button>
+            <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+              إلغاء
             </Button>
           </DialogFooter>
         </DialogContent>

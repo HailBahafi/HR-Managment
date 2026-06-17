@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { UserCircle, Eye, Pencil, Trash2, Building2, MapPin } from 'lucide-react';
+import { UserCircle, Eye, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
@@ -16,6 +16,7 @@ import {
   DirectoryGridCardTitle,
 } from '@/components/ui/directory-grid-card';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { USER_TYPE_LABELS } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 import type { UserRecord, ContactsDirectoryModel } from '@/features/hr/organization/contacts/hooks/useContactsDirectoryModel';
 
@@ -48,7 +49,7 @@ function primaryBranchLabel(row: UserRecord, model: ContactsDirectoryModel) {
 }
 
 export function ContactsListViews({ model }: Props) {
-  const { users, loading, listError, layoutView, setViewRow, openEdit, setConfirmId, formatDate } = model;
+  const { users, loading, pagination, listError, layoutView, setViewRow, openEdit, setConfirmId, formatDate } = model;
 
   const columns = React.useMemo((): ColumnDef<UserRecord>[] => [
     {
@@ -57,7 +58,6 @@ export function ContactsListViews({ model }: Props) {
       render: (row) => (
         <div className="flex flex-col gap-0.5">
           <span className="font-medium">{row.fullNameAr ?? row.email}</span>
-          {row.fullNameEn ? <span className="text-[10px] text-muted-foreground" dir="ltr">{row.fullNameEn}</span> : null}
         </div>
       ),
     },
@@ -83,39 +83,9 @@ export function ContactsListViews({ model }: Props) {
       render: (row) => primaryCompanyLabel(row, model),
     },
     {
-      key: 'branch',
-      title: 'الفرع',
-      className: 'text-muted-foreground text-xs',
-      render: (row) => primaryBranchLabel(row, model),
-    },
-    {
-      key: 'links',
-      title: 'الإسناد',
-      render: (row) => (
-        <div className="flex gap-1 text-[10px] text-muted-foreground">
-          <span className="inline-flex items-center gap-0.5"><Building2 className="h-3 w-3" />{row.companies.length}</span>
-          <span>·</span>
-          <span className="inline-flex items-center gap-0.5"><MapPin className="h-3 w-3" />{row.branches.length}</span>
-        </div>
-      ),
-    },
-    {
       key: 'status',
       title: 'الحالة',
-      render: (row) => (
-        <div className="flex flex-col gap-0.5">
-          {statusBadge(row)}
-          {row.isVerified ? (
-            <span className="text-[10px] text-muted-foreground">موثّق</span>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      key: 'lastLogin',
-      title: 'آخر دخول',
-      className: 'text-muted-foreground text-xs',
-      render: (row) => formatDate(row.lastLoginAt),
+      render: (row) => statusBadge(row),
     },
     {
       key: 'actions',
@@ -153,12 +123,15 @@ export function ContactsListViews({ model }: Props) {
   }
 
   return (
-    <>
-      {users.length === 0 ? (
-        <EmptyState icon={UserCircle} title="لا توجد مستخدمون" description="أضف حسابات مستخدمي النظام." />
-      ) : layoutView === 'grid' ? (
+    <DirectoryPagedViews
+      items={users}
+      serverPagination={pagination}
+      loading={loading}
+      empty={<EmptyState icon={UserCircle} title="لا توجد مستخدمون" description="أضف حسابات مستخدمي النظام." />}
+    >
+      {(pageItems) => layoutView === 'grid' ? (
         <DirectoryGrid>
-          {users.map((row) => (
+          {pageItems.map((row) => (
             <UserGridCard
               key={row.id}
               row={row}
@@ -174,12 +147,12 @@ export function ContactsListViews({ model }: Props) {
           variant="directory"
           alwaysShowTable
           columns={columns}
-          data={users}
+          data={pageItems}
           keyExtractor={(row) => row.id}
           onRowClick={(row) => setViewRow(row)}
         />
       )}
-    </>
+    </DirectoryPagedViews>
   );
 }
 

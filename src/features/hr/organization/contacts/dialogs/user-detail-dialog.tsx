@@ -44,7 +44,7 @@ export function UserDetailDialog({
   const [tab, setTab] = React.useState('profile');
   const detail = useUserDetailModel(user?.id ?? null, { companies, branches }, onUserUpdated);
   const displayUser = detail.user ?? user;
-  const displayName = displayUser?.fullNameAr ?? displayUser?.fullNameEn ?? displayUser?.email ?? 'المستخدم';
+  const displayName = displayUser?.fullNameAr ?? displayUser?.email ?? 'المستخدم';
 
   React.useEffect(() => {
     if (user) setTab('profile');

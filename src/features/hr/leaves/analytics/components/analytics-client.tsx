@@ -2,8 +2,7 @@
 
 import * as React from 'react';
 import {
-  Plus, Pencil, Trash2, Loader2, AlertTriangle,
-  Users, CalendarDays,
+  Plus, Pencil, Trash2, Loader2, AlertTriangle, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
@@ -13,18 +12,22 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import {
   leaveBalancesApi,
+  type EmployeeLeaveBalanceGroupDto,
   type EmployeeLeaveBalanceResponseDto,
+  type EmployeeLeaveBalanceTypeItemDto,
   type CreateLeaveBalanceDto,
 } from '@/features/hr/leaves/lib/api/leave-balances';
 import type { LeaveTypeResponseDto } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
@@ -33,6 +36,7 @@ import {
   loadCompanyLeaveTypes,
   resolveDefaultLeaveTypeId,
 } from '@/features/hr/leaves/lib/leave-types-utils';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -67,13 +71,6 @@ type DialogMode =
   | { mode: 'create'; employeeId?: string }
   | { mode: 'edit'; balance: EmployeeLeaveBalanceResponseDto };
 
-type AnalyticsEmployeeRow = {
-  employeeId: string;
-  employeeName: string;
-  leaveTypeLabel: string;
-  balance: EmployeeLeaveBalanceResponseDto | null;
-};
-
 function BalanceFormDialog({
   open,
   dialogMode,
@@ -91,7 +88,7 @@ function BalanceFormDialog({
   defaultLeaveTypeId: string | null;
   companyId: string;
   onClose: () => void;
-  onSaved: (b: EmployeeLeaveBalanceResponseDto) => void;
+  onSaved: () => void;
 }) {
   const [employeeId, setEmployeeId] = React.useState('');
   const [leaveTypeId, setLeaveTypeId] = React.useState('');
@@ -133,7 +130,7 @@ function BalanceFormDialog({
         saved = await leaveBalancesApi.update(dialogMode.balance.id, { totalDays: total, usedDays: used });
         toast.success('تم تحديث الرصيد');
       }
-      onSaved(saved);
+      onSaved();
       onClose();
     } catch { toast.error('حدث خطأ أثناء الحفظ'); }
     finally { setSaving(false); }
@@ -205,8 +202,8 @@ function BalanceFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start pt-1">
-            <Button type="submit" disabled={saving} className="flex-1 gap-2">
+          <DialogFooter className={dialogFormFooterClass}>
+            <Button type="submit" disabled={saving} className="gap-2">
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {isEdit ? 'حفظ التعديلات' : 'إنشاء الرصيد'}
             </Button>
@@ -231,7 +228,7 @@ function DeleteDialog({
   employeeName: string;
   leaveTypeName: string;
   onClose: () => void;
-  onDeleted: (id: string) => void;
+  onDeleted: () => void;
 }) {
   const [deleting, setDeleting] = React.useState(false);
 
@@ -241,7 +238,7 @@ function DeleteDialog({
     try {
       await leaveBalancesApi.remove(balance.id);
       toast.success('تم حذف الرصيد');
-      onDeleted(balance.id);
+      onDeleted();
       onClose();
     } catch { toast.error('فشل الحذف'); }
     finally { setDeleting(false); }
@@ -260,8 +257,8 @@ function DeleteDialog({
           هل أنت متأكد من حذف رصيد <span className="font-semibold text-foreground">{leaveTypeName}</span> للموظف{' '}
           <span className="font-semibold text-foreground">{employeeName}</span>؟ لا يمكن التراجع.
         </p>
-        <DialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start">
-          <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="flex-1 gap-2">
+        <DialogFooter>
+          <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="gap-2">
             {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             حذف
           </Button>
@@ -272,134 +269,174 @@ function DeleteDialog({
   );
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
+// ─── Employee group card ───────────────────────────────────────────────────────
 
-function StatCard({
-  label, value, icon: Icon, variant = 'default',
-}: {
-  label: string;
-  value: number;
-  icon: React.ElementType;
-  variant?: 'default' | 'destructive';
-}) {
-  return (
-    <div className={cn(
-      'rounded-xl border bg-card p-4 shadow-soft',
-      variant === 'destructive' ? 'border-destructive/20' : 'border-border',
-    )}>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
-          <p className={cn(
-            'mt-1 font-display text-2xl font-bold tabular-nums',
-            variant === 'destructive' ? 'text-destructive' : 'text-foreground',
-          )}>
-            {value}
-          </p>
-        </div>
-        <div className={cn(
-          'rounded-lg p-2',
-          variant === 'destructive' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary',
-        )}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Employee balance card ────────────────────────────────────────────────────
-
-function EmployeeBalanceCard({
-  employeeId,
-  employeeName,
-  leaveTypeLabel,
-  balance,
+function LeaveTypeRow({
+  leaveType,
   onEdit,
   onDelete,
 }: {
-  employeeId: string;
-  employeeName: string;
-  leaveTypeLabel: string;
-  balance: EmployeeLeaveBalanceResponseDto | null;
-  onEdit: (employeeId: string, balance: EmployeeLeaveBalanceResponseDto | null) => void;
-  onDelete: (b: EmployeeLeaveBalanceResponseDto) => void;
+  leaveType: EmployeeLeaveBalanceTypeItemDto;
+  onEdit: (balance: EmployeeLeaveBalanceResponseDto) => void;
+  onDelete: (balance: EmployeeLeaveBalanceResponseDto) => void;
 }) {
-  const initials = employeeName.split(' ').map((w) => w[0]).slice(0, 2).join('');
-  const hue = ((employeeId.charCodeAt(0) ?? 0) * 47) % 360;
-  const hasBalance = balance != null;
-  const used = balance?.usedDays ?? 0;
-  const total = balance?.totalDays ?? 0;
-  const remaining = balance?.remainingDays ?? 0;
-  const p = hasBalance ? pct(used, total) : 0;
-  const danger = hasBalance && p >= 90;
-  const warn = hasBalance && p >= 70;
+  const flat: EmployeeLeaveBalanceResponseDto = {
+    id: leaveType.id,
+    companyId: '',
+    employeeId: '',
+    leaveTypeId: leaveType.leaveTypeId,
+    usedDays: leaveType.usedDays,
+    totalDays: leaveType.totalDays,
+    remainingDays: leaveType.remainingDays,
+    createdAt: leaveType.createdAt,
+    updatedAt: leaveType.updatedAt,
+    createdBy: leaveType.createdBy,
+    updatedBy: leaveType.updatedBy,
+  };
+
+  const p = pct(leaveType.usedDays, leaveType.totalDays);
+  const danger = p >= 90;
+  const warn = p >= 70;
 
   return (
-    <div className={cn(
-      'group overflow-hidden rounded-xl border bg-card shadow-soft transition-shadow hover:shadow-md',
-      hasBalance ? 'border-border' : 'border-dashed border-border/70',
-    )}>
-      {/* Header */}
-      <div className="flex items-center gap-2.5 px-3.5 pt-3.5 pb-2.5">
-        <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-          style={{ background: `hsl(${hue} 55% 45%)` }}
-        >
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-semibold leading-tight">{employeeName}</p>
-          <p className="text-[10px] text-muted-foreground">{leaveTypeLabel}</p>
-        </div>
-        <div className="flex shrink-0 gap-0 opacity-0 transition-opacity group-hover:opacity-100">
+    <div className="border-t border-border/50 px-3.5 py-2.5 first:border-t-0">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="truncate text-xs font-medium text-foreground">{leaveType.leaveTypeNameAr}</p>
+        <div className="flex shrink-0 gap-0">
           <Button
             variant="ghost"
             size="icon"
             className="h-6 w-6 text-muted-foreground hover:text-primary"
-            onClick={() => onEdit(employeeId, balance)}
-            aria-label={hasBalance ? 'تعديل الرصيد' : 'إضافة رصيد'}
+            onClick={() => onEdit(flat)}
+            aria-label="تعديل الرصيد"
           >
-            {hasBalance ? <Pencil className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+            <Pencil className="h-3 w-3" />
           </Button>
-          {hasBalance ? (
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => onDelete(balance)}>
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          ) : null}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-destructive hover:bg-destructive/10"
+            onClick={() => onDelete(flat)}
+            aria-label="حذف الرصيد"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 divide-x divide-x-reverse divide-border/60 border-t border-border/60 bg-muted/30">
-        <div className="flex flex-col items-center gap-0 px-2 py-2">
-          <span className="font-display text-base font-bold tabular-nums text-foreground" dir="ltr">{total}</span>
+      <div className="grid grid-cols-3 divide-x divide-x-reverse divide-border/60 rounded-lg border border-border/50 bg-muted/20">
+        <div className="flex flex-col items-center gap-0 px-2 py-1.5">
+          <span className="font-display text-sm font-bold tabular-nums text-foreground" dir="ltr">{leaveType.totalDays}</span>
           <span className="text-[9px] text-muted-foreground">الإجمالي</span>
         </div>
-        <div className="flex flex-col items-center gap-0 px-2 py-2">
-          <span className="font-display text-base font-bold tabular-nums text-muted-foreground" dir="ltr">{used}</span>
+        <div className="flex flex-col items-center gap-0 px-2 py-1.5">
+          <span className="font-display text-sm font-bold tabular-nums text-muted-foreground" dir="ltr">{leaveType.usedDays}</span>
           <span className="text-[9px] text-muted-foreground">المستخدم</span>
         </div>
-        <div className="flex flex-col items-center gap-0 px-2 py-2">
-          <span className={cn('font-display text-base font-bold tabular-nums', danger ? 'text-destructive' : warn ? 'text-amber-500' : 'text-emerald-500')} dir="ltr">
-            {remaining}
+        <div className="flex flex-col items-center gap-0 px-2 py-1.5">
+          <span className={cn('font-display text-sm font-bold tabular-nums', danger ? 'text-destructive' : warn ? 'text-amber-500' : 'text-emerald-500')} dir="ltr">
+            {leaveType.remainingDays}
           </span>
           <span className="text-[9px] text-muted-foreground">المتبقي</span>
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="px-3.5 py-2">
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className={cn('h-full rounded-full transition-all duration-500', danger ? 'bg-destructive' : warn ? 'bg-amber-500' : 'bg-emerald-500')}
-            style={{ width: `${p}%` }}
-          />
-        </div>
-        <p className="mt-1 text-[9px] text-muted-foreground">
-          {hasBalance ? `${p}% مستخدم` : 'لا يوجد رصيد مسجّل'}
-        </p>
+      <div className="mt-2">
+        <BalanceBar used={leaveType.usedDays} total={leaveType.totalDays} color="bg-emerald-500" />
       </div>
+    </div>
+  );
+}
+
+function EmployeeBalanceGroupCard({
+  group,
+  onEdit,
+  onDelete,
+  onAddType,
+}: {
+  group: EmployeeLeaveBalanceGroupDto;
+  onEdit: (balance: EmployeeLeaveBalanceResponseDto) => void;
+  onDelete: (balance: EmployeeLeaveBalanceResponseDto) => void;
+  onAddType: (employeeId: string) => void;
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  const initials = group.employeeNameAr.split(' ').map((w) => w[0]).slice(0, 2).join('');
+  const hue = ((group.employeeId.charCodeAt(0) ?? 0) * 47) % 360;
+  const p = pct(group.usedDays, group.totalDays);
+  const danger = group.totalDays > 0 && p >= 90;
+  const warn = group.totalDays > 0 && p >= 70;
+
+  return (
+    <div className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-shadow hover:shadow-md">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-2.5 px-3.5 pt-3.5 pb-2.5 text-right transition-colors hover:bg-muted/20"
+        aria-expanded={expanded}
+      >
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+          style={{ background: `hsl(${hue} 55% 45%)` }}
+        >
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold leading-tight">{group.employeeNameAr}</p>
+          <p className="text-[10px] text-muted-foreground">{group.leaveTypes.length} نوع إجازة</p>
+        </div>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200',
+            expanded && 'rotate-180',
+          )}
+        />
+      </button>
+
+      <div className="grid grid-cols-3 divide-x divide-x-reverse divide-border/60 border-t border-border/60 bg-muted/30">
+        <div className="flex flex-col items-center gap-0 px-2 py-2">
+          <span className="font-display text-lg font-bold tabular-nums text-foreground" dir="ltr">{group.totalDays}</span>
+          <span className="text-[9px] text-muted-foreground">الإجمالي</span>
+        </div>
+        <div className="flex flex-col items-center gap-0 px-2 py-2">
+          <span className="font-display text-lg font-bold tabular-nums text-muted-foreground" dir="ltr">{group.usedDays}</span>
+          <span className="text-[9px] text-muted-foreground">المستخدم</span>
+        </div>
+        <div className="flex flex-col items-center gap-0 px-2 py-2">
+          <span className={cn('font-display text-lg font-bold tabular-nums', danger ? 'text-destructive' : warn ? 'text-amber-500' : 'text-emerald-500')} dir="ltr">
+            {group.remainingDays}
+          </span>
+          <span className="text-[9px] text-muted-foreground">المتبقي</span>
+        </div>
+      </div>
+
+      <div className="px-3.5 py-2">
+        <BalanceBar used={group.usedDays} total={group.totalDays} color="bg-primary" />
+      </div>
+
+      {expanded && (
+        <div className="border-t border-border/50 bg-card/50">
+          <div className="flex items-center justify-between border-b border-border/40 px-3.5 py-2">
+            <p className="text-[10px] font-medium text-muted-foreground">تفاصيل أنواع الإجازة</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-2 text-[10px] text-muted-foreground hover:text-primary"
+              onClick={() => onAddType(group.employeeId)}
+            >
+              <Plus className="h-3 w-3" />
+              إضافة نوع
+            </Button>
+          </div>
+          {group.leaveTypes.map((lt) => (
+            <LeaveTypeRow
+              key={lt.id}
+              leaveType={lt}
+              onEdit={(balance) => onEdit({ ...balance, employeeId: group.employeeId, companyId: group.companyId })}
+              onDelete={(balance) => onDelete({ ...balance, employeeId: group.employeeId, companyId: group.companyId })}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -407,13 +444,12 @@ function EmployeeBalanceCard({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function AnalyticsClient() {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = useDefaultCompanyId() ?? '';
 
-  const [balances, setBalances] = React.useState<EmployeeLeaveBalanceResponseDto[]>([]);
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
   const [defaultLeaveTypeId, setDefaultLeaveTypeId] = React.useState<string | null>(null);
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [metaLoading, setMetaLoading] = React.useState(true);
 
   const [employeeFilter, setEmployeeFilter] = React.useState('all');
 
@@ -421,71 +457,65 @@ export function AnalyticsClient() {
   const [dialogMode, setDialogMode] = React.useState<DialogMode>({ mode: 'create' });
   const [deleteTarget, setDeleteTarget] = React.useState<EmployeeLeaveBalanceResponseDto | null>(null);
 
-  // Load all data
   React.useEffect(() => {
     if (!companyId) return;
     void (async () => {
-      setLoading(true);
+      setMetaLoading(true);
       try {
-        const [balRes, ltRes, empRes] = await Promise.all([
-          leaveBalancesApi.getAll({ companyId, limit: 1000 }),
+        const [ltRes, empRes] = await Promise.all([
           loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true }),
           employeesApi.getAll({ companyId, limit: 1000 }),
         ]);
-        setBalances(balRes.items);
         setLeaveTypes(ltRes.items);
         setDefaultLeaveTypeId(ltRes.defaultLeaveTypeId ?? resolveDefaultLeaveTypeId(ltRes.items));
         setEmployees(empRes.items);
       } catch { toast.error('فشل تحميل البيانات'); }
-      finally { setLoading(false); }
+      finally { setMetaLoading(false); }
     })();
   }, [companyId]);
 
-  // Employee lookup map
-  const empMap = React.useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of employees) m.set(e.id, e.nameAr);
-    return m;
-  }, [employees]);
-
-  const grouped = React.useMemo(() => {
-    let rows = balances.map((b): AnalyticsEmployeeRow => ({
-      employeeId: b.employeeId,
-      employeeName: empMap.get(b.employeeId) ?? '—',
-      leaveTypeLabel: leaveTypeNameAr(leaveTypes, b.leaveTypeId),
-      balance: b,
-    }));
-
-    if (employeeFilter !== 'all') {
-      rows = rows.filter((r) => r.employeeId === employeeFilter);
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as EmployeeLeaveBalanceGroupDto[], total: 0 };
+    try {
+      const res = await leaveBalancesApi.getAll({
+        companyId,
+        page,
+        limit: pageSize,
+        ...(employeeFilter !== 'all' ? { employeeId: employeeFilter } : {}),
+      });
+      return { items: res.items, total: res.pagination.total };
+    } catch {
+      return { items: [], total: 0 };
     }
+  }, [companyId, employeeFilter]);
 
-    return rows.sort((a, b) => {
-      const byName = a.employeeName.localeCompare(b.employeeName, 'ar');
-      if (byName !== 0) return byName;
-      return a.leaveTypeLabel.localeCompare(b.leaveTypeLabel, 'ar');
-    });
-  }, [balances, empMap, leaveTypes, employeeFilter]);
+  const {
+    items: groups,
+    loading: listLoading,
+    pagination,
+    reload: reloadBalances,
+  } = useServerDirectoryPagination<EmployeeLeaveBalanceGroupDto>(loadPage, {
+    enabled: !!companyId && !metaLoading,
+    resetDeps: [companyId, employeeFilter],
+  });
 
-  const handleSaved = (b: EmployeeLeaveBalanceResponseDto) => {
-    setBalances((prev) => {
-      const idx = prev.findIndex((x) => x.id === b.id);
-      if (idx >= 0) { const n = [...prev]; n[idx] = b; return n; }
-      return [...prev, b];
-    });
+  const loading = metaLoading || listLoading;
+
+  const handleSaved = async () => {
+    await reloadBalances();
   };
 
-  const handleDeleted = (id: string) => {
-    setBalances((prev) => prev.filter((b) => b.id !== id));
+  const handleDeleted = async () => {
+    await reloadBalances();
   };
 
   const openCreate = React.useCallback(() => { setDialogMode({ mode: 'create' }); setFormOpen(true); }, []);
-  const openEdit = React.useCallback((employeeId: string, balance: EmployeeLeaveBalanceResponseDto | null) => {
-    if (balance) {
-      setDialogMode({ mode: 'edit', balance });
-    } else {
-      setDialogMode({ mode: 'create', employeeId });
-    }
+  const openEdit = React.useCallback((balance: EmployeeLeaveBalanceResponseDto) => {
+    setDialogMode({ mode: 'edit', balance });
+    setFormOpen(true);
+  }, []);
+  const openAddForEmployee = React.useCallback((employeeId: string) => {
+    setDialogMode({ mode: 'create', employeeId });
     setFormOpen(true);
   }, []);
 
@@ -525,36 +555,39 @@ export function AnalyticsClient() {
     [employeeFilter, employeeFilterOptions],
   );
 
-  const deleteEmpName = deleteTarget ? (empMap.get(deleteTarget.employeeId) ?? '—') : '';
+  const deleteEmpName = deleteTarget
+    ? (groups.find((g) => g.employeeId === deleteTarget.employeeId)?.employeeNameAr ?? '—')
+    : '';
   const deleteLtName = deleteTarget ? leaveTypeNameAr(leaveTypes, deleteTarget.leaveTypeId) : '';
 
   return (
-    <div className="space-y-5">
-      {/* Content */}
-      {loading ? (
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
+      {loading && groups.length === 0 ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : grouped.length === 0 ? (
+      ) : groups.length === 0 && !loading ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
           <p className="text-sm text-muted-foreground">
-            {balances.length === 0 ? 'لا توجد أرصدة إجازات مسجّلة' : 'لا نتائج تطابق الفلاتر الحالية'}
+            {pagination.total === 0 ? 'لا توجد أرصدة إجازات مسجّلة' : 'لا نتائج تطابق الفلاتر الحالية'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {grouped.map((row) => (
-            <EmployeeBalanceCard
-              key={row.balance?.id ?? `${row.employeeId}-${row.leaveTypeLabel}`}
-              employeeId={row.employeeId}
-              employeeName={row.employeeName}
-              leaveTypeLabel={row.leaveTypeLabel}
-              balance={row.balance}
+        <DirectoryPagedViews items={groups} serverPagination={pagination} loading={loading} resetDeps={[employeeFilter]}>
+          {(pageItems) => (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {pageItems.map((group) => (
+            <EmployeeBalanceGroupCard
+              key={group.employeeId}
+              group={group}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
+              onAddType={openAddForEmployee}
             />
           ))}
         </div>
+          )}
+        </DirectoryPagedViews>
       )}
 
       <BalanceFormDialog

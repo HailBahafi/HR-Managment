@@ -10,7 +10,6 @@ function emptyToNull(value: string | null | undefined): string | null {
 export function buildPersonalEmployeeUpdatePayload(draft: Employee): UpdateEmployeeDto {
   return {
     nameAr: draft.name?.trim() || undefined,
-    nameEn: emptyToNull(draft.nameEn),
     email: emptyToNull(draft.email),
     phone: emptyToNull(draft.phone),
     nationalId: emptyToNull(draft.nationalId),

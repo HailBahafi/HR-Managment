@@ -1,7 +1,6 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -29,7 +28,7 @@ export default function ContactsPage() {
   const model = useContactsDirectoryModel();
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <ContactsListViews model={model} />
 
       <HRSettingsFormDrawer
@@ -61,18 +60,10 @@ export default function ContactsPage() {
             />
           </FormField>
 
-          <FormField label="الاسم بالعربية">
+          <FormField label="الاسم">
             <Input
               value={model.form.fullNameAr}
               onChange={(e) => model.patch({ fullNameAr: e.target.value })}
-            />
-          </FormField>
-
-          <FormField label="الاسم بالإنجليزية">
-            <Input
-              dir="ltr"
-              value={model.form.fullNameEn}
-              onChange={(e) => model.patch({ fullNameEn: e.target.value })}
             />
           </FormField>
 
@@ -96,24 +87,6 @@ export default function ContactsPage() {
             </Select>
           </FormField>
 
-          <FormField label="الشركة الافتراضية">
-            <Select
-              value={model.form.defaultCompanyId || '_none'}
-              onValueChange={(v) => model.patch({
-                defaultCompanyId: v === '_none' ? '' : v,
-                defaultBranchId: '',
-              })}
-            >
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">— بدون —</SelectItem>
-                {model.companies.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nameAr}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-
           <FormField label="الفرع الافتراضي">
             <Select
               value={model.form.defaultBranchId || '_none'}
@@ -129,70 +102,63 @@ export default function ContactsPage() {
             </Select>
           </FormField>
 
-          <FormField label="معرّف الموظف">
-            <Input
-              dir="ltr"
-              value={model.form.employeeId}
-              onChange={(e) => model.patch({ employeeId: e.target.value })}
-            />
-          </FormField>
+          {model.editId && (
+            <FormField label="معرّف الموظف">
+              <Input
+                dir="ltr"
+                value={model.form.employeeId}
+                onChange={(e) => model.patch({ employeeId: e.target.value })}
+              />
+            </FormField>
+          )}
 
-          <FormField label="رابط الصورة">
-            <Input
-              dir="ltr"
-              value={model.form.avatarUrl}
-              onChange={(e) => model.patch({ avatarUrl: e.target.value })}
-              placeholder="https://…"
-            />
-          </FormField>
+          {model.editId && (
+            <FormField label="الحالة">
+              <Select value={model.form.status} onValueChange={(v) => model.patch({ status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {USER_STATUS_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+          )}
 
-          <FormField label="الحالة">
-            <Select value={model.form.status} onValueChange={(v) => model.patch({ status: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {USER_STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
+          {model.editId && (
+            <>
+              <FormField label="اللغة">
+                <Select value={model.form.languageCode} onValueChange={(v) => model.patch({ languageCode: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
 
-          <FormField label="اللغة">
-            <Select value={model.form.languageCode} onValueChange={(v) => model.patch({ languageCode: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LANGUAGE_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-
-          <FormField label="المنطقة الزمنية" span2>
-            <Select value={model.form.timezone} onValueChange={(v) => model.patch({ timezone: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {TIMEZONE_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-
-          <FormField label="ملاحظات" span2>
-            <Textarea
-              value={model.form.notes}
-              onChange={(e) => model.patch({ notes: e.target.value })}
-              rows={3}
-            />
-          </FormField>
+              <FormField label="المنطقة الزمنية" span2>
+                <Select value={model.form.timezone} onValueChange={(v) => model.patch({ timezone: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </>
+          )}
         </div>
 
         <div className="mt-4 space-y-3">
-          <div className="flex items-center justify-between rounded-xl border border-border p-4">
-            <span className="text-sm">نشط</span>
-            <Switch checked={model.form.isActive} onCheckedChange={(v) => model.patch({ isActive: v })} />
-          </div>
+          {model.editId && (
+            <div className="flex items-center justify-between rounded-xl border border-border p-4">
+              <span className="text-sm">نشط</span>
+              <Switch checked={model.form.isActive} onCheckedChange={(v) => model.patch({ isActive: v })} />
+            </div>
+          )}
           <div className="flex items-center justify-between rounded-xl border border-border p-4">
             <span className="text-sm">موثّق</span>
             <Switch checked={model.form.isVerified} onCheckedChange={(v) => model.patch({ isVerified: v })} />

@@ -20,18 +20,12 @@ import {
   EmptyState,
 } from '@/features/hr/requests/components/shared-ui';
 import { useDisciplinePayrollDeductionsDirectoryModel } from '@/features/hr/discipline/deductions/hooks/useDisciplinePayrollDeductionsDirectoryModel';
-import type { DeductionFetchParams } from '@/features/hr/discipline/deductions/hooks/useDisciplinePayrollDeductionsDirectoryModel';
-import {
-  toPayrollDeductionStatusDto,
-  toPayrollDeductionTypeDto,
-} from '@/features/hr/discipline/deductions/services/discipline-payroll-deductions.service';
 import {
   DEDUCTION_KIND_LABELS,
   DEDUCTION_STATUS_LABELS,
 } from '@/features/hr/discipline/lib/types';
 import type { HRDeductionStatus, HRViolationDeductionKind } from '@/features/hr/discipline/lib/types';
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { dateToYMD, matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { cn, formatNumber } from '@/shared/utils';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
 import {
@@ -46,6 +40,7 @@ import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { toast } from 'sonner';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
+import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 import type { HRDisciplinePayrollDeductionRecord } from '@/features/hr/discipline/lib/types';
 
 const DEDUCTION_STATUS_ORDER: readonly HRDeductionStatus[] = ['ready', 'posted', 'calculated', 'cancelled'];
@@ -58,12 +53,6 @@ const KIND_FILTER_OPTIONS: { value: KindFilter; label: string }[] = [
     .filter(([k]) => k !== 'none')
     .map(([value, label]) => ({ value: value as Exclude<HRViolationDeductionKind, 'none'>, label })),
 ];
-
-function createdAtToYmd(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return dateToYMD(d);
-}
 
 const STATUS_COLORS: Record<HRDeductionStatus, string> = {
   ready: STATUS_PILL.info,
@@ -81,7 +70,7 @@ const DEDUCTION_STATUS_TONE: Record<HRDeductionStatus, WorkflowStatusTone> = {
 
 export function DeductionsClient() {
   const m = useDisciplinePayrollDeductionsDirectoryModel();
-  const { deductions } = m;
+  const { setListFilters, items, pagination, filteredItems, dateFilteredItems, sourceDeductions } = m;
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
@@ -95,21 +84,15 @@ export function DeductionsClient() {
   const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
   const [detailRow, setDetailRow] = React.useState<HRDisciplinePayrollDeductionRecord | null>(null);
 
-  // Backend filtering: re-fetch when employee/status/kind filters change
   React.useEffect(() => {
-    const params: DeductionFetchParams = {};
-    if (selectedEmpIds.size === 1) {
-      params.employeeId = [...selectedEmpIds][0];
-    }
-    if (statusFilter !== 'all') {
-      params.status = toPayrollDeductionStatusDto(statusFilter);
-    }
-    if (kindFilter !== 'all') {
-      params.deductionType = toPayrollDeductionTypeDto(kindFilter as Exclude<HRViolationDeductionKind, 'none'>);
-    }
-    void m.reload(params);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEmpIds, statusFilter, kindFilter]);
+    setListFilters({
+      selectedEmpIds: [...selectedEmpIds],
+      statusFilter,
+      kindFilter,
+      dateFrom: dateBounds.from,
+      dateTo: dateBounds.to,
+    });
+  }, [selectedEmpIds, statusFilter, kindFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
     setDateBounds(b);
@@ -119,22 +102,15 @@ export function DeductionsClient() {
     setDateMeta(m);
   }, []);
 
-  const empPickerList = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const d of deductions) map.set(d.employeeId, d.employeeNameAr);
-    return [...map.entries()].map(([id, name]) => ({ id, name }));
-  }, [deductions]);
+  const empPickerList = React.useMemo(
+    () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [m.employees],
+  );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
-  // Date filter is applied locally (API doesn't support date range filtering)
-  const dateFiltered = React.useMemo(
-    () =>
-      deductions.filter((d) =>
-        matchesDateRange(createdAtToYmd(d.createdAt), dateBounds.from, dateBounds.to),
-      ),
-    [deductions, dateBounds.from, dateBounds.to],
-  );
+  const dateFiltered = dateFilteredItems;
+  const listFiltered = filteredItems;
 
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = { all: dateFiltered.length };
@@ -142,10 +118,6 @@ export function DeductionsClient() {
     for (const d of dateFiltered) counts[d.status] = (counts[d.status] ?? 0) + 1;
     return counts;
   }, [dateFiltered]);
-
-  // Status filter is sent to backend, but counts are computed from local dateFiltered
-  // The displayed list is dateFiltered (backend already handles employee/kind/status)
-  const listFiltered = dateFiltered;
 
   const dateRangeActive = dateMeta.hasRestriction;
 
@@ -284,18 +256,19 @@ export function DeductionsClient() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">
           {m.listError}
         </p>
       ) : null}
 
+      <DisciplineListViewport>
       {m.loading ? (
         <p className="text-sm text-muted-foreground py-8 text-center">جاري التحميل...</p>
       ) : (
         <>
-          {deductions.length === 0 ? (
+          {sourceDeductions.length === 0 ? (
             <EmptyState title="لا توجد استقطاعات" />
           ) : dateFiltered.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center px-4">
@@ -318,19 +291,21 @@ export function DeductionsClient() {
             </div>
           ) : listFiltered.length === 0 ? (
             <EmptyState title="لا توجد استقطاعات مطابقة للفلاتر المحددة." />
-          ) : viewMode === 'list' ? (
-            <DataTable
-              variant="directory"
-              alwaysShowTable
-              tableClassName="min-w-[640px]"
-              columns={columns}
-              data={listFiltered}
-              keyExtractor={(d) => d.id}
-              onRowClick={(d) => setDetailRow(d)}
-            />
           ) : (
-            <EntityActionCardGrid>
-              {listFiltered.map((d) => (
+            <DisciplinePaginatedList pagination={pagination}>
+              {viewMode === 'list' ? (
+              <DataTable
+                variant="directory"
+                alwaysShowTable
+                tableClassName="min-w-[640px]"
+                columns={columns}
+                data={items}
+                keyExtractor={(d) => d.id}
+                onRowClick={(d) => setDetailRow(d)}
+              />
+              ) : (
+              <EntityActionCardGrid>
+                {items.map((d) => (
                 <EntityActionCard
                   key={d.id}
                   reference={d.caseNumber}
@@ -363,11 +338,14 @@ export function DeductionsClient() {
                     ) : undefined
                   }
                 />
-              ))}
-            </EntityActionCardGrid>
+                ))}
+              </EntityActionCardGrid>
+              )}
+            </DisciplinePaginatedList>
           )}
         </>
       )}
+      </DisciplineListViewport>
 
       <TableRowDetailDialog
         open={detailRow != null}

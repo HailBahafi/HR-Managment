@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
+import { ensurePaginatedResult, fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { violationTypesApi } from '@/features/hr/discipline/lib/api/violation-types';
@@ -49,6 +50,20 @@ export type ViolationCaseEmployee = { id: string; nameAr: string };
 export type ViolationCaseType = {
   id: string; nameAr: string; code: string; isActive: boolean;
   needsWarning: boolean; needsInvestigation: boolean;
+};
+
+export type ViolationCaseListFilters = {
+  selectedEmpIds: string[];
+  statusFilter: 'all' | ViolationRecordStatus;
+  dateFrom: string;
+  dateTo: string;
+};
+
+const DEFAULT_LIST_FILTERS: ViolationCaseListFilters = {
+  selectedEmpIds: [],
+  statusFilter: 'all',
+  dateFrom: '',
+  dateTo: '',
 };
 
 function pickLatestInvestigation(investigations: ViolationInvestigationDto[]): ViolationInvestigationDto | null {
@@ -100,63 +115,155 @@ function mapRecord(
   };
 }
 
+function applyViolationCaseClientFilters(
+  cases: ViolationCaseRecord[],
+  filters: ViolationCaseListFilters,
+): ViolationCaseRecord[] {
+  const selected = new Set(filters.selectedEmpIds);
+  return cases.filter((c) => {
+    if (selected.size > 1 && !selected.has(c.employeeId)) return false;
+    if (filters.statusFilter !== 'all' && c.status !== filters.statusFilter) return false;
+    return true;
+  });
+}
+
 export function useViolationCasesDirectoryModel() {
-  const [cases, setCases] = React.useState<ViolationCaseRecord[]>([]);
+  const [listFilters, setListFilters] = React.useState<ViolationCaseListFilters>(DEFAULT_LIST_FILTERS);
+  const [sourceCases, setSourceCases] = React.useState<ViolationCaseRecord[]>([]);
   const [employees, setEmployees] = React.useState<ViolationCaseEmployee[]>([]);
   const [violationTypes, setViolationTypes] = React.useState<ViolationCaseType[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  const reload = React.useCallback(async (filterParams?: {
-    employeeId?: string;
-    violationDateFrom?: string;
-    violationDateTo?: string;
-  }) => {
-    setLoading(true);
-    setListError(null);
-    try {
-      const scope = await resolveOrganizationScope();
-      const cid = scope.companyId ?? null;
-      setCompanyId(cid);
+  const companyIdRef = React.useRef<string | null>(null);
+  const employeeMapRef = React.useRef<Map<string, string>>(new Map());
+  const typeMapRef = React.useRef<Map<string, string>>(new Map());
 
-      const recordsQuery = {
-        ...(cid ? { companyId: cid } : {}),
-        limit: 200,
-        ...(filterParams?.employeeId ? { employeeId: filterParams.employeeId } : {}),
-        ...(filterParams?.violationDateFrom ? { violationDateFrom: filterParams.violationDateFrom } : {}),
-        ...(filterParams?.violationDateTo ? { violationDateTo: filterParams.violationDateTo } : {}),
-      };
+  const bulkMode = Boolean(
+    listFilters.statusFilter !== 'all'
+    || listFilters.selectedEmpIds.length > 1,
+  );
 
-      const [employeesRes, typesRes, recordsRes] = await Promise.all([
-        employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-        violationTypesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-        violationRecordsApi.getAll(recordsQuery),
-      ]);
+  const apiEmployeeId = listFilters.selectedEmpIds.length === 1
+    ? listFilters.selectedEmpIds[0]
+    : undefined;
 
-      const employeeItems = ensurePaginatedResult(employeesRes).items;
-      const typeItems = ensurePaginatedResult(typesRes).items;
-      const recordItems = ensurePaginatedResult(recordsRes).items;
+  const loadReferenceData = React.useCallback(async () => {
+    const scope = await resolveOrganizationScope();
+    const cid = scope.companyId ?? null;
+    setCompanyId(cid);
+    companyIdRef.current = cid;
 
-      const employeeMap = new Map(employeeItems.map((e) => [e.id, e.nameAr]));
-      const typeMap = new Map(typeItems.map((t) => [t.id, t.nameAr]));
+    const [employeesRes, typesRes] = await Promise.all([
+      employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+      violationTypesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+    ]);
 
-      setEmployees(employeeItems.map((e) => ({ id: e.id, nameAr: e.nameAr })));
-      setViolationTypes(
-        typeItems.map((t) => ({ id: t.id, nameAr: t.nameAr, code: t.code, isActive: t.isActive, needsWarning: t.needsWarning ?? false, needsInvestigation: t.needsInvestigation ?? false })),
-      );
-      setCases(recordItems.map((r) => mapRecord(r, employeeMap, typeMap)));
-    } catch (err) {
-      const { displayMessage } = handleApiError(err, 'violation-records.load');
-      setListError(displayMessage);
-    } finally {
-      setLoading(false);
-    }
+    const employeeItems = ensurePaginatedResult(employeesRes).items;
+    const typeItems = ensurePaginatedResult(typesRes).items;
+    const employeeMap = new Map(employeeItems.map((e) => [e.id, e.nameAr]));
+    const typeMap = new Map(typeItems.map((t) => [t.id, t.nameAr]));
+    employeeMapRef.current = employeeMap;
+    typeMapRef.current = typeMap;
+
+    setEmployees(employeeItems.map((e) => ({ id: e.id, nameAr: e.nameAr })));
+    setViolationTypes(
+      typeItems.map((t) => ({
+        id: t.id,
+        nameAr: t.nameAr,
+        code: t.code,
+        isActive: t.isActive,
+        needsWarning: t.needsWarning ?? false,
+        needsInvestigation: t.needsInvestigation ?? false,
+      })),
+    );
   }, []);
 
   React.useEffect(() => {
-    void reload();
-  }, [reload]);
+    void loadReferenceData().catch(() => undefined);
+  }, [loadReferenceData]);
+
+  const buildRecordsQuery = React.useCallback(
+    (page: number, limit: number) => ({
+      ...(companyIdRef.current ? { companyId: companyIdRef.current } : {}),
+      page,
+      limit,
+      ...(apiEmployeeId ? { employeeId: apiEmployeeId } : {}),
+      ...(listFilters.dateFrom ? { violationDateFrom: listFilters.dateFrom } : {}),
+      ...(listFilters.dateTo ? { violationDateTo: listFilters.dateTo } : {}),
+    }),
+    [apiEmployeeId, listFilters.dateFrom, listFilters.dateTo],
+  );
+
+  const mapItems = React.useCallback(
+    (raw: ViolationRecordResponseDto[]) =>
+      raw.map((r) => mapRecord(r, employeeMapRef.current, typeMapRef.current)),
+    [],
+  );
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    setListError(null);
+    try {
+      if (!companyIdRef.current) {
+        const scope = await resolveOrganizationScope();
+        companyIdRef.current = scope.companyId ?? null;
+        setCompanyId(companyIdRef.current);
+      }
+      const res = await violationRecordsApi.getAll(buildRecordsQuery(page, pageSize));
+      const items = mapItems(res.items);
+      setSourceCases(items);
+      const filtered = applyViolationCaseClientFilters(items, listFilters);
+      return { items: bulkMode ? filtered : items, total: res.pagination.total };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'violation-records.load');
+      setListError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [buildRecordsQuery, bulkMode, listFilters, mapItems]);
+
+  const loadBulk = React.useCallback(async () => {
+    setListError(null);
+    try {
+      if (!companyIdRef.current) {
+        const scope = await resolveOrganizationScope();
+        companyIdRef.current = scope.companyId ?? null;
+        setCompanyId(companyIdRef.current);
+      }
+      const res = await fetchAllPaginatedItems((page, limit) =>
+        violationRecordsApi.getAll(buildRecordsQuery(page, limit)),
+      );
+      const items = mapItems(res.items);
+      setSourceCases(items);
+      const filtered = applyViolationCaseClientFilters(items, listFilters);
+      return { items: filtered, total: filtered.length };
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'violation-records.load');
+      setListError(displayMessage);
+      return { items: [], total: 0 };
+    }
+  }, [buildRecordsQuery, listFilters, mapItems]);
+
+  const {
+    items,
+    loading,
+    pagination,
+    reload,
+  } = useServerDirectoryPagination<ViolationCaseRecord>(loadPage, {
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [
+      apiEmployeeId,
+      listFilters.dateFrom,
+      listFilters.dateTo,
+      listFilters.statusFilter,
+      listFilters.selectedEmpIds.join(','),
+    ],
+  });
+
+  const filteredItems = React.useMemo(
+    () => applyViolationCaseClientFilters(sourceCases, listFilters),
+    [listFilters, sourceCases],
+  );
 
   const createCase = React.useCallback(
     async (payload: {
@@ -167,9 +274,10 @@ export function useViolationCasesDirectoryModel() {
       notes?: string | null;
       attachmentsNote?: string | null;
     }) => {
-      if (!companyId) throw new Error('تعذر تحديد الشركة');
+      const cid = companyId ?? companyIdRef.current;
+      if (!cid) throw new Error('تعذر تحديد الشركة');
       const dto: CreateViolationRecordDto = {
-        companyId,
+        companyId: cid,
         employeeId: payload.employeeId,
         violationTypeId: payload.violationTypeId,
         violationDate: payload.date,
@@ -207,5 +315,22 @@ export function useViolationCasesDirectoryModel() {
     [reload],
   );
 
-  return { cases, employees, violationTypes, companyId, loading, listError, createCase, updateCase, decideCase, deleteCase, reload };
+  return {
+    items,
+    filteredItems,
+    sourceCases,
+    employees,
+    violationTypes,
+    companyId,
+    loading,
+    pagination,
+    listError,
+    listFilters,
+    setListFilters,
+    createCase,
+    updateCase,
+    decideCase,
+    deleteCase,
+    reload,
+  };
 }

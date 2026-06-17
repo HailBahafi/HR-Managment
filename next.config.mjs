@@ -1,8 +1,18 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { loadEnvConfig } = require('@next/env');
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
+loadEnvConfig(appDir);
 const tailwindDir = path.join(appDir, 'node_modules', 'tailwindcss');
+
+const extraDevOrigins =
+  process.env.ALLOWED_DEV_ORIGINS?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean) ?? [];
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -18,10 +28,15 @@ const nextConfig = {
     },
   },
   reactStrictMode: true,
-  allowedDevOrigins: (process.env.ALLOWED_DEV_ORIGINS ?? '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean),
+  // Allow LAN, ngrok, and other tunnel hosts in dev (Next.js blocks cross-origin /_next/* by default).
+  allowedDevOrigins: [
+    '127.0.0.1',
+    '*.ngrok-free.app',
+    '*.ngrok-free.dev',
+    '*.ngrok.app',
+    '*.ngrok.io',
+    ...extraDevOrigins,
+  ],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },

@@ -10,7 +10,6 @@ import {
   type SendNotificationDto,
 } from '@/features/hr/notifications/lib/api/notifications';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
-import { companiesApi } from '@/features/hr/organization/lib/api/companies';
 import { branchesApi } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi } from '@/features/hr/organization/lib/api/departments';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
@@ -22,10 +21,9 @@ import {
 import type { NotificationAudienceKind } from '@/features/hr/notifications/lib/api/notifications';
 
 const REFERENCE_LIMIT = 200;
-const DEFAULT_LIMIT = 20;
+const DEFAULT_LIMIT = 30;
 
 export type NotificationsAdminFilters = {
-  companyId: string;
   category: 'all' | NotificationCategory;
   severity: 'all' | NotificationSeverity;
   excludeExpired: boolean;
@@ -35,7 +33,6 @@ export type NotificationsAdminFilters = {
 };
 
 const DEFAULT_FILTERS: NotificationsAdminFilters = {
-  companyId: 'all',
   category: 'all',
   severity: 'all',
   excludeExpired: true,
@@ -55,6 +52,7 @@ function audienceSummaryFromSnapshot(
 }
 
 function buildListParams(
+  companyId: string | null,
   filters: NotificationsAdminFilters,
   dateBounds: { from: string; to: string },
   page: number,
@@ -63,7 +61,7 @@ function buildListParams(
   return {
     page,
     limit,
-    ...(filters.companyId !== 'all' ? { companyId: filters.companyId } : {}),
+    ...(companyId ? { companyId } : {}),
     ...(filters.category !== 'all' ? { category: filters.category } : {}),
     ...(filters.severity !== 'all' ? { severity: filters.severity } : {}),
     ...(dateBounds.from ? { from: dateBounds.from } : {}),
@@ -83,7 +81,6 @@ export function useNotificationsAdminDirectoryModel() {
   const [filters, setFilters] = React.useState<NotificationsAdminFilters>(DEFAULT_FILTERS);
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
   const [companyId, setCompanyId] = React.useState<string | null>(null);
-  const [companyOptions, setCompanyOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [branchOptions, setBranchOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [departmentOptions, setDepartmentOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [employeeOptions, setEmployeeOptions] = React.useState<{
@@ -104,8 +101,7 @@ export function useNotificationsAdminDirectoryModel() {
       const resolvedCompanyId = scope.companyId ?? null;
       setCompanyId(resolvedCompanyId);
 
-      const [companiesRes, branchesRes, departmentsRes, employeesRes] = await Promise.all([
-        companiesApi.getAll({ limit: REFERENCE_LIMIT }),
+      const [branchesRes, departmentsRes, employeesRes] = await Promise.all([
         branchesApi.getAll(
           resolvedCompanyId ? { companyId: resolvedCompanyId, limit: REFERENCE_LIMIT } : { limit: REFERENCE_LIMIT },
         ),
@@ -117,12 +113,6 @@ export function useNotificationsAdminDirectoryModel() {
         ),
       ]);
 
-      setCompanyOptions(
-        ensurePaginatedResult(companiesRes).items.map((c) => ({
-          value: c.id,
-          label: c.nameAr ?? c.nameEn ?? c.code,
-        })),
-      );
       setBranchOptions(
         ensurePaginatedResult(branchesRes).items.map((b) => ({ value: b.id, label: b.nameAr })),
       );
@@ -151,7 +141,7 @@ export function useNotificationsAdminDirectoryModel() {
     setListError(null);
     try {
       const notifRes = await notificationsApi.list(
-        buildListParams(filters, dateBounds, page, limit),
+        buildListParams(companyId, filters, dateBounds, page, limit),
       );
       const paginated = ensurePaginatedResult(notifRes);
       setNotifications(
@@ -170,7 +160,7 @@ export function useNotificationsAdminDirectoryModel() {
     } finally {
       setLoading(false);
     }
-  }, [dateBounds, filters, limit, page]);
+  }, [companyId, dateBounds, filters, limit, page]);
 
   React.useEffect(() => {
     void loadReferenceData();
@@ -190,8 +180,7 @@ export function useNotificationsAdminDirectoryModel() {
   }, []);
 
   const activeFilterCount =
-    (filters.companyId !== 'all' ? 1 : 0)
-    + (filters.category !== 'all' ? 1 : 0)
+    (filters.category !== 'all' ? 1 : 0)
     + (filters.severity !== 'all' ? 1 : 0)
     + (dateBounds.from || dateBounds.to ? 1 : 0)
     + (!filters.excludeExpired ? 1 : 0)
@@ -235,7 +224,6 @@ export function useNotificationsAdminDirectoryModel() {
     patchFilters,
     dateBounds,
     setDateBounds,
-    companyOptions,
     activeFilterCount,
     clearFilters,
     companyId,

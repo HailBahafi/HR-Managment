@@ -20,6 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { EmployeeAssignmentStatusDto } from '@/features/hr/organization/employees/lib/api/employee-assignments';
@@ -212,8 +213,7 @@ export function EmployeeAssignmentEditDialog({ model }: Props) {
           </div>
         ) : null}
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="ghost" onClick={() => setEditAssignment(null)}>إلغاء</Button>
+        <DialogFooter className={dialogFormFooterClass}>
           <Button
             type="button"
             className="gap-2"
@@ -227,6 +227,7 @@ export function EmployeeAssignmentEditDialog({ model }: Props) {
             )}
             حفظ التعديل
           </Button>
+          <Button type="button" variant="ghost" onClick={() => setEditAssignment(null)}>إلغاء</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
