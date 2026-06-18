@@ -57,5 +57,7 @@ export async function createEmployeeUserAccount(
 export function resolveCreatedUserId(
   response: UserResponseDto | { userId?: string | null; user?: { id?: string } | null; id?: string },
 ): string | null {
-  return response.userId ?? response.user?.id ?? response.id ?? null;
+  if ('userId' in response && response.userId) return response.userId;
+  if ('user' in response && response.user?.id) return response.user.id;
+  return response.id ?? null;
 }

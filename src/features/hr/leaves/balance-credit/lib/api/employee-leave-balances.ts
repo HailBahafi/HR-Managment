@@ -8,7 +8,6 @@ import type {
 export type {
   EmployeeLeaveBalanceGroupDto,
   EmployeeLeaveBalanceResponseDto,
-  EmployeeLeaveBalanceListQuery,
 };
 
 export type EmployeeLeaveBalanceListQuery = LeaveBalanceListQuery;

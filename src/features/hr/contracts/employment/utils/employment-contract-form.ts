@@ -140,6 +140,9 @@ export function employmentFormToDraft(
     supersededByContractId: null,
     earlyTerminationReason: null,
     articleIds: v.articleIds,
+    employeeSigned: false,
+    rejectionReason: null,
+    signedAt: null,
   };
 }
 

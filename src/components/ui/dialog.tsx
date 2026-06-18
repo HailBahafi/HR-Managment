@@ -95,6 +95,4 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
-  dialogConfirmFooterClass,
-  dialogFormFooterClass,
 };
