@@ -17,6 +17,7 @@ import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown, MinimalDropdown,
 } from '@/features/hr/requests/components/shared-ui';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { duplicateAdvanceNumberMessage, isDuplicateAdvanceNumberError } from '@/features/hr/contracts/lib/employee-advance-errors';
 import {
   useHREmployeeAdvancesStore,
   ADVANCE_STATUS_LABELS,
@@ -120,6 +121,7 @@ export function EmployeeAdvancesClient() {
   const [editId, setEditId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<DraftForm>(EMPTY_FORM);
   const [error, setError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
 
@@ -222,6 +224,7 @@ export function EmployeeAdvancesClient() {
       monthlyInstallmentAmount,
     };
     try {
+      setSaving(true);
       if (editId) {
         await update(editId, payload);
         toast.success('تم تحديث السلفة.');
@@ -231,7 +234,15 @@ export function EmployeeAdvancesClient() {
       }
       setDrawerOpen(false);
     } catch (e) {
-      setError(handleApiError(e, 'employee-advances/save').displayMessage);
+      if (isDuplicateAdvanceNumberError(e)) {
+        setError(duplicateAdvanceNumberMessage());
+      } else if (e instanceof Error && e.message === duplicateAdvanceNumberMessage()) {
+        setError(e.message);
+      } else {
+        setError(handleApiError(e, 'employee-advances/save').displayMessage);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -473,7 +484,7 @@ export function EmployeeAdvancesClient() {
       <HRSettingsFormDrawer
         open={drawerOpen} onOpenChange={setDrawerOpen}
         title={editId ? 'تعديل السلفة' : 'سلفة جديدة'}
-        onSave={() => void handleSave()} error={error}
+        onSave={() => void handleSave()} saveDisabled={saving} error={error}
       >
         <FormField label="الموظف" required>
           <SearchableDropdown

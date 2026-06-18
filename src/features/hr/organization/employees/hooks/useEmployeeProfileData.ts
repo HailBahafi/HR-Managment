@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { useEmployeeProfileAttendance } from '@/features/hr/organization/employees/hooks/useEmployeeProfileAttendance';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { violationRecordsApi, type ViolationRecordResponseDto } from '@/features/hr/discipline/lib/api/violation-records';
-import { leaveRequestsApi, type LeaveRequestResponseDto } from '@/features/hr/leaves/lib/api/leave-requests';
 import { employeeContractsApi } from '@/features/hr/contracts/lib/contracts-api';
 import { mapEmployeeContractFromApi, type HRContractRecord } from '@/features/hr/contracts/lib/contracts-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
@@ -24,17 +24,45 @@ export type EmployeePayslipCounts = {
   paid: number;
 };
 
-export type { ViolationRecordResponseDto, LeaveRequestResponseDto };
+export type { ViolationRecordResponseDto };
 
-const EMPTY_PAGINATION = { page: 1, limit: 100, total: 0, totalPages: 0 };
+function mapViolationRecord(v: ViolationRecordResponseDto) {
+  const vt = v.violationType;
+  const normKind = (k: string | null | undefined): 'amount' | 'hours' | 'day' =>
+    k === 'amount' ? 'amount' : k === 'days' || k === 'day' ? 'day' : 'hours';
+  return {
+    id: v.id,
+    employeeId: v.employeeId,
+    recordNumber: v.recordNumber,
+    typeNameAr: vt?.nameAr || v.description || 'مخالفة',
+    typeCode: vt?.code ?? '',
+    date: v.violationDate,
+    description: v.description,
+    status: v.status ?? 'pending',
+    notes: v.notes ?? '',
+    attachmentsNote: v.attachmentsNote ?? '',
+    typeHasDeduction: vt?.hasDeduction ?? false,
+    typeDeductionValue: vt?.deductionValue ? Number(vt.deductionValue) : 0,
+    typeDeductionKind: normKind(vt?.deductionKind),
+    needsInvestigation: vt?.needsInvestigation ?? v.violationTypeNeedsInvestigation ?? false,
+    investigations: (v.investigations ?? []).map((inv) => ({
+      id: inv.id,
+      investigationDate: inv.investigationDate,
+      employeeStatement: inv.employeeStatement ?? '',
+      witnessStatement: inv.witnessStatement ?? '',
+      result: inv.result,
+      recommendation: inv.recommendation,
+      deductionKind: normKind(inv.deductionType),
+      deductionValue: inv.deductionValue ? Number(inv.deductionValue) : 0,
+    })),
+  };
+}
 
 export function useEmployeeProfileData(
   employee: Employee,
   activeSection: EmployeeProfileSectionId,
 ) {
   const companyId = useDefaultCompanyId();
-  const [violations, setViolations] = React.useState<ViolationRecordResponseDto[]>([]);
-  const [requestLeaveRows, setRequestLeaveRows] = React.useState<LeaveRequestResponseDto[]>([]);
   const [employeeContracts, setEmployeeContracts] = React.useState<HRContractRecord[]>([]);
   const [employeePayslipSeries, setEmployeePayslipSeries] = React.useState<Payslip[]>([]);
   const [payslipCounts, setPayslipCounts] = React.useState<EmployeePayslipCounts | null>(null);
@@ -47,33 +75,28 @@ export function useEmployeeProfileData(
     activeSection === 'attendance',
   );
 
-  React.useEffect(() => {
-    if (!employee.id || activeSection !== 'violations') return;
-    let cancelled = false;
-    void violationRecordsApi
-      .getAll({ employeeId: employee.id, limit: 100 })
-      .then((res) => {
-        if (!cancelled) setViolations(res.items);
-      })
-      .catch(() => {
-        if (!cancelled) setViolations([]);
-      });
-    return () => { cancelled = true; };
-  }, [employee.id, activeSection]);
+  const loadViolationsPage = React.useCallback(async (page: number, pageSize: number) => {
+    const res = await violationRecordsApi.getAll({
+      employeeId: employee.id,
+      companyId: companyId ?? undefined,
+      page,
+      limit: pageSize,
+    });
+    return {
+      items: res.items,
+      total: res.pagination?.total ?? res.items.length,
+    };
+  }, [employee.id, companyId]);
 
-  React.useEffect(() => {
-    if (!employee.id || activeSection !== 'requests') return;
-    let cancelled = false;
-    void leaveRequestsApi
-      .getAll({ employeeId: employee.id, limit: 100 })
-      .then((res) => {
-        if (!cancelled) setRequestLeaveRows(res.items);
-      })
-      .catch(() => {
-        if (!cancelled) setRequestLeaveRows([]);
-      });
-    return () => { cancelled = true; };
-  }, [employee.id, activeSection]);
+  const {
+    items: violationRecords,
+    loading: violationsLoading,
+    pagination: violationsPagination,
+    total: violationsTotal,
+  } = useServerDirectoryPagination<ViolationRecordResponseDto>(loadViolationsPage, {
+    enabled: activeSection === 'violations' && !!employee.id,
+    resetDeps: [employee.id, companyId],
+  });
 
   React.useEffect(() => {
     if (!employee.id || activeSection !== 'contracts' || !companyId) return;
@@ -159,76 +182,11 @@ export function useEmployeeProfileData(
     [attendance.shiftTemplates],
   );
 
-  const allEmployeeSummaries = React.useMemo(
-    () =>
-      attendance.daySummaries.map((s) => ({
-        id: s.id,
-        employeeId: s.employeeId,
-        employeeName: s.employeeNameAr,
-        date: s.workDate,
-        templateId: s.shiftAssignmentId,
-        status: s.status,
-        lateMinutes: s.lateMinutes,
-        earlyLeaveMinutes: s.earlyLeaveMinutes,
-        overtimeMinutes: s.overtimeMinutes,
-        workedMinutes: s.workedMinutes,
-        notes: s.notes ?? undefined,
-      })),
-    [attendance.daySummaries],
-  );
-
-  const allEmployeeEvents = attendance.events;
+  const allEmployeeEvents = attendance.employeeEvents;
 
   const employeeViolations = React.useMemo(
-    () =>
-      violations.map((v) => {
-        const vt = v.violationType;
-        const normKind = (k: string | null | undefined): 'amount' | 'hours' | 'day' =>
-          k === 'amount' ? 'amount' : k === 'days' || k === 'day' ? 'day' : 'hours';
-        return {
-          id: v.id,
-          employeeId: v.employeeId,
-          recordNumber: v.recordNumber,
-          typeNameAr: vt?.nameAr || v.description || 'مخالفة',
-          typeCode: vt?.code ?? '',
-          date: v.violationDate,
-          description: v.description,
-          status: v.status ?? 'pending',
-          notes: v.notes ?? '',
-          attachmentsNote: v.attachmentsNote ?? '',
-          typeHasDeduction: vt?.hasDeduction ?? false,
-          typeDeductionValue: vt?.deductionValue ? Number(vt.deductionValue) : 0,
-          typeDeductionKind: normKind(vt?.deductionKind),
-          needsInvestigation: vt?.needsInvestigation ?? v.violationTypeNeedsInvestigation ?? false,
-          investigations: (v.investigations ?? []).map((inv) => ({
-            id: inv.id,
-            investigationDate: inv.investigationDate,
-            employeeStatement: inv.employeeStatement ?? '',
-            witnessStatement: inv.witnessStatement ?? '',
-            result: inv.result,
-            recommendation: inv.recommendation,
-            deductionKind: normKind(inv.deductionType),
-            deductionValue: inv.deductionValue ? Number(inv.deductionValue) : 0,
-          })),
-        };
-      }),
-    [violations],
-  );
-
-  const employeeRequests = React.useMemo(
-    () =>
-      requestLeaveRows.map((r) => ({
-        id: r.id,
-        employeeId: r.employeeId,
-        type: 'leave' as const,
-        title: r.noteAr ?? 'طلب إجازة',
-        status: r.status,
-        submittedAt: r.createdAt,
-        fromDate: r.startDate ?? undefined,
-        toDate: r.endDate ?? undefined,
-        requestNumber: undefined as string | undefined,
-      })),
-    [requestLeaveRows],
+    () => violationRecords.map(mapViolationRecord),
+    [violationRecords],
   );
 
   return {
@@ -237,18 +195,17 @@ export function useEmployeeProfileData(
     manager: null as { id: string; name: string } | null,
     ...attendance,
     allEmployeeEvents,
-    allEmployeeSummaries,
     employeeAssignments,
     shiftTemplates,
-    employeeSummaries: allEmployeeSummaries,
     employeeEvents: allEmployeeEvents,
     employeeCheckpoints: attendance.checkpointLinks,
     checkpoints: attendance.checkpoints,
     linksLoadError: attendance.linksLoadError,
-    violations,
+    violationsLoading,
+    violationsPagination,
+    violationsTotal,
     employeeViolations,
     employeeContracts,
-    employeeRequests,
     employeePayslipSeries,
     payslipCounts,
     roseFormsCount,

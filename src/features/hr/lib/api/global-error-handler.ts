@@ -3,6 +3,7 @@ import { ApiError } from '@/features/hr/lib/api/client';
 import type { ApiErrorEnvelope } from '@/features/hr/lib/api/types';
 import { isApiErrorEnvelope } from '@/features/hr/lib/api/types';
 import { toast } from 'sonner';
+import { duplicateAdvanceNumberMessage, isDuplicateAdvanceNumberError } from '@/features/hr/contracts/lib/employee-advance-errors';
 
 export type ApiErrorHandleResult = {
   /** Human-readable backend message for toasts and inline UI. */
@@ -61,10 +62,15 @@ export function handleApiError(error: unknown, context?: string): ApiErrorHandle
   } else if (status === 403) {
     toast.error(envelope?.message ?? 'غير مصرح');
   } else if (status >= 500) {
-    toast.error(envelope?.message ?? 'خطأ في الخادم');
+    const toastMessage = isDuplicateAdvanceNumberError(error)
+      ? duplicateAdvanceNumberMessage()
+      : (envelope?.message ?? 'خطأ في الخادم');
+    toast.error(toastMessage);
   }
 
-  const displayMessage = envelope?.message?.trim() || error.message;
+  const displayMessage = isDuplicateAdvanceNumberError(error)
+    ? duplicateAdvanceNumberMessage()
+    : (envelope?.message?.trim() || error.message);
   const debugPayload = isDevEnv() ? formatApiErrorForDisplay(error) : null;
 
   return { displayMessage, debugPayload, envelope, status };

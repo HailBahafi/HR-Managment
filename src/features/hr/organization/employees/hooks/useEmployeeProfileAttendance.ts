@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { toast } from 'sonner';
 import type { Employee } from '@/features/hr/organization/employees/types';
-import { attendanceDaySummariesApi, type DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { attendanceEventsApi, type AttendanceEventResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
 import { shiftTemplatesApi, type ShiftTemplateResponseDto } from '@/features/hr/attendance/lib/api/shift-templates';
 import { shiftAssignmentsApi, type ShiftAssignmentResponseDto } from '@/features/hr/attendance/lib/api/shift-assignments';
@@ -12,13 +11,15 @@ import { checkInPointsApi } from '@/features/hr/attendance/lib/api/check-in-poin
 import { mapCheckInPointLinkResponse } from '@/features/hr/attendance/checkpoint-links/services/check-in-point-links.service';
 import { mapCheckInPointResponse } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import type { AttendanceCheckInPoint, AttendanceCheckInPointLink } from '@/features/hr/attendance/lib/types';
 import { employeeAssignmentsApi } from '@/features/hr/organization/employees/lib/api/employee-assignments';
+import { resolveAttendanceDateRange } from '@/features/hr/organization/employees/lib/resolve-attendance-date-range';
 import { resolvePrimaryAssignment } from '@/features/hr/organization/employees/services/employee-assignments.service';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { randomUUID } from '@/shared/utils';
 
-export type { DaySummaryResponseDto, AttendanceEventResponseDto, ShiftTemplateResponseDto, ShiftAssignmentResponseDto };
+export type { AttendanceEventResponseDto, ShiftTemplateResponseDto, ShiftAssignmentResponseDto };
 
 export function useEmployeeProfileAttendance(
   employee: Employee,
@@ -48,8 +49,6 @@ export function useEmployeeProfileAttendance(
     return () => { cancelled = true; };
   }, [employee.id, enabled, companyIdProp, defaultCompanyId]);
 
-  const [daySummaries, setDaySummaries] = React.useState<DaySummaryResponseDto[]>([]);
-  const [events, setEvents] = React.useState<AttendanceEventResponseDto[]>([]);
   const [shiftTemplates, setShiftTemplates] = React.useState<ShiftTemplateResponseDto[]>([]);
   const [shiftAssignments, setShiftAssignments] = React.useState<ShiftAssignmentResponseDto[]>([]);
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
@@ -57,6 +56,14 @@ export function useEmployeeProfileAttendance(
 
   const [attFrom, setAttFrom] = React.useState('');
   const [attTo, setAttTo] = React.useState('');
+
+  const effectiveRange = React.useMemo(
+    () => resolveAttendanceDateRange(attFrom || undefined, attTo || undefined),
+    [attFrom, attTo],
+  );
+
+  const [attendanceEvents, setAttendanceEvents] = React.useState<AttendanceEventResponseDto[]>([]);
+  const [attendanceEventsLoading, setAttendanceEventsLoading] = React.useState(false);
 
   const reloadAttendanceLinks = React.useCallback(async () => {
     if (!employee.id) return;
@@ -113,31 +120,31 @@ export function useEmployeeProfileAttendance(
 
   React.useEffect(() => {
     if (!employee.id || !enabled) return;
-    void (async () => {
-      try {
-        const [summRes, evtRes] = await Promise.all([
-          attendanceDaySummariesApi.getAll({
-            employeeId: employee.id,
-            limit: 500,
-            ...(companyId ? { companyId } : {}),
-            ...(attFrom ? { from: attFrom } : {}),
-            ...(attTo ? { to: attTo } : {}),
-          }),
-          attendanceEventsApi.getAll({
-            employeeId: employee.id,
-            limit: 500,
-            ...(companyId ? { companyId } : {}),
-            ...(attFrom ? { workDateFrom: attFrom } : {}),
-            ...(attTo ? { workDateTo: attTo } : {}),
-          }),
-        ]);
-        setDaySummaries(summRes.items);
-        setEvents(evtRes.items);
-      } catch {
-        // silently ignore summary/event load errors
-      }
-    })();
-  }, [employee.id, attFrom, attTo, enabled, companyId]);
+    let cancelled = false;
+    setAttendanceEventsLoading(true);
+
+    void fetchAllPaginatedItems((page, limit) =>
+      attendanceEventsApi.getAll({
+        employeeId: employee.id,
+        page,
+        limit,
+        ...(companyId ? { companyId } : {}),
+        workDateFrom: effectiveRange.from,
+        workDateTo: effectiveRange.to,
+      }),
+    )
+      .then((res) => {
+        if (!cancelled) setAttendanceEvents(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setAttendanceEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setAttendanceEventsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [employee.id, enabled, effectiveRange.from, effectiveRange.to, companyId]);
 
   React.useEffect(() => {
     if (!employee.id || !enabled) return;
@@ -151,29 +158,7 @@ export function useEmployeeProfileAttendance(
     });
   }, [employee.id, enabled, reloadAttendanceLinks]);
 
-  const employeeSummaries = React.useMemo(
-    () => daySummaries.filter(
-      (s) => (!attFrom || s.workDate >= attFrom) && (!attTo || s.workDate <= attTo),
-    ),
-    [daySummaries, attFrom, attTo],
-  );
-
-  const employeeEvents = React.useMemo(
-    () => events.filter(
-      (e) => (!attFrom || e.workDate >= attFrom) && (!attTo || e.workDate <= attTo),
-    ),
-    [events, attFrom, attTo],
-  );
-
-  const attendanceStats = React.useMemo(() => {
-    const lateMinutes = employeeSummaries.reduce((a, s) => a + s.lateMinutes, 0);
-    return {
-      presentDays: employeeSummaries.filter((s) => s.status === 'present').length,
-      absentDays: employeeSummaries.filter((s) => s.status === 'absent').length,
-      earlyLeaveDays: employeeSummaries.filter((s) => s.earlyLeaveMinutes > 0).length,
-      lateHours: lateMinutes / 60,
-    };
-  }, [employeeSummaries]);
+  const employeeEvents = attendanceEvents;
 
   const [cpOpen, setCpOpen] = React.useState(false);
   const [cpDate, setCpDate] = React.useState(() => new Date().toISOString().slice(0, 10));
@@ -284,15 +269,13 @@ export function useEmployeeProfileAttendance(
     setAttFrom,
     attTo,
     setAttTo,
-    daySummaries,
-    events,
+    effectiveRange,
+    attendanceEventsLoading,
     shiftTemplates,
     shiftAssignments,
     checkpoints,
     checkpointLinks,
-    employeeSummaries,
     employeeEvents,
-    attendanceStats,
     cpOpen,
     setCpOpen,
     cpDate,

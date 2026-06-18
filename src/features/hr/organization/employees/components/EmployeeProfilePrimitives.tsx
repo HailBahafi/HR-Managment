@@ -5,13 +5,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/utils';
 
-export function fmtAttendanceHours(hours: number): string {
-  if (!Number.isFinite(hours) || hours === 0) return '0';
-  const rounded = Math.round(hours * 10) / 10;
-  const n = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
-  return `${n} س`;
-}
-
 const ACCENT_VALUE_STYLES = {
   primary: 'text-primary bg-primary/5 border-primary/15',
   gold: 'text-gold bg-gold/5 border-gold/20',

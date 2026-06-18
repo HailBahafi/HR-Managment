@@ -21,6 +21,7 @@ import {
 import type { ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 
 export type { ApiLeaveRequest as LeaveRequestResponseDto, EmployeeLeaveBalanceResponseDto, LeaveTypeResponseDto };
 
@@ -64,7 +65,7 @@ const LEAVE_STATUS_LABELS: Record<LeaveRequestStatusNew, string> = {
 export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
   const companyId = getDefaultCompanyId() ?? '';
 
-  const [leaveRequests, setLeaveRequests] = React.useState<ApiLeaveRequest[]>([]);
+  const [totalLeaveRequestCount, setTotalLeaveRequestCount] = React.useState(0);
   const [leaveBalances, setLeaveBalances] = React.useState<EmployeeLeaveBalanceResponseDto[]>([]);
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
   const [leaveRequestTypes, setLeaveRequestTypes] = React.useState<ApiRequestType[]>([]);
@@ -81,11 +82,11 @@ export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
     setLeavesError(null);
     try {
       const scopedCompanyId = companyId || undefined;
-      const [reqRes, balRes, typesBundle, catalogRequestTypes] = await Promise.all([
+      const [countRes, balRes, typesBundle, catalogRequestTypes] = await Promise.all([
         leaveRequestsNewApi.list({
           employeeId: employee.id,
           companyId: scopedCompanyId,
-          limit: 200,
+          limit: 1,
         }),
         leaveBalancesApi.getAll({
           employeeId: employee.id,
@@ -96,18 +97,18 @@ export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
         scopedCompanyId ? loadLeaveRequestTypes(scopedCompanyId) : Promise.resolve([] as ApiRequestType[]),
       ]);
 
-      setLeaveRequests(reqRes.items);
+      setTotalLeaveRequestCount(countRes.pagination?.total ?? countRes.items.length);
       setLeaveBalances(flattenLeaveBalanceGroups(balRes.items));
       setLeaveTypes(typesBundle.items);
       setLeaveRequestTypes(
         catalogRequestTypes.length > 0
           ? catalogRequestTypes
-          : leaveRequestTypesFromHistory(reqRes.items),
+          : leaveRequestTypesFromHistory([]),
       );
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'employee-profile.leaves');
       setLeavesError(displayMessage);
-      setLeaveRequests([]);
+      setTotalLeaveRequestCount(0);
       setLeaveBalances([]);
     } finally {
       setLeavesLoading(false);
@@ -117,6 +118,37 @@ export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
   React.useEffect(() => {
     void reloadLeaves();
   }, [reloadLeaves]);
+
+  const loadLeaveRequestsPage = React.useCallback(async (page: number, pageSize: number) => {
+    const scopedCompanyId = companyId || undefined;
+    const res = await leaveRequestsNewApi.list({
+      employeeId: employee.id,
+      companyId: scopedCompanyId,
+      page,
+      limit: pageSize,
+      ...(leaveTypeFilter !== 'all' ? { leaveTypeId: leaveTypeFilter } : {}),
+      ...(leaveStatusFilter !== 'all' ? { status: leaveStatusFilter } : {}),
+    });
+    return {
+      items: res.items,
+      total: res.pagination?.total ?? res.items.length,
+    };
+  }, [companyId, employee.id, leaveTypeFilter, leaveStatusFilter]);
+
+  const {
+    items: filteredLeaveRequests,
+    loading: leaveRequestsLoading,
+    pagination: leaveRequestsPagination,
+    reload: reloadLeaveRequests,
+  } = useServerDirectoryPagination<ApiLeaveRequest>(loadLeaveRequestsPage, {
+    enabled: enabled && !!employee.id,
+    resetDeps: [employee.id, companyId, leaveTypeFilter, leaveStatusFilter],
+  });
+
+  const reloadLeavesAndRequests = React.useCallback(async () => {
+    await reloadLeaves();
+    await reloadLeaveRequests();
+  }, [reloadLeaves, reloadLeaveRequests]);
 
   const leaveBalanceCards = React.useMemo((): EmployeeLeaveBalanceCard[] => {
     const year = new Date().getFullYear();
@@ -146,25 +178,19 @@ export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
   }, [leaveBalances, leaveTypes]);
 
   const leaveSummary = React.useMemo((): EmployeeLeaveSummary => {
-    const pendingCount = leaveRequests.filter((r) => r.status === 'pending').length;
-    const approvedCount = leaveRequests.filter((r) => r.status === 'approved').length;
+    const pendingCount = filteredLeaveRequests.filter((r) => r.status === 'pending').length;
+    const approvedCount = filteredLeaveRequests.filter((r) => r.status === 'approved').length;
     return {
       totalEntitled: leaveBalanceCards.reduce((s, c) => s + c.entitled, 0),
       totalUsed: leaveBalanceCards.reduce((s, c) => s + c.used, 0),
       totalAvailable: leaveBalanceCards.reduce((s, c) => s + c.available, 0),
       pendingCount,
       approvedCount,
-      requestCount: leaveRequests.length,
+      requestCount: totalLeaveRequestCount,
     };
-  }, [leaveBalanceCards, leaveRequests]);
+  }, [leaveBalanceCards, filteredLeaveRequests, totalLeaveRequestCount]);
 
-  const filteredLeaveRequests = React.useMemo(() => {
-    return leaveRequests.filter((req) => {
-      if (leaveTypeFilter !== 'all' && req.leaveTypeId !== leaveTypeFilter) return false;
-      if (leaveStatusFilter !== 'all' && req.status !== leaveStatusFilter) return false;
-      return true;
-    });
-  }, [leaveRequests, leaveTypeFilter, leaveStatusFilter]);
+  const hasLeaveFilters = leaveTypeFilter !== 'all' || leaveStatusFilter !== 'all';
 
   const openLeaveRequest = React.useCallback((leaveTypeId?: string) => {
     setPresetLeaveTypeId(leaveTypeId ?? null);
@@ -192,8 +218,11 @@ export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
 
   return {
     companyId,
-    leaveRequests,
+    totalLeaveRequestCount,
     filteredLeaveRequests,
+    leaveRequestsLoading,
+    leaveRequestsPagination,
+    hasLeaveFilters,
     leaveBalances,
     leaveTypes,
     leaveRequestTypes,
@@ -212,6 +241,6 @@ export function useEmployeeProfileLeave(employee: Employee, enabled = true) {
     openLeaveRequest,
     leavesLoading,
     leavesError,
-    reloadLeaves,
+    reloadLeaves: reloadLeavesAndRequests,
   };
 }

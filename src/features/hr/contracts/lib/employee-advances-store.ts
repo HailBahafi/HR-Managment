@@ -8,6 +8,13 @@ import {
   type AdvanceStatusDto,
   type RepaymentModeDto,
 } from './api/employee-advances';
+import {
+  duplicateAdvanceNumberMessage,
+  isDuplicateAdvanceNumberError,
+} from './employee-advance-errors';
+
+const CREATE_RETRY_ATTEMPTS = 3;
+const CREATE_RETRY_DELAY_MS = 200;
 
 export type HREmployeeAdvanceStatus = AdvanceStatusDto;
 
@@ -129,22 +136,39 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
 
   add: async (a) => {
     const companyId = getDefaultCompanyId() ?? '';
-    const created = await employeeAdvancesApi.create({
+    const body = {
       companyId,
       employeeId: a.employeeId,
       amount: a.amount,
       currency: a.currency,
       advanceDate: a.advanceDate,
       note: a.note,
-      status: 'pending_approval',
+      status: 'pending_approval' as const,
       advanceKind: toBackendKind(a.advanceKind),
       repaymentMode: toBackendRepaymentMode(a.repaymentMode),
       repaymentMonths: a.repaymentMonths ?? undefined,
       monthlyInstallmentAmount: a.monthlyInstallmentAmount ?? undefined,
-    });
-    const mapped = mapApi(created);
-    set(s => ({ items: [mapped, ...s.items] }));
-    return mapped;
+    };
+
+    let lastError: unknown;
+    for (let attempt = 0; attempt < CREATE_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        const created = await employeeAdvancesApi.create(body);
+        const mapped = mapApi(created);
+        set(s => ({ items: [mapped, ...s.items] }));
+        return mapped;
+      } catch (e) {
+        lastError = e;
+        const canRetry = isDuplicateAdvanceNumberError(e) && attempt < CREATE_RETRY_ATTEMPTS - 1;
+        if (!canRetry) break;
+        await new Promise((resolve) => setTimeout(resolve, CREATE_RETRY_DELAY_MS * (attempt + 1)));
+      }
+    }
+
+    if (isDuplicateAdvanceNumberError(lastError)) {
+      throw new Error(duplicateAdvanceNumberMessage());
+    }
+    throw lastError;
   },
 
   update: async (id, patch) => {

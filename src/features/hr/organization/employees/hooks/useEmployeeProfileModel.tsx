@@ -12,6 +12,7 @@ import { useEmployeeProfileRosePdf } from '@/features/hr/organization/employees/
 import { useEmployeeProfilePermissions } from '@/features/hr/organization/employees/hooks/useEmployeeProfilePermissions';
 import { useEmployeeCreateUser } from '@/features/hr/organization/employees/hooks/useEmployeeCreateUser';
 import { useEmployeeProfileAssignments } from '@/features/hr/organization/employees/hooks/useEmployeeProfileAssignments';
+import { useEmployeeProfileRequests } from '@/features/hr/organization/employees/hooks/useEmployeeProfileRequests';
 
 const SECTIONS = EMPLOYEE_PROFILE_SECTIONS;
 
@@ -34,21 +35,20 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
   const permissions = useEmployeeProfilePermissions(employee, activeSection === 'permissions');
   const createUser = useEmployeeCreateUser(employee, handleUserCreated);
   const assignments = useEmployeeProfileAssignments(employee, activeSection === 'employment');
+  const requests = useEmployeeProfileRequests(employee, activeSection === 'requests');
 
   React.useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeSection]);
 
-  const nonLeaveRequestCount = data.employeeRequests.filter((r) => r.type !== 'leave').length;
-
   const counts: Partial<Record<EmployeeProfileSectionId, number>> = {
-    requests: nonLeaveRequestCount,
-    violations: data.employeeViolations.length,
+    requests: requests.requestsCounts.total,
+    violations: data.violationsTotal,
     contracts: data.employeeContracts.length,
     'rose-forms': data.roseFormsCount,
     'activity-log': data.activityLogCount,
     salary: data.employeePayslipSeries.length,
-    leaves: leave.leaveRequests.length,
+    leaves: leave.totalLeaveRequestCount,
     employment: assignments.hrAssignments.length,
   };
 
@@ -67,6 +67,7 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
     ...permissions,
     ...createUser,
     ...assignments,
+    ...requests,
   };
 }
 
