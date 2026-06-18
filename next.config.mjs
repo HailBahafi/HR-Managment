@@ -16,6 +16,7 @@ const extraDevOrigins =
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   /**
    * Turbopack sometimes infers a workspace root one level above this app; that breaks resolving
    * `tailwindcss` for `@import 'tailwindcss'` / the Tailwind config. Pin root + explicit aliases.
