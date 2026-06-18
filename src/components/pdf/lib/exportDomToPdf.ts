@@ -40,6 +40,7 @@ export async function exportDomToPdf(
         },
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] as const },
     })
     .from(element)
     .save();
