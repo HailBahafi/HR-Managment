@@ -1,25 +1,33 @@
 'use client';
 
-import { FileText } from 'lucide-react';
+import Link from 'next/link';
+import { Calendar, FileText } from 'lucide-react';
 import { StatusBadge, RequestTypeLabel } from '@/components/shared/status-badge';
-import { formatDate, cn } from '@/shared/utils';
+import { cn } from '@/shared/utils';
 import { DisplayDate } from '@/components/ui/table-cells';
+import { Button } from '@/components/ui/button';
 import { Empty, SectionH } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 
 export function EmployeeRequestsSection({ model }: { model: EmployeeProfileModel }) {
-  const { employeeRequests } = model;
+  const { employeeRequests, setActiveSection } = model;
+  const nonLeaveRequests = employeeRequests.filter((req) => req.type !== 'leave');
+  const leaveRequestCount = employeeRequests.length - nonLeaveRequests.length;
 
   return (
     <section>
       <SectionH
         icon={FileText}
         title="الطلبات"
-        subtitle={`${employeeRequests.length} طلب مسجّل`}
+        subtitle={
+          nonLeaveRequests.length > 0
+            ? `${nonLeaveRequests.length} طلب مسجّل`
+            : 'طلبات عامة (غير الإجازات)'
+        }
       />
-      {employeeRequests.length > 0 ? (
+      {nonLeaveRequests.length > 0 ? (
         <div className="space-y-2">
-          {employeeRequests.map((req) => {
+          {nonLeaveRequests.map((req) => {
             const isApproved = req.status === 'approved';
             const isPending = ['pending', 'under_review'].includes(req.status);
             return (
@@ -65,7 +73,28 @@ export function EmployeeRequestsSection({ model }: { model: EmployeeProfileModel
           })}
         </div>
       ) : (
-        <Empty icon={FileText} text="لا توجد طلبات" />
+        <Empty
+          icon={FileText}
+          text={
+            leaveRequestCount > 0
+              ? `يوجد ${leaveRequestCount} طلب إجازة — اعرضها في قسم الإجازات`
+              : 'لا توجد طلبات عامة'
+          }
+          action={
+            leaveRequestCount > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => setActiveSection('leaves')}
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                الانتقال إلى الإجازات
+              </Button>
+            ) : undefined
+          }
+        />
       )}
     </section>
   );

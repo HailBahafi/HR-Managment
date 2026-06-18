@@ -39,8 +39,10 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [activeSection]);
 
+  const nonLeaveRequestCount = data.employeeRequests.filter((r) => r.type !== 'leave').length;
+
   const counts: Partial<Record<EmployeeProfileSectionId, number>> = {
-    requests: data.employeeRequests.length,
+    requests: nonLeaveRequestCount,
     violations: data.employeeViolations.length,
     contracts: data.employeeContracts.length,
     'rose-forms': data.roseFormsCount,

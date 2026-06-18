@@ -1000,24 +1000,26 @@ export function ViolationCasesClient() {
                   </p>
                 </div>
               ) : null}
-              <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
-                {viewCase.typeNeedsWarning ? (
+              {canAddDisciplineFollowUp(viewCase.status) ? (
+                <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
+                  {viewCase.typeNeedsWarning ? (
+                    <Button size="sm" variant="outline" className="gap-1.5"
+                      onClick={() => { setViewCase(null); setNoticeCase(viewCase); }}>
+                      <AlertTriangle className="h-3.5 w-3.5" /> إصدار إنذار
+                    </Button>
+                  ) : null}
+                  {viewCase.typeNeedsInvestigation ? (
+                    <Button size="sm" variant="outline" className="gap-1.5"
+                      onClick={() => { setViewCase(null); setInvestigationCase(viewCase); }}>
+                      <Search className="h-3.5 w-3.5" /> فتح تحقيق
+                    </Button>
+                  ) : null}
                   <Button size="sm" variant="outline" className="gap-1.5"
-                    onClick={() => { setViewCase(null); setNoticeCase(viewCase); }}>
-                    <AlertTriangle className="h-3.5 w-3.5" /> إصدار إنذار
+                    onClick={() => { setViewCase(null); setAppealCase(viewCase); }}>
+                    <Scale className="h-3.5 w-3.5" /> تقديم تظلم
                   </Button>
-                ) : null}
-                {viewCase.typeNeedsInvestigation ? (
-                  <Button size="sm" variant="outline" className="gap-1.5"
-                    onClick={() => { setViewCase(null); setInvestigationCase(viewCase); }}>
-                    <Search className="h-3.5 w-3.5" /> فتح تحقيق
-                  </Button>
-                ) : null}
-                <Button size="sm" variant="outline" className="gap-1.5"
-                  onClick={() => { setViewCase(null); setAppealCase(viewCase); }}>
-                  <Scale className="h-3.5 w-3.5" /> تقديم تظلم
-                </Button>
-              </div>
+                </div>
+              ) : null}
             </div>
           )}
         </DialogContent>

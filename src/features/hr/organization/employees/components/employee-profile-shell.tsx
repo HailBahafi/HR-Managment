@@ -127,9 +127,9 @@ export function EmployeeProfileShell({ model, children }: Props) {
 
         <main
           ref={contentRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/20"
         >
-          <div className="mx-auto max-w-5xl px-3 py-4 sm:px-6 sm:py-5 md:px-8">{children}</div>
+          <div className="mx-auto max-w-5xl px-3 py-4 sm:px-6 sm:py-6 md:px-8">{children}</div>
         </main>
       </div>
     </div>
