@@ -36,6 +36,7 @@ import { hrContractsOnlyNavGroups, isHrContractsOnlyNavPath } from '@/features/h
 import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsNavGroups, isHrPermissionsNavPath } from '@/features/hr/permissions/constants/nav';
+import { hrSettingsNavGroups, isHrSettingsNavPath } from '@/features/hr/settings/constants/nav';
 import { useLogout } from '@/features/auth/hooks/use-logout';
 import { useAuthUserDisplay } from '@/features/auth/hooks/use-auth-user-display';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -193,6 +194,20 @@ export const navConfig: NavItem[] = [
     icon: Shield,
     isActive: isHrPermissionsNavPath,
     groups: hrPermissionsNavGroups.map((g) => ({
+      labelAr: g.labelAr,
+      items: g.items.map((item) => ({
+        label: item.labelAr,
+        href: item.href,
+        icon: item.icon,
+      })),
+    })),
+  },
+  {
+    key: 'settings',
+    label: 'الإعدادات',
+    icon: Settings,
+    isActive: isHrSettingsNavPath,
+    groups: hrSettingsNavGroups.map((g) => ({
       labelAr: g.labelAr,
       items: g.items.map((item) => ({
         label: item.labelAr,

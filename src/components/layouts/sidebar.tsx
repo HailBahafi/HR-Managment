@@ -9,7 +9,7 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet, FileSignature,
-  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox, KeyRound,
+  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,   KeyRound, Settings,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Logo } from '@/components/layouts/logo';
@@ -21,6 +21,7 @@ import { hrContractsOnlyNavGroups } from '@/features/hr/contracts/constants/nav'
 import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsNavGroups } from '@/features/hr/permissions/constants/nav';
+import { hrSettingsNavGroups } from '@/features/hr/settings/constants/nav';
 
 type MobileNavChild =
   | { label: string; href: string; icon?: React.ElementType; match?: 'exact' | 'prefix' }
@@ -134,6 +135,18 @@ const mobileNav: MobileNavItem[] = [
     label: 'الصلاحيات',
     icon: Shield,
     children: hrPermissionsNavGroups.flatMap((g) =>
+      g.items.map((item) => ({
+        label: item.labelAr,
+        href: item.href,
+        icon: item.icon,
+      })),
+    ),
+  },
+  {
+    key: 'settings',
+    label: 'الإعدادات',
+    icon: Settings,
+    children: hrSettingsNavGroups.flatMap((g) =>
       g.items.map((item) => ({
         label: item.labelAr,
         href: item.href,
