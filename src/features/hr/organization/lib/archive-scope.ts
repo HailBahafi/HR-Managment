@@ -12,17 +12,32 @@ export const ORGANIZATION_ARCHIVE_SCOPE_OPTIONS: readonly {
   { value: 'all', label: 'الكل' },
 ];
 
-export type OrganizationListStatusQuery = {
-  status?: OrganizationArchiveScope;
+export type OrganizationListArchiveQuery = {
+  archiveScope?: OrganizationArchiveScope;
 };
 
-export function organizationListStatusQuery(
+/** @deprecated Use OrganizationListArchiveQuery */
+export type OrganizationListStatusQuery = OrganizationListArchiveQuery;
+
+export function organizationListArchiveQuery(
   scope: OrganizationArchiveScope = ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
-): OrganizationListStatusQuery {
-  return { status: scope };
+): OrganizationListArchiveQuery {
+  return { archiveScope: scope };
 }
 
 /** Pickers and reference loads — non-archived only. */
-export function organizationActiveListStatusQuery(): OrganizationListStatusQuery {
-  return { status: 'active' };
+export function organizationActiveListArchiveQuery(): OrganizationListArchiveQuery {
+  return { archiveScope: 'active' };
+}
+
+/** @deprecated Use organizationListArchiveQuery */
+export function organizationListStatusQuery(
+  scope: OrganizationArchiveScope = ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
+): OrganizationListArchiveQuery {
+  return organizationListArchiveQuery(scope);
+}
+
+/** @deprecated Use organizationActiveListArchiveQuery */
+export function organizationActiveListStatusQuery(): OrganizationListArchiveQuery {
+  return organizationActiveListArchiveQuery();
 }

@@ -1,4 +1,5 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type { OrganizationArchiveScope } from '@/features/hr/organization/lib/archive-scope';
 
 export type RequestApprovalMode = 'sequential' | 'parallel' | 'any_one' | 'optional';
 
@@ -62,7 +63,13 @@ export type UpdateRequestApprovalTemplateDto = {
 export type RequestApprovalStage = never;
 
 export const requestApprovalTemplatesApi = {
-  getAll(query?: { companyId?: string; isActive?: boolean; limit?: number; page?: number }) {
+  getAll(query?: {
+    companyId?: string;
+    isActive?: boolean;
+    archiveScope?: OrganizationArchiveScope;
+    limit?: number;
+    page?: number;
+  }) {
     return apiRequest<PaginatedResult<RequestApprovalTemplateResponseDto>>(
       '/requests/approval-assignments',
       { query },

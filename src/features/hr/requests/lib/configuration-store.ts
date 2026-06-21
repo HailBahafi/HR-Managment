@@ -120,7 +120,12 @@ export const useHRConfigurationStore = create<HRConfigState>()((set, get) => ({
         if (!companyId) return;
         set({ requestTypesLoading: true, requestTypesError: null });
         try {
-          const result = await requestTypesApi.list({ companyId, limit: 200, ...params });
+          const result = await requestTypesApi.list({
+            companyId,
+            limit: 200,
+            ...params,
+            ...organizationActiveListStatusQuery(),
+          });
           set({ requestTypes: result.items.map(mapApiRequestType), requestTypesLoading: false });
         } catch (e) {
           set({ requestTypesError: (e as Error).message, requestTypesLoading: false });

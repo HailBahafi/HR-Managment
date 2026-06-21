@@ -13,6 +13,13 @@ import {
 import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import {
+  ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
+  ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
+  organizationActiveListStatusQuery,
+  organizationListStatusQuery,
+  type OrganizationArchiveScope,
+} from '@/features/hr/organization/lib/archive-scope';
 
 export type { RequestApprovalTemplateResponseDto as ApprovalTemplate };
 export type { RequestApprovalMode };
@@ -23,9 +30,9 @@ export function useApprovalAssignmentModel() {
   const [requestTypes, setRequestTypes] = React.useState<ApiRequestType[]>([]);
   const [employees, setEmployees] = React.useState<{ id: string; nameAr: string }[]>([]);
   const [listError, setListError] = React.useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = React.useState<'all' | 'active' | 'inactive'>('all');
-
-  const isActiveFilter = statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : undefined;
+  const [archiveScope, setArchiveScope] = React.useState<OrganizationArchiveScope>(
+    ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
+  );
 
   const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     if (!companyId) return { items: [] as RequestApprovalTemplateResponseDto[], total: 0 };
@@ -34,7 +41,7 @@ export function useApprovalAssignmentModel() {
         companyId,
         page,
         limit: pageSize,
-        ...(isActiveFilter !== undefined ? { isActive: isActiveFilter } : {}),
+        ...organizationListStatusQuery(archiveScope),
       });
       setListError(null);
       return { items: tplRes.items, total: tplRes.pagination.total };
@@ -43,7 +50,7 @@ export function useApprovalAssignmentModel() {
       setListError(displayMessage);
       return { items: [], total: 0 };
     }
-  }, [companyId, isActiveFilter]);
+  }, [companyId, archiveScope]);
 
   const {
     items: templates,
@@ -52,14 +59,14 @@ export function useApprovalAssignmentModel() {
     reload: reloadList,
   } = useServerDirectoryPagination<RequestApprovalTemplateResponseDto>(loadPage, {
     enabled: !!companyId,
-    resetDeps: [companyId, statusFilter],
+    resetDeps: [companyId, archiveScope],
   });
 
   const reloadReferenceData = React.useCallback(async () => {
     if (!companyId) return;
     try {
       const [rtRes, empRes] = await Promise.all([
-        requestTypesApi.list({ companyId, limit: 200 }),
+        requestTypesApi.list({ companyId, limit: 200, ...organizationActiveListStatusQuery() }),
         employeesApi.getAll({ companyId, limit: 500 }),
       ]);
       setRequestTypes(rtRes.items);
@@ -109,8 +116,9 @@ export function useApprovalAssignmentModel() {
     loading,
     listError,
     pagination,
-    statusFilter,
-    setStatusFilter,
+    archiveScope,
+    setArchiveScope,
+    archiveScopeOptions: ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
     reload,
     createTemplate,
     updateTemplate,

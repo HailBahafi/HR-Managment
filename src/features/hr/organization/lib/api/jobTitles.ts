@@ -32,7 +32,7 @@ export type JobTitleListQuery = {
   page?: number;
   limit?: number;
   companyId?: string;
-  status?: OrganizationArchiveScope;
+  archiveScope?: OrganizationArchiveScope;
 };
 
 export const jobTitlesApi = {

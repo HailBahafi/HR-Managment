@@ -42,7 +42,7 @@ export type DepartmentListQuery = {
   companyId?: string;
   branchId?: string;
   isActive?: boolean;
-  status?: OrganizationArchiveScope;
+  archiveScope?: OrganizationArchiveScope;
 };
 
 export const departmentsApi = {

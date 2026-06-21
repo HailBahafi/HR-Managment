@@ -100,7 +100,7 @@ export type UpdateUserDto = {
 export type UsersListQuery = {
   page?: number;
   limit?: number;
-  status?: OrganizationArchiveScope;
+  archiveScope?: OrganizationArchiveScope;
 };
 
 export type SetDefaultCompanyDto = {
