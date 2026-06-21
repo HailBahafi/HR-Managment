@@ -93,6 +93,9 @@ export function AtsAdminClient() {
         <Button variant="luxe" size="sm" onClick={() => router.push('/hr/recruitment/ats-admin/jobs/create')}>
           <Plus className="h-4 w-4 me-1" /> وظيفة جديدة
         </Button>
+        <Button variant="outline" size="sm" asChild>
+          <a href="/careers" target="_blank" rel="noopener noreferrer">بوابة التوظيف العامة</a>
+        </Button>
       </div>
 
       {isLoading ? (

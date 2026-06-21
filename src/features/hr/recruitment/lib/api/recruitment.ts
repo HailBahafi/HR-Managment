@@ -6,6 +6,7 @@ import type {
   CreateRecruitmentUserDto,
   ListRecruitmentApplicantsQuery,
   ListRecruitmentJobsQuery,
+  ListPublicRecruitmentJobsQuery,
   ListRecruitmentTenantsQuery,
   ListRecruitmentUsersQuery,
   MoveApplicantStageDto,
@@ -186,6 +187,12 @@ export const recruitmentApi = {
 };
 
 export const publicRecruitmentApi = {
+  listActiveJobs(query?: ListPublicRecruitmentJobsQuery) {
+    return apiRequest<PaginatedResult<RecruitmentJob>>('/public/recruitment/jobs', {
+      query: asQuery(query ?? {}),
+    });
+  },
+
   getPublicJob(slug: string) {
     return apiRequest<PublicRecruitmentJob>(`/public/recruitment/jobs/${slug}`);
   },

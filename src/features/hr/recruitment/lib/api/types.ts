@@ -162,6 +162,13 @@ export interface UpdateRecruitmentPipelineStagesDto {
   stages: RecruitmentPipelineStageConfig[];
 }
 
+export interface ListPublicRecruitmentJobsQuery {
+  tenantSlug?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 export interface PublicRecruitmentJob {
   job: RecruitmentJob;
   form: RecruitmentForm;

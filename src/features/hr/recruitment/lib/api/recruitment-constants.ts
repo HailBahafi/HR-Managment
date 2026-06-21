@@ -6,3 +6,8 @@ export function getConfiguredRecruitmentTenantId(): string | null {
   const fromEnv = process.env.NEXT_PUBLIC_RECRUITMENT_TENANT_ID?.trim();
   return fromEnv || null;
 }
+
+export function getPublicRecruitmentTenantSlug(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_RECRUITMENT_TENANT_SLUG?.trim();
+  return fromEnv || RECRUITMENT_DEMO_TENANT_SLUG;
+}

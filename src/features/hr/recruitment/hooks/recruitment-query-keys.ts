@@ -17,4 +17,6 @@ export const recruitmentKeys = {
   applicant: (id: string) => [...recruitmentKeys.all, 'applicant', id] as const,
   pipelineStages: (tenantId: string) => [...recruitmentKeys.all, 'pipeline-stages', tenantId] as const,
   publicJob: (slug: string) => [...recruitmentKeys.all, 'public-job', slug] as const,
+  publicJobs: (tenantSlug: string, search?: string) =>
+    [...recruitmentKeys.all, 'public-jobs', tenantSlug, search ?? ''] as const,
 };

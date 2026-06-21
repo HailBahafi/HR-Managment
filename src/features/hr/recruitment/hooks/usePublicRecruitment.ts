@@ -1,10 +1,27 @@
 'use client';
 
-import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { fetchPublicCareersJobs } from '@/features/hr/recruitment/lib/api/fetch-public-careers-jobs';
 import { publicRecruitmentApi } from '@/features/hr/recruitment/lib/api/recruitment';
 import { mapRecruitmentForm, mapRecruitmentJob } from '@/features/hr/recruitment/lib/api/mappers';
+import { normalizeRecruitmentPaginated } from '@/features/hr/recruitment/lib/api/normalize-paginated';
 import { recruitmentKeys } from '@/features/hr/recruitment/hooks/recruitment-query-keys';
+import { getPublicRecruitmentTenantSlug } from '@/features/hr/recruitment/lib/api/recruitment-constants';
+import type { RecruitmentJob } from '@/features/hr/recruitment/lib/api/types';
+
+export function usePublicRecruitmentJobsList(search?: string) {
+  const tenantSlug = getPublicRecruitmentTenantSlug();
+
+  return useQuery({
+    queryKey: recruitmentKeys.publicJobs(tenantSlug, search),
+    queryFn: async () => {
+      const raw = await fetchPublicCareersJobs(search);
+      const res = normalizeRecruitmentPaginated<RecruitmentJob>(raw);
+      return res.items.map(mapRecruitmentJob);
+    },
+    staleTime: 60_000,
+  });
+}
 
 export function usePublicRecruitmentJob(slug: string) {
   return useQuery({

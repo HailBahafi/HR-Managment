@@ -46,7 +46,7 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+      <div className="py-16 text-center text-sm text-muted-foreground">
         جاري التحميل…
       </div>
     );
@@ -54,11 +54,12 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
 
   if (isError || !job || !form) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">الوظيفة غير موجودة</h1>
-          <p className="mt-2 text-muted-foreground">قد تمت إزالة هذه الوظيفة أو إيقافها.</p>
-        </div>
+      <div className="py-16 text-center space-y-3">
+        <h1 className="text-2xl font-bold">الوظيفة غير موجودة</h1>
+        <p className="text-muted-foreground">قد تمت إزالة هذه الوظيفة أو إيقافها.</p>
+        <Button variant="outline" size="sm" asChild>
+          <a href="/careers">العودة إلى الوظائف المتاحة</a>
+        </Button>
       </div>
     );
   }
@@ -98,7 +99,7 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
         cvFileBase64: cvBase64 ?? null,
       });
       toast.success('تم تقديم طلبك بنجاح!');
-      setTimeout(() => router.push('/'), 2000);
+      setTimeout(() => router.push('/careers'), 2000);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'recruitment.public.apply');
       toast.error(displayMessage);
@@ -108,8 +109,12 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="mx-auto max-w-2xl">
+      <div className="mb-4">
+        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" asChild>
+          <a href="/careers">← جميع الوظائف</a>
+        </Button>
+      </div>
         <Card className="mb-6 overflow-hidden">
           <div className="relative bg-linear-to-br from-primary/10 via-primary/5 to-background px-6 pb-6 pt-8">
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, hsl(var(--primary)) 0%, transparent 50%)' }} />
@@ -164,14 +169,15 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
               </div>
             ))}
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => router.push('/')}>إلغاء</Button>
+              <Button variant="outline" asChild>
+                <a href="/careers">إلغاء</a>
+              </Button>
               <Button variant="luxe" onClick={() => void handleSubmit()} disabled={submitting}>
                 <Send className="h-4 w-4 me-1" /> {submitting ? 'جارٍ الإرسال…' : 'تقديم الطلب'}
               </Button>
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

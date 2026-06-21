@@ -13,6 +13,7 @@ export function recruitmentJobRoutes(jobId: string, slug?: string) {
 }
 
 export const recruitmentGlobalRoutes = {
+  careers: '/careers',
   jobs: '/hr/recruitment/ats-admin',
   applicants: '/hr/recruitment/ats-applicants',
   pipeline: '/hr/recruitment/ats-pipeline',
