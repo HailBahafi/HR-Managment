@@ -7,14 +7,6 @@ function backendBaseUrl(): string {
   return (process.env.BACKEND_URL ?? 'http://127.0.0.1:3000').replace(/\/$/, '');
 }
 
-function tenantId(): string | null {
-  return process.env.NEXT_PUBLIC_RECRUITMENT_TENANT_ID?.trim() || null;
-}
-
-function tenantSlug(): string {
-  return process.env.NEXT_PUBLIC_RECRUITMENT_TENANT_SLUG?.trim() || 'demo-recruitment';
-}
-
 function bearerFromRequest(request: NextRequest): string | null {
   const auth = request.headers.get('authorization');
   if (auth?.startsWith('Bearer ')) {
@@ -36,44 +28,16 @@ function bearerFromRequest(request: NextRequest): string | null {
 }
 
 async function tryPublicList(search: string, limit: string): Promise<Response | null> {
-  const base = backendBaseUrl();
-  const slug = tenantSlug();
-  const id = tenantId();
-  const urls = [
-    `${base}/public/recruitment/jobs?tenantSlug=${encodeURIComponent(slug)}&limit=${limit}&search=${encodeURIComponent(search)}`,
-    id
-      ? `${base}/public/recruitment/jobs?tenantId=${encodeURIComponent(id)}&limit=${limit}&search=${encodeURIComponent(search)}`
-      : null,
-  ].filter(Boolean) as string[];
+  const params = new URLSearchParams({ limit });
+  if (search) params.set('search', search);
 
-  for (const url of urls) {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (res.status === 404) continue;
-    return res;
-  }
-  return null;
+  const res = await fetch(`${backendBaseUrl()}/public/recruitment/jobs?${params}`, { cache: 'no-store' });
+  if (res.status === 404) return null;
+  return res;
 }
 
-async function fetchAuthenticatedList(
-  bearer: string,
-  search: string,
-  limit: string,
-): Promise<Response> {
-  const id = tenantId();
-  if (!id) {
-    return new Response(
-      JSON.stringify({
-        status: 500,
-        message: 'NEXT_PUBLIC_RECRUITMENT_TENANT_ID is not configured',
-        data: null,
-        error: { statusCode: 500 },
-      }),
-      { status: 500 },
-    );
-  }
-
+async function fetchAuthenticatedList(bearer: string, search: string, limit: string): Promise<Response> {
   const params = new URLSearchParams({
-    tenantId: id,
     isActive: 'true',
     limit,
   });

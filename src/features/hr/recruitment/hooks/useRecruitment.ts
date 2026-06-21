@@ -4,44 +4,31 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import { mapRecruitmentApplicant, mapRecruitmentForm, mapRecruitmentJob, mapRecruitmentJobDetail } from '@/features/hr/recruitment/lib/api/mappers';
 import { normalizeRecruitmentPaginated } from '@/features/hr/recruitment/lib/api/normalize-paginated';
 import { recruitmentKeys } from '@/features/hr/recruitment/hooks/recruitment-query-keys';
-import { useRecruitmentTenantId } from '@/features/hr/recruitment/hooks/useRecruitmentTenantId';
 import type {
   CreateRecruitmentApplicantDto,
   CreateRecruitmentJobDto,
-  CreateRecruitmentTenantDto,
-  CreateRecruitmentUserDto,
   ListRecruitmentApplicantsQuery,
-  ListRecruitmentTenantsQuery,
-  ListRecruitmentUsersQuery,
   MoveApplicantStageDto,
   UpdateRecruitmentApplicantDto,
   UpdateRecruitmentJobDto,
   UpdateRecruitmentPipelineStagesDto,
-  UpdateRecruitmentTenantDto,
-  UpdateRecruitmentUserDto,
   RecruitmentJob,
   RecruitmentApplicant,
 } from '@/features/hr/recruitment/lib/api/types';
-import {
-  recruitmentApi,
-  recruitmentTenantsApi,
-  recruitmentUsersApi,
-} from '@/features/hr/recruitment/lib/api/recruitment';
+import { recruitmentApi } from '@/features/hr/recruitment/lib/api/recruitment';
 import type { AtsForm, AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 
 export function useRecruitmentJobsList(search?: string) {
-  const tenantId = useRecruitmentTenantId();
   return useQuery({
-    queryKey: recruitmentKeys.jobs(tenantId ?? '', search),
+    queryKey: recruitmentKeys.jobs(search),
     queryFn: async () => {
-      const raw = await recruitmentApi.listJobs({ tenantId: tenantId!, limit: 200, search });
+      const raw = await recruitmentApi.listJobs({ limit: 200, search });
       const res = normalizeRecruitmentPaginated<RecruitmentJob>(raw);
       return {
         jobs: res.items.map((item) => mapRecruitmentJob(item)),
         pagination: res.pagination,
       };
     },
-    enabled: !!tenantId,
   });
 }
 
@@ -68,17 +55,15 @@ export function useRecruitmentJobFormsMap(jobIds: string[]) {
   };
 }
 
-export function useRecruitmentApplicantsList(query: Omit<ListRecruitmentApplicantsQuery, 'tenantId'>) {
-  const tenantId = useRecruitmentTenantId();
+export function useRecruitmentApplicantsList(query: ListRecruitmentApplicantsQuery = {}) {
   const filters = { ...query };
   return useQuery({
-    queryKey: recruitmentKeys.applicants(tenantId ?? '', filters),
+    queryKey: recruitmentKeys.applicants(filters),
     queryFn: async () => {
-      const raw = await recruitmentApi.listApplicants({ tenantId: tenantId!, limit: 500, ...query });
+      const raw = await recruitmentApi.listApplicants({ limit: 500, ...query });
       const res = normalizeRecruitmentPaginated<RecruitmentApplicant>(raw);
       return res.items.map(mapRecruitmentApplicant);
     },
-    enabled: !!tenantId,
   });
 }
 
@@ -121,57 +106,16 @@ export function useRecruitmentJobPipeline(jobId: string | undefined) {
   });
 }
 
-export function useRecruitmentPipelineStages() {
-  const tenantId = useRecruitmentTenantId();
+export function useRecruitmentJobPipelineStages(jobId: string | undefined) {
   return useQuery({
-    queryKey: recruitmentKeys.pipelineStages(tenantId ?? ''),
-    queryFn: () => recruitmentApi.listPipelineStages(tenantId!),
-    enabled: !!tenantId,
-  });
-}
-
-export function useRecruitmentTenantsList(query?: ListRecruitmentTenantsQuery) {
-  return useQuery({
-    queryKey: recruitmentKeys.tenants(query?.search),
-    queryFn: async () => {
-      const raw = await recruitmentTenantsApi.list({ limit: 200, ...query });
-      return normalizeRecruitmentPaginated(raw).items;
-    },
-  });
-}
-
-export function useRecruitmentTenant(tenantId: string | undefined) {
-  return useQuery({
-    queryKey: recruitmentKeys.tenant(tenantId ?? ''),
-    queryFn: () => recruitmentTenantsApi.getById(tenantId!),
-    enabled: !!tenantId,
-  });
-}
-
-export function useRecruitmentUsersList(query: Omit<ListRecruitmentUsersQuery, 'tenantId'>) {
-  const tenantId = useRecruitmentTenantId();
-  const filters = { ...query };
-  return useQuery({
-    queryKey: recruitmentKeys.users(tenantId ?? '', filters),
-    queryFn: async () => {
-      const raw = await recruitmentUsersApi.list({ tenantId: tenantId!, limit: 200, ...query });
-      return normalizeRecruitmentPaginated(raw).items;
-    },
-    enabled: !!tenantId,
-  });
-}
-
-export function useRecruitmentUser(userId: string | undefined) {
-  return useQuery({
-    queryKey: recruitmentKeys.user(userId ?? ''),
-    queryFn: () => recruitmentUsersApi.getById(userId!),
-    enabled: !!userId,
+    queryKey: recruitmentKeys.pipelineStages(jobId ?? ''),
+    queryFn: () => recruitmentApi.listJobPipelineStages(jobId!),
+    enabled: !!jobId,
   });
 }
 
 export function useRecruitmentMutations() {
   const queryClient = useQueryClient();
-  const tenantId = useRecruitmentTenantId();
 
   const invalidateAll = () => {
     void queryClient.invalidateQueries({ queryKey: recruitmentKeys.all });
@@ -225,40 +169,9 @@ export function useRecruitmentMutations() {
     onSuccess: invalidateAll,
   });
 
-  const updatePipelineStages = useMutation({
-    mutationFn: (dto: UpdateRecruitmentPipelineStagesDto) => recruitmentApi.updatePipelineStages(dto),
-    onSuccess: invalidateAll,
-  });
-
-  const createTenant = useMutation({
-    mutationFn: (dto: CreateRecruitmentTenantDto) => recruitmentTenantsApi.create(dto),
-    onSuccess: invalidateAll,
-  });
-
-  const updateTenant = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: UpdateRecruitmentTenantDto }) =>
-      recruitmentTenantsApi.update(id, dto),
-    onSuccess: invalidateAll,
-  });
-
-  const deleteTenant = useMutation({
-    mutationFn: (id: string) => recruitmentTenantsApi.delete(id),
-    onSuccess: invalidateAll,
-  });
-
-  const createUser = useMutation({
-    mutationFn: (dto: CreateRecruitmentUserDto) => recruitmentUsersApi.create(dto),
-    onSuccess: invalidateAll,
-  });
-
-  const updateUser = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: UpdateRecruitmentUserDto }) =>
-      recruitmentUsersApi.update(id, dto),
-    onSuccess: invalidateAll,
-  });
-
-  const deleteUser = useMutation({
-    mutationFn: (id: string) => recruitmentUsersApi.delete(id),
+  const updateJobPipelineStages = useMutation({
+    mutationFn: ({ jobId, dto }: { jobId: string; dto: UpdateRecruitmentPipelineStagesDto }) =>
+      recruitmentApi.updateJobPipelineStages(jobId, dto),
     onSuccess: invalidateAll,
   });
 
@@ -272,13 +185,6 @@ export function useRecruitmentMutations() {
     moveApplicantStage,
     deleteApplicant,
     scoreApplicant,
-    updatePipelineStages,
-    createTenant,
-    updateTenant,
-    deleteTenant,
-    createUser,
-    updateUser,
-    deleteUser,
-    tenantId,
+    updateJobPipelineStages,
   };
 }

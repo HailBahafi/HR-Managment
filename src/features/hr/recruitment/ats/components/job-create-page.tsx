@@ -20,7 +20,6 @@ import type { AtsFormField, AtsFormFieldType, AtsJobType } from '@/features/hr/r
 import { uid } from '@/features/hr/recruitment/lib/ats/utils';
 import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
 import { useRecruitmentJobDetail, useRecruitmentMutations } from '@/features/hr/recruitment/hooks/useRecruitment';
-import { useRecruitmentTenantId } from '@/features/hr/recruitment/hooks/useRecruitmentTenantId';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 // ─── Field type palette ───────────────────────────────────────────────────────
@@ -216,7 +215,6 @@ export function JobCreatePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
-  const tenantId = useRecruitmentTenantId();
   const { createJob, updateJob } = useRecruitmentMutations();
   const { data: editData, isLoading: editLoading } = useRecruitmentJobDetail(editId ?? undefined);
   const existingJob = editData?.job;
@@ -299,7 +297,6 @@ export function JobCreatePage() {
   const handleSave = async () => {
     if (!title.trim()) { setError('يرجى إدخال عنوان الوظيفة'); return; }
     if (!department.trim()) { setError('يرجى إدخال القسم'); return; }
-    if (!tenantId) { setError('لم يتم تحديد الشركة (tenantId)'); return; }
     if (fields.length === 0) { setError('يجب إضافة حقل واحد على الأقل'); return; }
     for (const f of fields) {
       if (!f.label.trim()) { setError('جميع الحقول يجب أن تحتوي على اسم'); return; }
@@ -338,7 +335,6 @@ export function JobCreatePage() {
         router.push(`/hr/recruitment/ats-admin/jobs/${existingJob.id}`);
       } else {
         const created = await createJob.mutateAsync({
-          tenantId,
           title: title.trim(),
           description: description.trim(),
           department: department.trim(),

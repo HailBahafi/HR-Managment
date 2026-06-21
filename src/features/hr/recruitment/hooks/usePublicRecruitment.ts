@@ -6,14 +6,11 @@ import { publicRecruitmentApi } from '@/features/hr/recruitment/lib/api/recruitm
 import { mapRecruitmentForm, mapRecruitmentJob } from '@/features/hr/recruitment/lib/api/mappers';
 import { normalizeRecruitmentPaginated } from '@/features/hr/recruitment/lib/api/normalize-paginated';
 import { recruitmentKeys } from '@/features/hr/recruitment/hooks/recruitment-query-keys';
-import { getPublicRecruitmentTenantSlug } from '@/features/hr/recruitment/lib/api/recruitment-constants';
 import type { RecruitmentJob } from '@/features/hr/recruitment/lib/api/types';
 
 export function usePublicRecruitmentJobsList(search?: string) {
-  const tenantSlug = getPublicRecruitmentTenantSlug();
-
   return useQuery({
-    queryKey: recruitmentKeys.publicJobs(tenantSlug, search),
+    queryKey: recruitmentKeys.publicJobs(search),
     queryFn: async () => {
       const raw = await fetchPublicCareersJobs(search);
       const res = normalizeRecruitmentPaginated<RecruitmentJob>(raw);

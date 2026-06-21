@@ -22,7 +22,6 @@ export interface RecruitmentFormField {
 
 export interface RecruitmentForm {
   id: string;
-  tenantId: string;
   jobId: string;
   title: string;
   description: string;
@@ -33,7 +32,6 @@ export interface RecruitmentForm {
 
 export interface RecruitmentJob {
   id: string;
-  tenantId: string;
   title: string;
   slug: string;
   description: string;
@@ -60,7 +58,6 @@ export interface RecruitmentApplicantScore {
 
 export interface RecruitmentApplicant {
   id: string;
-  tenantId: string;
   jobId: string;
   formId: string;
   answers: Record<string, string | undefined>;
@@ -103,7 +100,6 @@ export interface RecruitmentFormInput {
 }
 
 export interface CreateRecruitmentJobDto {
-  tenantId: string;
   title: string;
   description?: string;
   department: string;
@@ -130,7 +126,6 @@ export interface UpdateRecruitmentFormDto {
 }
 
 export interface ListRecruitmentJobsQuery {
-  tenantId: string;
   page?: number;
   limit?: number;
   search?: string;
@@ -138,7 +133,6 @@ export interface ListRecruitmentJobsQuery {
 }
 
 export interface ListRecruitmentApplicantsQuery {
-  tenantId: string;
   page?: number;
   limit?: number;
   jobId?: string;
@@ -158,12 +152,10 @@ export interface MoveApplicantStageDto {
 }
 
 export interface UpdateRecruitmentPipelineStagesDto {
-  tenantId: string;
   stages: RecruitmentPipelineStageConfig[];
 }
 
 export interface ListPublicRecruitmentJobsQuery {
-  tenantSlug?: string;
   page?: number;
   limit?: number;
   search?: string;
@@ -172,64 +164,6 @@ export interface ListPublicRecruitmentJobsQuery {
 export interface PublicRecruitmentJob {
   job: RecruitmentJob;
   form: RecruitmentForm;
-}
-
-export type RecruitmentAtsRole = 'admin' | 'recruiter' | 'viewer';
-
-export interface RecruitmentTenant {
-  id: string;
-  name: string;
-  slug: string;
-  logo: string | null;
-  createdAt: string;
-}
-
-export interface RecruitmentUser {
-  id: string;
-  tenantId: string;
-  name: string;
-  email: string;
-  role: RecruitmentAtsRole;
-  createdAt: string;
-}
-
-export interface ListRecruitmentTenantsQuery {
-  page?: number;
-  limit?: number;
-  search?: string;
-}
-
-export interface CreateRecruitmentTenantDto {
-  name: string;
-  slug?: string;
-  logo?: string | null;
-}
-
-export interface UpdateRecruitmentTenantDto {
-  name?: string;
-  slug?: string;
-  logo?: string | null;
-}
-
-export interface ListRecruitmentUsersQuery {
-  tenantId: string;
-  page?: number;
-  limit?: number;
-  search?: string;
-  role?: RecruitmentAtsRole;
-}
-
-export interface CreateRecruitmentUserDto {
-  tenantId: string;
-  name: string;
-  email: string;
-  role?: RecruitmentAtsRole;
-}
-
-export interface UpdateRecruitmentUserDto {
-  name?: string;
-  email?: string;
-  role?: RecruitmentAtsRole;
 }
 
 export interface CreateRecruitmentApplicantDto {

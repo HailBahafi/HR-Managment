@@ -2,13 +2,9 @@ import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 import type {
   CreateRecruitmentApplicantDto,
   CreateRecruitmentJobDto,
-  CreateRecruitmentTenantDto,
-  CreateRecruitmentUserDto,
   ListRecruitmentApplicantsQuery,
   ListRecruitmentJobsQuery,
   ListPublicRecruitmentJobsQuery,
-  ListRecruitmentTenantsQuery,
-  ListRecruitmentUsersQuery,
   MoveApplicantStageDto,
   PublicRecruitmentJob,
   RecruitmentApplicant,
@@ -19,15 +15,11 @@ import type {
   RecruitmentJobStats,
   RecruitmentPipelineStage,
   RecruitmentPipelineStageConfig,
-  RecruitmentTenant,
-  RecruitmentUser,
   SubmitRecruitmentApplicationDto,
   UpdateRecruitmentApplicantDto,
   UpdateRecruitmentFormDto,
   UpdateRecruitmentJobDto,
   UpdateRecruitmentPipelineStagesDto,
-  UpdateRecruitmentTenantDto,
-  UpdateRecruitmentUserDto,
 } from '@/features/hr/recruitment/lib/api/types';
 
 type QueryRecord = Record<string, string | number | boolean | null | undefined>;
@@ -36,59 +28,11 @@ function asQuery(query: object): QueryRecord {
   return query as QueryRecord;
 }
 
-export const recruitmentTenantsApi = {
-  create(dto: CreateRecruitmentTenantDto) {
-    return apiRequest<RecruitmentTenant>('/recruitment/tenants', { method: 'POST', body: dto });
-  },
-
-  list(query?: ListRecruitmentTenantsQuery) {
-    return apiRequest<PaginatedResult<RecruitmentTenant>>('/recruitment/tenants', {
+export const recruitmentApi = {
+  listJobs(query?: ListRecruitmentJobsQuery) {
+    return apiRequest<PaginatedResult<RecruitmentJob>>('/recruitment/jobs', {
       query: asQuery(query ?? {}),
     });
-  },
-
-  getBySlug(slug: string) {
-    return apiRequest<RecruitmentTenant>(`/recruitment/tenants/by-slug/${slug}`);
-  },
-
-  getById(id: string) {
-    return apiRequest<RecruitmentTenant>(`/recruitment/tenants/${id}`);
-  },
-
-  update(id: string, dto: UpdateRecruitmentTenantDto) {
-    return apiRequest<RecruitmentTenant>(`/recruitment/tenants/${id}`, { method: 'PATCH', body: dto });
-  },
-
-  delete(id: string) {
-    return apiRequest<void>(`/recruitment/tenants/${id}`, { method: 'DELETE' });
-  },
-};
-
-export const recruitmentUsersApi = {
-  create(dto: CreateRecruitmentUserDto) {
-    return apiRequest<RecruitmentUser>('/recruitment/users', { method: 'POST', body: dto });
-  },
-
-  list(query: ListRecruitmentUsersQuery) {
-    return apiRequest<PaginatedResult<RecruitmentUser>>('/recruitment/users', { query: asQuery(query) });
-  },
-
-  getById(id: string) {
-    return apiRequest<RecruitmentUser>(`/recruitment/users/${id}`);
-  },
-
-  update(id: string, dto: UpdateRecruitmentUserDto) {
-    return apiRequest<RecruitmentUser>(`/recruitment/users/${id}`, { method: 'PATCH', body: dto });
-  },
-
-  delete(id: string) {
-    return apiRequest<void>(`/recruitment/users/${id}`, { method: 'DELETE' });
-  },
-};
-
-export const recruitmentApi = {
-  listJobs(query: ListRecruitmentJobsQuery) {
-    return apiRequest<PaginatedResult<RecruitmentJob>>('/recruitment/jobs', { query: asQuery(query) });
   },
 
   getJob(id: string) {
@@ -137,9 +81,20 @@ export const recruitmentApi = {
     );
   },
 
-  listApplicants(query: ListRecruitmentApplicantsQuery) {
+  listJobPipelineStages(jobId: string) {
+    return apiRequest<RecruitmentPipelineStageConfig[]>(`/recruitment/jobs/${jobId}/pipeline-stages`);
+  },
+
+  updateJobPipelineStages(jobId: string, dto: UpdateRecruitmentPipelineStagesDto) {
+    return apiRequest<RecruitmentPipelineStageConfig[]>(`/recruitment/jobs/${jobId}/pipeline-stages`, {
+      method: 'PUT',
+      body: dto,
+    });
+  },
+
+  listApplicants(query?: ListRecruitmentApplicantsQuery) {
     return apiRequest<PaginatedResult<RecruitmentApplicant>>('/recruitment/applicants', {
-      query: asQuery(query),
+      query: asQuery(query ?? {}),
     });
   },
 
@@ -169,19 +124,6 @@ export const recruitmentApi = {
   scoreApplicant(id: string) {
     return apiRequest<RecruitmentApplicantScore>(`/recruitment/applicants/${id}/score`, {
       method: 'POST',
-    });
-  },
-
-  listPipelineStages(tenantId: string) {
-    return apiRequest<RecruitmentPipelineStageConfig[]>('/recruitment/pipeline-stages', {
-      query: { tenantId },
-    });
-  },
-
-  updatePipelineStages(dto: UpdateRecruitmentPipelineStagesDto) {
-    return apiRequest<RecruitmentPipelineStageConfig[]>('/recruitment/pipeline-stages', {
-      method: 'PUT',
-      body: dto,
     });
   },
 };
