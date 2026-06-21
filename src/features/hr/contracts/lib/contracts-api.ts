@@ -1,4 +1,5 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type { OrganizationArchiveScope } from '@/features/hr/organization/lib/archive-scope';
 import type {
   ContractNature,
   WorkArrangement,
@@ -63,6 +64,7 @@ export const contractArticlesApi = {
     isActive?: boolean;
     page?: number;
     limit?: number;
+    archiveScope?: OrganizationArchiveScope;
   }) =>
     apiRequest<PaginatedResult<ApiContractArticle>>('/payroll/contract-articles', {
       query: params as Record<string, string | number | boolean | null | undefined>,
@@ -200,6 +202,7 @@ export const employeeContractsApi = {
     contractNumber?: string;
     page?: number;
     limit?: number;
+    archiveScope?: OrganizationArchiveScope;
   }) =>
     apiRequest<PaginatedResult<ApiEmployeeContract>>('/payroll/contracts', {
       query: params as Record<string, string | number | boolean | null | undefined>,
