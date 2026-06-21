@@ -29,6 +29,7 @@ import {
 } from '@/features/hr/leaves/unified-management/lib/leaves-utils';
 import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
+import { organizationActiveListStatusQuery } from '@/features/hr/organization/lib/archive-scope';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/features/hr/leaves/unified-management/types';
 import type { LeaveTypeResponseDto } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
@@ -268,7 +269,10 @@ export function UnifiedManagementClient() {
     void (async () => {
       try {
         const scope = await resolveOrganizationScope();
-        const res = await branchesApi.getAll(scope.companyId ? { companyId: scope.companyId, limit: 200 } : { limit: 200 });
+        const res = await branchesApi.getAll({
+          ...(scope.companyId ? { companyId: scope.companyId, limit: 200 } : { limit: 200 }),
+          ...organizationActiveListStatusQuery(),
+        });
         setBranches(res.items.filter((b) => b.isActive));
       } catch {
         // silently ignore — branch filter stays empty

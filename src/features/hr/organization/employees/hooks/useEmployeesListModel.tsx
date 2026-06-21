@@ -27,6 +27,7 @@ import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveComp
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
+import { organizationActiveListStatusQuery } from '@/features/hr/organization/lib/archive-scope';
 
 function empStartYmd(e: EmployeeResponseDto): string {
   const s = e.startDate;
@@ -70,8 +71,8 @@ export function useEmployeesListModel() {
   React.useEffect(() => {
     if (!companyId) return;
     void Promise.allSettled([
-      branchesApi.getAll({ limit: 200, companyId }),
-      departmentsApi.getAll({ limit: 200, companyId }),
+      branchesApi.getAll({ limit: 200, companyId, ...organizationActiveListStatusQuery() }),
+      departmentsApi.getAll({ limit: 200, companyId, ...organizationActiveListStatusQuery() }),
     ]).then(([branchesRes, deptsRes]) => {
       if (branchesRes.status === 'fulfilled') setBranches(branchesRes.value.items);
       if (deptsRes.status === 'fulfilled') setDepartments(deptsRes.value.items);
