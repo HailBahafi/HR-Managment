@@ -4,7 +4,15 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Users } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import { toast } from 'sonner';
+import {
+  useRecruitmentApplicantsList,
+  useRecruitmentJobFormsMap,
+  useRecruitmentJobPipeline,
+  useRecruitmentJobsList,
+  useRecruitmentMutations,
+} from '@/features/hr/recruitment/hooks/useRecruitment';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
 import { ATS_STAGE_BADGE, ATS_STAGE_LABELS, scoreBarTone } from '@/features/hr/recruitment/lib/ats/stage-styles';
@@ -35,20 +43,41 @@ export function PipelineBoardClient() {
   const searchParams = useSearchParams();
   const urlJobId = searchParams.get('jobId') ?? '';
 
-  const { getTenantApplicants, getTenantJobs, getTenantForms, moveApplicantStage } = useAtsStore();
-  const allApplicants = getTenantApplicants();
-  const jobs = getTenantJobs();
-  const forms = getTenantForms();
-
   const [jobFilter, setJobFilter] = React.useState<string>(urlJobId || 'all');
+  const { moveApplicantStage: moveStageMutation } = useRecruitmentMutations();
+  const { data: jobsData } = useRecruitmentJobsList();
+  const jobs = jobsData?.jobs ?? [];
+  const { formById } = useRecruitmentJobFormsMap(jobs.map((j) => j.id));
+
+  const { data: allApplicants = [] } = useRecruitmentApplicantsList(
+    jobFilter === 'all' ? {} : { jobId: jobFilter },
+  );
+  const { data: pipelineByJob } = useRecruitmentJobPipeline(
+    jobFilter !== 'all' ? jobFilter : undefined,
+  );
 
   React.useEffect(() => {
     if (urlJobId) setJobFilter(urlJobId);
   }, [urlJobId]);
 
-  const applicants = jobFilter === 'all'
-    ? allApplicants
-    : allApplicants.filter((a) => a.jobId === jobFilter);
+  const applicantsByStage = React.useMemo(() => {
+    if (jobFilter !== 'all' && pipelineByJob) {
+      return pipelineByJob;
+    }
+    const grouped = {
+      applied: [],
+      screening: [],
+      interview: [],
+      technical: [],
+      offer: [],
+      hired: [],
+      rejected: [],
+    } as Record<AtsPipelineStage, typeof allApplicants>;
+    for (const app of allApplicants) {
+      grouped[app.pipelineStage]?.push(app);
+    }
+    return grouped;
+  }, [allApplicants, jobFilter, pipelineByJob]);
 
   const updateJobFilter = (value: string) => {
     setJobFilter(value);
@@ -73,10 +102,18 @@ export function PipelineBoardClient() {
     setDropStage(stage);
   };
 
-  const handleDrop = (e: React.DragEvent, stage: AtsPipelineStage) => {
+  const handleDrop = async (e: React.DragEvent, stage: AtsPipelineStage) => {
     e.preventDefault();
     const id = e.dataTransfer.getData('text/plain');
-    if (id) moveApplicantStage(id, stage);
+    if (id) {
+      try {
+        await moveStageMutation.mutateAsync({ id, dto: { pipelineStage: stage } });
+        toast.success(`تم نقل المتقدم إلى: ${ATS_STAGE_LABELS[stage]}`);
+      } catch (err) {
+        const { displayMessage } = handleApiError(err, 'recruitment.applicants.stage');
+        toast.error(displayMessage);
+      }
+    }
     setDraggingId(null);
     setDropStage(null);
   };
@@ -119,7 +156,7 @@ export function PipelineBoardClient() {
         <div className="flex gap-3" style={{ minWidth: 'max-content' }}>
           {STAGE_ORDER.map((stage) => {
             const cfg = STAGES[stage];
-            const stageApps = applicants.filter((a) => a.pipelineStage === stage);
+            const stageApps = applicantsByStage[stage] ?? [];
             const isDropTarget = dropStage === stage && draggingId !== null;
 
             return (
@@ -144,7 +181,7 @@ export function PipelineBoardClient() {
                 {/* Cards */}
                 <div className="flex flex-1 flex-col gap-2 p-2 min-h-48">
                   {stageApps.map((app) => {
-                    const form = forms.find((f) => f.id === app.formId);
+                    const form = formById.get(app.formId);
                     const name = form ? getApplicantName(app, form.fields) : 'متقدم';
                     const initials = getInitials(name);
                     const jobTitle = jobs.find((j) => j.id === app.jobId)?.title;

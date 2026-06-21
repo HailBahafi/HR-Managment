@@ -2,17 +2,18 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, Send, Building2, MapPin, Briefcase, Star } from 'lucide-react';
+import { Upload, Send, MapPin, Briefcase, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import { publicRecruitmentApi } from '@/features/hr/recruitment/lib/api/recruitment';
+import { usePublicRecruitmentJob } from '@/features/hr/recruitment/hooks/usePublicRecruitment';
 import type { AtsFormField, AtsFormFieldType } from '@/features/hr/recruitment/lib/ats/types';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 const FIELD_TYPE_ICONS: Record<AtsFormFieldType, React.ReactNode> = {
   text: <Briefcase className="h-3.5 w-3.5" />,
@@ -34,16 +35,24 @@ interface PublicApplicationClientProps {
 
 export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientProps) {
   const router = useRouter();
-  const { getJobBySlug, getFormByJobId, addApplicant } = useAtsStore();
-  const job = getJobBySlug(jobSlug);
-  const form = job ? getFormByJobId(job.id) : undefined;
+  const { data, isLoading, isError } = usePublicRecruitmentJob(jobSlug);
+  const job = data?.job;
+  const form = data?.form;
 
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [fileData, setFileData] = React.useState<Record<string, string>>({});
   const [fileNames, setFileNames] = React.useState<Record<string, string>>({});
   const [submitting, setSubmitting] = React.useState(false);
 
-  if (!job || !form) {
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        جاري التحميل…
+      </div>
+    );
+  }
+
+  if (isError || !job || !form) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -69,25 +78,33 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     for (const field of form.fields) {
       if (field.required) {
-        const val = answers[field.id];
-        if (!val || val.trim() === '') { toast.error(`الحقل "${field.label}" مطلوب`); return; }
+        const val = field.type === 'file' ? fileNames[field.id] : answers[field.id];
+        if (!val || String(val).trim() === '') {
+          toast.error(`الحقل "${field.label}" مطلوب`);
+          return;
+        }
       }
     }
     setSubmitting(true);
-    const finalAnswers: Record<string, string | undefined> = { ...answers };
-    addApplicant({
-      tenantId: job.tenantId,
-      jobId: job.id,
-      formId: form.id,
-      answers: finalAnswers,
-      cvFileName: Object.values(fileNames)[0] || null,
-      cvFileData: Object.values(fileData)[0] || null,
-    }, true);
-    toast.success('تم تقديم طلبك بنجاح!');
-    setTimeout(() => router.push('/'), 2000);
+    try {
+      const fileField = form.fields.find((f) => f.type === 'file');
+      const cvBase64 = fileField ? fileData[fileField.id] : undefined;
+      await publicRecruitmentApi.submitApplication(jobSlug, {
+        answers: { ...answers },
+        cvFileName: fileField ? fileNames[fileField.id] ?? null : null,
+        cvFileBase64: cvBase64 ?? null,
+      });
+      toast.success('تم تقديم طلبك بنجاح!');
+      setTimeout(() => router.push('/'), 2000);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'recruitment.public.apply');
+      toast.error(displayMessage);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -115,7 +132,7 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
         <Card>
           <CardContent className="space-y-5 p-6">
             <h2 className="text-lg font-semibold">نموذج التقديم</h2>
-            {form.fields.map((field) => (
+            {form.fields.map((field: AtsFormField) => (
               <div key={field.id} className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground">{FIELD_TYPE_ICONS[field.type]}</span>
@@ -148,7 +165,7 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
             ))}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => router.push('/')}>إلغاء</Button>
-              <Button variant="luxe" onClick={handleSubmit} disabled={submitting}>
+              <Button variant="luxe" onClick={() => void handleSubmit()} disabled={submitting}>
                 <Send className="h-4 w-4 me-1" /> {submitting ? 'جارٍ الإرسال…' : 'تقديم الطلب'}
               </Button>
             </div>

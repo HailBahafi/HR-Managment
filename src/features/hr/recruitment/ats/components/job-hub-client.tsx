@@ -16,7 +16,12 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import {
+  useRecruitmentJobDetail,
+  useRecruitmentJobStats,
+  useRecruitmentMutations,
+} from '@/features/hr/recruitment/hooks/useRecruitment';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { ATS_STAGE_LABELS } from '@/features/hr/recruitment/lib/ats/stage-styles';
 import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
@@ -43,12 +48,17 @@ const STAGE_ORDER: AtsPipelineStage[] = [
 
 export function JobHubClient({ jobId }: { jobId: string }) {
   const router = useRouter();
-  const { getTenantJobs, getJobApplicants, updateJob } = useAtsStore();
-  const job = getTenantJobs().find((j) => j.id === jobId);
-  const applicants = getJobApplicants(jobId);
+  const { data: jobData, isLoading, isError } = useRecruitmentJobDetail(jobId);
+  const { data: stats } = useRecruitmentJobStats(jobId);
+  const { toggleJobActive } = useRecruitmentMutations();
+  const job = jobData?.job;
   const [qrOpen, setQrOpen] = React.useState(false);
 
-  if (!job) {
+  if (isLoading) {
+    return <Card><CardContent className="py-16 text-center text-sm text-muted-foreground">جاري التحميل…</CardContent></Card>;
+  }
+
+  if (isError || !job) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
@@ -62,13 +72,11 @@ export function JobHubClient({ jobId }: { jobId: string }) {
   }
 
   const routes = recruitmentJobRoutes(job.id, job.slug);
-  const stageCounts = STAGE_ORDER.reduce(
-    (acc, stage) => {
-      acc[stage] = applicants.filter((a) => a.pipelineStage === stage).length;
-      return acc;
-    },
+  const stageCounts = stats?.stageCounts ?? STAGE_ORDER.reduce(
+    (acc, stage) => { acc[stage] = 0; return acc; },
     {} as Record<AtsPipelineStage, number>,
   );
+  const totalApplicants = stats?.totalApplicants ?? 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -100,9 +108,14 @@ export function JobHubClient({ jobId }: { jobId: string }) {
             variant="outline"
             size="sm"
             className="gap-1.5"
-            onClick={() => {
-              updateJob(job.id, { isActive: !job.isActive });
-              toast.success(job.isActive ? 'تم إيقاف الوظيفة' : 'تم تفعيل الوظيفة');
+            onClick={async () => {
+              try {
+                await toggleJobActive.mutateAsync(job.id);
+                toast.success(job.isActive ? 'تم إيقاف الوظيفة' : 'تم تفعيل الوظيفة');
+              } catch (err) {
+                const { displayMessage } = handleApiError(err, 'recruitment.jobs.toggle');
+                toast.error(displayMessage);
+              }
             }}
           >
             <Power className={`h-3.5 w-3.5 ${job.isActive ? 'text-emerald-500' : ''}`} />
@@ -155,7 +168,7 @@ export function JobHubClient({ jobId }: { jobId: string }) {
               <Users className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold tabular-nums">{applicants.length}</p>
+              <p className="text-2xl font-bold tabular-nums">{totalApplicants}</p>
               <p className="text-xs text-muted-foreground">متقدم لهذه الوظيفة</p>
             </div>
           </CardContent>
@@ -170,7 +183,7 @@ export function JobHubClient({ jobId }: { jobId: string }) {
               <ClipboardList className="h-6 w-6 text-gold" />
             </div>
             <div>
-              <p className="text-2xl font-bold tabular-nums">{stageCounts.hired}</p>
+              <p className="text-2xl font-bold tabular-nums">{stats?.hiredCount ?? stageCounts.hired ?? 0}</p>
               <p className="text-xs text-muted-foreground">تم التعيين · افتح المسار</p>
             </div>
           </CardContent>

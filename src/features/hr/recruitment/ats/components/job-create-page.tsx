@@ -17,9 +17,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/shared/utils';
 import type { AtsFormField, AtsFormFieldType, AtsJobType } from '@/features/hr/recruitment/lib/ats/types';
-import { uid, slugify } from '@/features/hr/recruitment/lib/ats/utils';
-import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import { uid } from '@/features/hr/recruitment/lib/ats/utils';
 import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
+import { useRecruitmentJobDetail, useRecruitmentMutations } from '@/features/hr/recruitment/hooks/useRecruitment';
+import { useRecruitmentTenantId } from '@/features/hr/recruitment/hooks/useRecruitmentTenantId';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 // ─── Field type palette ───────────────────────────────────────────────────────
 
@@ -214,10 +216,11 @@ export function JobCreatePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
-  const { currentTenantId, getTenantJobs, getTenantForms, addJob, updateJob, addForm, updateForm } = useAtsStore();
-
-  const existingJob = editId ? getTenantJobs().find((j) => j.id === editId) : undefined;
-  const existingForm = existingJob ? getTenantForms().find((f) => f.id === existingJob.formId) : undefined;
+  const tenantId = useRecruitmentTenantId();
+  const { createJob, updateJob } = useRecruitmentMutations();
+  const { data: editData, isLoading: editLoading } = useRecruitmentJobDetail(editId ?? undefined);
+  const existingJob = editData?.job;
+  const existingForm = editData?.form;
 
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -293,9 +296,10 @@ export function JobCreatePage() {
     setCanvasOver(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) { setError('يرجى إدخال عنوان الوظيفة'); return; }
     if (!department.trim()) { setError('يرجى إدخال القسم'); return; }
+    if (!tenantId) { setError('لم يتم تحديد الشركة (tenantId)'); return; }
     if (fields.length === 0) { setError('يجب إضافة حقل واحد على الأقل'); return; }
     for (const f of fields) {
       if (!f.label.trim()) { setError('جميع الحقول يجب أن تحتوي على اسم'); return; }
@@ -303,19 +307,59 @@ export function JobCreatePage() {
         setError('حقول القائمة تحتاج خياراً واحداً على الأقل'); return;
       }
     }
-    const slug = slugify(title);
-    if (existingJob && existingForm) {
-      updateJob(existingJob.id, { title: title.trim(), description: description.trim(), department: department.trim(), location: location.trim(), type: jobType, slug });
-      updateForm(existingForm.id, { title: `نموذج التقديم - ${title.trim()}`, description: description.trim(), fields });
-      toast.success('تم تحديث الوظيفة');
-      router.push(`/hr/recruitment/ats-admin/jobs/${existingJob.id}`);
-    } else {
-      addForm({ tenantId: currentTenantId, jobId: `job-${uid()}`, title: `نموذج التقديم - ${title.trim()}`, description: description.trim(), fields });
-      addJob({ tenantId: currentTenantId, title: title.trim(), slug, description: description.trim(), department: department.trim(), location: location.trim(), type: jobType, isActive: true, formId: `form-${uid()}` });
-      toast.success('تم إنشاء الوظيفة');
+
+    const formPayload = {
+      title: `نموذج التقديم - ${title.trim()}`,
+      description: description.trim(),
+      fields: fields.map((f, index) => ({
+        id: existingForm ? f.id : undefined,
+        type: f.type,
+        label: f.label.trim(),
+        required: f.required,
+        options: f.type === 'select' ? f.options : undefined,
+        sortOrder: index,
+      })),
+    };
+
+    try {
+      if (existingJob && existingForm) {
+        await updateJob.mutateAsync({
+          id: existingJob.id,
+          dto: {
+            title: title.trim(),
+            description: description.trim(),
+            department: department.trim(),
+            location: location.trim(),
+            type: jobType,
+            form: formPayload,
+          },
+        });
+        toast.success('تم تحديث الوظيفة');
+        router.push(`/hr/recruitment/ats-admin/jobs/${existingJob.id}`);
+      } else {
+        const created = await createJob.mutateAsync({
+          tenantId,
+          title: title.trim(),
+          description: description.trim(),
+          department: department.trim(),
+          location: location.trim(),
+          type: jobType,
+          isActive: true,
+          form: formPayload,
+        });
+        toast.success('تم إنشاء الوظيفة');
+        router.push(`/hr/recruitment/ats-admin/jobs/${created.id}`);
+      }
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'recruitment.jobs.save');
+      setError(displayMessage);
+      toast.error(displayMessage);
     }
-    router.push('/hr/recruitment/ats-admin');
   };
+
+  if (editId && editLoading) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">جاري التحميل…</div>;
+  }
 
   const addedLabels = new Set(fields.map((f) => f.label));
 

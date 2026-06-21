@@ -37,7 +37,8 @@ import type {
   AtsFormFieldType,
   AtsPipelineStage,
 } from '@/features/hr/recruitment/lib/ats/types';
-import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import { useRecruitmentJobsList, useRecruitmentMutations } from '@/features/hr/recruitment/hooks/useRecruitment';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
 import { ATS_STAGE_BADGE, ATS_STAGE_LABELS, scoreBarTone } from '@/features/hr/recruitment/lib/ats/stage-styles';
 import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
@@ -74,24 +75,45 @@ export function AtsApplicantDetailDialog({
   onOpenChange,
 }: AtsApplicantDetailDialogProps) {
   const router = useRouter();
-  const { getTenantJobs, moveApplicantStage, deleteApplicant } = useAtsStore();
+  const { data: jobsData } = useRecruitmentJobsList();
+  const { moveApplicantStage, deleteApplicant, scoreApplicant } = useRecruitmentMutations();
 
   if (!applicant || !form) return null;
 
-  const job = getTenantJobs().find((j) => j.id === applicant.jobId);
+  const job = jobsData?.jobs.find((j) => j.id === applicant.jobId);
   const name = getApplicantName(applicant, form.fields);
   const initials = getInitials(name);
   const routes = recruitmentJobRoutes(applicant.jobId, job?.slug);
 
-  const handleStageChange = (stage: AtsPipelineStage) => {
-    moveApplicantStage(applicant.id, stage);
-    toast.success(`تم نقل المتقدم إلى: ${ATS_STAGE_LABELS[stage]}`);
+  const handleStageChange = async (stage: AtsPipelineStage) => {
+    try {
+      await moveApplicantStage.mutateAsync({ id: applicant.id, dto: { pipelineStage: stage } });
+      toast.success(`تم نقل المتقدم إلى: ${ATS_STAGE_LABELS[stage]}`);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'recruitment.applicants.stage');
+      toast.error(displayMessage);
+    }
   };
 
-  const handleDelete = () => {
-    deleteApplicant(applicant.id);
-    toast.success('تم حذف المتقدم');
-    onOpenChange(false);
+  const handleScore = async () => {
+    try {
+      await scoreApplicant.mutateAsync(applicant.id);
+      toast.success('تم تحديث التقييم التلقائي');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'recruitment.applicants.score');
+      toast.error(displayMessage);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteApplicant.mutateAsync(applicant.id);
+      toast.success('تم حذف المتقدم');
+      onOpenChange(false);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'recruitment.applicants.delete');
+      toast.error(displayMessage);
+    }
   };
 
   return (
@@ -182,7 +204,7 @@ export function AtsApplicantDetailDialog({
             </Select>
           </div>
 
-          {applicant.score && (
+          {applicant.score ? (
             <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">التقييم التلقائي</span>
@@ -198,6 +220,16 @@ export function AtsApplicantDetailDialog({
               </div>
               <p className="text-xs text-muted-foreground">{applicant.score.reasoning}</p>
             </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              disabled={scoreApplicant.isPending}
+              onClick={handleScore}
+            >
+              {scoreApplicant.isPending ? 'جاري التقييم...' : 'تقييم تلقائي'}
+            </Button>
           )}
 
           <div className="grid gap-3 sm:grid-cols-2">

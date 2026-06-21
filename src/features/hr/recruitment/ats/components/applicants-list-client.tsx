@@ -8,17 +8,22 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
-import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
-import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
-import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
 import { ATS_STAGE_BADGE, ATS_STAGE_TABS, scoreBarTone, type AtsStageTab } from '@/features/hr/recruitment/lib/ats/stage-styles';
 import { DisplayDate } from '@/components/ui/table-cells';
 import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
 import { AtsApplicantDetailDialog } from '@/features/hr/recruitment/ats/components/ats-applicant-detail-dialog';
-import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
+import {
+  useRecruitmentApplicant,
+  useRecruitmentApplicantsList,
+  useRecruitmentJobDetail,
+  useRecruitmentJobFormsMap,
+  useRecruitmentJobsList,
+} from '@/features/hr/recruitment/hooks/useRecruitment';
+import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 
 /* ─── Stage config ────────────────────────────────────────────── */
 type StageTab = AtsStageTab;
@@ -46,19 +51,37 @@ export function ApplicantsListClient() {
   const urlJobId = searchParams.get('jobId') ?? '';
   const detailId = searchParams.get('detail') ?? '';
 
-  const { getTenantJobs, getTenantApplicants, getTenantForms } = useAtsStore();
-  const jobs = getTenantJobs();
-  const applicants = getTenantApplicants();
-  const forms = getTenantForms();
-
   const [search, setSearch] = React.useState('');
+  const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [stageTab, setStageTab] = React.useState<StageTab>('all');
   const [jobFilter, setJobFilter] = React.useState<string>(urlJobId || 'all');
   const [minScore, setMinScore] = React.useState('');
 
   React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  React.useEffect(() => {
     if (urlJobId) setJobFilter(urlJobId);
   }, [urlJobId]);
+
+  const { data: jobsData } = useRecruitmentJobsList();
+  const jobs = jobsData?.jobs ?? [];
+  const { formById } = useRecruitmentJobFormsMap(jobs.map((j) => j.id));
+
+  const listQuery = React.useMemo(() => ({
+    jobId: jobFilter !== 'all' ? jobFilter : undefined,
+    pipelineStage: stageTab !== 'all' ? (stageTab as AtsPipelineStage) : undefined,
+    minScore: minScore ? Number(minScore) : undefined,
+    search: debouncedSearch || undefined,
+  }), [jobFilter, stageTab, minScore, debouncedSearch]);
+
+  const { data: applicants = [], isLoading } = useRecruitmentApplicantsList(listQuery);
+  const { data: detailApplicantFromApi } = useRecruitmentApplicant(detailId || undefined);
+  const detailApplicant = detailApplicantFromApi ?? applicants.find((a) => a.id === detailId);
+  const { data: detailJobData } = useRecruitmentJobDetail(detailApplicant?.jobId);
+  const detailForm = detailJobData?.form ?? (detailApplicant ? formById.get(detailApplicant.formId) : undefined);
 
   const updateJobFilter = (value: string) => {
     setJobFilter(value);
@@ -84,25 +107,13 @@ export function ApplicantsListClient() {
     router.replace(qs ? `/hr/recruitment/ats-applicants?${qs}` : '/hr/recruitment/ats-applicants');
   };
 
-  const detailApplicant = detailId ? applicants.find((a) => a.id === detailId) : undefined;
-  const detailForm = detailApplicant ? forms.find((f) => f.id === detailApplicant.formId) : undefined;
-
   const stageCounts = React.useMemo(() => {
     const counts: Record<StageTab, number> = { all: applicants.length, applied: 0, screening: 0, interview: 0, technical: 0, offer: 0, hired: 0, rejected: 0 };
     for (const a of applicants) counts[a.pipelineStage] = (counts[a.pipelineStage] ?? 0) + 1;
     return counts;
   }, [applicants]);
 
-  const filtered = React.useMemo(() => applicants.filter((a) => {
-    const form = forms.find((f) => f.id === a.formId);
-    const name = form ? getApplicantName(a, form.fields) : '';
-    const matchSearch = !search || name.toLowerCase().includes(search.toLowerCase()) ||
-      Object.values(a.answers).some((v) => v?.toLowerCase().includes(search.toLowerCase()));
-    const matchStage = stageTab === 'all' || a.pipelineStage === stageTab;
-    const matchJob = jobFilter === 'all' || a.jobId === jobFilter;
-    const matchScore = !minScore || (a.score?.finalScore ?? 0) >= Number(minScore);
-    return matchSearch && matchStage && matchJob && matchScore;
-  }), [applicants, forms, search, stageTab, jobFilter, minScore]);
+  const filtered = applicants;
 
   const stageLabel = STAGES.find((s) => s.key === stageTab)?.label ?? '';
   const hasActiveFilter = stageTab !== 'all' || jobFilter !== 'all' || !!minScore || !!search;
@@ -171,7 +182,11 @@ export function ApplicantsListClient() {
       />
 
       {/* Cards grid */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-14 text-center text-sm text-muted-foreground">جاري التحميل…</CardContent>
+        </Card>
+      ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
@@ -185,7 +200,7 @@ export function ApplicantsListClient() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((app) => {
             const job = jobs.find((j) => j.id === app.jobId);
-            const form = forms.find((f) => f.id === app.formId);
+            const form = formById.get(app.formId);
             const name = form ? getApplicantName(app, form.fields) : 'متقدم';
             const initials = getInitials(name);
             const stageCfg = STAGES.find((s) => s.key === app.pipelineStage);

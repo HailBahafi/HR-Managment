@@ -12,11 +12,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
 import type { AtsJob } from '@/features/hr/recruitment/lib/ats/types';
 import { QRCodeDialog } from '@/features/hr/recruitment/shared/qr-code-dialog';
 import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
 import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
+import { useRecruitmentApplicantsList, useRecruitmentJobsList, useRecruitmentMutations } from '@/features/hr/recruitment/hooks/useRecruitment';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 const JOB_TYPE_AR: Record<string, string> = {
   'full-time': 'دوام كامل',
@@ -27,29 +28,58 @@ const JOB_TYPE_AR: Record<string, string> = {
 
 export function AtsAdminClient() {
   const router = useRouter();
-  const { getTenantJobs, getTenantApplicants, updateJob, deleteJob } = useAtsStore();
-  const jobs = getTenantJobs();
-  const applicants = getTenantApplicants();
   const [search, setSearch] = React.useState('');
+  const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [qrJob, setQrJob] = React.useState<AtsJob | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
-  const filtered = jobs.filter((j) =>
-    j.title.toLowerCase().includes(search.toLowerCase()) ||
-    j.department.toLowerCase().includes(search.toLowerCase())
-  );
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const handleDelete = (id: string) => {
-    deleteJob(id);
-    setDeleteId(null);
-    toast.success('تم حذف الوظيفة');
+  const { data: jobsData, isLoading, isError, error } = useRecruitmentJobsList(debouncedSearch || undefined);
+  const { data: applicants = [] } = useRecruitmentApplicantsList({});
+  const { deleteJob, toggleJobActive } = useRecruitmentMutations();
+
+  const jobs = jobsData?.jobs ?? [];
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteJob.mutateAsync(id);
+      setDeleteId(null);
+      toast.success('تم حذف الوظيفة');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'recruitment.jobs.delete');
+      toast.error(displayMessage);
+    }
   };
+
+  const handleToggle = async (job: AtsJob) => {
+    try {
+      await toggleJobActive.mutateAsync(job.id);
+      toast.success(job.isActive ? 'تم إيقاف الوظيفة' : 'تم تفعيل الوظيفة');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'recruitment.jobs.toggle');
+      toast.error(displayMessage);
+    }
+  };
+
+  if (isError) {
+    const { displayMessage } = handleApiError(error, 'recruitment.jobs.list');
+    return (
+      <Card>
+        <CardContent className="py-12 text-center space-y-3">
+          <p className="text-sm text-destructive">{displayMessage}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <RecruitmentJobNav />
 
-      {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-xs w-full">
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -65,15 +95,18 @@ export function AtsAdminClient() {
         </Button>
       </div>
 
-      {/* Jobs */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-16 text-center text-sm text-muted-foreground">جاري التحميل…</CardContent>
+        </Card>
+      ) : jobs.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
               <Briefcase className="h-7 w-7 text-muted-foreground/50" />
             </div>
             <p className="text-sm font-medium">لا توجد وظائف</p>
-            <p className="text-xs text-muted-foreground">أنشئ وظيفة جديدة للبدء في استقبال الطلبات</p>
+            <p className="text-xs text-muted-foreground">أنشئ وظيفة جديدة من الباكند أو من هنا</p>
             <Button variant="luxe" size="sm" className="mt-1" onClick={() => router.push('/hr/recruitment/ats-admin/jobs/create')}>
               <Plus className="h-4 w-4 me-1" /> إنشاء وظيفة
             </Button>
@@ -81,13 +114,12 @@ export function AtsAdminClient() {
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((job) => {
+          {jobs.map((job) => {
             const jobApps = applicants.filter((a) => a.jobId === job.id);
             const hired = jobApps.filter((a) => a.pipelineStage === 'hired').length;
             const routes = recruitmentJobRoutes(job.id, job.slug);
             return (
               <Card key={job.id} className="group relative overflow-hidden transition-all hover:shadow-elevated">
-                {/* active indicator */}
                 <div className={`absolute inset-y-0 right-0 w-1 ${job.isActive ? 'bg-emerald-400' : 'bg-muted-foreground/20'}`} />
                 <CardContent className="p-5 pr-6">
                   <button
@@ -150,7 +182,7 @@ export function AtsAdminClient() {
                       <Button
                         variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground"
                         title={job.isActive ? 'إيقاف' : 'تفعيل'}
-                        onClick={() => updateJob(job.id, { isActive: !job.isActive })}
+                        onClick={() => void handleToggle(job)}
                       >
                         <Power className={`h-3.5 w-3.5 ${job.isActive ? 'text-emerald-500' : ''}`} />
                       </Button>
@@ -187,7 +219,9 @@ export function AtsAdminClient() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setDeleteId(null)}>إلغاء</Button>
-                <Button variant="destructive" size="sm" onClick={() => handleDelete(deleteId)}>حذف</Button>
+                <Button variant="destructive" size="sm" onClick={() => void handleDelete(deleteId)} disabled={deleteJob.isPending}>
+                  حذف
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -12,11 +12,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Badge } from '@/components/ui/badge';
-import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
 import {
   recruitmentGlobalRoutes,
   recruitmentJobRoutes,
 } from '@/features/hr/recruitment/lib/recruitment-routes';
+import { useRecruitmentJobDetail, useRecruitmentJobStats } from '@/features/hr/recruitment/hooks/useRecruitment';
 
 export type RecruitmentNavSection = 'job' | 'applicants' | 'pipeline' | 'form' | 'apply';
 
@@ -27,9 +27,10 @@ interface RecruitmentJobNavProps {
 }
 
 export function RecruitmentJobNav({ jobId, active, className }: RecruitmentJobNavProps) {
-  const { getTenantJobs, getJobApplicants } = useAtsStore();
-  const job = jobId ? getTenantJobs().find((j) => j.id === jobId) : undefined;
-  const applicantCount = jobId ? getJobApplicants(jobId).length : 0;
+  const { data: jobDetail } = useRecruitmentJobDetail(jobId);
+  const { data: stats } = useRecruitmentJobStats(jobId);
+  const job = jobDetail?.job;
+  const applicantCount = stats?.totalApplicants ?? 0;
   const routes = jobId ? recruitmentJobRoutes(jobId, job?.slug) : null;
 
   const items: {
