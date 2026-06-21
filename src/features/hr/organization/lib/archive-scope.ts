@@ -30,6 +30,24 @@ export function organizationActiveListArchiveQuery(): OrganizationListArchiveQue
   return { archiveScope: 'active' };
 }
 
+/**
+ * Payroll list endpoints (contract-articles, contracts, …) do not accept `archiveScope` yet.
+ * Omit the query param and rely on the server default (non-archived).
+ */
+export function payrollListArchiveQuery(): OrganizationListArchiveQuery {
+  return {};
+}
+
+/** Client-side archive filter when the API omits archive fields on items. */
+export function filterRowsByArchiveScope<T extends { isArchived?: boolean }>(
+  rows: T[],
+  scope: OrganizationArchiveScope,
+): T[] {
+  if (scope === 'all') return rows;
+  if (scope === 'archived') return rows.filter((r) => r.isArchived === true);
+  return rows.filter((r) => !r.isArchived);
+}
+
 /** @deprecated Use organizationListArchiveQuery */
 export function organizationListStatusQuery(
   scope: OrganizationArchiveScope = ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,

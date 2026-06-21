@@ -34,6 +34,7 @@ export type ApiContractArticle = {
   isBasic: boolean;
   sortOrder: number;
   isActive: boolean;
+  isArchived?: boolean;
   createdAt: string;
   updatedAt: string;
   createdBy: string;

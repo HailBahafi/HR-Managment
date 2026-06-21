@@ -167,12 +167,13 @@ export function ApprovalAssignmentClient() {
     () => (
       <EntityFilterToolbar
         showDateSection={false}
+        showStatusSection={false}
         showEmployeePicker={false}
         inlineSelects={[
           {
             id: 'archive',
             value: archiveScope,
-            onChange: (v) => setArchiveScope(v as typeof archiveScope),
+            onChange: (v) => setArchiveScope(v as OrganizationArchiveScope),
             placeholder: 'العرض',
             options: archiveScopeOptions.map((o) => ({ value: o.value, label: o.label })),
           },

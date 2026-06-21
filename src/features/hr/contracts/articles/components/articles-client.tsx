@@ -30,7 +30,8 @@ import {
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
-  organizationListArchiveQuery,
+  filterRowsByArchiveScope,
+  payrollListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
 import { cn } from '@/shared/utils';
@@ -78,10 +79,10 @@ export function ContractArticlesClient() {
         companyId,
         page,
         limit: pageSize,
-        ...organizationListArchiveQuery(archiveScope),
+        ...payrollListArchiveQuery(),
         ...(kindFilter === 'basic' ? { isBasic: true } : kindFilter === 'optional' ? { isBasic: false } : {}),
       });
-      const items = res.items.map((a) => ({
+      const mapped = res.items.map((a) => ({
         id: a.id,
         code: a.code,
         title: a.titleAr,
@@ -89,8 +90,14 @@ export function ContractArticlesClient() {
         isBasic: a.isBasic,
         isActive: a.isActive,
         updatedAt: a.updatedAt,
-      })).sort((a, b) => a.code.localeCompare(b.code));
-      return { items, total: res.pagination.total };
+        isArchived: a.isArchived,
+      }));
+      const scoped = filterRowsByArchiveScope(mapped, archiveScope);
+      const items = scoped.sort((a, b) => a.code.localeCompare(b.code));
+      const total = archiveScope === 'active' && kindFilter === 'all'
+        ? res.pagination.total
+        : items.length;
+      return { items, total };
     } catch (err) {
       handleApiError(err, 'contract-articles.load');
       return { items: [], total: 0 };

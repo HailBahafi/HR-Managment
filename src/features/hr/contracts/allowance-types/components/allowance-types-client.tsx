@@ -38,7 +38,7 @@ import { TableRowActions } from '@/components/ui/table-cells';
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
-  organizationListArchiveQuery,
+  payrollListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
 
@@ -335,7 +335,7 @@ export function AllowanceTypesClient() {
         companyId,
         page,
         limit: pageSize,
-        ...organizationListArchiveQuery(archiveScope),
+        ...payrollListArchiveQuery(),
       });
       setError(null);
       return { items: res.items, total: res.pagination.total };

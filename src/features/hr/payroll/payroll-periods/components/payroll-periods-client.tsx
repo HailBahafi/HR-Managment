@@ -37,7 +37,7 @@ import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-comp
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
-  organizationListArchiveQuery,
+  payrollListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
 import { cn } from '@/shared/utils';
@@ -101,7 +101,7 @@ export function PayrollPeriodsClient() {
       companyId,
       page,
       limit: pageSize,
-      ...organizationListArchiveQuery(archiveScope),
+      ...payrollListArchiveQuery(),
       ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
     });
     let items = res.items.map(mapPayrollPeriodFromApi);
@@ -120,7 +120,7 @@ export function PayrollPeriodsClient() {
       companyId,
       page,
       limit,
-      ...organizationListArchiveQuery(archiveScope),
+      ...payrollListArchiveQuery(),
       ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
     }));
     const items = res.items

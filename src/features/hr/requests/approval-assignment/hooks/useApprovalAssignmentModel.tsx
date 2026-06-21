@@ -16,8 +16,8 @@ import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
-  organizationActiveListStatusQuery,
-  organizationListStatusQuery,
+  organizationActiveListArchiveQuery,
+  organizationListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
 
@@ -41,7 +41,7 @@ export function useApprovalAssignmentModel() {
         companyId,
         page,
         limit: pageSize,
-        ...organizationListStatusQuery(archiveScope),
+        ...organizationListArchiveQuery(archiveScope),
       });
       setListError(null);
       return { items: tplRes.items, total: tplRes.pagination.total };
@@ -66,8 +66,8 @@ export function useApprovalAssignmentModel() {
     if (!companyId) return;
     try {
       const [rtRes, empRes] = await Promise.all([
-        requestTypesApi.list({ companyId, limit: 200, ...organizationActiveListStatusQuery() }),
-        employeesApi.getAll({ companyId, limit: 500 }),
+        requestTypesApi.list({ companyId, limit: 200, ...organizationActiveListArchiveQuery() }),
+        employeesApi.getAll({ companyId, limit: 500, ...organizationActiveListArchiveQuery() }),
       ]);
       setRequestTypes(rtRes.items);
       setEmployees(empRes.items.map((e) => ({ id: e.id, nameAr: e.nameAr })));

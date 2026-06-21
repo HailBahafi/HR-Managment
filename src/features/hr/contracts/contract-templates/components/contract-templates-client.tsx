@@ -30,7 +30,7 @@ import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
-  organizationListArchiveQuery,
+  payrollListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
 
@@ -67,7 +67,7 @@ export function ContractTemplatesClient() {
         companyId,
         page,
         limit: pageSize,
-        ...organizationListArchiveQuery(archiveScope),
+        ...payrollListArchiveQuery(),
       });
       const items = [...res.items].sort(
         (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.nameAr.localeCompare(b.nameAr, 'ar'),

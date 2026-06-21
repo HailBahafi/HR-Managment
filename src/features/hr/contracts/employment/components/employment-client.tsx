@@ -73,7 +73,7 @@ import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organiza
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
-  organizationListArchiveQuery,
+  payrollListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -172,7 +172,7 @@ export function EmploymentContractsClient() {
     companyId: companyId!,
     page,
     limit: pageSize,
-    ...organizationListArchiveQuery(archiveScope),
+    ...payrollListArchiveQuery(),
     ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
     ...(kindFilter !== 'all' ? { contractNature: kindFilter } : {}),
     ...(selectedEmpIds.size === 1 ? { employeeId: [...selectedEmpIds][0] } : {}),
