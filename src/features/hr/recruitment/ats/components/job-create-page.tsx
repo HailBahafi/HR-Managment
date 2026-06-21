@@ -19,6 +19,7 @@ import { cn } from '@/shared/utils';
 import type { AtsFormField, AtsFormFieldType, AtsJobType } from '@/features/hr/recruitment/lib/ats/types';
 import { uid, slugify } from '@/features/hr/recruitment/lib/ats/utils';
 import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
+import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
 
 // ─── Field type palette ───────────────────────────────────────────────────────
 
@@ -307,6 +308,7 @@ export function JobCreatePage() {
       updateJob(existingJob.id, { title: title.trim(), description: description.trim(), department: department.trim(), location: location.trim(), type: jobType, slug });
       updateForm(existingForm.id, { title: `نموذج التقديم - ${title.trim()}`, description: description.trim(), fields });
       toast.success('تم تحديث الوظيفة');
+      router.push(`/hr/recruitment/ats-admin/jobs/${existingJob.id}`);
     } else {
       addForm({ tenantId: currentTenantId, jobId: `job-${uid()}`, title: `نموذج التقديم - ${title.trim()}`, description: description.trim(), fields });
       addJob({ tenantId: currentTenantId, title: title.trim(), slug, description: description.trim(), department: department.trim(), location: location.trim(), type: jobType, isActive: true, formId: `form-${uid()}` });
@@ -324,7 +326,7 @@ export function JobCreatePage() {
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground"
-            onClick={() => router.push('/hr/recruitment/ats-admin')}>
+            onClick={() => router.push(existingJob ? `/hr/recruitment/ats-admin/jobs/${existingJob.id}` : '/hr/recruitment/ats-admin')}>
             <ArrowRight className="h-4 w-4" /> العودة
           </Button>
           <div className="h-4 w-px bg-border" />
@@ -341,6 +343,12 @@ export function JobCreatePage() {
           </Button>
         </div>
       </div>
+
+      {existingJob && (
+        <div className="mb-5">
+          <RecruitmentJobNav jobId={existingJob.id} active="form" />
+        </div>
+      )}
 
       {/* ── Job details collapsible strip ── */}
       <div className="mb-5 rounded-xl border border-border bg-card shadow-soft overflow-hidden">

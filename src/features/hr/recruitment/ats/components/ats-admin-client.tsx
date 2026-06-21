@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Plus, Search, Briefcase,
   Pencil, Trash2, Share2, Power, Eye, ArrowUpRight, Users,
+  ClipboardList, FileEdit, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
 import type { AtsJob } from '@/features/hr/recruitment/lib/ats/types';
 import { QRCodeDialog } from '@/features/hr/recruitment/shared/qr-code-dialog';
+import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
+import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
 
 const JOB_TYPE_AR: Record<string, string> = {
   'full-time': 'دوام كامل',
@@ -44,6 +47,8 @@ export function AtsAdminClient() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <RecruitmentJobNav />
+
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-xs w-full">
@@ -79,14 +84,19 @@ export function AtsAdminClient() {
           {filtered.map((job) => {
             const jobApps = applicants.filter((a) => a.jobId === job.id);
             const hired = jobApps.filter((a) => a.pipelineStage === 'hired').length;
+            const routes = recruitmentJobRoutes(job.id, job.slug);
             return (
               <Card key={job.id} className="group relative overflow-hidden transition-all hover:shadow-elevated">
                 {/* active indicator */}
                 <div className={`absolute inset-y-0 right-0 w-1 ${job.isActive ? 'bg-emerald-400' : 'bg-muted-foreground/20'}`} />
                 <CardContent className="p-5 pr-6">
-                  <div className="mb-3 flex items-start justify-between gap-2">
+                  <button
+                    type="button"
+                    className="mb-3 flex w-full items-start justify-between gap-2 text-left"
+                    onClick={() => router.push(routes.hub)}
+                  >
                     <div className="min-w-0">
-                      <h3 className="truncate font-semibold text-base leading-tight">{job.title}</h3>
+                      <h3 className="truncate font-semibold text-base leading-tight group-hover:text-primary transition-colors">{job.title}</h3>
                       <p className="mt-0.5 text-xs text-muted-foreground truncate">{job.department} · {job.location}</p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -97,15 +107,35 @@ export function AtsAdminClient() {
                         {JOB_TYPE_AR[job.type]}
                       </Badge>
                     </div>
-                  </div>
+                  </button>
 
-                  <p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed mb-4">{job.description}</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed mb-3">{job.description}</p>
+
+                  <div className="mb-4 flex flex-wrap gap-1.5">
+                    <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px] px-2.5" onClick={() => router.push(routes.applicants)}>
+                      <Users className="h-3 w-3" />
+                      المتقدمون ({jobApps.length})
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px] px-2.5" onClick={() => router.push(routes.pipeline)}>
+                      <ClipboardList className="h-3 w-3" />
+                      المسار
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px] px-2.5" onClick={() => router.push(routes.editForm)}>
+                      <FileEdit className="h-3 w-3" />
+                      النموذج
+                    </Button>
+                    {routes.publicApply && (
+                      <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px] px-2.5" asChild>
+                        <a href={routes.publicApply} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3 w-3" />
+                          التقديم
+                        </a>
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1 font-medium">
-                        <Users className="h-3.5 w-3.5" /> {jobApps.length}
-                      </span>
                       {hired > 0 && (
                         <span className="flex items-center gap-1 text-emerald-600 font-medium">
                           <ArrowUpRight className="h-3.5 w-3.5" /> {hired} معيّن

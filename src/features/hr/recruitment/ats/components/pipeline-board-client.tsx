@@ -1,12 +1,15 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAtsStore } from '@/features/hr/recruitment/lib/ats/store';
 import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
 import { ATS_STAGE_BADGE, ATS_STAGE_LABELS, scoreBarTone } from '@/features/hr/recruitment/lib/ats/stage-styles';
 import { statusDotClass } from '@/shared/status-pill-classes';
+import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
 
 interface StageConfig {
   label: string;
@@ -28,10 +31,33 @@ const STAGES: Record<AtsPipelineStage, StageConfig> = {
 const STAGE_ORDER = Object.keys(STAGES) as AtsPipelineStage[];
 
 export function PipelineBoardClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlJobId = searchParams.get('jobId') ?? '';
+
   const { getTenantApplicants, getTenantJobs, getTenantForms, moveApplicantStage } = useAtsStore();
-  const applicants = getTenantApplicants();
+  const allApplicants = getTenantApplicants();
   const jobs = getTenantJobs();
   const forms = getTenantForms();
+
+  const [jobFilter, setJobFilter] = React.useState<string>(urlJobId || 'all');
+
+  React.useEffect(() => {
+    if (urlJobId) setJobFilter(urlJobId);
+  }, [urlJobId]);
+
+  const applicants = jobFilter === 'all'
+    ? allApplicants
+    : allApplicants.filter((a) => a.jobId === jobFilter);
+
+  const updateJobFilter = (value: string) => {
+    setJobFilter(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === 'all') params.delete('jobId');
+    else params.set('jobId', value);
+    const qs = params.toString();
+    router.replace(qs ? `/hr/recruitment/ats-pipeline?${qs}` : '/hr/recruitment/ats-pipeline');
+  };
 
   const [draggingId, setDraggingId] = React.useState<string | null>(null);
   const [dropStage, setDropStage] = React.useState<AtsPipelineStage | null>(null);
@@ -57,11 +83,35 @@ export function PipelineBoardClient() {
 
   const handleDragEnd = () => { setDraggingId(null); setDropStage(null); };
 
+  const selectedJob = jobFilter !== 'all' ? jobs.find((j) => j.id === jobFilter) : undefined;
+
   return (
     <div className="space-y-4 animate-fade-in">
-      <div>
-        <h2 className="text-lg font-semibold">مسار التوظيف</h2>
-        <p className="text-xs text-muted-foreground">اسحب البطاقات بين الأعمدة لتحديث المرحلة</p>
+      <RecruitmentJobNav
+        jobId={jobFilter !== 'all' ? jobFilter : undefined}
+        active="pipeline"
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">مسار التوظيف</h2>
+          <p className="text-xs text-muted-foreground">
+            {selectedJob
+              ? `متابعة متقدمين: ${selectedJob.title}`
+              : 'اسحب البطاقات بين الأعمدة لتحديث المرحلة'}
+          </p>
+        </div>
+        <Select value={jobFilter} onValueChange={updateJobFilter}>
+          <SelectTrigger className="h-9 w-full text-xs sm:w-56">
+            <SelectValue placeholder="تصفية حسب الوظيفة" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">جميع الوظائف</SelectItem>
+            {jobs.map((j) => (
+              <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Board — horizontal scroll */}
@@ -106,8 +156,15 @@ export function PipelineBoardClient() {
                         draggable
                         onDragStart={(e) => handleDragStart(e, app.id)}
                         onDragEnd={handleDragEnd}
-                        className={`group rounded-lg border border-border bg-card px-3 py-2.5 shadow-soft transition-all select-none
-                          ${isDragging ? 'opacity-30 scale-95 rotate-1' : 'cursor-grab hover:shadow-elevated hover:-translate-y-px'}`}
+                        onClick={() => {
+                          const params = new URLSearchParams();
+                          if (jobFilter !== 'all') params.set('jobId', jobFilter);
+                          else params.set('jobId', app.jobId);
+                          params.set('detail', app.id);
+                          router.push(`/hr/recruitment/ats-applicants?${params.toString()}`);
+                        }}
+                        className={`group rounded-lg border border-border bg-card px-3 py-2.5 shadow-soft transition-all select-none cursor-pointer
+                          ${isDragging ? 'opacity-30 scale-95 rotate-1' : 'hover:shadow-elevated hover:-translate-y-px'}`}
                       >
                         <div className="flex items-center gap-2">
                           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
@@ -115,7 +172,9 @@ export function PipelineBoardClient() {
                           </div>
                           <div className="min-w-0">
                             <p className="truncate text-xs font-semibold leading-tight">{name}</p>
-                            {jobTitle && <p className="truncate text-[10px] text-muted-foreground">{jobTitle}</p>}
+                            {jobFilter === 'all' && jobTitle && (
+                              <p className="truncate text-[10px] text-muted-foreground">{jobTitle}</p>
+                            )}
                           </div>
                         </div>
                         {app.score ? (

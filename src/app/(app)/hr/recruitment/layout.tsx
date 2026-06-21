@@ -4,7 +4,7 @@ import { SetPageTitle } from '@/components/layouts/set-page-title';
 export default function RecruitmentLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="space-y-6 animate-fade-in">
-      <SetPageTitle titleAr="التوظيف" descriptionAr="إدارة نماذج التوظيف والمتقدمين" iconName="Users" />
+      <SetPageTitle titleAr="التوظيف" descriptionAr="إدارة الوظائف، المتقدمين، ومسار التوظيف" iconName="Users" />
       {children}
     </div>
   );

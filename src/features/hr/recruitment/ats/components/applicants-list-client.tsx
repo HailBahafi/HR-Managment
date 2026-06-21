@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Users, Star, X, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,9 @@ import type { AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
 import { ATS_STAGE_BADGE, ATS_STAGE_TABS, scoreBarTone, type AtsStageTab } from '@/features/hr/recruitment/lib/ats/stage-styles';
 import { DisplayDate } from '@/components/ui/table-cells';
+import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
+import { AtsApplicantDetailDialog } from '@/features/hr/recruitment/ats/components/ats-applicant-detail-dialog';
+import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
 
 /* ─── Stage config ────────────────────────────────────────────── */
 type StageTab = AtsStageTab;
@@ -39,6 +42,10 @@ function ScoreBar({ score }: { score: number }) {
 /* ─── Main component ──────────────────────────────────────────── */
 export function ApplicantsListClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlJobId = searchParams.get('jobId') ?? '';
+  const detailId = searchParams.get('detail') ?? '';
+
   const { getTenantJobs, getTenantApplicants, getTenantForms } = useAtsStore();
   const jobs = getTenantJobs();
   const applicants = getTenantApplicants();
@@ -46,8 +53,39 @@ export function ApplicantsListClient() {
 
   const [search, setSearch] = React.useState('');
   const [stageTab, setStageTab] = React.useState<StageTab>('all');
-  const [jobFilter, setJobFilter] = React.useState<string>('all');
+  const [jobFilter, setJobFilter] = React.useState<string>(urlJobId || 'all');
   const [minScore, setMinScore] = React.useState('');
+
+  React.useEffect(() => {
+    if (urlJobId) setJobFilter(urlJobId);
+  }, [urlJobId]);
+
+  const updateJobFilter = (value: string) => {
+    setJobFilter(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === 'all') params.delete('jobId');
+    else params.set('jobId', value);
+    params.delete('detail');
+    const qs = params.toString();
+    router.replace(qs ? `/hr/recruitment/ats-applicants?${qs}` : '/hr/recruitment/ats-applicants');
+  };
+
+  const openApplicantDetail = (applicantId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('detail', applicantId);
+    if (jobFilter !== 'all') params.set('jobId', jobFilter);
+    router.replace(`/hr/recruitment/ats-applicants?${params.toString()}`);
+  };
+
+  const closeApplicantDetail = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('detail');
+    const qs = params.toString();
+    router.replace(qs ? `/hr/recruitment/ats-applicants?${qs}` : '/hr/recruitment/ats-applicants');
+  };
+
+  const detailApplicant = detailId ? applicants.find((a) => a.id === detailId) : undefined;
+  const detailForm = detailApplicant ? forms.find((f) => f.id === detailApplicant.formId) : undefined;
 
   const stageCounts = React.useMemo(() => {
     const counts: Record<StageTab, number> = { all: applicants.length, applied: 0, screening: 0, interview: 0, technical: 0, offer: 0, hired: 0, rejected: 0 };
@@ -102,7 +140,7 @@ export function ApplicantsListClient() {
             <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="بحث بالاسم…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 pr-8 text-xs" />
           </div>
-          <Select value={jobFilter} onValueChange={setJobFilter}>
+          <Select value={jobFilter} onValueChange={updateJobFilter}>
             <SelectTrigger className="h-8 w-full text-xs sm:w-44"><SelectValue placeholder="الوظيفة" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">جميع الوظائف</SelectItem>
@@ -127,6 +165,11 @@ export function ApplicantsListClient() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <RecruitmentJobNav
+        jobId={jobFilter !== 'all' ? jobFilter : undefined}
+        active="applicants"
+      />
+
       {/* Cards grid */}
       {filtered.length === 0 ? (
         <Card>
@@ -150,7 +193,7 @@ export function ApplicantsListClient() {
               <Card
                 key={app.id}
                 className="group cursor-pointer overflow-hidden transition-all hover:shadow-elevated hover:-translate-y-px"
-                onClick={() => router.push(`/hr/recruitment/ats-applicants?detail=${app.id}`)}
+                onClick={() => openApplicantDetail(app.id)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
@@ -183,6 +226,13 @@ export function ApplicantsListClient() {
           })}
         </div>
       )}
+
+      <AtsApplicantDetailDialog
+        applicant={detailApplicant ?? null}
+        form={detailForm}
+        open={!!detailId && !!detailApplicant}
+        onOpenChange={(open) => { if (!open) closeApplicantDetail(); }}
+      />
     </div>
   );
 }
