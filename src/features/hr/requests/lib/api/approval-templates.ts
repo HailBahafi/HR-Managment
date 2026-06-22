@@ -27,9 +27,13 @@ export type RequestApprovalTemplateResponseDto = {
   approvalMode: RequestApprovalMode;
   displayOrder: number;
   isActive: boolean;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   notes: string | null;
   requestTypes: RequestApprovalAssignmentRequestType[];
   approvers: RequestApprovalAssignmentApprover[];
+  isCurrentUserApprover?: boolean;
+  currentUserEmployeeId?: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;
@@ -89,5 +93,11 @@ export const requestApprovalTemplatesApi = {
   },
   remove(id: string) {
     return apiRequest<void>(`/requests/approval-assignments/${id}`, { method: 'DELETE' });
+  },
+  getByRequestCategory(requestCategory: string, companyId: string) {
+    return apiRequest<RequestApprovalTemplateResponseDto>(
+      `/requests/approval-assignments/by-request-category/${requestCategory}`,
+      { query: { companyId } },
+    );
   },
 };
