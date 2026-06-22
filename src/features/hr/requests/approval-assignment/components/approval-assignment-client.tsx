@@ -130,7 +130,9 @@ export function ApprovalAssignmentClient() {
   const openEdit = (t: typeof templates[number]) => {
     setEditId(t.id);
     setDraft({
-      linkedIds: t.requestTypes.map((rt) => rt.requestTypeId),
+      linkedIds: t.requestTypes
+        .map((rt) => rt.requestTypeId)
+        .filter((id) => requestTypes.some((rt) => rt.id === id)),
       approverIds: [...t.approvers].sort((a, b) => a.sortOrder - b.sortOrder).map((a) => a.employeeId),
       approvalMode: t.approvalMode,
       isActive: t.isActive,
