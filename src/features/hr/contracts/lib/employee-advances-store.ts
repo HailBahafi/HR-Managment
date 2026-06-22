@@ -7,7 +7,10 @@ import {
   type AdvanceKindDto,
   type AdvanceStatusDto,
   type RepaymentModeDto,
+  type EmployeeAdvanceDecisionDto,
 } from './api/employee-advances';
+import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
+import { normalizeRequestApproverStates } from '@/features/hr/requests/lib/request-approver-states';
 import {
   duplicateAdvanceNumberMessage,
   isDuplicateAdvanceNumberError,
@@ -38,6 +41,7 @@ export type HREmployeeAdvance = {
   monthlyInstallmentAmount: number | null;
   approvedAt: string | null;
   updatedAt: string;
+  approverStates: RequestApproverStatesSnapshot | null;
 };
 
 export const EDITABLE_ADVANCE_STATUSES: HREmployeeAdvanceStatus[] = [
@@ -82,6 +86,7 @@ function mapApi(r: EmployeeAdvanceResponseDto): HREmployeeAdvance {
       : null,
     approvedAt: r.approvedAt,
     updatedAt: r.updatedAt,
+    approverStates: normalizeRequestApproverStates(r),
   };
 }
 
@@ -105,8 +110,8 @@ type State = {
   update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt'>>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   submitForApproval: (id: string) => Promise<void>;
-  approve: (id: string) => Promise<void>;
-  reject: (id: string) => Promise<void>;
+  approve: (id: string, payload: EmployeeAdvanceDecisionDto) => Promise<void>;
+  reject: (id: string, payload: EmployeeAdvanceDecisionDto) => Promise<void>;
 };
 
 export const useHREmployeeAdvancesStore = create<State>()((set) => ({
@@ -197,13 +202,13 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
     set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
   },
 
-  approve: async (id) => {
-    const updated = await employeeAdvancesApi.update(id, { status: 'approved' });
+  approve: async (id, payload) => {
+    const updated = await employeeAdvancesApi.decide(id, payload);
     set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
   },
 
-  reject: async (id) => {
-    const updated = await employeeAdvancesApi.update(id, { status: 'rejected' });
+  reject: async (id, payload) => {
+    const updated = await employeeAdvancesApi.decide(id, payload);
     set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
   },
 }));

@@ -9,7 +9,7 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet, FileSignature,
-  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,   KeyRound, Settings,
+  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,   KeyRound, Settings, Banknote,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Logo } from '@/components/layouts/logo';
@@ -74,7 +74,6 @@ const mobileNav: MobileNavItem[] = [
     key: 'leaves', label: 'الإجازات', icon: CalendarDays,
     children: [
       { label: 'التحليلات', href: '/hr/leaves/analytics', icon: BarChart3 },
-      { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
       { label: 'إضافة رصيد إجازات', href: '/hr/leaves/balance-credit', icon: CirclePlus },
       { label: 'أنواع الإجازات', href: '/hr/leaves/leave-types', icon: ListChecks },
       { label: 'العطل الرسمية', href: '/hr/leaves/public-holidays', icon: CalendarDays },
@@ -85,6 +84,7 @@ const mobileNav: MobileNavItem[] = [
     children: [
       { label: 'تصحيح الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
       { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList, match: 'exact' },
+      { label: 'إدارة سلف الموظفين', href: '/hr/requests/employee-advances', icon: Banknote },
       { label: 'أنواع الطلبات', href: '/hr/requests/request-types', icon: ListChecks },
       { label: 'قوالب الموافقة', href: '/hr/requests/approval-assignment', icon: ShieldCheck },
     ],

@@ -159,7 +159,8 @@ export function applyRequestApproverDecision(
   };
 }
 
-export function buildRequestCorrectionDecisionPayload(
+/** Payload لقرار موافقة/رفض طلب (حضور، إجازة، سلفة) */
+export function buildRequestDecisionPayload(
   states: RequestApproverStatesSnapshot,
   employeeId: string,
   decision: 'approve' | 'reject',
@@ -183,6 +184,9 @@ export function buildRequestCorrectionDecisionPayload(
     updatedBy: options.updatedBy ?? undefined,
   };
 }
+
+/** @deprecated استخدم buildRequestDecisionPayload */
+export const buildRequestCorrectionDecisionPayload = buildRequestDecisionPayload;
 
 export function canEmployeeActOnRequestApproval(
   states: RequestApproverStatesSnapshot | null | undefined,

@@ -1,4 +1,5 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
 
 export type AdvanceStatusDto = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'disbursed' | 'repaying' | 'fully_repaid' | 'cancelled';
 export type AdvanceKindDto = 'salary_advance' | 'emergency' | 'travel' | 'housing' | 'other';
@@ -26,6 +27,8 @@ export type EmployeeAdvanceResponseDto = {
   approvedAt: string | null;
   disbursedAt: string | null;
   closedAt: string | null;
+  approverStates?: RequestApproverStatesSnapshot | null;
+  approver_states?: RequestApproverStatesSnapshot | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -45,6 +48,15 @@ export type CreateEmployeeAdvanceDto = {
 };
 
 export type UpdateEmployeeAdvanceDto = Partial<Omit<CreateEmployeeAdvanceDto, 'companyId' | 'employeeId'>>;
+
+export type EmployeeAdvanceDecisionDto = {
+  decision: 'approve' | 'reject';
+  approverStates?: RequestApproverStatesSnapshot;
+  approverEmployeeId?: string;
+  decidedByEmployeeId?: string;
+  decisionNotesAr?: string;
+  updatedBy?: string;
+};
 
 export type PushAdvancesToPayrollDto = {
   payrollPeriodId: string;
@@ -86,6 +98,11 @@ export const employeeAdvancesApi = {
     apiRequest<EmployeeAdvanceResponseDto>('/payroll/employee-advances', { method: 'POST', body }),
   update: (id: string, body: UpdateEmployeeAdvanceDto) =>
     apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}`, { method: 'PATCH', body }),
+  decide: (id: string, body: EmployeeAdvanceDecisionDto) =>
+    apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}/decision`, {
+      method: 'POST',
+      body,
+    }),
   delete: (id: string) =>
     apiRequest<void>(`/payroll/employee-advances/${id}`, { method: 'DELETE' }),
 

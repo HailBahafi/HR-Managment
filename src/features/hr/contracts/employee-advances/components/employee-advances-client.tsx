@@ -18,6 +18,16 @@ import {
 } from '@/features/hr/requests/components/shared-ui';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { duplicateAdvanceNumberMessage, isDuplicateAdvanceNumberError } from '@/features/hr/contracts/lib/employee-advance-errors';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { checkRequestApprovalAccess } from '@/features/hr/requests/lib/request-approval-access';
+import {
+  buildRequestDecisionPayload,
+  canEmployeeActOnRequestApproval,
+  isRequestFullyApproved,
+} from '@/features/hr/requests/lib/request-approver-states';
+import { RequestApproverStatesPanel } from '@/features/hr/requests/components/request-approver-states-panel';
 import {
   useHREmployeeAdvancesStore,
   ADVANCE_STATUS_LABELS,
@@ -91,6 +101,11 @@ function isDeletable(status: HREmployeeAdvanceStatus): boolean {
 }
 
 export function EmployeeAdvancesClient() {
+  const companyId = useDefaultCompanyId();
+  const { employeeId: currentEmployeeId } = useCurrentEmployee();
+  const authUser = useAuthStore((s) => s.user);
+  const updatedByActor = authUser?.id ?? undefined;
+
   const {
     items, add, update, remove, fetch: fetchAdvances,
     submitForApproval, approve, reject,
@@ -167,6 +182,71 @@ export function EmployeeAdvancesClient() {
       setActionLoadingId(null);
     }
   };
+
+  const handleApproveAdvance = React.useCallback(async (advance: HREmployeeAdvance) => {
+    if (!companyId || !currentEmployeeId) return;
+    try {
+      const access = await checkRequestApprovalAccess(
+        'advance',
+        companyId,
+        currentEmployeeId,
+        advance.approverStates,
+      );
+      if (!access.ok) {
+        toast.warning(access.message);
+        return;
+      }
+      const payload = buildRequestDecisionPayload(
+        access.states,
+        currentEmployeeId,
+        'approve',
+        { updatedBy: updatedByActor },
+      );
+      await approve(advance.id, payload);
+      if (payload.approverStates && isRequestFullyApproved(payload.approverStates)) {
+        toast.success('تم اعتماد السلفة نهائياً.');
+      } else {
+        toast.success('تم تسجيل موافقتك — بانتظار بقية المعتمدين.');
+      }
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'employee-advances.decide.approve');
+      toast.error(displayMessage);
+    }
+  }, [approve, companyId, currentEmployeeId, updatedByActor]);
+
+  const handleRejectAdvance = React.useCallback(async (advance: HREmployeeAdvance) => {
+    if (!companyId || !currentEmployeeId) return;
+    try {
+      const access = await checkRequestApprovalAccess(
+        'advance',
+        companyId,
+        currentEmployeeId,
+        advance.approverStates,
+      );
+      if (!access.ok) {
+        toast.warning(access.message);
+        return;
+      }
+      const payload = buildRequestDecisionPayload(
+        access.states,
+        currentEmployeeId,
+        'reject',
+        { updatedBy: updatedByActor },
+      );
+      await reject(advance.id, payload);
+      toast.message('تم رفض السلفة.');
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'employee-advances.decide.reject');
+      toast.error(displayMessage);
+    }
+  }, [companyId, currentEmployeeId, reject, updatedByActor]);
+
+  const canShowApprovalActions = React.useCallback(
+    (advance: HREmployeeAdvance) =>
+      advance.status === 'pending_approval' &&
+      canEmployeeActOnRequestApproval(advance.approverStates, currentEmployeeId),
+    [currentEmployeeId],
+  );
 
   const openCreate = () => {
     setEditId(null); setForm(EMPTY_FORM); setError(null); setDrawerOpen(true);
@@ -384,7 +464,7 @@ export function EmployeeAdvancesClient() {
           {filtered.map(x => {
             const loading = actionLoadingId === x.id;
             const canSubmit = x.status === 'draft' || x.status === 'rejected';
-            const canDecide = x.status === 'pending_approval';
+            const canDecide = canShowApprovalActions(x);
 
             return (
               <div
@@ -420,6 +500,7 @@ export function EmployeeAdvancesClient() {
                 {x.note && (
                   <p className="text-[11px] text-muted-foreground line-clamp-2">{x.note}</p>
                 )}
+                <RequestApproverStatesPanel states={x.approverStates} compact className="border-0 bg-transparent p-0" />
                 {x.approvedAt && (
                   <p className="text-[10px] text-muted-foreground">
                     تاريخ الاعتماد: {x.approvedAt.slice(0, 10)}
@@ -446,7 +527,7 @@ export function EmployeeAdvancesClient() {
                         className="h-7 text-xs text-success hover:text-success hover:bg-success/10"
                         disabled={loading}
                         title="موافقة"
-                        onClick={() => void runAction(x.id, () => approve(x.id), 'تم اعتماد السلفة.')}
+                        onClick={() => void handleApproveAdvance(x)}
                       >
                         <CheckCircle2 className="h-3.5 w-3.5 me-1" />
                         موافقة
@@ -457,7 +538,7 @@ export function EmployeeAdvancesClient() {
                         className="h-7 text-xs text-destructive hover:text-destructive"
                         disabled={loading}
                         title="رفض"
-                        onClick={() => void runAction(x.id, () => reject(x.id), 'تم رفض السلفة.')}
+                        onClick={() => void handleRejectAdvance(x)}
                       >
                         <XCircle className="h-3.5 w-3.5 me-1" />
                         رفض
