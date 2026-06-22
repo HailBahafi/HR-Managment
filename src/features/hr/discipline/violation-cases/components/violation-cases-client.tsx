@@ -62,6 +62,8 @@ import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/u
 import { checkViolationApprovalAccess } from '@/features/hr/discipline/lib/violation-approval-access';
 import {
   buildViolationDecisionPayload,
+  canEmployeeActOnViolationApproval,
+  isEmployeeInViolationApproverStates,
   isViolationFullyApproved,
 } from '@/features/hr/discipline/lib/violation-approver-states';
 import { ViolationApproverStatesPanel } from '@/features/hr/discipline/violation-cases/components/violation-approver-states-panel';
@@ -713,20 +715,23 @@ export function ViolationCasesClient() {
       render: (c) => {
         const canMutate = canMutateViolationCase(c.status);
         const canFollowUp = canAddDisciplineFollowUp(c.status);
+        const isCurrentUserApprover = isEmployeeInViolationApproverStates(c.approverStates, currentEmployeeId);
+        const canCurrentUserApprove = canEmployeeActOnViolationApproval(c.approverStates, currentEmployeeId);
+        const showMutateActions = !isCurrentUserApprover;
         const menuItems = [
-          ...(canMutate
+          ...(showMutateActions && canMutate
             ? [{ label: 'تعديل', onClick: () => openEdit(c), icon: <Edit3 className="h-3.5 w-3.5" /> }]
             : []),
-          ...(canFollowUp && c.typeNeedsWarning
+          ...(showMutateActions && canFollowUp && c.typeNeedsWarning
             ? [{ label: 'إنذار', onClick: () => setNoticeCase(c), icon: <AlertTriangle className="h-3.5 w-3.5" /> }]
             : []),
-          ...(canFollowUp && c.typeNeedsInvestigation
+          ...(showMutateActions && canFollowUp && c.typeNeedsInvestigation
             ? [{ label: 'تحقيق', onClick: () => setInvestigationCase(c), icon: <Search className="h-3.5 w-3.5" /> }]
             : []),
-          ...(canFollowUp
+          ...(showMutateActions && canFollowUp
             ? [{ label: 'تظلم', onClick: () => setAppealCase(c), icon: <Scale className="h-3.5 w-3.5" /> }]
             : []),
-          ...(canMutate
+          ...(showMutateActions && canMutate
             ? [{
                 label: 'حذف',
                 onClick: () => setDeleteId(c.id),
@@ -738,7 +743,7 @@ export function ViolationCasesClient() {
         ];
         return (
           <TableRowActions
-            primaryActions={c.status === 'pending' ? [
+            primaryActions={c.status === 'pending' && canCurrentUserApprove ? [
               { label: 'موافقة', variant: 'success', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onClick: () => void handleApprove(c) },
               { label: 'رفض', variant: 'destructive', icon: <XCircle className="h-3.5 w-3.5" />, onClick: () => void openRejectDialog(c) },
             ] : []}
@@ -747,7 +752,7 @@ export function ViolationCasesClient() {
         );
       },
     },
-  ], [violationTypes, handleApprove, openRejectDialog]);
+  ], [violationTypes, handleApprove, openRejectDialog, currentEmployeeId]);
 
   useEntityFilterSlot(
     () => (
@@ -816,6 +821,9 @@ export function ViolationCasesClient() {
           <EntityActionCardGrid>
             {items.map((c) => {
             const isPending = c.status === 'pending';
+            const isCurrentUserApprover = isEmployeeInViolationApproverStates(c.approverStates, currentEmployeeId);
+            const canCurrentUserApprove = canEmployeeActOnViolationApproval(c.approverStates, currentEmployeeId);
+            const showMutateActions = !isCurrentUserApprover;
             return (
               <EntityActionCard
                 key={c.id}
@@ -872,7 +880,7 @@ export function ViolationCasesClient() {
                   ) : undefined
                 }
                 workflow={
-                  isPending
+                  isPending && canCurrentUserApprove
                     ? {
                         showApproveReject: true,
                         onApprove: () => void handleApprove(c),
@@ -880,10 +888,10 @@ export function ViolationCasesClient() {
                       }
                     : undefined
                 }
-                onEdit={canMutateViolationCase(c.status) ? () => openEdit(c) : undefined}
-                onDelete={canMutateViolationCase(c.status) ? () => setDeleteId(c.id) : undefined}
+                onEdit={showMutateActions && canMutateViolationCase(c.status) ? () => openEdit(c) : undefined}
+                onDelete={showMutateActions && canMutateViolationCase(c.status) ? () => setDeleteId(c.id) : undefined}
                 extraFooter={
-                  canAddDisciplineFollowUp(c.status) ? (
+                  showMutateActions && canAddDisciplineFollowUp(c.status) ? (
                     <div className="flex gap-1">
                       {c.typeNeedsWarning ? (
                         <Button variant="ghost" size="sm" type="button"
@@ -1070,7 +1078,19 @@ export function ViolationCasesClient() {
                   </p>
                 </div>
               ) : null}
-              {canAddDisciplineFollowUp(viewCase.status) ? (
+              {viewCase.status === 'pending' && canEmployeeActOnViolationApproval(viewCase.approverStates, currentEmployeeId) ? (
+                <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
+                  <Button size="sm" variant="outline" className="gap-1.5 text-success border-success/30 hover:bg-success/10"
+                    onClick={() => void handleApprove(viewCase)}>
+                    <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => void openRejectDialog(viewCase)}>
+                    <XCircle className="h-3.5 w-3.5" /> رفض
+                  </Button>
+                </div>
+              ) : null}
+              {!isEmployeeInViolationApproverStates(viewCase.approverStates, currentEmployeeId) && canAddDisciplineFollowUp(viewCase.status) ? (
                 <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
                   {viewCase.typeNeedsWarning ? (
                     <Button size="sm" variant="outline" className="gap-1.5"

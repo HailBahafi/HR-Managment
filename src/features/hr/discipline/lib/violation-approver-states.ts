@@ -181,6 +181,22 @@ export function buildViolationDecisionPayload(
   };
 }
 
+export function canEmployeeActOnViolationApproval(
+  states: ViolationApproverStatesSnapshot | null | undefined,
+  employeeId: string | null | undefined,
+): boolean {
+  if (!states || !employeeId) return false;
+  return getViolationApproverActionContext(states, employeeId).canAct;
+}
+
+export function isEmployeeInViolationApproverStates(
+  states: ViolationApproverStatesSnapshot | null | undefined,
+  employeeId: string | null | undefined,
+): boolean {
+  if (!states || !employeeId) return false;
+  return states.approvers.some((a) => a.employeeId === employeeId);
+}
+
 export function formatViolationApproverStatesSummary(states: ViolationApproverStatesSnapshot): string {
   return sortedApprovers(states)
     .map((a) => `${a.employeeNameAr}: ${violationApproverStatusLabelAr(a.status)}`)
