@@ -13,10 +13,12 @@ import {
   type ViolationInvestigationDto,
   type ViolationRecordResponseDto,
   type ViolationRecordStatus,
+  type ViolationApproverStatesSnapshot,
   type CreateViolationRecordDto,
   type UpdateViolationRecordDto,
   type DecideViolationRecordDto,
 } from '@/features/hr/discipline/lib/api/violation-records';
+import { normalizeViolationApproverStates } from '@/features/hr/discipline/lib/violation-approver-states';
 
 export type ViolationCaseRecord = {
   id: string;
@@ -39,6 +41,7 @@ export type ViolationCaseRecord = {
   hasInvestigations: boolean;
   decisionNotes: string | null;
   decidedAt: string | null;
+  approverStates: ViolationApproverStatesSnapshot | null;
   investigations: ViolationInvestigationDto[];
   investigationCount: number;
   latestInvestigationResult: ViolationInvestigationDto['result'] | null;
@@ -107,6 +110,7 @@ function mapRecord(
     hasInvestigations: dto.hasInvestigations ?? investigations.length > 0,
     decisionNotes: dto.decisionNotes ?? null,
     decidedAt: dto.decidedAt ?? null,
+    approverStates: normalizeViolationApproverStates(dto),
     investigations,
     investigationCount: investigations.length,
     latestInvestigationResult: latestInvestigation?.result ?? null,

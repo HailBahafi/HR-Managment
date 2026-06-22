@@ -57,8 +57,14 @@ import { disciplineNoticesApi } from '@/features/hr/discipline/lib/api/disciplin
 import { ViolationInvestigationDrawer } from '@/features/hr/discipline/investigations/dialogs/violation-investigation-drawer';
 import { disciplineAppealsApi } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
 import { checkViolationApprovalAccess } from '@/features/hr/discipline/lib/violation-approval-access';
+import {
+  buildViolationDecisionPayload,
+  isViolationFullyApproved,
+} from '@/features/hr/discipline/lib/violation-approver-states';
+import { ViolationApproverStatesPanel } from '@/features/hr/discipline/violation-cases/components/violation-approver-states-panel';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
@@ -345,6 +351,8 @@ export function ViolationCasesClient() {
   const { data: defaultCompany } = useDefaultCompany();
   const { data: currentEmployee } = useCurrentEmployee();
   const currentEmployeeId = currentEmployee?.id ?? null;
+  const authUser = useAuthStore((s) => s.user);
+  const decidedByActor = authUser?.email ?? authUser?.id ?? null;
   const companyNameAr = defaultCompany?.nameAr ?? '';
   const companyNameEn = defaultCompany?.nameEn ?? '';
 
@@ -536,41 +544,73 @@ export function ViolationCasesClient() {
     }
   };
 
-  const ensureViolationApproverAccess = React.useCallback(async (c: ViolationCaseRecord) => {
-    const access = await checkViolationApprovalAccess(c.violationTypeId, currentEmployeeId);
+  const requestViolationApprovalAccess = React.useCallback(async (c: ViolationCaseRecord) => {
+    const access = await checkViolationApprovalAccess(
+      c.violationTypeId,
+      currentEmployeeId,
+      c.approverStates,
+    );
     if (!access.ok) {
       toast.warning(access.message);
-      return false;
+      return null;
     }
-    return true;
+    return access;
   }, [currentEmployeeId]);
 
   const handleApprove = React.useCallback(async (c: ViolationCaseRecord) => {
+    if (!currentEmployeeId) return;
     try {
-      if (!(await ensureViolationApproverAccess(c))) return;
-      await decideCase(c.id, { decision: 'approve' });
-      toast.success(`تمت الموافقة على ${c.caseNumber}`);
+      const access = await requestViolationApprovalAccess(c);
+      if (!access) return;
+      const payload = buildViolationDecisionPayload(
+        access.states,
+        currentEmployeeId,
+        'approve',
+        { decidedBy: decidedByActor },
+      );
+      await decideCase(c.id, payload);
+      const updatedStates = payload.approverStates;
+      if (updatedStates && isViolationFullyApproved(updatedStates)) {
+        toast.success(`تمت الموافقة النهائية على ${c.caseNumber}`);
+      } else {
+        toast.success('تم تسجيل موافقتك — بانتظار بقية المعتمدين');
+      }
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'violation-records.decide.approve');
       toast.error(displayMessage);
     }
-  }, [decideCase, ensureViolationApproverAccess]);
+  }, [currentEmployeeId, decideCase, decidedByActor, requestViolationApprovalAccess]);
 
   const openRejectDialog = React.useCallback(async (c: ViolationCaseRecord) => {
     try {
-      if (!(await ensureViolationApproverAccess(c))) return;
+      if (!(await requestViolationApprovalAccess(c))) return;
       setRejectNote('');
       setRejectCase(c);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'discipline-approval-assignments.by-violation-type');
       toast.error(displayMessage);
     }
-  }, [ensureViolationApproverAccess]);
+  }, [requestViolationApprovalAccess]);
 
   const handleReject = async () => {
-    if (!rejectCase) return;
+    if (!rejectCase || !currentEmployeeId) return;
     try {
-      await decideCase(rejectCase.id, { decision: 'reject', notes: rejectNote.trim() || null });
+      const access = await checkViolationApprovalAccess(
+        rejectCase.violationTypeId,
+        currentEmployeeId,
+        rejectCase.approverStates,
+      );
+      if (!access.ok) {
+        toast.warning(access.message);
+        return;
+      }
+      const payload = buildViolationDecisionPayload(
+        access.states,
+        currentEmployeeId,
+        'reject',
+        { notes: rejectNote, decidedBy: decidedByActor },
+      );
+      await decideCase(rejectCase.id, payload);
       toast.success('تم رفض المخالفة');
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'violation-records.decide.reject');
@@ -788,6 +828,11 @@ export function ViolationCasesClient() {
                   label: STATUS_LABELS[c.status],
                   tone: VIOLATION_STATUS_TONE[c.status],
                 }}
+                children={
+                  c.approverStates ? (
+                    <ViolationApproverStatesPanel states={c.approverStates} compact className="mt-2 border-0 bg-transparent p-0" />
+                  ) : undefined
+                }
                 chips={
                   <>
                     <EntityActionCardChip className="font-mono tabular-nums">
@@ -965,6 +1010,7 @@ export function ViolationCasesClient() {
                   needsInvestigation={viewCase.typeNeedsInvestigation}
                 />
               ) : null}
+              <ViolationApproverStatesPanel states={viewCase.approverStates} />
               <div><span className="text-muted-foreground text-xs">الوصف</span><p className="mt-1">{viewCase.description}</p></div>
               {viewCase.notes && <div><span className="text-muted-foreground text-xs">ملاحظات</span><p className="mt-1">{viewCase.notes}</p></div>}
               {viewCase.attachmentsNote && <div><span className="text-muted-foreground text-xs">المرفقات</span><p className="mt-1">{viewCase.attachmentsNote}</p></div>}
