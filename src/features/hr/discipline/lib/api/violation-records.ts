@@ -155,14 +155,9 @@ export const violationRecordsApi = {
     return apiRequest<ViolationRecordResponseDto>(`/discipline/violation-records/${id}`, { method: 'PATCH', body: payload });
   },
   decide(id: string, payload: DecideViolationRecordDto) {
-    const { approverStates, ...rest } = payload;
-    const body = {
-      ...rest,
-      ...(approverStates ? { approver_states: approverStates } : {}),
-    };
     return apiRequest<ViolationRecordResponseDto>(`/discipline/violation-records/${id}/decision`, {
       method: 'POST',
-      body,
+      body: payload,
     });
   },
   remove(id: string) {
