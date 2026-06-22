@@ -11,6 +11,8 @@ export type RecruitmentPipelineStage =
 
 export type RecruitmentFormFieldType = 'text' | 'number' | 'select' | 'file';
 
+export type RecruitmentCoreFieldKey = 'applicantName' | 'residencyNumber';
+
 export interface RecruitmentFormField {
   id: string;
   type: RecruitmentFormFieldType;
@@ -18,6 +20,10 @@ export interface RecruitmentFormField {
   required: boolean;
   options?: string[];
   sortOrder: number;
+  /** System field — rendered separately; not sent inside `answers`. */
+  isCore?: boolean;
+  /** Maps core field to top-level apply body key. */
+  coreKey?: RecruitmentCoreFieldKey;
 }
 
 export interface RecruitmentForm {
@@ -60,6 +66,8 @@ export interface RecruitmentApplicant {
   id: string;
   jobId: string;
   formId: string;
+  applicantName?: string | null;
+  residencyNumber?: string | null;
   answers: Record<string, string | undefined>;
   cvFileName: string | null;
   cvFilePath: string | null;
@@ -91,6 +99,8 @@ export interface RecruitmentFormFieldInput {
   required: boolean;
   options?: string[];
   sortOrder?: number;
+  isCore?: boolean;
+  coreKey?: RecruitmentCoreFieldKey;
 }
 
 export interface RecruitmentFormInput {
@@ -142,6 +152,8 @@ export interface ListRecruitmentApplicantsQuery {
 }
 
 export interface SubmitRecruitmentApplicationDto {
+  applicantName: string;
+  residencyNumber: string;
   answers: Record<string, string>;
   cvFileName?: string | null;
   cvFileBase64?: string | null;
@@ -168,6 +180,8 @@ export interface PublicRecruitmentJob {
 
 export interface CreateRecruitmentApplicantDto {
   jobId: string;
+  applicantName?: string;
+  residencyNumber?: string;
   answers: Record<string, string>;
   pipelineStage?: RecruitmentPipelineStage;
   cvFileName?: string | null;
@@ -175,6 +189,8 @@ export interface CreateRecruitmentApplicantDto {
 }
 
 export interface UpdateRecruitmentApplicantDto {
+  applicantName?: string;
+  residencyNumber?: string;
   answers?: Record<string, string>;
   pipelineStage?: RecruitmentPipelineStage;
   cvFileName?: string | null;

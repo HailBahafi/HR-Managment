@@ -39,6 +39,7 @@ import type {
 } from '@/features/hr/recruitment/lib/ats/types';
 import { useRecruitmentJobsList, useRecruitmentMutations } from '@/features/hr/recruitment/hooks/useRecruitment';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { getApplicantFieldValue } from '@/features/hr/recruitment/lib/ats/submit-application-payload';
 import { getApplicantName, getInitials } from '@/features/hr/recruitment/lib/ats/utils';
 import { ATS_STAGE_BADGE, ATS_STAGE_LABELS, scoreBarTone } from '@/features/hr/recruitment/lib/ats/stage-styles';
 import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
@@ -234,7 +235,7 @@ export function AtsApplicantDetailDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             {form.fields.map((field) => {
-              const value = applicant.answers[field.id];
+              const value = getApplicantFieldValue(applicant, field);
               const Icon = FIELD_ICONS[field.type];
               const hasValue = value !== undefined && value !== '';
               return (

@@ -14,6 +14,7 @@ import { publicRecruitmentApi } from '@/features/hr/recruitment/lib/api/recruitm
 import { usePublicRecruitmentJob } from '@/features/hr/recruitment/hooks/usePublicRecruitment';
 import type { AtsFormField, AtsFormFieldType } from '@/features/hr/recruitment/lib/ats/types';
 import { splitApplicantFormFields } from '@/features/hr/recruitment/lib/ats/public-application-fields';
+import { buildSubmitApplicationPayload } from '@/features/hr/recruitment/lib/ats/submit-application-payload';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 const FIELD_TYPE_ICONS: Record<AtsFormFieldType, React.ReactNode> = {
@@ -177,11 +178,11 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
     try {
       const fileField = form.fields.find((f) => f.type === 'file');
       const cvBase64 = fileField ? fileData[fileField.id] : undefined;
-      await publicRecruitmentApi.submitApplication(jobSlug, {
-        answers: { ...answers },
+      const payload = buildSubmitApplicationPayload(form.fields, answers, {
         cvFileName: fileField ? fileNames[fileField.id] ?? null : null,
         cvFileBase64: cvBase64 ?? null,
       });
+      await publicRecruitmentApi.submitApplication(jobSlug, payload);
       setAnswers({});
       setFileData({});
       setFileNames({});
@@ -241,7 +242,7 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
                 بيانات المتقدم
               </CardTitle>
               <CardDescription className="text-xs">
-                يرجى إدخال بياناتك في كل عملية تقديم — لا يتم الاحتفاظ بها تلقائياً بين الوظائف.
+                حقلان أساسيان في كل تقديم: الاسم ورقم الإقامة — يُرسلان مباشرة مع الطلب.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">

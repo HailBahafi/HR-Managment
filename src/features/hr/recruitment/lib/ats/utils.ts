@@ -43,8 +43,9 @@ export async function copyToClipboard(text: string) {
 }
 
 export function getApplicantName(applicant: AtsApplicant, fields: AtsFormField[]): string {
+  if (applicant.applicantName?.trim()) return applicant.applicantName.trim();
   const nameField = fields.find(
-    (f) => f.label.includes('اسم') || f.label.includes('الاسم') || f.id.includes('name')
+    (f) => f.coreKey === 'applicantName' || f.label.includes('اسم') || f.label.includes('الاسم') || f.id.includes('name'),
   );
   const val = nameField ? applicant.answers[nameField.id] : undefined;
   return typeof val === 'string' && val ? val : 'متقدم جديد';

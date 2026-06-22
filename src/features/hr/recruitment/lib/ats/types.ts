@@ -11,12 +11,17 @@ export type AtsPipelineStage =
 
 export type AtsFormFieldType = 'text' | 'number' | 'select' | 'file';
 
+export type AtsCoreFieldKey = 'applicantName' | 'residencyNumber';
+
 export interface AtsFormField {
   id: string;
   type: AtsFormFieldType;
   label: string;
   required: boolean;
   options?: string[];
+  sortOrder?: number;
+  isCore?: boolean;
+  coreKey?: AtsCoreFieldKey;
 }
 
 export interface AtsForm {
@@ -52,6 +57,8 @@ export interface AtsApplicant {
   id: string;
   jobId: string;
   formId: string;
+  applicantName?: string | null;
+  residencyNumber?: string | null;
   answers: Record<string, string | undefined>;
   cvFileName?: string | null;
   cvFileData?: string | null;

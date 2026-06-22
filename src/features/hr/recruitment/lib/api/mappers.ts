@@ -33,6 +33,9 @@ export function mapRecruitmentForm(form: RecruitmentForm): AtsForm {
       label: f.label,
       required: f.required,
       options: f.options,
+      sortOrder: f.sortOrder,
+      isCore: f.isCore,
+      coreKey: f.coreKey,
     })),
     createdAt: form.createdAt,
   };
@@ -43,6 +46,8 @@ export function mapRecruitmentApplicant(applicant: RecruitmentApplicant): AtsApp
     id: applicant.id,
     jobId: applicant.jobId,
     formId: applicant.formId,
+    applicantName: applicant.applicantName,
+    residencyNumber: applicant.residencyNumber,
     answers: applicant.answers,
     cvFileName: applicant.cvFileName,
     cvFileData: applicant.cvFilePath,

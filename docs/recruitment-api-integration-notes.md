@@ -153,7 +153,42 @@ GET /recruitment/applicants?jobId=a1000010-...&pipelineStage=applied&page=1&limi
 
 **POST /recruitment/applicants** — بدون تغيير (كان يعتمد `jobId` فقط).
 
-**Public apply** — بدون تغيير (`POST /public/recruitment/jobs/{slug}/apply`).
+**Public apply** — `POST /public/recruitment/jobs/{slug}/apply`
+
+#### جسم التقديم (SubmitRecruitmentApplicationDto)
+
+| الغرض | اسم الحقل في JSON | ملاحظة |
+|--------|-------------------|--------|
+| الاسم | `applicantName` | **خارج** `answers` |
+| رقم الإقامة | `residencyNumber` | **خارج** `answers` |
+| باقي الحقول | `answers[fieldId]` | `fieldId` = UUID من `form.fields` حيث `isCore === false` |
+| السيرة | `cvFileName`, `cvFileBase64` | اختياري |
+
+> لا تضع الاسم ورقم الإقامة داخل `answers` فقط — أرسلهما في الحقلين العلويين. الباكند يربطهما تلقائياً بحقلي النموذج الأساسيين عبر `mergeAnswersWithCoreFields()`.
+
+**مثال:**
+
+```json
+{
+  "applicantName": "أحمد محمد",
+  "residencyNumber": "2123456789",
+  "answers": {
+    "a2000010-0002-4000-8000-000000000002": "5 سنوات"
+  },
+  "cvFileName": "cv.pdf",
+  "cvFileBase64": null
+}
+```
+
+**حقول النموذج (`form.fields[]`):**
+
+| خاصية | وصف |
+|--------|-----|
+| `isCore` | `true` للحقلين الأساسيين (الاسم + رقم الإقامة) — لا يُرسلان داخل `answers` |
+| `coreKey` | اختياري: `applicantName` \| `residencyNumber` |
+| `sortOrder` | ترتيب العرض |
+
+**الفرونت:** `buildSubmitApplicationPayload()` في `lib/ats/submit-application-payload.ts`
 
 ---
 

@@ -1,19 +1,18 @@
 import type { AtsFormField } from '@/features/hr/recruitment/lib/ats/types';
+import { isCoreFormField } from '@/features/hr/recruitment/lib/ats/submit-application-payload';
 
-/** Form fields that represent the applicant identity (filled fresh each application). */
-export function isApplicantIdentityField(field: AtsFormField): boolean {
-  if (field.type === 'file') return false;
-  const label = field.label.trim();
-  return (
-    /اسم|name/i.test(label) ||
-    /بريد|email/i.test(label) ||
-    /جوال|هاتف|mobile|phone|tel/i.test(label) ||
-    /هوية|identity|id\s*number/i.test(label)
-  );
-}
-
+/** Core applicant fields (name + residency) vs supplemental job questions. */
 export function splitApplicantFormFields(fields: AtsFormField[]) {
-  const identityFields = fields.filter(isApplicantIdentityField);
-  const supplementalFields = fields.filter((f) => !isApplicantIdentityField(f));
+  const explicitCore = fields.filter((f) => f.isCore === true);
+  if (explicitCore.length > 0) {
+    const identityFields = [...explicitCore].sort(
+      (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+    );
+    const supplementalFields = fields.filter((f) => !f.isCore);
+    return { identityFields, supplementalFields };
+  }
+
+  const identityFields = fields.filter(isCoreFormField);
+  const supplementalFields = fields.filter((f) => !isCoreFormField(f));
   return { identityFields, supplementalFields };
 }
