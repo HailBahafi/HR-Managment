@@ -79,6 +79,11 @@ export const disciplineApprovalTemplatesApi = {
   getById(id: string) {
     return apiRequest<DisciplineApprovalTemplateResponseDto>(`/discipline/approval-assignments/${id}`);
   },
+  getByViolationType(violationTypeId: string) {
+    return apiRequest<DisciplineApprovalTemplateResponseDto>(
+      `/discipline/approval-assignments/by-violation-type/${violationTypeId}`,
+    );
+  },
   create(payload: CreateDisciplineApprovalTemplateDto) {
     return apiRequest<DisciplineApprovalTemplateResponseDto>('/discipline/approval-assignments', {
       method: 'POST',

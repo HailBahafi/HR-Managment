@@ -57,7 +57,8 @@ import { disciplineNoticesApi } from '@/features/hr/discipline/lib/api/disciplin
 import { ViolationInvestigationDrawer } from '@/features/hr/discipline/investigations/dialogs/violation-investigation-drawer';
 import { disciplineAppealsApi } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
+import { checkViolationApprovalAccess } from '@/features/hr/discipline/lib/violation-approval-access';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
@@ -342,6 +343,8 @@ export function ViolationCasesClient() {
   const { employees, violationTypes, loading, listError, createCase, updateCase, decideCase, deleteCase, reload, setListFilters, items, pagination, filteredItems, sourceCases } = hook;
   const companyId = useDefaultCompanyId() ?? '';
   const { data: defaultCompany } = useDefaultCompany();
+  const { data: currentEmployee } = useCurrentEmployee();
+  const currentEmployeeId = currentEmployee?.id ?? null;
   const companyNameAr = defaultCompany?.nameAr ?? '';
   const companyNameEn = defaultCompany?.nameEn ?? '';
 
@@ -533,15 +536,36 @@ export function ViolationCasesClient() {
     }
   };
 
-  const handleApprove = async (c: ViolationCaseRecord) => {
+  const ensureViolationApproverAccess = React.useCallback(async (c: ViolationCaseRecord) => {
+    const access = await checkViolationApprovalAccess(c.violationTypeId, currentEmployeeId);
+    if (!access.ok) {
+      toast.warning(access.message);
+      return false;
+    }
+    return true;
+  }, [currentEmployeeId]);
+
+  const handleApprove = React.useCallback(async (c: ViolationCaseRecord) => {
     try {
+      if (!(await ensureViolationApproverAccess(c))) return;
       await decideCase(c.id, { decision: 'approve' });
       toast.success(`تمت الموافقة على ${c.caseNumber}`);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'violation-records.decide.approve');
       toast.error(displayMessage);
     }
-  };
+  }, [decideCase, ensureViolationApproverAccess]);
+
+  const openRejectDialog = React.useCallback(async (c: ViolationCaseRecord) => {
+    try {
+      if (!(await ensureViolationApproverAccess(c))) return;
+      setRejectNote('');
+      setRejectCase(c);
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'discipline-approval-assignments.by-violation-type');
+      toast.error(displayMessage);
+    }
+  }, [ensureViolationApproverAccess]);
 
   const handleReject = async () => {
     if (!rejectCase) return;
@@ -676,14 +700,14 @@ export function ViolationCasesClient() {
           <TableRowActions
             primaryActions={c.status === 'pending' ? [
               { label: 'موافقة', variant: 'success', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onClick: () => void handleApprove(c) },
-              { label: 'رفض', variant: 'destructive', icon: <XCircle className="h-3.5 w-3.5" />, onClick: () => { setRejectNote(''); setRejectCase(c); } },
+              { label: 'رفض', variant: 'destructive', icon: <XCircle className="h-3.5 w-3.5" />, onClick: () => void openRejectDialog(c) },
             ] : []}
             menuItems={menuItems}
           />
         );
       },
     },
-  ], [violationTypes]);
+  ], [violationTypes, handleApprove, openRejectDialog]);
 
   useEntityFilterSlot(
     () => (
@@ -807,7 +831,7 @@ export function ViolationCasesClient() {
                     ? {
                         showApproveReject: true,
                         onApprove: () => void handleApprove(c),
-                        onReject: () => { setRejectNote(''); setRejectCase(c); },
+                        onReject: () => void openRejectDialog(c),
                       }
                     : undefined
                 }
