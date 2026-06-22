@@ -26,6 +26,7 @@ import {
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
+import { cn } from '@/shared/utils';
 
 const MODE_OPTIONS: { value: RequestApprovalMode; label: string }[] = [
   { value: 'sequential', label: 'تسلسلي' },
