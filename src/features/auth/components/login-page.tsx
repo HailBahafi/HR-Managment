@@ -53,7 +53,10 @@ export function LoginPage() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: 'admin@test.com', password: 'Admin123!' },
+    defaultValues:
+      process.env.NODE_ENV === 'development'
+        ? { email: 'admin@test.com', password: 'Admin123!' }
+        : { email: '', password: '' },
   });
 
   const onSubmit = async (values: FormValues) => {
@@ -179,73 +182,83 @@ export function LoginPage() {
               </p>
             </div>
 
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void handleSubmit(onSubmit)(event);
-              }}
-              className="mt-10 space-y-5"
-            >
-              <div className="space-y-2">
-                <Label htmlFor="email">البريد الإلكتروني</Label>
-                <div className="relative">
-                  <Mail className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    className="pr-10"
-                    dir="ltr"
-                    {...register('email')}
-                  />
+            {!hydrated ? (
+              <div className="mt-10 space-y-5" aria-busy="true" aria-hidden="true">
+                <div className="space-y-2">
+                  <div className="h-4 w-28 rounded bg-muted" />
+                  <div className="h-11 w-full rounded-md bg-muted" />
                 </div>
-                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+                <div className="space-y-2">
+                  <div className="h-4 w-24 rounded bg-muted" />
+                  <div className="h-11 w-full rounded-md bg-muted" />
+                </div>
+                <div className="h-11 w-full rounded-md bg-muted" />
               </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">كلمة المرور</Label>
-                  <Link href="#" className="text-xs font-medium text-primary hover:underline">
-                    نسيت كلمة المرور؟
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    className="px-10"
-                    dir="ltr"
-                    {...register('password')}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-              </div>
-              <Button
-                type="submit"
-                variant="luxe"
-                size="lg"
-                className="w-full gap-2"
-                disabled={loading || !hydrated}
+            ) : (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSubmit(onSubmit)(event);
+                }}
+                className="mt-10 space-y-5"
               >
-                {!hydrated ? 'جاري التحميل...' : loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
+                <div className="space-y-2">
+                  <Label htmlFor="email">البريد الإلكتروني</Label>
+                  <div className="relative">
+                    <Mail className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      className="pr-10"
+                      dir="ltr"
+                      autoComplete="email"
+                      {...register('email')}
+                    />
+                  </div>
+                  {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
                 </div>
-              </div>
-            </form>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">كلمة المرور</Label>
+                    <Link href="#" className="text-xs font-medium text-primary hover:underline">
+                      نسيت كلمة المرور؟
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      className="px-10"
+                      dir="ltr"
+                      autoComplete="current-password"
+                      {...register('password')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+                </div>
+                <Button type="submit" variant="luxe" size="lg" className="w-full gap-2" disabled={loading}>
+                  {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-border" />
+                  </div>
+                </div>
+              </form>
+            )}
 
             <p className="mt-8 text-center text-xs text-muted-foreground">
               © 2026 روز. جميع الحقوق محفوظة.

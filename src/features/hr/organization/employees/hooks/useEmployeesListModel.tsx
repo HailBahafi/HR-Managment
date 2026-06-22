@@ -10,7 +10,6 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { formatCurrency } from '@/shared/utils';
 import { hasDateRangeFilter } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeesRegisterPrintHtml } from '@/components/pdf/print/employees-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -182,7 +181,6 @@ export function useEmployeesListModel() {
         branchCity: emp.branchNameAr ?? '—',
         contractType: CONTRACT_TYPE_AR[emp.contractType ?? ''] ?? emp.contractType ?? '—',
         startDate: empStartYmd(emp),
-        baseSalary: formatCurrency(parseFloat(emp.baseSalary ?? '0') || 0),
         statusAr: EMP_CONTRACT_STATUS_LABELS[emp.contractStatus ?? ''] ?? emp.contractStatus ?? '—',
       })),
     [filtered],
