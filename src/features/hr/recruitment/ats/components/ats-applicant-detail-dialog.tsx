@@ -109,7 +109,7 @@ export function AtsApplicantDetailDialog({
   const handleDelete = async () => {
     try {
       await deleteApplicant.mutateAsync(applicant.id);
-      toast.success('تم حذف المتقدم');
+      toast.success('تم أرشفة المتقدم');
       onOpenChange(false);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'recruitment.applicants.delete');
@@ -262,7 +262,7 @@ export function AtsApplicantDetailDialog({
           <div className="flex justify-between">
             <Button variant="destructive" size="sm" className="gap-1.5 text-xs" onClick={handleDelete}>
               <Trash2 className="h-3.5 w-3.5" />
-              حذف المتقدم
+              أرشفة المتقدم
             </Button>
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               إغلاق

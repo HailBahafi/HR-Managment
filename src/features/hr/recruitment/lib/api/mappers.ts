@@ -16,6 +16,8 @@ export function mapRecruitmentJob(job: RecruitmentJob): AtsJob {
     location: job.location,
     type: job.type,
     isActive: job.isActive,
+    isArchived: job.isArchived,
+    archivedAt: job.archivedAt ?? null,
     formId: job.formId,
     createdAt: job.createdAt,
   };
@@ -51,6 +53,8 @@ export function mapRecruitmentApplicant(applicant: RecruitmentApplicant): AtsApp
     answers: applicant.answers,
     cvFileName: applicant.cvFileName,
     cvFileData: applicant.cvFilePath,
+    isArchived: applicant.isArchived,
+    archivedAt: applicant.archivedAt ?? null,
     pipelineStage: applicant.pipelineStage,
     score: applicant.score
       ? {

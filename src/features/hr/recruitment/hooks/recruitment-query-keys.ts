@@ -1,7 +1,7 @@
 export const recruitmentKeys = {
   all: ['recruitment'] as const,
-  jobs: (search?: string, isActive?: boolean) =>
-    [...recruitmentKeys.all, 'jobs', search ?? '', isActive ?? 'all'] as const,
+  jobs: (search?: string, archiveScope?: string) =>
+    [...recruitmentKeys.all, 'jobs', search ?? '', archiveScope ?? 'active'] as const,
   job: (id: string) => [...recruitmentKeys.all, 'job', id] as const,
   jobForm: (jobId: string) => [...recruitmentKeys.all, 'job-form', jobId] as const,
   jobStats: (id: string) => [...recruitmentKeys.all, 'job-stats', id] as const,

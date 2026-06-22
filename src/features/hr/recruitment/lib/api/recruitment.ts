@@ -67,8 +67,10 @@ export const recruitmentApi = {
     return apiRequest<RecruitmentForm>(`/recruitment/jobs/${jobId}/form`, { method: 'PATCH', body: dto });
   },
 
-  getJobApplicants(jobId: string) {
-    return apiRequest<RecruitmentApplicant[]>(`/recruitment/jobs/${jobId}/applicants`);
+  getJobApplicants(jobId: string, query?: Omit<ListRecruitmentApplicantsQuery, 'jobId'>) {
+    return apiRequest<RecruitmentApplicant[]>(`/recruitment/jobs/${jobId}/applicants`, {
+      query: asQuery({ ...query, jobId }),
+    });
   },
 
   getJobStats(jobId: string) {

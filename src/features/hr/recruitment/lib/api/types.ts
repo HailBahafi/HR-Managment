@@ -9,6 +9,8 @@ export type RecruitmentPipelineStage =
   | 'hired'
   | 'rejected';
 
+export type RecruitmentArchiveScope = 'active' | 'archived' | 'all';
+
 export type RecruitmentFormFieldType = 'text' | 'number' | 'select' | 'file';
 
 export type RecruitmentCoreFieldKey = 'applicantName' | 'residencyNumber';
@@ -45,6 +47,8 @@ export interface RecruitmentJob {
   location: string;
   type: RecruitmentJobType;
   isActive: boolean;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   formId: string;
   createdAt: string;
   updatedAt: string;
@@ -71,6 +75,8 @@ export interface RecruitmentApplicant {
   answers: Record<string, string | undefined>;
   cvFileName: string | null;
   cvFilePath: string | null;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   pipelineStage: RecruitmentPipelineStage;
   score: RecruitmentApplicantScore | null;
   submittedAt: string;
@@ -140,15 +146,26 @@ export interface ListRecruitmentJobsQuery {
   limit?: number;
   search?: string;
   isActive?: boolean;
+  archiveScope?: RecruitmentArchiveScope;
 }
 
 export interface ListRecruitmentApplicantsQuery {
   page?: number;
   limit?: number;
+  search?: string;
+  applicantName?: string;
+  residencyNumber?: string;
+  cvFileName?: string;
   jobId?: string;
+  jobTitle?: string;
+  jobDepartment?: string;
+  jobLocation?: string;
   pipelineStage?: RecruitmentPipelineStage;
   minScore?: number;
-  search?: string;
+  maxScore?: number;
+  submittedFrom?: string;
+  submittedTo?: string;
+  archiveScope?: RecruitmentArchiveScope;
 }
 
 export interface SubmitRecruitmentApplicationDto {

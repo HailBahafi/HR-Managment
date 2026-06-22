@@ -42,6 +42,8 @@ export interface AtsJob {
   location: string;
   type: AtsJobType;
   isActive: boolean;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   formId: string;
   createdAt: string;
 }
@@ -62,6 +64,8 @@ export interface AtsApplicant {
   answers: Record<string, string | undefined>;
   cvFileName?: string | null;
   cvFileData?: string | null;
+  isArchived?: boolean;
+  archivedAt?: string | null;
   pipelineStage: AtsPipelineStage;
   score?: AtsApplicantScore | null;
   submittedAt: string;

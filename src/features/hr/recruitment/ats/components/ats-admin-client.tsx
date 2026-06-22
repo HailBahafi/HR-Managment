@@ -16,7 +16,12 @@ import type { AtsJob } from '@/features/hr/recruitment/lib/ats/types';
 import { QRCodeDialog } from '@/features/hr/recruitment/shared/qr-code-dialog';
 import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
 import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
+import {
+  RECRUITMENT_ARCHIVE_SCOPE_DEFAULT,
+} from '@/features/hr/recruitment/lib/archive-scope';
+import type { RecruitmentArchiveScope } from '@/features/hr/recruitment/lib/api/types';
 import { useRecruitmentApplicantsList, useRecruitmentJobsList, useRecruitmentMutations } from '@/features/hr/recruitment/hooks/useRecruitment';
+import { ArchiveScopeToggleButton } from '@/components/layouts/archive-scope-toggle-button';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 const JOB_TYPE_AR: Record<string, string> = {
@@ -32,13 +37,19 @@ export function AtsAdminClient() {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [qrJob, setQrJob] = React.useState<AtsJob | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [archiveScope, setArchiveScope] = React.useState<RecruitmentArchiveScope>(
+    RECRUITMENT_ARCHIVE_SCOPE_DEFAULT,
+  );
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data: jobsData, isLoading, isError, error } = useRecruitmentJobsList(debouncedSearch || undefined);
+  const { data: jobsData, isLoading, isError, error } = useRecruitmentJobsList(
+    debouncedSearch || undefined,
+    archiveScope,
+  );
   const { data: applicants = [] } = useRecruitmentApplicantsList({});
   const { deleteJob, toggleJobActive } = useRecruitmentMutations();
 
@@ -48,7 +59,7 @@ export function AtsAdminClient() {
     try {
       await deleteJob.mutateAsync(id);
       setDeleteId(null);
-      toast.success('تم حذف الوظيفة');
+      toast.success('تم أرشفة الوظيفة ومتقدميها');
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'recruitment.jobs.delete');
       toast.error(displayMessage);
@@ -58,7 +69,11 @@ export function AtsAdminClient() {
   const handleToggle = async (job: AtsJob) => {
     try {
       await toggleJobActive.mutateAsync(job.id);
-      toast.success(job.isActive ? 'تم إيقاف الوظيفة' : 'تم تفعيل الوظيفة');
+      toast.success(
+        job.isActive
+          ? 'تم إيقاف الوظيفة وأرشفة متقدميها'
+          : 'تم تفعيل الوظيفة',
+      );
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'recruitment.jobs.toggle');
       toast.error(displayMessage);
@@ -81,14 +96,17 @@ export function AtsAdminClient() {
       <RecruitmentJobNav />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative max-w-xs w-full">
-          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="بحث بالوظيفة أو القسم…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pr-9"
-          />
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          <div className="relative max-w-xs w-full min-w-[12rem]">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="بحث بالوظيفة أو القسم…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pr-9"
+            />
+          </div>
+          <ArchiveScopeToggleButton scope={archiveScope} onScopeChange={setArchiveScope} />
         </div>
         <Button variant="luxe" size="sm" onClick={() => router.push('/hr/recruitment/ats-admin/jobs/create')}>
           <Plus className="h-4 w-4 me-1" /> وظيفة جديدة
@@ -135,6 +153,11 @@ export function AtsAdminClient() {
                       <p className="mt-0.5 text-xs text-muted-foreground truncate">{job.department} · {job.location}</p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      {job.isArchived && (
+                        <Badge variant="outline" className="text-[10px] px-2 py-0 text-amber-700 border-amber-500/40">
+                          مؤرشف
+                        </Badge>
+                      )}
                       <Badge variant={job.isActive ? 'default' : 'secondary'} className="text-[10px] px-2 py-0">
                         {job.isActive ? 'نشطة' : 'متوقفة'}
                       </Badge>
@@ -195,7 +218,7 @@ export function AtsAdminClient() {
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => router.push(`/hr/recruitment/ats-admin/jobs/create?edit=${job.id}`)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive" onClick={() => setDeleteId(job.id)}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive/60 hover:text-destructive" title="أرشفة الوظيفة" onClick={() => setDeleteId(job.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -217,13 +240,15 @@ export function AtsAdminClient() {
                 <Trash2 className="h-5 w-5 text-destructive" />
               </div>
               <div>
-                <h3 className="font-semibold">تأكيد الحذف</h3>
-                <p className="mt-1 text-sm text-muted-foreground">سيتم حذف الوظيفة والنموذج والمتقدمين المرتبطين بها نهائياً.</p>
+                <h3 className="font-semibold">تأكيد الأرشفة</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  سيتم أرشفة الوظيفة وإيقافها وأرشفة جميع المتقدمين المرتبطين بها. لا يُحذف شيء نهائياً.
+                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setDeleteId(null)}>إلغاء</Button>
                 <Button variant="destructive" size="sm" onClick={() => void handleDelete(deleteId)} disabled={deleteJob.isPending}>
-                  حذف
+                  أرشفة
                 </Button>
               </div>
             </CardContent>

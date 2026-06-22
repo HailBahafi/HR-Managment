@@ -16,6 +16,7 @@ import type { AtsFormField, AtsFormFieldType } from '@/features/hr/recruitment/l
 import { splitApplicantFormFields } from '@/features/hr/recruitment/lib/ats/public-application-fields';
 import { buildSubmitApplicationPayload } from '@/features/hr/recruitment/lib/ats/submit-application-payload';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { ApiError } from '@/features/hr/lib/api/client';
 
 const FIELD_TYPE_ICONS: Record<AtsFormFieldType, React.ReactNode> = {
   text: <Briefcase className="h-3.5 w-3.5" />,
@@ -189,6 +190,10 @@ export function AtsPublicApplicationClient({ jobSlug }: PublicApplicationClientP
       toast.success('تم تقديم طلبك بنجاح!');
       setTimeout(() => router.push('/careers'), 2000);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        toast.error('تم التقديم مسبقاً على هذه الوظيفة');
+        return;
+      }
       const { displayMessage } = handleApiError(err, 'recruitment.public.apply');
       toast.error(displayMessage);
     } finally {

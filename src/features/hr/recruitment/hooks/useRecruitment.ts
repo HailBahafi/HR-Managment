@@ -16,13 +16,25 @@ import type {
   RecruitmentApplicant,
 } from '@/features/hr/recruitment/lib/api/types';
 import { recruitmentApi } from '@/features/hr/recruitment/lib/api/recruitment';
+import {
+  RECRUITMENT_ARCHIVE_SCOPE_DEFAULT,
+  recruitmentListArchiveQuery,
+} from '@/features/hr/recruitment/lib/archive-scope';
+import type { RecruitmentArchiveScope } from '@/features/hr/recruitment/lib/api/types';
 import type { AtsForm, AtsPipelineStage } from '@/features/hr/recruitment/lib/ats/types';
 
-export function useRecruitmentJobsList(search?: string) {
+export function useRecruitmentJobsList(
+  search?: string,
+  archiveScope: RecruitmentArchiveScope = RECRUITMENT_ARCHIVE_SCOPE_DEFAULT,
+) {
   return useQuery({
-    queryKey: recruitmentKeys.jobs(search),
+    queryKey: recruitmentKeys.jobs(search, archiveScope),
     queryFn: async () => {
-      const raw = await recruitmentApi.listJobs({ limit: 200, search });
+      const raw = await recruitmentApi.listJobs({
+        limit: 200,
+        search,
+        ...recruitmentListArchiveQuery(archiveScope),
+      });
       const res = normalizeRecruitmentPaginated<RecruitmentJob>(raw);
       return {
         jobs: res.items.map((item) => mapRecruitmentJob(item)),
@@ -56,11 +68,14 @@ export function useRecruitmentJobFormsMap(jobIds: string[]) {
 }
 
 export function useRecruitmentApplicantsList(query: ListRecruitmentApplicantsQuery = {}) {
-  const filters = { ...query };
+  const filters: ListRecruitmentApplicantsQuery = {
+    ...recruitmentListArchiveQuery(query.archiveScope ?? RECRUITMENT_ARCHIVE_SCOPE_DEFAULT),
+    ...query,
+  };
   return useQuery({
     queryKey: recruitmentKeys.applicants(filters),
     queryFn: async () => {
-      const raw = await recruitmentApi.listApplicants({ limit: 500, ...query });
+      const raw = await recruitmentApi.listApplicants({ limit: 500, ...filters });
       const res = normalizeRecruitmentPaginated<RecruitmentApplicant>(raw);
       return res.items.map(mapRecruitmentApplicant);
     },

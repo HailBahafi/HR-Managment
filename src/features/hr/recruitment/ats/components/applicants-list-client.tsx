@@ -24,6 +24,12 @@ import {
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { ArchiveScopeToggleButton } from '@/components/layouts/archive-scope-toggle-button';
+import {
+  RECRUITMENT_ARCHIVE_SCOPE_DEFAULT,
+  RECRUITMENT_ARCHIVE_SCOPE_OPTIONS,
+} from '@/features/hr/recruitment/lib/archive-scope';
+import type { RecruitmentArchiveScope } from '@/features/hr/recruitment/lib/api/types';
 
 /* ─── Stage config ────────────────────────────────────────────── */
 type StageTab = AtsStageTab;
@@ -56,6 +62,12 @@ export function ApplicantsListClient() {
   const [stageTab, setStageTab] = React.useState<StageTab>('all');
   const [jobFilter, setJobFilter] = React.useState<string>(urlJobId || 'all');
   const [minScore, setMinScore] = React.useState('');
+  const [maxScore, setMaxScore] = React.useState('');
+  const [submittedFrom, setSubmittedFrom] = React.useState('');
+  const [submittedTo, setSubmittedTo] = React.useState('');
+  const [archiveScope, setArchiveScope] = React.useState<RecruitmentArchiveScope>(
+    RECRUITMENT_ARCHIVE_SCOPE_DEFAULT,
+  );
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -66,7 +78,7 @@ export function ApplicantsListClient() {
     if (urlJobId) setJobFilter(urlJobId);
   }, [urlJobId]);
 
-  const { data: jobsData } = useRecruitmentJobsList();
+  const { data: jobsData } = useRecruitmentJobsList(undefined, RECRUITMENT_ARCHIVE_SCOPE_DEFAULT);
   const jobs = jobsData?.jobs ?? [];
   const { formById } = useRecruitmentJobFormsMap(jobs.map((j) => j.id));
 
@@ -74,8 +86,12 @@ export function ApplicantsListClient() {
     jobId: jobFilter !== 'all' ? jobFilter : undefined,
     pipelineStage: stageTab !== 'all' ? (stageTab as AtsPipelineStage) : undefined,
     minScore: minScore ? Number(minScore) : undefined,
+    maxScore: maxScore ? Number(maxScore) : undefined,
+    submittedFrom: submittedFrom || undefined,
+    submittedTo: submittedTo || undefined,
     search: debouncedSearch || undefined,
-  }), [jobFilter, stageTab, minScore, debouncedSearch]);
+    archiveScope,
+  }), [jobFilter, stageTab, minScore, maxScore, submittedFrom, submittedTo, debouncedSearch, archiveScope]);
 
   const { data: applicants = [], isLoading } = useRecruitmentApplicantsList(listQuery);
   const { data: detailApplicantFromApi } = useRecruitmentApplicant(detailId || undefined);
@@ -116,13 +132,21 @@ export function ApplicantsListClient() {
   const filtered = applicants;
 
   const stageLabel = STAGES.find((s) => s.key === stageTab)?.label ?? '';
-  const hasActiveFilter = stageTab !== 'all' || jobFilter !== 'all' || !!minScore || !!search;
+  const hasActiveFilter = stageTab !== 'all' || jobFilter !== 'all' || !!minScore || !!maxScore
+    || !!search || !!submittedFrom || !!submittedTo || archiveScope !== 'active';
 
-  const activeFilterCount = (stageTab !== 'all' ? 1 : 0) + (jobFilter !== 'all' ? 1 : 0) + (!!minScore ? 1 : 0) + (!!search ? 1 : 0);
+  const activeFilterCount = (stageTab !== 'all' ? 1 : 0) + (jobFilter !== 'all' ? 1 : 0)
+    + (!!minScore ? 1 : 0) + (!!maxScore ? 1 : 0) + (!!search ? 1 : 0)
+    + ((!!submittedFrom || !!submittedTo) ? 1 : 0) + (archiveScope !== 'active' ? 1 : 0);
 
   usePageHeaderActions(
-    () => <FilterToggleButton activeFilterCount={activeFilterCount} />,
-    [activeFilterCount],
+    () => (
+      <div className="flex items-center gap-2">
+        <ArchiveScopeToggleButton scope={archiveScope} onScopeChange={setArchiveScope} />
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+      </div>
+    ),
+    [archiveScope, activeFilterCount],
   );
 
   useEntityFilterSlot(
@@ -162,16 +186,39 @@ export function ApplicantsListClient() {
             <Star className="absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gold" />
             <Input type="number" min={0} max={100} placeholder="نقاط ≥" value={minScore} onChange={(e) => setMinScore(e.target.value)} className="h-8 pr-7 text-xs" />
           </div>
+          <div className="relative w-full sm:w-24">
+            <Star className="absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <Input type="number" min={0} max={100} placeholder="نقاط ≤" value={maxScore} onChange={(e) => setMaxScore(e.target.value)} className="h-8 pr-7 text-xs" />
+          </div>
+          <Input type="date" value={submittedFrom} onChange={(e) => setSubmittedFrom(e.target.value)} className="h-8 w-full text-xs sm:w-36" title="من تاريخ التقديم" />
+          <Input type="date" value={submittedTo} onChange={(e) => setSubmittedTo(e.target.value)} className="h-8 w-full text-xs sm:w-36" title="إلى تاريخ التقديم" />
+          <Select value={archiveScope} onValueChange={(v) => setArchiveScope(v as RecruitmentArchiveScope)}>
+            <SelectTrigger className="h-8 w-full text-xs sm:w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {RECRUITMENT_ARCHIVE_SCOPE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {hasActiveFilter && (
             <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-muted-foreground shrink-0"
-              onClick={() => { setStageTab('all'); setJobFilter('all'); setMinScore(''); setSearch(''); }}>
+              onClick={() => {
+                setStageTab('all');
+                setJobFilter('all');
+                setMinScore('');
+                setMaxScore('');
+                setSubmittedFrom('');
+                setSubmittedTo('');
+                setSearch('');
+                setArchiveScope('active');
+              }}>
               <X className="h-3.5 w-3.5" /> مسح
             </Button>
           )}
         </div>
       </div>
     ),
-    [search, stageTab, jobFilter, minScore, stageCounts, jobs, hasActiveFilter],
+    [search, stageTab, jobFilter, minScore, maxScore, submittedFrom, submittedTo, archiveScope, stageCounts, jobs, hasActiveFilter],
   );
 
   return (
@@ -219,9 +266,16 @@ export function ApplicantsListClient() {
                       <p className="truncate text-sm font-semibold leading-tight">{name}</p>
                       <p className="truncate text-xs text-muted-foreground mt-0.5">{job?.title ?? '—'}</p>
                     </div>
-                    <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 ${STAGE_BADGE[app.pipelineStage]}`}>
-                      {stageCfg?.label}
-                    </Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${STAGE_BADGE[app.pipelineStage]}`}>
+                        {stageCfg?.label}
+                      </Badge>
+                      {app.isArchived && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-700 border-amber-500/40">
+                          مؤرشف
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between gap-2">

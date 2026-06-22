@@ -190,6 +190,39 @@ GET /recruitment/applicants?jobId=a1000010-...&pipelineStage=applied&page=1&limi
 
 **الفرونت:** `buildSubmitApplicationPayload()` في `lib/ats/submit-application-payload.ts`
 
+- تكرار التقديم على نفس الوظيفة → **409** «تم التقديم مسبقاً»
+- `residencyNumber` يُحوَّل لأرقام تلقائياً في الباكند
+
+#### الأرشفة والقوائم
+
+| القائمة | الافتراضي | مؤرشف | الكل |
+|---------|-----------|--------|------|
+| `GET /recruitment/jobs` | غير مؤرشف | `?archiveScope=archived` | `?archiveScope=all` |
+| `GET /recruitment/applicants?limit=500` | غير مؤرشف | `?archiveScope=archived` | `?archiveScope=all` |
+
+**حقول جديدة في الاستجابة:** `isArchived: boolean`, `archivedAt: string | null` على **Job** و **Applicant**.
+
+**DELETE = أرشفة (لا حذف فعلي):**
+
+| Endpoint | السلوك |
+|----------|--------|
+| `DELETE /recruitment/jobs/:id` | أرشفة الوظيفة + إيقافها + أرشفة كل متقدميها |
+| `PATCH` إيقاف / `toggle-active` | أرشفة المتقدمين فقط (الوظيفة تبقى غير مؤرشفة) |
+| `DELETE /recruitment/applicants/:id` | أرشفة المتقدم فقط |
+
+#### فلاتر المتقدمين (`GET /recruitment/applicants` و `GET /recruitment/jobs/:id/applicants`)
+
+| Param | الغرض |
+|-------|--------|
+| `search` | بحث عام |
+| `applicantName`, `residencyNumber`, `cvFileName` | فلترة مباشرة |
+| `jobId`, `jobTitle`, `jobDepartment`, `jobLocation` | حسب الوظيفة |
+| `pipelineStage`, `minScore`, `maxScore` | المرحلة والدرجة |
+| `submittedFrom`, `submittedTo` | تاريخ التقديم `YYYY-MM-DD` |
+| `archiveScope` | `active` \| `archived` \| `all` |
+
+**الفرونت:** `recruitmentListArchiveQuery()` في `lib/archive-scope.ts` — الافتراضي `active`.
+
 ---
 
 ### Forms
@@ -317,13 +350,22 @@ interface ListJobsQuery {
 }
 
 interface ListApplicantsQuery {
-  jobId?: string;       // optional filter
+  jobId?: string;
   pipelineStage?: PipelineStage;
   minScore?: number;
+  maxScore?: number;
   search?: string;
+  applicantName?: string;
+  residencyNumber?: string;
+  cvFileName?: string;
+  jobTitle?: string;
+  jobDepartment?: string;
+  jobLocation?: string;
+  submittedFrom?: string;
+  submittedTo?: string;
+  archiveScope?: 'active' | 'archived' | 'all';
   page?: number;
   limit?: number;
-  // tenantId ← احذف
 }
 ```
 
