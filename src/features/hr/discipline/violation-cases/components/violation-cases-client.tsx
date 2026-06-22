@@ -786,7 +786,7 @@ export function ViolationCasesClient() {
         onDateFilterMetaChange={onDateFilterMetaChange}
       />
     ),
-    [empPickerList, selectedEmpIds, statusFilter, statusCounts, viewMode, violationPdfRows, onDateBoundsChange, onDateFilterMetaChange],
+    [empPickerList, selectedEmpIds, statusFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
   );
 
   if (loading) {

@@ -22,7 +22,10 @@ import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-selec
 import { useApprovalAssignmentModel } from '@/features/hr/requests/approval-assignment/hooks/useApprovalAssignmentModel';
 import type { RequestApprovalMode } from '@/features/hr/requests/approval-assignment/hooks/useApprovalAssignmentModel';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
-import { cn } from '@/shared/utils';
+import {
+  ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
+  type OrganizationArchiveScope,
+} from '@/features/hr/organization/lib/archive-scope';
 
 const MODE_OPTIONS: { value: RequestApprovalMode; label: string }[] = [
   { value: 'sequential', label: 'تسلسلي' },
@@ -51,7 +54,7 @@ function buildNameAr(linkedIds: string[], requestTypes: { id: string; nameAr: st
 export function ApprovalAssignmentClient() {
   const {
     templates, requestTypes, employees, loading, listError, pagination,
-    archiveScope, setArchiveScope, archiveScopeOptions,
+    archiveScope, setArchiveScope,
     createTemplate, updateTemplate, deleteTemplate,
   } = useApprovalAssignmentModel();
 
@@ -104,12 +107,25 @@ export function ApprovalAssignmentClient() {
     });
   };
 
-  const openCreate = () => {
+  const openCreate = React.useCallback(() => {
     setEditId(null);
     setDraft({ linkedIds: [], approverIds: [], approvalMode: 'sequential', isActive: true });
     setError(null);
     setDialogOpen(true);
-  };
+  }, []);
+
+  const archiveFilterInlineSelects = React.useMemo(
+    () => [
+      {
+        id: 'archive',
+        value: archiveScope,
+        onChange: (v: string) => setArchiveScope(v as OrganizationArchiveScope),
+        placeholder: 'العرض',
+        options: ORGANIZATION_ARCHIVE_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+      },
+    ],
+    [archiveScope, setArchiveScope],
+  );
 
   const openEdit = (t: typeof templates[number]) => {
     setEditId(t.id);
@@ -169,19 +185,11 @@ export function ApprovalAssignmentClient() {
         showDateSection={false}
         showStatusSection={false}
         showEmployeePicker={false}
-        inlineSelects={[
-          {
-            id: 'archive',
-            value: archiveScope,
-            onChange: (v) => setArchiveScope(v as OrganizationArchiveScope),
-            placeholder: 'العرض',
-            options: archiveScopeOptions.map((o) => ({ value: o.value, label: o.label })),
-          },
-        ]}
+        inlineSelects={archiveFilterInlineSelects}
         onDateBoundsChange={() => {}}
       />
     ),
-    [archiveScope, archiveScopeOptions],
+    [archiveFilterInlineSelects],
   );
 
   if (loading) {
