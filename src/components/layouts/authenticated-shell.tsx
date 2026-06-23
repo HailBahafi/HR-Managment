@@ -6,6 +6,10 @@ import { useAuthSession } from '@/features/auth/hooks/use-auth-session';
 import { hasAccessTokenCookie } from '@/features/auth/lib/auth-cookie';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 
+function AuthShellFrame({ children }: { children: ReactNode }) {
+  return <div className="flex min-h-full flex-col">{children}</div>;
+}
+
 function AuthLoadingFallback() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center">
@@ -39,30 +43,44 @@ export function AuthenticatedShell({ children }: { children: ReactNode }) {
   // SSR and the first client paint must render the same tree. Cookie/session
   // checks only exist in the browser, so defer auth branching until mounted.
   if (!mounted) {
-    return <AuthLoadingFallback />;
+    return (
+      <AuthShellFrame>
+        <AuthLoadingFallback />
+      </AuthShellFrame>
+    );
   }
 
   const waitingForSession = sessionLoading;
   const waitingForProfile = !!user && !accessProfile && profileLoading && !profileError;
 
   if (waitingForSession || waitingForProfile) {
-    return <AuthLoadingFallback />;
+    return (
+      <AuthShellFrame>
+        <AuthLoadingFallback />
+      </AuthShellFrame>
+    );
   }
 
   if (!user && !hasAccessTokenCookie()) {
-    return <AuthLoadingFallback />;
+    return (
+      <AuthShellFrame>
+        <AuthLoadingFallback />
+      </AuthShellFrame>
+    );
   }
 
   if (sessionError && !user) {
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 text-muted-foreground">
-        <p>انتهت الجلسة أو لم يتم تسجيل الدخول.</p>
-        <a href="/login" className="text-primary underline-offset-4 hover:underline">
-          تسجيل الدخول
-        </a>
-      </div>
+      <AuthShellFrame>
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 text-muted-foreground">
+          <p>انتهت الجلسة أو لم يتم تسجيل الدخول.</p>
+          <a href="/login" className="text-primary underline-offset-4 hover:underline">
+            تسجيل الدخول
+          </a>
+        </div>
+      </AuthShellFrame>
     );
   }
 
-  return <div className="flex min-h-full flex-col">{children}</div>;
+  return <AuthShellFrame>{children}</AuthShellFrame>;
 }
