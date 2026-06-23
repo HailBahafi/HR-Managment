@@ -4,6 +4,7 @@ import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-comp
 import {
   employeeAdvancesApi,
   type EmployeeAdvanceResponseDto,
+  type EmployeeAdvanceDecisionDto,
   type AdvanceKindDto,
   type AdvanceStatusDto,
   type RepaymentModeDto,
@@ -15,6 +16,8 @@ import {
   duplicateAdvanceNumberMessage,
   isDuplicateAdvanceNumberError,
 } from './employee-advance-errors';
+import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
+import { normalizeRequestApproverStates } from '@/features/hr/requests/lib/request-approver-states';
 
 const CREATE_RETRY_ATTEMPTS = 3;
 const CREATE_RETRY_DELAY_MS = 200;
@@ -40,6 +43,9 @@ export type HREmployeeAdvance = {
   repaymentMonths: number | null;
   monthlyInstallmentAmount: number | null;
   approvedAt: string | null;
+  rejectedAt: string | null;
+  decisionNotes: string | null;
+  approverStates: RequestApproverStatesSnapshot | null;
   updatedAt: string;
   approverStates: RequestApproverStatesSnapshot | null;
 };
@@ -85,6 +91,9 @@ function mapApi(r: EmployeeAdvanceResponseDto): HREmployeeAdvance {
       ? parseFloat(r.monthlyInstallmentAmount)
       : null,
     approvedAt: r.approvedAt,
+    rejectedAt: r.rejectedAt ?? null,
+    decisionNotes: r.decisionNotes ?? null,
+    approverStates: normalizeRequestApproverStates(r),
     updatedAt: r.updatedAt,
     approverStates: normalizeRequestApproverStates(r),
   };

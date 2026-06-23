@@ -1,3 +1,5 @@
+import { apiRequest, ApiError, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
 
@@ -25,6 +27,11 @@ export type EmployeeAdvanceResponseDto = {
   totalRepaidAmount: string;
   remainingAmount: string;
   approvedAt: string | null;
+  rejectedAt?: string | null;
+  decisionNotes?: string | null;
+  decidedBy?: string | null;
+  approverStates?: RequestApproverStatesSnapshot | null;
+  approver_states?: RequestApproverStatesSnapshot | null;
   disbursedAt: string | null;
   closedAt: string | null;
   approverStates?: RequestApproverStatesSnapshot | null;
@@ -51,11 +58,11 @@ export type UpdateEmployeeAdvanceDto = Partial<Omit<CreateEmployeeAdvanceDto, 'c
 
 export type EmployeeAdvanceDecisionDto = {
   decision: 'approve' | 'reject';
+  approver_states?: RequestApproverStatesSnapshot;
   approverStates?: RequestApproverStatesSnapshot;
   approverEmployeeId?: string;
-  decidedByEmployeeId?: string;
-  decisionNotesAr?: string;
-  updatedBy?: string;
+  notes?: string;
+  decidedBy?: string;
 };
 
 export type PushAdvancesToPayrollDto = {
@@ -98,11 +105,17 @@ export const employeeAdvancesApi = {
     apiRequest<EmployeeAdvanceResponseDto>('/payroll/employee-advances', { method: 'POST', body }),
   update: (id: string, body: UpdateEmployeeAdvanceDto) =>
     apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}`, { method: 'PATCH', body }),
-  decide: (id: string, body: EmployeeAdvanceDecisionDto) =>
-    apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}/decision`, {
-      method: 'POST',
-      body,
-    }),
+  decide: async (id: string, body: EmployeeAdvanceDecisionDto) => {
+    const path = `/payroll/employee-advances/${id}/decision`;
+    try {
+      return await apiRequest<EmployeeAdvanceResponseDto>(path, { method: 'PATCH', body });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        return apiRequest<EmployeeAdvanceResponseDto>(path, { method: 'POST', body });
+      }
+      throw err;
+    }
+  },
   delete: (id: string) =>
     apiRequest<void>(`/payroll/employee-advances/${id}`, { method: 'DELETE' }),
 
