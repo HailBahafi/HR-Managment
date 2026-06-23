@@ -137,6 +137,8 @@ export type ApiLeaveRequest = {
   decisionNotesAr: string | null;
   attachments: unknown[];
   status: LeaveRequestStatusNew;
+  approverStates?: RequestApproverStatesSnapshot | null;
+  approver_states?: RequestApproverStatesSnapshot | null;
   submittedAt: string;
   decidedAt: string | null;
   cancelledAt: string | null;
@@ -163,7 +165,8 @@ export type CreateLeaveRequestNewDto = {
 
 export type LeaveDecisionDto = {
   decision: 'approve' | 'reject';
-  /** HR employee id — not the auth user id */
+  approverStates?: RequestApproverStatesSnapshot;
+  approverEmployeeId?: string;
   decidedByEmployeeId?: string;
   decisionNotesAr?: string;
   updatedBy?: string;
