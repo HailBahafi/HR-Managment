@@ -10,7 +10,7 @@ function AuthShellFrame({ children }: { children: ReactNode }) {
   return <div className="flex min-h-full flex-col">{children}</div>;
 }
 
-function AuthLoadingState() {
+function AuthLoadingFallback() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center">
       <div
@@ -34,29 +34,29 @@ export function AuthenticatedShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
-    if (!user && !hasAccessTokenCookie()) {
-      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.replace(`/login?returnTo=${returnTo}`);
-    }
-  }, [mounted, user]);
+    if (!mounted || user || hasAccessTokenCookie() || sessionLoading) return;
 
+    const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.replace(`/login?returnTo=${returnTo}`);
+  }, [mounted, user, sessionLoading]);
+
+  // SSR and the first client paint must render the same tree. Cookie/session
+  // checks only exist in the browser, so defer auth branching until mounted.
   if (!mounted) {
     return (
       <AuthShellFrame>
-        <AuthLoadingState />
+        <AuthLoadingFallback />
       </AuthShellFrame>
     );
   }
 
   const waitingForSession = sessionLoading;
-  const waitingForProfile =
-    !!user && !accessProfile && profileLoading && !profileError;
+  const waitingForProfile = !!user && !accessProfile && profileLoading && !profileError;
 
   if (waitingForSession || waitingForProfile) {
     return (
       <AuthShellFrame>
-        <AuthLoadingState />
+        <AuthLoadingFallback />
       </AuthShellFrame>
     );
   }
@@ -64,7 +64,7 @@ export function AuthenticatedShell({ children }: { children: ReactNode }) {
   if (!user && !hasAccessTokenCookie()) {
     return (
       <AuthShellFrame>
-        <AuthLoadingState />
+        <AuthLoadingFallback />
       </AuthShellFrame>
     );
   }
