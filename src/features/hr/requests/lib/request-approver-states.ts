@@ -184,6 +184,31 @@ export function buildRequestCorrectionDecisionPayload(
   };
 }
 
+/** Payload قرار موافقة/رفض سلفة — يطابق API الرواتب */
+export function buildEmployeeAdvanceDecisionPayload(
+  states: RequestApproverStatesSnapshot,
+  employeeId: string,
+  decision: 'approve' | 'reject',
+  options: {
+    notes?: string | null;
+    decidedBy?: string | null;
+  },
+) {
+  const notes = options.notes?.trim() || undefined;
+  const updatedStates = applyRequestApproverDecision(states, employeeId, decision, {
+    decidedBy: options.decidedBy ?? null,
+    notes: notes ?? null,
+  });
+
+  return {
+    decision,
+    approver_states: updatedStates,
+    approverEmployeeId: employeeId,
+    notes,
+    decidedBy: options.decidedBy ?? undefined,
+  };
+}
+
 export function canEmployeeActOnRequestApproval(
   states: RequestApproverStatesSnapshot | null | undefined,
   employeeId: string | null | undefined,
