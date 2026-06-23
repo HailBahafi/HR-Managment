@@ -12,10 +12,21 @@ services:
         BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:3000}
     container_name: hr-frontend
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3001}:3001"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portal.rule=Host(`portal.jgrabaya.com`)"
+      - "traefik.http.routers.portal.entrypoints=websecure"
+      - "traefik.http.routers.portal.tls=true"
+      - "traefik.http.routers.portal.service=portal"
+      - "traefik.http.services.portal.loadbalancer.server.port=3001"
     environment:
       PORT: 3001
       HOSTNAME: 0.0.0.0
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - traefik
+
+networks:
+  traefik:
+    external: true
