@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, ArrowRight, ExternalLink, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { GuidePage } from '@/features/hr/guide/types';
-import { getAdjacentGuidePages } from '@/features/hr/guide/constants/project-guide-content';
+import { getAdjacentGuidePages, getCategoryLabel } from '@/features/hr/guide/constants/project-guide-content';
 
 function FieldTable({ fields }: { fields: NonNullable<GuidePage['blocks'][0]['fields']> }) {
   return (
@@ -32,10 +32,12 @@ function FieldTable({ fields }: { fields: NonNullable<GuidePage['blocks'][0]['fi
 
 export function ProjectGuideArticle({ page }: { page: GuidePage }) {
   const { prev, next } = getAdjacentGuidePages(page.slug);
+  const categoryLabel = getCategoryLabel(page.categoryId);
 
   return (
     <article className="min-w-0">
       <header className="mb-8 space-y-4 border-b border-border pb-6">
+        <p className="text-sm font-bold text-primary">{categoryLabel}</p>
         <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">{page.title}</h1>
 
         <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">

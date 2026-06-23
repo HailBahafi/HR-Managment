@@ -9,17 +9,17 @@ export function ProjectGuideSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
 
   return (
-    <nav className={cn('space-y-6 text-sm', className)} aria-label="فهرس الدليل">
+    <nav className={cn('space-y-5 text-sm', className)} aria-label="فهرس الدليل">
       {GUIDE_CATEGORIES.map((category) => {
         const pages = GUIDE_PAGES.filter((p) => p.categoryId === category.id);
         if (pages.length === 0) return null;
 
         return (
-          <div key={category.id}>
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <section key={category.id} className="space-y-1">
+            <h2 className="px-3 pb-2 text-[13px] font-bold text-foreground border-b border-border/70">
               {category.label}
-            </p>
-            <ul className="space-y-0.5">
+            </h2>
+            <ul className="space-y-0.5 pt-1">
               {pages.map((page) => {
                 const href = `/hr/guide/${page.slug}`;
                 const active = pathname === href;
@@ -28,10 +28,10 @@ export function ProjectGuideSidebar({ className }: { className?: string }) {
                     <Link
                       href={href}
                       className={cn(
-                        'block rounded-lg px-3 py-2 leading-snug transition-colors',
+                        'block rounded-lg px-3 py-2 text-[13px] leading-snug transition-colors',
                         active
-                          ? 'bg-primary/10 font-medium text-primary'
-                          : 'text-foreground/75 hover:bg-muted/60 hover:text-foreground',
+                          ? 'bg-primary/10 font-semibold text-primary'
+                          : 'text-foreground/70 hover:bg-muted/60 hover:text-foreground',
                       )}
                     >
                       {page.title}
@@ -40,7 +40,7 @@ export function ProjectGuideSidebar({ className }: { className?: string }) {
                 );
               })}
             </ul>
-          </div>
+          </section>
         );
       })}
     </nav>
