@@ -32,13 +32,63 @@ export const GUIDE_PAGES: GuidePage[] = [
       {
         id: 'setup-order',
         title: 'ترتيب التهيئة الموصى به',
+        paragraphs: ['نفّذ كل قسم بالترتيب التالي قبل الانتقال للقسم الذي يليه:'],
+      },
+      {
+        id: 'setup-organization',
+        title: 'الهيكل التنظيمي',
         bullets: [
-          'الشركة ← الفروع ← الأقسام ← المسميات الوظيفية ← الموظفون',
-          'قوالب الشفت ← نقاط التسجيل ← ربط الشفتات ← ربط النقاط',
-          'أنواع الإجازات ← العطل الرسمية ← أرصدة الإجازات',
-          'أنواع الطلبات ← إسناد الموافقة ← طلبات الحضور / الإجازات / السلف',
-          'أنواع المخالفات ← سجل المخالفات ← إسناد موافقة الانضباط',
-          'العقود والرواتب ← التوظيف ← الصلاحيات والإعدادات',
+          'الفروع',
+          'الأقسام',
+          'المسميات الوظيفية',
+          'الموظفون',
+        ],
+      },
+      {
+        id: 'setup-attendance',
+        title: 'الحضور والانصراف',
+        bullets: [
+          'قوالب الشفت',
+          'نقاط التسجيل',
+          'ربط الشفتات بالموظفين',
+          'ربط النقاط بالموظفين',
+        ],
+      },
+      {
+        id: 'setup-leaves',
+        title: 'الإجازات',
+        bullets: [
+          'أنواع الإجازات',
+          'العطل الرسمية',
+          'أرصدة الإجازات',
+        ],
+      },
+      {
+        id: 'setup-requests',
+        title: 'الطلبات والموافقات',
+        bullets: [
+          'أنواع الطلبات',
+          'إسناد الموافقة',
+          'طلبات تصحيح الحضور',
+          'طلبات الإجازات',
+          'سلف الموظفين',
+        ],
+      },
+      {
+        id: 'setup-discipline',
+        title: 'الانضباط الوظيفي',
+        bullets: [
+          'أنواع المخالفات',
+          'سجل المخالفات',
+        ],
+      },
+      {
+        id: 'setup-other',
+        title: 'الرواتب والتوظيف والإعدادات',
+        bullets: [
+          'عقود العمل وفترات الرواتب',
+          'التوظيف',
+          'الصلاحيات وإعدادات الموارد البشرية',
         ],
         note: 'تخطّي خطوة مبكراً قد يمنع حفظ السجل التالي أو يجعل الموافقات والطلبات لا تعمل كما هو متوقع.',
       },
@@ -52,48 +102,16 @@ export const GUIDE_PAGES: GuidePage[] = [
         ],
       },
     ],
-    relatedSlugs: ['companies'],
+    relatedSlugs: ['branches'],
   },
 
   // ─── الهيكل التنظيمي ─────────────────────────────────────────────────────
-  {
-    slug: 'companies',
-    title: 'الشركات',
-    categoryId: 'organization',
-    why: 'كل البيانات (فروع، موظفون، طلبات، رواتب) تُربط بشركة. بدون شركة نشطة لا يمكن استخدام بقية الوحدات بشكل صحيح.',
-    systemHref: '/hr/organization/companies',
-    systemHrefLabel: 'فتح صفحة الشركات',
-    blocks: [
-      {
-        id: 'purpose',
-        title: 'الغرض',
-        paragraphs: [
-          'تعريف الكيان القانوني الذي يعمل عليه النظام. عند تعدد الشركات في نفس المنصة، يُختار السياق النشط من قائمة المستخدم أو من إعدادات الوصول.',
-        ],
-      },
-      {
-        id: 'fields',
-        title: 'الحقول الرئيسية',
-        fields: [
-          { name: 'اسم الشركة (عربي)', description: 'الاسم المعروض في التقارير والقوائم.', required: true },
-          { name: 'الرمز / المعرف', description: 'معرّف داخلي للتمييز بين الشركات.', required: true },
-          { name: 'الحالة (نشط)', description: 'الشركات غير النشطة لا تُستخدم في العمليات اليومية.', required: true },
-        ],
-      },
-      {
-        id: 'next',
-        title: 'بعد الحفظ',
-        paragraphs: ['انتقل مباشرة إلى إنشاء الفروع التابعة لهذه الشركة قبل إدخال الموظفين.'],
-      },
-    ],
-    relatedSlugs: ['branches'],
-  },
   {
     slug: 'branches',
     title: 'الفروع',
     categoryId: 'organization',
     why: 'الموظف ينتمي لفرع؛ الحضور والطلبات والتقارير تُفلتر حسب الفرع. يجب تعريف الفروع قبل الموظفين.',
-    prerequisites: ['إنشاء الشركة وتفعيلها'],
+    prerequisites: [],
     systemHref: '/hr/organization/branches',
     systemHrefLabel: 'فتح صفحة الفروع',
     blocks: [
@@ -123,7 +141,7 @@ export const GUIDE_PAGES: GuidePage[] = [
     title: 'الأقسام',
     categoryId: 'organization',
     why: 'تصنيف الموظفين والطلبات والتقارير حسب الهيكل الإداري. يُفضّل إنشاء الأقسام قبل إدخال الموظفين.',
-    prerequisites: ['الشركة والفروع'],
+    prerequisites: ['الفروع'],
     systemHref: '/hr/organization/departments',
     systemHrefLabel: 'فتح صفحة الأقسام',
     blocks: [
@@ -152,7 +170,7 @@ export const GUIDE_PAGES: GuidePage[] = [
     title: 'المسميات الوظيفية',
     categoryId: 'organization',
     why: 'كل موظف يحتاج مسمى وظيفي في تعيينه الوظيفي والعقد. تعريف المسميات مسبقاً يوحّد البيانات.',
-    prerequisites: ['الشركة'],
+    prerequisites: [],
     systemHref: '/hr/organization/job-titles',
     systemHrefLabel: 'فتح المسميات الوظيفية',
     blocks: [
@@ -303,7 +321,7 @@ export const GUIDE_PAGES: GuidePage[] = [
     title: 'أنواع الإجازات',
     categoryId: 'leaves',
     why: 'عند تقديم طلب إجازة يجب اختيار نوع (سنوية، مرضية، …). بدون أنواع معرّفة لا يُنشأ طلب إجازة صحيح.',
-    prerequisites: ['الشركة'],
+    prerequisites: [],
     systemHref: '/hr/leaves/leave-types',
     systemHrefLabel: 'فتح أنواع الإجازات',
     blocks: [
@@ -722,6 +740,10 @@ export const GUIDE_PAGES: GuidePage[] = [
     ],
   },
 ];
+
+export function getCategoryLabel(categoryId: GuideCategory['id']): string {
+  return GUIDE_CATEGORIES.find((c) => c.id === categoryId)?.label ?? categoryId;
+}
 
 export function getGuidePage(slug: string): GuidePage | undefined {
   return GUIDE_PAGES.find((p) => p.slug === slug);
