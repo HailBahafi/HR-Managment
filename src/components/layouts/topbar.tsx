@@ -496,6 +496,12 @@ export function Topbar() {
                 </>
               )}
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/hr/guide/introduction" className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  <span>دليل المشروع والتهيئة</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 disabled={logoutLoading}
