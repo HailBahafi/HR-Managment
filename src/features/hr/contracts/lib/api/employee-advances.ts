@@ -1,4 +1,4 @@
-import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import { apiRequest, ApiError, type PaginatedResult } from '@/features/hr/lib/api/client';
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
 
 export type AdvanceStatusDto = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'disbursed' | 'repaying' | 'fully_repaid' | 'cancelled';
@@ -101,11 +101,17 @@ export const employeeAdvancesApi = {
     apiRequest<EmployeeAdvanceResponseDto>('/payroll/employee-advances', { method: 'POST', body }),
   update: (id: string, body: UpdateEmployeeAdvanceDto) =>
     apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}`, { method: 'PATCH', body }),
-  decide: (id: string, body: EmployeeAdvanceDecisionDto) =>
-    apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}/decision`, {
-      method: 'PATCH',
-      body,
-    }),
+  decide: async (id: string, body: EmployeeAdvanceDecisionDto) => {
+    const path = `/payroll/employee-advances/${id}/decision`;
+    try {
+      return await apiRequest<EmployeeAdvanceResponseDto>(path, { method: 'PATCH', body });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        return apiRequest<EmployeeAdvanceResponseDto>(path, { method: 'POST', body });
+      }
+      throw err;
+    }
+  },
   delete: (id: string) =>
     apiRequest<void>(`/payroll/employee-advances/${id}`, { method: 'DELETE' }),
 

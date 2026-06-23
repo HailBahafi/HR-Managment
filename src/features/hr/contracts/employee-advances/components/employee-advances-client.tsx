@@ -9,7 +9,6 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -149,7 +148,6 @@ export function EmployeeAdvancesClient() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
   const [detailAdvance, setDetailAdvance] = React.useState<HREmployeeAdvance | null>(null);
-  const [decisionNotes, setDecisionNotes] = React.useState('');
 
   const fetchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -211,7 +209,7 @@ export function EmployeeAdvancesClient() {
         access.states,
         currentEmployeeId,
         'approve',
-        { notes: decisionNotes, decidedBy: decidedByActor },
+        { decidedBy: decidedByActor },
       );
       setActionLoadingId(x.id);
       await approve(x.id, payload);
@@ -221,13 +219,17 @@ export function EmployeeAdvancesClient() {
         toast.success('تم تسجيل موافقتك — بانتظار بقية المعتمدين.');
       }
       setDetailAdvance(null);
-      setDecisionNotes('');
     } catch (e) {
-      handleApiError(e, 'employee-advances/decide.approve');
+      const { status, displayMessage } = handleApiError(e, 'employee-advances/decide.approve');
+      if (status === 404) {
+        toast.error('مسار موافقة السلف غير مفعّل على الخادم. يُرجى من فريق الباك تفعيل PATCH أو POST على /payroll/employee-advances/{id}/decision.');
+      } else {
+        toast.error(displayMessage);
+      }
     } finally {
       setActionLoadingId(null);
     }
-  }, [approve, companyId, currentEmployeeId, decidedByActor, decisionNotes]);
+  }, [approve, companyId, currentEmployeeId, decidedByActor]);
 
   const handleRejectAdvance = React.useCallback(async (x: HREmployeeAdvance) => {
     if (!companyId || !currentEmployeeId) return;
@@ -246,19 +248,23 @@ export function EmployeeAdvancesClient() {
         access.states,
         currentEmployeeId,
         'reject',
-        { notes: decisionNotes, decidedBy: decidedByActor },
+        { decidedBy: decidedByActor },
       );
       setActionLoadingId(x.id);
       await reject(x.id, payload);
       toast.message('تم رفض السلفة.');
       setDetailAdvance(null);
-      setDecisionNotes('');
     } catch (e) {
-      handleApiError(e, 'employee-advances/decide.reject');
+      const { status, displayMessage } = handleApiError(e, 'employee-advances/decide.reject');
+      if (status === 404) {
+        toast.error('مسار موافقة السلف غير مفعّل على الخادم. يُرجى من فريق الباك تفعيل PATCH أو POST على /payroll/employee-advances/{id}/decision.');
+      } else {
+        toast.error(displayMessage);
+      }
     } finally {
       setActionLoadingId(null);
     }
-  }, [companyId, currentEmployeeId, decidedByActor, decisionNotes, reject]);
+  }, [companyId, currentEmployeeId, decidedByActor, reject]);
 
   const canShowApprovalActions = React.useCallback(
     (x: HREmployeeAdvance) =>
@@ -267,7 +273,6 @@ export function EmployeeAdvancesClient() {
   );
 
   const openAdvanceDetail = (x: HREmployeeAdvance) => {
-    setDecisionNotes('');
     setDetailAdvance(x);
   };
 
@@ -512,6 +517,30 @@ export function EmployeeAdvancesClient() {
                     {ADVANCE_STATUS_LABELS[x.status]}
                   </Badge>
                 </div>
+                {canShowApprovalActions(x) && (
+                  <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 flex-1 text-xs text-success border-success/30 hover:bg-success/10"
+                      disabled={loading}
+                      onClick={() => void handleApproveAdvance(x)}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 me-1" />
+                      موافقة
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 flex-1 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                      disabled={loading}
+                      onClick={() => void handleRejectAdvance(x)}
+                    >
+                      <XCircle className="h-3.5 w-3.5 me-1" />
+                      رفض
+                    </Button>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-1">
                   <Badge variant="secondary" className="text-[10px] font-normal">
                     {ADVANCE_KIND_LABELS[x.advanceKind]}
@@ -666,7 +695,7 @@ export function EmployeeAdvancesClient() {
         }}
       />
 
-      <Dialog open={detailAdvance != null} onOpenChange={(o) => { if (!o) { setDetailAdvance(null); setDecisionNotes(''); } }}>
+      <Dialog open={detailAdvance != null} onOpenChange={(o) => { if (!o) setDetailAdvance(null); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle>تفاصيل السلفة</DialogTitle>
@@ -716,39 +745,6 @@ export function EmployeeAdvancesClient() {
                 ) : null}
               </div>
               <RequestApproverStatesPanel states={detailAdvance.approverStates} />
-              {canShowApprovalActions(detailAdvance) ? (
-                <>
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">ملاحظات القرار (اختياري)</p>
-                    <Textarea
-                      value={decisionNotes}
-                      onChange={(e) => setDecisionNotes(e.target.value)}
-                      rows={2}
-                      placeholder="ملاحظة للمعتمدين أو للموظف…"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 text-success border-success/30"
-                      disabled={actionLoadingId === detailAdvance.id}
-                      onClick={() => void handleApproveAdvance(detailAdvance)}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 text-destructive border-destructive/30"
-                      disabled={actionLoadingId === detailAdvance.id}
-                      onClick={() => void handleRejectAdvance(detailAdvance)}
-                    >
-                      <XCircle className="h-3.5 w-3.5" /> رفض
-                    </Button>
-                  </div>
-                </>
-              ) : null}
             </div>
           ) : null}
         </DialogContent>
