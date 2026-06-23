@@ -29,6 +29,7 @@ import { FilterTrigger } from '@/components/layouts/filter-panel';
 import { Logo } from '@/components/layouts/logo';
 import { NotificationBellPopover } from '@/features/hr/notifications/components/notification-bell-popover';
 import { cn } from '@/shared/utils';
+import { useThemeStore } from '@/shared/store/theme-store';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrNotificationsNavGroups, isHrNotificationsNavPath } from '@/features/hr/notifications/constants/nav';
 import { hrPayrollNavGroups, isHrPayrollNavPath } from '@/features/hr/payroll/constants/nav';
@@ -310,7 +311,8 @@ function NavDropdownContent({
 
 /* ── Main Topbar ─────────────────────────────────────────────────────── */
 export function Topbar() {
-  const [dark, setDark] = React.useState(false);
+  const themeMode = useThemeStore((state) => state.mode);
+  const toggleTheme = useThemeStore((state) => state.toggle);
   const { logout, loading: logoutLoading } = useLogout();
   const {
     displayName,
@@ -335,7 +337,6 @@ export function Topbar() {
   const openMenu   = (key: string) => { if (closeTimer.current) clearTimeout(closeTimer.current); setActiveMenu(key); };
   const delayClose = () => { closeTimer.current = setTimeout(() => setActiveMenu(null), 150); };
 
-  React.useEffect(() => { document.documentElement.classList.toggle('dark', dark); }, [dark]);
   React.useEffect(() => { setActiveMenu(null); }, [pathname]);
 
   const PageIcon = meta.iconName ? PAGE_ICONS[meta.iconName] : null;
@@ -429,8 +430,8 @@ export function Topbar() {
           {/* Filter trigger */}
           <FilterTrigger />
 
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={() => setDark(d => !d)}>
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={toggleTheme}>
+            {themeMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
           <NotificationBellPopover />
