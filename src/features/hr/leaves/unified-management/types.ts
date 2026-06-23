@@ -1,5 +1,8 @@
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
 
+import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
+import { canEmployeeActOnRequestApproval } from '@/features/hr/requests/lib/request-approver-states';
+
 export type UnifiedLeaveType = 'annual' | 'sick' | 'unpaid' | 'maternity' | 'emergency';
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
@@ -50,6 +53,7 @@ export interface UnifiedLeaveRecord {
   cancelledAt?: string;
   decidedByEmployeeId?: string | null;
   decisionNotesAr?: string;
+  approverStates: RequestApproverStatesSnapshot | null;
   approverStates: RequestApproverStatesSnapshot | null;
   approvalChain: LeaveApprovalStep[];
 }

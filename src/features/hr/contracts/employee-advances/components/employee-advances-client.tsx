@@ -31,6 +31,16 @@ import {
 } from '@/features/hr/requests/components/shared-ui';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { duplicateAdvanceNumberMessage, isDuplicateAdvanceNumberError } from '@/features/hr/contracts/lib/employee-advance-errors';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { checkRequestApprovalAccess } from '@/features/hr/requests/lib/request-approval-access';
+import {
+  buildRequestDecisionPayload,
+  canEmployeeActOnRequestApproval,
+  isRequestFullyApproved,
+} from '@/features/hr/requests/lib/request-approver-states';
+import { RequestApproverStatesPanel } from '@/features/hr/requests/components/request-approver-states-panel';
 import {
   useHREmployeeAdvancesStore,
   ADVANCE_STATUS_LABELS,
@@ -556,6 +566,7 @@ export function EmployeeAdvancesClient() {
                 {x.note && (
                   <p className="text-[11px] text-muted-foreground line-clamp-2">{x.note}</p>
                 )}
+                <RequestApproverStatesPanel states={x.approverStates} compact className="border-0 bg-transparent p-0" />
                 {x.approvedAt && (
                   <p className="text-[10px] text-muted-foreground">
                     تاريخ الاعتماد: {x.approvedAt.slice(0, 10)}
