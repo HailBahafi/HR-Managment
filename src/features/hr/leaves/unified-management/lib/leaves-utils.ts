@@ -1,11 +1,3 @@
-import type { UnifiedLeaveRecord } from '@/features/hr/leaves/unified-management/types';
-import { canEmployeeActOnRequestApproval } from '@/features/hr/requests/lib/request-approver-states';
-
-export function canActOnLeave(
-  leave: UnifiedLeaveRecord,
-  employeeId?: string | null,
-): boolean {
-  return leave.status === 'pending' && canEmployeeActOnRequestApproval(leave.approverStates, employeeId);
 import type { UnifiedLeaveRecord, LeaveApprovalStep } from '@/features/hr/leaves/unified-management/types';
 import { canEmployeeActOnRequestApproval } from '@/features/hr/requests/lib/request-approver-states';
 
@@ -17,7 +9,7 @@ export function defaultPendingApprovalChain(): LeaveApprovalStep[] {
   ];
 }
 
-export function getApprovalStage(
+export function applyStepDecision(
   leave: UnifiedLeaveRecord,
   action: 'approve' | 'reject',
 ): UnifiedLeaveRecord {
@@ -47,7 +39,6 @@ export function canActOnLeave(leave: UnifiedLeaveRecord, currentEmployeeId?: str
 }
 
 export function getApprovalStage(leave: UnifiedLeaveRecord): 'fully_approved' | 'awaiting_first' | 'awaiting_second' | 'awaiting_third' | 'other' {
-): 'fully_approved' | 'awaiting_first' | 'awaiting_second' | 'awaiting_third' | 'other' {
   if (leave.status === 'approved') return 'fully_approved';
   if (leave.status !== 'pending') return 'other';
 

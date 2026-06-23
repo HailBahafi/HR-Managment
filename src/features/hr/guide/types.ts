@@ -7,7 +7,7 @@ export type GuideField = {
 export type GuideBlock = {
   id: string;
   title: string;
-  paragraphs: string[];
+  paragraphs?: string[];
   fields?: GuideField[];
   bullets?: string[];
   note?: string;
