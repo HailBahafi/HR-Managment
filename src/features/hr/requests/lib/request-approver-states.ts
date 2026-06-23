@@ -202,7 +202,7 @@ export function buildEmployeeAdvanceDecisionPayload(
 
   return {
     decision,
-    approver_states: updatedStates,
+    approverStates: updatedStates,
     approverEmployeeId: employeeId,
     notes,
     decidedBy: options.decidedBy ?? undefined,

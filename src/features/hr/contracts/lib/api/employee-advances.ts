@@ -103,7 +103,7 @@ export const employeeAdvancesApi = {
     apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}`, { method: 'PATCH', body }),
   decide: (id: string, body: EmployeeAdvanceDecisionDto) =>
     apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}/decision`, {
-      method: 'POST',
+      method: 'PATCH',
       body,
     }),
   delete: (id: string) =>

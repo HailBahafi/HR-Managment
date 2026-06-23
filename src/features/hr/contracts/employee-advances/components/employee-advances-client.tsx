@@ -215,7 +215,7 @@ export function EmployeeAdvancesClient() {
       );
       setActionLoadingId(x.id);
       await approve(x.id, payload);
-      if (payload.approver_states && isRequestFullyApproved(payload.approver_states)) {
+      if (payload.approverStates && isRequestFullyApproved(payload.approverStates)) {
         toast.success('تم اعتماد السلفة نهائياً.');
       } else {
         toast.success('تم تسجيل موافقتك — بانتظار بقية المعتمدين.');
