@@ -9,6 +9,7 @@ import { NotificationTogglesCard } from '@/features/hr/settings/components/notif
 import { SettingsNav } from '@/features/hr/settings/components/settings-nav';
 import { useHrCompanySettings } from '@/features/hr/settings/hooks/useHrSettings';
 import type { HrNotificationKey } from '@/features/hr/settings/constants/notification-groups';
+import type { HrCompanySettings } from '@/features/hr/settings/lib/api/types';
 
 export function HrSettingsClient() {
   const { data: company } = useActiveCompany();
@@ -63,7 +64,7 @@ export function HrSettingsClient() {
         title="إشعارات الموارد البشرية"
         description="تحكم في الإشعارات المرسلة لأحداث HR (انضباط، رواتب، حضور، طلبات، عقود)."
         groups={HR_NOTIFICATION_GROUPS}
-        values={settings as Partial<Record<string, boolean>>}
+        values={settings as Pick<HrCompanySettings, HrNotificationKey>}
         disabled={update.isPending}
         masterDisabled={!settings.notificationsEnabled}
         onToggle={(key, value) => void handleToggle(key, value)}

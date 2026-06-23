@@ -237,7 +237,11 @@ export function OrganizationSettingsClient() {
               </p>
               <NotificationToggleList
                 items={ORGANIZATION_USER_NOTIFICATION_ITEMS}
-                values={form}
+                values={{
+                  notifyUserCreated: form.notifyUserCreated,
+                  notifyUserAssignedToCompany: form.notifyUserAssignedToCompany,
+                  notifyUserAssignedToBranch: form.notifyUserAssignedToBranch,
+                }}
                 disabled={!form.emailEnabled}
                 onToggle={(key, value) => patch({ [key]: value } as Partial<OrgFormState>)}
               />

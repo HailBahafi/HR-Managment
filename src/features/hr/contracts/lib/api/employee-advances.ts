@@ -1,7 +1,5 @@
 import { apiRequest, ApiError, type PaginatedResult } from '@/features/hr/lib/api/client';
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
-import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
-import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
 
 export type AdvanceStatusDto = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'disbursed' | 'repaying' | 'fully_repaid' | 'cancelled';
 export type AdvanceKindDto = 'salary_advance' | 'emergency' | 'travel' | 'housing' | 'other';
@@ -34,8 +32,6 @@ export type EmployeeAdvanceResponseDto = {
   approver_states?: RequestApproverStatesSnapshot | null;
   disbursedAt: string | null;
   closedAt: string | null;
-  approverStates?: RequestApproverStatesSnapshot | null;
-  approver_states?: RequestApproverStatesSnapshot | null;
   createdAt: string;
   updatedAt: string;
 };

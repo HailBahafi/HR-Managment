@@ -8,10 +8,7 @@ import {
   type AdvanceKindDto,
   type AdvanceStatusDto,
   type RepaymentModeDto,
-  type EmployeeAdvanceDecisionDto,
 } from './api/employee-advances';
-import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
-import { normalizeRequestApproverStates } from '@/features/hr/requests/lib/request-approver-states';
 import {
   duplicateAdvanceNumberMessage,
   isDuplicateAdvanceNumberError,
@@ -47,7 +44,6 @@ export type HREmployeeAdvance = {
   decisionNotes: string | null;
   approverStates: RequestApproverStatesSnapshot | null;
   updatedAt: string;
-  approverStates: RequestApproverStatesSnapshot | null;
 };
 
 export const EDITABLE_ADVANCE_STATUSES: HREmployeeAdvanceStatus[] = [
@@ -95,7 +91,6 @@ function mapApi(r: EmployeeAdvanceResponseDto): HREmployeeAdvance {
     decisionNotes: r.decisionNotes ?? null,
     approverStates: normalizeRequestApproverStates(r),
     updatedAt: r.updatedAt,
-    approverStates: normalizeRequestApproverStates(r),
   };
 }
 
@@ -115,7 +110,7 @@ type State = {
   isLoading: boolean;
   error: string | null;
   fetch: (params?: { employeeId?: string; status?: HREmployeeAdvanceStatus; advanceDateFrom?: string; advanceDateTo?: string }) => Promise<void>;
-  add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status'>) => Promise<HREmployeeAdvance>;
+  add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status' | 'approverStates' | 'rejectedAt' | 'decisionNotes'>) => Promise<HREmployeeAdvance>;
   update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt'>>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   submitForApproval: (id: string) => Promise<void>;

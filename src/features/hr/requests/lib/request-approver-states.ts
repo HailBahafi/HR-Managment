@@ -180,7 +180,7 @@ export function buildRequestDecisionPayload(
     approverStates: updatedStates,
     approverEmployeeId: employeeId,
     decidedByEmployeeId: employeeId,
-    decisionNotesAr: notes,
+    decisionNotesAr: notes ?? undefined,
     updatedBy: options.updatedBy ?? undefined,
   };
 }
