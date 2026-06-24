@@ -232,17 +232,18 @@ export const EntityFilterToolbar = React.forwardRef<
     () => (showDateSection ? effectiveDateRange(dateFilterTab, appliedCustomFrom, appliedCustomTo) : { from: '', to: '' }),
     [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo],
   );
+  const effectiveBoundsFrom = effectiveBounds.from;
+  const effectiveBoundsTo = effectiveBounds.to;
 
   const onDateBoundsChangeRef = React.useRef(onDateBoundsChange);
   onDateBoundsChangeRef.current = onDateBoundsChange;
   const lastEmittedBoundsKeyRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    const b = effectiveBounds;
-    const key = `${b.from}\u0000${b.to}`;
+    const key = `${effectiveBoundsFrom}\u0000${effectiveBoundsTo}`;
     if (lastEmittedBoundsKeyRef.current === key) return;
     lastEmittedBoundsKeyRef.current = key;
-    onDateBoundsChangeRef.current(b);
-  }, [effectiveBounds]);
+    onDateBoundsChangeRef.current({ from: effectiveBoundsFrom, to: effectiveBoundsTo });
+  }, [effectiveBoundsFrom, effectiveBoundsTo]);
 
   const onDateFilterMetaChangeRef = React.useRef(onDateFilterMetaChange);
   onDateFilterMetaChangeRef.current = onDateFilterMetaChange;

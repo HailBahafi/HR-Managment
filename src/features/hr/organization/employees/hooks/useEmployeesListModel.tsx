@@ -8,7 +8,6 @@ import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { ArchiveScopeToggleButton } from '@/components/layouts/archive-scope-toggle-button';
 import { Button } from '@/components/ui/button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { hasDateRangeFilter } from '@/features/hr/discipline/lib/discipline-date-filter';
@@ -275,7 +274,6 @@ export function useEmployeesListModel() {
   usePageHeaderActions(
     () => (
       <div className="flex items-center gap-2">
-        <ArchiveScopeToggleButton scope={archiveScope} onScopeChange={setArchiveScope} />
         <FilterToggleButton />
         <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={() => setNewEmpOpen(true)}>
           <Plus className="h-4 w-4" />
@@ -283,7 +281,7 @@ export function useEmployeesListModel() {
         </Button>
       </div>
     ),
-    [archiveScope, newEmpOpen],
+    [newEmpOpen],
   );
 
   useEntityFilterSlot(
