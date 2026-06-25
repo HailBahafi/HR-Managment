@@ -32,12 +32,17 @@ import {
 import type { HRAppealChannel, HRAppealStatus } from '@/features/hr/discipline/lib/types';
 import { APPEAL_CHANNEL_LABELS, APPEAL_STATUS_LABELS, APPEAL_STATUS_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
 import type { AppealChannelDto, ProcessDisciplineAppealDecisionDto } from '@/features/hr/discipline/lib/api/discipline-appeals';
-import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
-  DisciplineFilterToolbar,
-  type DisciplineFilterToolbarHandle,
-  type DisciplineViewMode,
-} from '@/features/hr/discipline/components/discipline-filter-toolbar';
+  EntityFilterToolbar,
+  type EntityFilterToolbarHandle,
+} from '@/components/ui/entity-filter-toolbar';
+import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/shared/utils';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
@@ -67,6 +72,7 @@ const APPEAL_STATUS_TONE: Record<HRAppealStatus, WorkflowStatusTone> = {
 };
 
 type StatusFilter = 'all' | HRAppealStatus;
+type DisciplineViewMode = 'cards' | 'list';
 
 type DecisionStatus = ProcessDisciplineAppealDecisionDto['status'];
 
@@ -99,10 +105,10 @@ export function AppealsClient() {
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
-  const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
-  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
-  const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
+  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
+  const onPeriodChange = React.useCallback(({ from, to }: { from: string; to: string }) => {
+    setDateBounds({ from, to });
+  }, []);
 
   const empPickerList = React.useMemo(
     () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
@@ -145,14 +151,57 @@ export function AppealsClient() {
     return counts;
   }, [sourceAppeals]);
 
-  const dateRangeActive = dateMeta.hasRestriction;
+  const dateRangeActive = Boolean(dateBounds.from || dateBounds.to);
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateRangeActive ? 1 : 0);
 
-  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
+  const periodFilter = (
+    <EntityPeriodFilter value={dateBounds} onChange={onPeriodChange} triggerClassName="w-[11rem] max-w-[14rem]" />
+  );
+
+  const appealsPdfRows = React.useMemo(
+    () => listFiltered.map((a) => [a.caseNumber, a.employeeNameAr, a.date, APPEAL_CHANNEL_LABELS[a.channel], APPEAL_STATUS_LABELS[a.status], a.grounds]),
+    [listFiltered],
+  );
+
+  const handleExportAppealsExcel = React.useCallback(async () => {
+    if (listFiltered.length === 0) { toast.error('لا توجد تظلمات للتصدير ضمن الفلاتر الحالية.'); return; }
+    const rows: XlsxCell[][] = [
+      ['رقم القضية', 'الموظف', 'التاريخ', 'القناة', 'الحالة', 'أسباب التظلم'],
+      ...listFiltered.map((a) => [a.caseNumber, a.employeeNameAr, a.date, APPEAL_CHANNEL_LABELS[a.channel], APPEAL_STATUS_LABELS[a.status], a.grounds]),
+    ];
+    await downloadXlsxFromAoA('discipline-appeals.xlsx', 'التظلمات', rows);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [listFiltered]);
 
   usePageHeaderActions(
     () => (
       <div className="flex items-center gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="h-8 w-8 shrink-0" aria-label="تصدير التظلمات">
+              <FileDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              onSelect={() => {
+                if (appealsPdfRows.length === 0) {
+                  toast.error('لا توجد تظلمات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-4 w-4" />
+              PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleExportAppealsExcel()}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
           onClick={() => setDrawerOpen(true)}>
           <Plus className="h-3.5 w-3.5" />
@@ -160,7 +209,7 @@ export function AppealsClient() {
         </Button>
       </div>
     ),
-    [activeFilterCount],
+    [activeFilterCount, handleExportAppealsExcel, appealsPdfRows.length],
   );
 
   const appealsFilterSummary = React.useMemo(() => {
@@ -170,11 +219,6 @@ export function AppealsClient() {
     parts.push(`التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`);
     return parts.join(' · ');
   }, [selectedEmpIds.size, statusFilter, dateBounds.from, dateBounds.to]);
-
-  const appealsPdfRows = React.useMemo(
-    () => listFiltered.map((a) => [a.caseNumber, a.employeeNameAr, a.date, APPEAL_CHANNEL_LABELS[a.channel], APPEAL_STATUS_LABELS[a.status], a.grounds]),
-    [listFiltered],
-  );
 
   const printable = React.useMemo(
     () =>
@@ -191,16 +235,6 @@ export function AppealsClient() {
       ),
     [appealsPdfRows, appealsFilterSummary],
   );
-
-  const handleExportAppealsExcel = React.useCallback(async () => {
-    if (listFiltered.length === 0) { toast.error('لا توجد تظلمات للتصدير ضمن الفلاتر الحالية.'); return; }
-    const rows: XlsxCell[][] = [
-      ['رقم القضية', 'الموظف', 'التاريخ', 'القناة', 'الحالة', 'أسباب التظلم'],
-      ...listFiltered.map((a) => [a.caseNumber, a.employeeNameAr, a.date, APPEAL_CHANNEL_LABELS[a.channel], APPEAL_STATUS_LABELS[a.status], a.grounds]),
-    ];
-    await downloadXlsxFromAoA('discipline-appeals.xlsx', 'التظلمات', rows);
-    toast.success('تم تنزيل ملف Excel.');
-  }, [listFiltered]);
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
 
@@ -433,29 +467,10 @@ export function AppealsClient() {
 
   useEntityFilterSlot(
     () => (
-      <DisciplineFilterToolbar
+      <EntityFilterToolbar
         ref={filterToolbarRef}
-        showPrimaryAction={false}
-        primaryActionLabel="إضافة تظلم"
-        onPrimaryAction={() => { setDraft(EMPTY); setFormError(null); setDrawerOpen(true); }}
-        toolbarExtraTrailing={(
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => { if (appealsPdfRows.length === 0) { toast.error('لا توجد تظلمات للتصدير ضمن الفلاتر الحالية.'); return; } setPdfOpen(true); }}
-            >
-              <FileDown className="h-3.5 w-3.5" />
-              PDF
-            </Button>
-            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportAppealsExcel()}>
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              Excel
-            </Button>
-          </>
-        )}
+        showDateSection={false}
+        leadingFilters={periodFilter}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -464,13 +479,18 @@ export function AppealsClient() {
         statusOrder={APPEAL_STATUS_FILTER_ORDER}
         statusLabels={APPEAL_STATUS_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onDateBoundsChange={onDateBoundsChange}
-        onDateFilterMetaChange={onDateFilterMetaChange}
+        onDateBoundsChange={() => {}}
+        dataView={{
+          value: viewMode,
+          onChange: (v) => setViewMode(v as DisciplineViewMode),
+          options: [
+            { value: 'cards', label: 'بطاقات', icon: 'layout-grid' },
+            { value: 'list', label: 'قائمة', icon: 'list' },
+          ],
+        }}
       />
     ),
-    [empPickerList, selectedEmpIds, statusFilter, statusCounts, viewMode, listFiltered, onDateBoundsChange, onDateFilterMetaChange],
+    [empPickerList, selectedEmpIds, statusFilter, statusCounts, viewMode, periodFilter],
   );
 
   if (loading) {
@@ -495,14 +515,11 @@ export function AppealsClient() {
       ) : listFiltered.length === 0 && !loading && sourceAppeals.length > 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today' ? 'لا توجد تظلمات بتاريخ اليوم ضمن النتائج الحالية.'
-              : dateMeta.tab === 'week' ? 'لا توجد تظلمات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-              : dateMeta.tab === 'month' ? 'لا توجد تظلمات ضمن هذا الشهر ضمن النتائج الحالية.'
-              : dateMeta.tab === 'custom' && dateRangeActive ? 'لا توجد تظلمات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
+            {dateRangeActive ? 'لا توجد تظلمات ضمن الفترة المحددة.'
               : 'لا توجد تظلمات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>عرض كل الفترات</Button>
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => setDateBounds({ from: '', to: '' })}>عرض كل الفترات</Button>
           ) : null}
         </div>
       ) : (

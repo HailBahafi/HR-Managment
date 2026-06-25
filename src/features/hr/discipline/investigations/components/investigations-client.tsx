@@ -40,12 +40,18 @@ import {
   buildSubmitInvestigationResultsDto,
   validateInvestigationResultsDraft,
 } from '@/features/hr/discipline/investigations/services/submit-violation-investigation';
-import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
-  DisciplineFilterToolbar,
-  type DisciplineFilterToolbarHandle,
-  type DisciplineViewMode,
-} from '@/features/hr/discipline/components/discipline-filter-toolbar';
+  EntityFilterToolbar,
+  type EntityFilterToolbarHandle,
+  type EntityFilterInlineSelect,
+} from '@/components/ui/entity-filter-toolbar';
+import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -60,6 +66,7 @@ import type { HRDisciplineInvestigationRecord } from '@/features/hr/discipline/l
 type ResultFilter = 'all' | HRInvestigationResult;
 
 type RecommendationFilter = 'all' | HRInvestigationRecommendation;
+type DisciplineViewMode = 'cards' | 'list';
 
 interface OpenDraftForm {
   caseId: string;
@@ -90,10 +97,10 @@ export function InvestigationsClient() {
   const [resultFilter, setResultFilter] = React.useState<ResultFilter>('all');
   const [recommendationFilter, setRecommendationFilter] = React.useState<RecommendationFilter>('all');
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
-  const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
-  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
-  const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
+  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
+  const onPeriodChange = React.useCallback(({ from, to }: { from: string; to: string }) => {
+    setDateBounds({ from, to });
+  }, []);
 
   const empPickerList = React.useMemo(
     () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
@@ -135,23 +142,26 @@ export function InvestigationsClient() {
     return counts;
   }, [sourceInvestigations]);
 
-  const dateRangeActive = dateMeta.hasRestriction;
+  const dateRangeActive = Boolean(dateBounds.from || dateBounds.to);
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (resultFilter !== 'all' ? 1 : 0) + (recommendationFilter !== 'all' ? 1 : 0) + (dateRangeActive ? 1 : 0);
 
-  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (resultFilter !== 'all' ? 1 : 0) + (recommendationFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
-
-  usePageHeaderActions(
-    () => (
-      <div className="flex items-center gap-2">
-        <FilterToggleButton activeFilterCount={activeFilterCount} />
-        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
-          onClick={() => { setOpenDraft({ ...OPEN_EMPTY, date: new Date().toISOString().slice(0, 10) }); setOpenFormError(null); setOpenDrawerOpen(true); }}>
-          <Plus className="h-3.5 w-3.5" />
-          فتح تحقيق
-        </Button>
-      </div>
-    ),
-    [activeFilterCount],
+  const periodFilter = (
+    <EntityPeriodFilter value={dateBounds} onChange={onPeriodChange} triggerClassName="w-[11rem] max-w-[14rem]" />
   );
+
+  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+    {
+      id: 'recommendation',
+      value: recommendationFilter,
+      onChange: (v) => setRecommendationFilter(v as RecommendationFilter),
+      placeholder: 'التوصية',
+      className: 'w-[9.5rem]',
+      options: [
+        { value: 'all', label: 'كل التوصيات' },
+        ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({ value, label })),
+      ],
+    },
+  ], [recommendationFilter]);
 
   const investigationsFilterSummary = React.useMemo(() => {
     const parts: string[] = [];
@@ -213,6 +223,45 @@ export function InvestigationsClient() {
     await downloadXlsxFromAoA('discipline-investigations.xlsx', 'التحقيقات', rows);
     toast.success('تم تنزيل ملف Excel.');
   }, [listFiltered]);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="h-8 w-8 shrink-0" aria-label="تصدير التحقيقات">
+              <FileDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              onSelect={() => {
+                if (investigationsPdfRows.length === 0) {
+                  toast.error('لا توجد تحقيقات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-4 w-4" />
+              PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleExportInvestigationsExcel()}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { setOpenDraft({ ...OPEN_EMPTY, date: new Date().toISOString().slice(0, 10) }); setOpenFormError(null); setOpenDrawerOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          فتح تحقيق
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, handleExportInvestigationsExcel, investigationsPdfRows.length],
+  );
 
   const setOpen = (patch: Partial<OpenDraftForm>) => setOpenDraft((d) => ({ ...d, ...patch }));
   const setResults = (patch: Partial<InvestigationResultsDraftForm>) => setResultsDraft((d) => ({ ...d, ...patch }));
@@ -403,35 +452,11 @@ export function InvestigationsClient() {
 
   useEntityFilterSlot(
     () => (
-      <DisciplineFilterToolbar
+      <EntityFilterToolbar
         ref={filterToolbarRef}
-        showPrimaryAction={false}
-        primaryActionLabel="فتح تحقيق"
-        onPrimaryAction={() => { setOpenDraft({ ...OPEN_EMPTY, date: new Date().toISOString().slice(0, 10) }); setOpenFormError(null); setOpenDrawerOpen(true); }}
-        toolbarExtraTrailing={(
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => {
-                if (investigationsPdfRows.length === 0) {
-                  toast.error('لا توجد تحقيقات للتصدير ضمن الفلاتر الحالية.');
-                  return;
-                }
-                setPdfOpen(true);
-              }}
-            >
-              <FileDown className="h-3.5 w-3.5" />
-              PDF
-            </Button>
-            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportInvestigationsExcel()}>
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              Excel
-            </Button>
-          </>
-        )}
+        showDateSection={false}
+        leadingFilters={periodFilter}
+        inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -440,22 +465,15 @@ export function InvestigationsClient() {
         statusOrder={INVESTIGATION_RESULT_FILTER_ORDER}
         statusLabels={INVESTIGATION_RESULT_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        moreFilters={[
-          {
-            id: 'recommendation',
-            value: recommendationFilter,
-            onChange: (v) => setRecommendationFilter(v as RecommendationFilter),
-            placeholder: 'التوصية',
-            options: [
-              { value: 'all', label: 'كل التوصيات' },
-              ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({ value, label })),
-            ],
-          },
-        ]}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onDateBoundsChange={onDateBoundsChange}
-        onDateFilterMetaChange={onDateFilterMetaChange}
+        onDateBoundsChange={() => {}}
+        dataView={{
+          value: viewMode,
+          onChange: (v) => setViewMode(v as DisciplineViewMode),
+          options: [
+            { value: 'cards', label: 'بطاقات', icon: 'layout-grid' },
+            { value: 'list', label: 'قائمة', icon: 'list' },
+          ],
+        }}
       />
     ),
     [
@@ -465,10 +483,8 @@ export function InvestigationsClient() {
       recommendationFilter,
       statusCounts,
       viewMode,
-      investigationsPdfRows.length,
-      onDateBoundsChange,
-      onDateFilterMetaChange,
-      handleExportInvestigationsExcel,
+      inlineSelects,
+      periodFilter,
     ],
   );
 
@@ -496,18 +512,11 @@ export function InvestigationsClient() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today'
-              ? 'لا توجد تحقيقات بتاريخ اليوم ضمن النتائج الحالية.'
-              : dateMeta.tab === 'week'
-                ? 'لا توجد تحقيقات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-                : dateMeta.tab === 'month'
-                  ? 'لا توجد تحقيقات ضمن هذا الشهر ضمن النتائج الحالية.'
-                  : dateMeta.tab === 'custom' && dateRangeActive
-                    ? 'لا توجد تحقيقات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
-                    : 'لا توجد تحقيقات ضمن النتائج الحالية.'}
+            {dateRangeActive ? 'لا توجد تحقيقات ضمن الفترة المحددة.'
+              : 'لا توجد تحقيقات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => setDateBounds({ from: '', to: '' })}>
               عرض كل الفترات
             </Button>
           ) : null}

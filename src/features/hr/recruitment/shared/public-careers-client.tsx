@@ -18,12 +18,7 @@ import { Button } from '@/components/ui/button';
 import { usePublicRecruitmentJobsList } from '@/features/hr/recruitment/hooks/usePublicRecruitment';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
-const JOB_TYPE_AR: Record<string, string> = {
-  'full-time': 'دوام كامل',
-  'part-time': 'دوام جزئي',
-  contract: 'عقد',
-  internship: 'تدريب',
-};
+import { JOB_TYPE_AR } from '@/features/hr/recruitment/ats/constants/ats-jobs-list';
 
 export function PublicCareersClient() {
   const [search, setSearch] = React.useState('');

@@ -18,7 +18,6 @@ import {
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { useAttendanceEventsModel } from '@/features/hr/attendance/events/hooks/useAttendanceEventsModel';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
@@ -373,12 +372,6 @@ export function AttendanceEventsPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Include voided toggle */}
-      <div className="flex items-center gap-2 justify-end">
-        <Label className="text-xs text-muted-foreground">إظهار الملغاة</Label>
-        <Switch checked={m.includeVoided} onCheckedChange={m.setIncludeVoided} />
-      </div>
-
       {m.listError ? (
         <EmptyStateCard icon={AlertTriangle} title="تعذر التحميل" description={m.listError} />
       ) : (

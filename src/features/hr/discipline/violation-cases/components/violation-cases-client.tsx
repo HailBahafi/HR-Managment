@@ -41,12 +41,18 @@ import {
   INVESTIGATION_RECOMMENDATION_LABELS,
   INVESTIGATION_RESULT_LABELS,
 } from '@/features/hr/discipline/lib/types';
-import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
-  DisciplineFilterToolbar,
-  type DisciplineFilterToolbarHandle,
-  type DisciplineViewMode,
-} from '@/features/hr/discipline/components/discipline-filter-toolbar';
+  EntityFilterToolbar,
+  type EntityFilterToolbarHandle,
+  type EntityFilterInlineSelect,
+} from '@/components/ui/entity-filter-toolbar';
+import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { ViolationCasesRegisterPrintHtml } from '@/components/pdf/print/violation-cases-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -98,6 +104,7 @@ const VIOLATION_STATUS_TONE: Record<ViolationRecordStatus, WorkflowStatusTone> =
 
 const STATUS_ORDER: readonly ViolationRecordStatus[] = ['pending', 'approved', 'rejected', 'needs_edit'];
 type StatusFilter = 'all' | ViolationRecordStatus;
+type ViolationViewMode = 'cards' | 'list';
 
 function canMutateViolationCase(status: ViolationRecordStatus) {
   return status === 'pending' || status === 'needs_edit';
@@ -359,11 +366,11 @@ export function ViolationCasesClient() {
   const companyNameEn = defaultCompany?.nameEn ?? '';
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
+  const [viewMode, setViewMode] = React.useState<ViolationViewMode>('cards');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
+  const [violationTypeFilter, setViolationTypeFilter] = React.useState('all');
   const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
-  const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
+  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
 
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -386,10 +393,20 @@ export function ViolationCasesClient() {
   const [investigationCase, setInvestigationCase] = React.useState<ViolationCaseRecord | null>(null);
   const [appealCase, setAppealCase] = React.useState<ViolationCaseRecord | null>(null);
 
-  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => setDateBounds(b), []);
-  const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => setDateMeta(m), []);
+  const onPeriodChange = React.useCallback(({ from, to }: { from: string; to: string }) => {
+    setDateBounds({ from, to });
+  }, []);
 
-  // Selected type flags for the create form
+  // Sync toolbar filters to list model
+  React.useEffect(() => {
+    setListFilters({
+      selectedEmpIds: [...selectedEmpIds],
+      statusFilter,
+      violationTypeFilter,
+      dateFrom: dateBounds.from,
+      dateTo: dateBounds.to,
+    });
+  }, [selectedEmpIds, statusFilter, violationTypeFilter, dateBounds.from, dateBounds.to, setListFilters]);
   const selectedType = React.useMemo(
     () => violationTypes.find((t) => t.id === draft.violationTypeId) ?? null,
     [violationTypes, draft.violationTypeId],
@@ -400,22 +417,34 @@ export function ViolationCasesClient() {
     [employees],
   );
 
-  // Debounced filter sync to model (employee, date, status)
-  const dateDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  React.useEffect(() => {
-    if (dateDebounceRef.current) clearTimeout(dateDebounceRef.current);
-    dateDebounceRef.current = setTimeout(() => {
-      setListFilters({
-        selectedEmpIds: [...selectedEmpIds],
-        statusFilter,
-        dateFrom: dateBounds.from,
-        dateTo: dateBounds.to,
-      });
-    }, 400);
-    return () => { if (dateDebounceRef.current) clearTimeout(dateDebounceRef.current); };
-  }, [selectedEmpIds, statusFilter, dateBounds.from, dateBounds.to, setListFilters]);
-
   const listFiltered = filteredItems;
+
+  const typeInlineOptions = React.useMemo(
+    () => [
+      { value: 'all', label: 'جميع الأنواع' },
+      ...violationTypes.filter((t) => t.isActive).map((t) => ({ value: t.id, label: t.nameAr })),
+    ],
+    [violationTypes],
+  );
+
+  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+    {
+      id: 'violationType',
+      value: violationTypeFilter,
+      onChange: setViolationTypeFilter,
+      placeholder: 'نوع المخالفة',
+      className: 'w-[10rem]',
+      options: typeInlineOptions,
+    },
+  ], [violationTypeFilter, typeInlineOptions]);
+
+  const periodFilter = (
+    <EntityPeriodFilter
+      value={dateBounds}
+      onChange={onPeriodChange}
+      triggerClassName="w-[11rem] max-w-[14rem]"
+    />
+  );
 
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = { all: sourceCases.length };
@@ -424,22 +453,12 @@ export function ViolationCasesClient() {
     return counts;
   }, [sourceCases]);
 
-  const dateRangeActive = dateMeta.hasRestriction;
-  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
-
-  usePageHeaderActions(
-    () => (
-      <div className="flex items-center gap-2">
-        <FilterToggleButton activeFilterCount={activeFilterCount} />
-        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
-          onClick={() => { setDraft(CREATE_EMPTY); setFormError(null); setCreateOpen(true); }}>
-          <Plus className="h-3.5 w-3.5" />
-          مخالفة جديدة
-        </Button>
-      </div>
-    ),
-    [activeFilterCount],
-  );
+  const dateRangeActive = Boolean(dateBounds.from || dateBounds.to);
+  const activeFilterCount =
+    (selectedEmpIds.size > 0 ? 1 : 0)
+    + (statusFilter !== 'all' ? 1 : 0)
+    + (violationTypeFilter !== 'all' ? 1 : 0)
+    + (dateRangeActive ? 1 : 0);
 
   const violationPdfRows = React.useMemo(
     () => listFiltered.map((c) => ({
@@ -448,6 +467,55 @@ export function ViolationCasesClient() {
       statusAr: STATUS_LABELS[c.status], description: c.description,
     })),
     [listFiltered],
+  );
+
+  const handleExportExcel = React.useCallback(async () => {
+    if (listFiltered.length === 0) { toast.error('لا توجد مخالفات للتصدير ضمن الفلاتر الحالية.'); return; }
+    const rows: XlsxCell[][] = [
+      ['رقم القضية', 'الموظف', 'نوع المخالفة', 'التاريخ', 'الحالة', 'الوصف'],
+      ...listFiltered.map((c) => [c.caseNumber, c.employeeNameAr, c.typeNameAr, c.date, STATUS_LABELS[c.status], c.description]),
+    ];
+    await downloadXlsxFromAoA('violation-cases.xlsx', 'المخالفات', rows);
+    toast.success('تم تنزيل ملف Excel.');
+  }, [listFiltered]);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="h-8 w-8 shrink-0" aria-label="تصدير المخالفات">
+              <FileDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              onSelect={() => {
+                if (violationPdfRows.length === 0) {
+                  toast.error('لا توجد مخالفات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-4 w-4" />
+              PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleExportExcel()}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { setDraft(CREATE_EMPTY); setFormError(null); setCreateOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          مخالفة جديدة
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, handleExportExcel, violationPdfRows.length],
   );
 
   const printable = React.useMemo(
@@ -463,16 +531,6 @@ export function ViolationCasesClient() {
       ),
     [violationPdfRows, selectedEmpIds.size, statusFilter, dateBounds.from, dateBounds.to],
   );
-
-  const handleExportExcel = React.useCallback(async () => {
-    if (listFiltered.length === 0) { toast.error('لا توجد مخالفات للتصدير ضمن الفلاتر الحالية.'); return; }
-    const rows: XlsxCell[][] = [
-      ['رقم القضية', 'الموظف', 'نوع المخالفة', 'التاريخ', 'الحالة', 'الوصف'],
-      ...listFiltered.map((c) => [c.caseNumber, c.employeeNameAr, c.typeNameAr, c.date, STATUS_LABELS[c.status], c.description]),
-    ];
-    await downloadXlsxFromAoA('violation-cases.xlsx', 'المخالفات', rows);
-    toast.success('تم تنزيل ملف Excel.');
-  }, [listFiltered]);
 
   const empOptions = employees.map(e => ({ value: e.id, label: e.nameAr }));
   const typeOptions = violationTypes.filter(t => t.isActive).map(t => ({ value: t.id, label: t.nameAr, sub: t.code }));
@@ -756,22 +814,11 @@ export function ViolationCasesClient() {
 
   useEntityFilterSlot(
     () => (
-      <DisciplineFilterToolbar
+      <EntityFilterToolbar
         ref={filterToolbarRef}
-        showPrimaryAction={false}
-        primaryActionLabel="مخالفة جديدة"
-        onPrimaryAction={() => { setDraft(CREATE_EMPTY); setFormError(null); setCreateOpen(true); }}
-        toolbarExtraTrailing={(
-          <>
-            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs"
-              onClick={() => { if (violationPdfRows.length === 0) { toast.error('لا توجد مخالفات للتصدير ضمن الفلاتر الحالية.'); return; } setPdfOpen(true); }}>
-              <FileDown className="h-3.5 w-3.5" /> PDF
-            </Button>
-            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportExcel()}>
-              <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
-            </Button>
-          </>
-        )}
+        showDateSection={false}
+        leadingFilters={periodFilter}
+        inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -780,13 +827,29 @@ export function ViolationCasesClient() {
         statusOrder={STATUS_ORDER}
         statusLabels={STATUS_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        onDateBoundsChange={onDateBoundsChange}
-        onDateFilterMetaChange={onDateFilterMetaChange}
+        onDateBoundsChange={() => {}}
+        dataView={{
+          value: viewMode,
+          onChange: (v) => setViewMode(v as ViolationViewMode),
+          options: [
+            { value: 'cards', label: 'بطاقات', icon: 'layout-grid' },
+            { value: 'list', label: 'قائمة', icon: 'list' },
+          ],
+        }}
       />
     ),
-    [empPickerList, selectedEmpIds, statusFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
+    [
+      empPickerList,
+      selectedEmpIds,
+      statusFilter,
+      violationTypeFilter,
+      statusCounts,
+      viewMode,
+      dateBounds.from,
+      dateBounds.to,
+      inlineSelects,
+      onPeriodChange,
+    ],
   );
 
   if (loading) {

@@ -205,7 +205,7 @@ export function CircularsClient() {
     {
       key: 'body',
       title: 'النص',
-      className: 'max-w-[24rem] truncate text-xs text-muted-foreground',
+      className: 'max-w-[20rem] truncate text-xs text-muted-foreground',
       render: (c) => c.bodyAr,
     },
     {

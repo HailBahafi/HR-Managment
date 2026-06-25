@@ -17,6 +17,14 @@ jest.mock('@/components/layouts/page-title-context', () => ({
   useSetPageTitle: jest.fn(),
 }));
 
+jest.mock('@/components/layouts/page-header-actions-context', () => ({
+  usePageHeaderActions: jest.fn(),
+}));
+
+jest.mock('@/components/layouts/entity-filter-slot-context', () => ({
+  useEntityFilterSlot: jest.fn(),
+}));
+
 const mockRoles = [
   {
     id: 'r1', nameAr: 'مدير الموارد البشرية', nameEn: 'HR Manager',
@@ -116,12 +124,12 @@ function renderPage() {
 describe('PermissionsManagementPage', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('renders the page heading', () => {
+  it('renders the page via layout title context', () => {
     renderPage();
-    expect(screen.getByText('الأدوار')).toBeInTheDocument();
+    expect(screen.getByText('مدير الموارد البشرية')).toBeInTheDocument();
   });
 
-  it('renders the add-role button', () => {
+  it('renders the add-role button in header', () => {
     renderPage();
     expect(screen.getAllByRole('button', { name: /إضافة دور/i }).length).toBeGreaterThanOrEqual(1);
   });

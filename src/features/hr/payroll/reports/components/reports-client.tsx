@@ -27,7 +27,7 @@ export function ReportsClient() {
   }, [periods.length, contracts, materializePeriodLines]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="flex min-h-0 flex-1 flex-col animate-fade-in">
       <SetPageTitle titleAr="مسير الرواتب" descriptionAr="إنشاء وطباعة تقارير مسيرات الرواتب وتصديرها PDF" iconName="FileText" />
       <PayrollMultiPeriodExplorer />
     </div>

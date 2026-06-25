@@ -1,11 +1,9 @@
 'use client';
 
 import { toast } from 'sonner';
-import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { HR_NOTIFICATION_GROUPS } from '@/features/hr/organization/pages/_shared/constants/notification-groups';
 import { NotificationTogglesCard } from '@/features/hr/organization/pages/_shared/components/notification-toggles-card';
-import { SettingsCompanyBanner } from '@/features/hr/organization/pages/_shared/components/settings-company-banner';
 import {
   SettingsPageEmpty,
   SettingsPageError,
@@ -17,7 +15,6 @@ import type { HrNotificationKey } from '@/features/hr/organization/pages/_shared
 import type { HrCompanySettings } from '@/features/hr/organization/pages/_shared/types/settings';
 
 export default function HrSettingsPage() {
-  const { data: company } = useActiveCompany();
   const { data: settings, isLoading, isError, error, update, companyId } = useHrCompanySettings();
 
   const handleToggle = async (key: string, value: boolean) => {

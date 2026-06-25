@@ -162,7 +162,10 @@ function SelectWithClear({
   const isActive = value !== '' && value !== undefined;
   return (
     <div className="relative shrink-0">
-      <Select value={value} onValueChange={onValueChange}>
+      <Select
+        value={isActive ? value : undefined}
+        onValueChange={onValueChange}
+      >
         <SelectTrigger
           dir="rtl"
           hideChevron={isActive}

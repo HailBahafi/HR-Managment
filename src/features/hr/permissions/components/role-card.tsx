@@ -45,11 +45,7 @@ export function RoleCard({ role, grantedCount, onEdit, onDelete }: Props) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-display text-sm font-semibold">{displayName}</h3>
-            {role.isSystem ? (
-              <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
-                نظامي
-              </span>
-            ) : null}
+        
           </div>
           {role.description ? (
             <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{role.description}</p>
@@ -62,16 +58,16 @@ export function RoleCard({ role, grantedCount, onEdit, onDelete }: Props) {
         </div>
       </button>
 
-      <button
-        type="button"
-        aria-label={role.isSystem ? `لا يمكن حذف ${displayName}` : `حذف ${displayName}`}
-        title={role.isSystem ? 'لا يمكن حذف الأدوار النظامية' : undefined}
-        disabled={role.isSystem}
-        onClick={handleDeleteClick}
-        className="absolute end-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg border border-border/80 bg-background text-muted-foreground shadow-soft transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 disabled:cursor-not-allowed disabled:border-border/50 disabled:bg-muted/30 disabled:text-muted-foreground/50 disabled:hover:border-border/50 disabled:hover:bg-muted/30 disabled:hover:text-muted-foreground/50"
-      >
-        <Trash2 className="pointer-events-none h-4 w-4 shrink-0" />
-      </button>
+      {!role.isSystem ? (
+        <button
+          type="button"
+          aria-label={`حذف ${displayName}`}
+          onClick={handleDeleteClick}
+          className="absolute end-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg border border-border/80 bg-background text-muted-foreground shadow-soft transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+        >
+          <Trash2 className="pointer-events-none h-4 w-4 shrink-0" />
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -204,9 +204,6 @@ export function DeductionsClient() {
 
   const kindSelect = (
     <div className="flex min-w-0 items-center gap-2">
-      <Label htmlFor="deduction-kind-filter" className="shrink-0 text-[11px] font-medium text-muted-foreground">
-        نوع الاستقطاع
-      </Label>
       <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as KindFilter)}>
         <SelectTrigger id="deduction-kind-filter" className="h-8 max-w-56 text-xs" dir="rtl">
           <SelectValue placeholder="النوع" />

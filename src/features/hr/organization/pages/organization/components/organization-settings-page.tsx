@@ -271,7 +271,7 @@ export default function OrganizationSettingsPage() {
           </Tabs>
         </div>
 
-        <div className="flex justify-end border-t border-border/80 bg-muted/10 px-4 py-3 sm:px-5">
+        <div className="flex justify-start border-t border-border/80 bg-muted/10 px-4 py-3 sm:px-5">
           <Button variant="luxe" className="gap-2" onClick={() => void handleSave()} disabled={update.isPending}>
             {update.isPending ? (
               <>

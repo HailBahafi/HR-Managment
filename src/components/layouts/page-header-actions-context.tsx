@@ -2,66 +2,98 @@
 
 import * as React from 'react';
 
-type PageHeaderActionsCtxValue = {
-  slot: React.ReactNode | null;
+type PageHeaderActionsSetters = {
   setSlot: React.Dispatch<React.SetStateAction<React.ReactNode | null>>;
-  filterPanelOpen: boolean;
   setFilterPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-const PageHeaderActionsCtx = React.createContext<PageHeaderActionsCtxValue | null>(null);
+type PageHeaderActionsState = {
+  slot: React.ReactNode | null;
+  filterPanelOpen: boolean;
+};
+
+const PageHeaderActionsStateContext = React.createContext<PageHeaderActionsState | null>(null);
+const PageHeaderActionsSettersRefContext = React.createContext<React.MutableRefObject<PageHeaderActionsSetters> | null>(null);
+
+function serializeHeaderActionDeps(deps: React.DependencyList): string {
+  try {
+    return JSON.stringify(deps);
+  } catch {
+    return String(deps.length);
+  }
+}
 
 export function PageHeaderActionsProvider({ children }: { children: React.ReactNode }) {
   const [slot, setSlot] = React.useState<React.ReactNode | null>(null);
-  const [filterPanelOpen, setFilterPanelOpen] = React.useState(false);
-  const value = React.useMemo(
-    () => ({ slot, setSlot, filterPanelOpen, setFilterPanelOpen }),
+  const [filterPanelOpen, setFilterPanelOpen] = React.useState(true);
+
+  const settersRef = React.useRef<PageHeaderActionsSetters>({ setSlot, setFilterPanelOpen });
+  settersRef.current.setSlot = setSlot;
+  settersRef.current.setFilterPanelOpen = setFilterPanelOpen;
+
+  const state = React.useMemo(
+    (): PageHeaderActionsState => ({ slot, filterPanelOpen }),
     [slot, filterPanelOpen],
   );
+
   return (
-    <PageHeaderActionsCtx.Provider value={value}>
-      {children}
-    </PageHeaderActionsCtx.Provider>
+    <PageHeaderActionsSettersRefContext.Provider value={settersRef}>
+      <PageHeaderActionsStateContext.Provider value={state}>
+        {children}
+      </PageHeaderActionsStateContext.Provider>
+    </PageHeaderActionsSettersRefContext.Provider>
   );
 }
 
-export function usePageHeaderActionsRegion() {
-  const ctx = React.useContext(PageHeaderActionsCtx);
-  if (!ctx) throw new Error('usePageHeaderActionsRegion must be used within PageHeaderActionsProvider');
+/** Read header slot / filter-panel visibility (Topbar, filter region, toggle button). */
+export function usePageHeaderActionsState(): PageHeaderActionsState {
+  const ctx = React.useContext(PageHeaderActionsStateContext);
+  if (!ctx) throw new Error('usePageHeaderActionsState must be used within PageHeaderActionsProvider');
   return ctx;
+}
+
+/** Stable setters ref — does not re-render when slot or filterPanelOpen changes. */
+export function usePageHeaderActionsSettersRef(): React.MutableRefObject<PageHeaderActionsSetters> {
+  const ctx = React.useContext(PageHeaderActionsSettersRefContext);
+  if (!ctx) throw new Error('usePageHeaderActionsSettersRef must be used within PageHeaderActionsProvider');
+  return ctx;
+}
+
+/** @deprecated Prefer usePageHeaderActionsState + usePageHeaderActionsSettersRef */
+export function usePageHeaderActionsRegion() {
+  const state = usePageHeaderActionsState();
+  const settersRef = usePageHeaderActionsSettersRef();
+  return {
+    ...state,
+    setSlot: settersRef.current.setSlot,
+    setFilterPanelOpen: settersRef.current.setFilterPanelOpen,
+  };
 }
 
 /**
  * Inject action buttons into topbar Row 2 from any page component.
- *
- * Intentionally uses two separate effects:
- * 1. Updates the slot whenever `deps` change (keeps button UI in sync).
- * 2. Cleans up slot + filter state only on unmount (navigation away).
- *
- * This avoids the bug where cleanup running on every dep-change would reset
- * `filterPanelOpen` back to false immediately after it was set to true.
+ * Uses setters ref only so updating the slot does not re-render the page.
  */
 export function usePageHeaderActions(render: () => React.ReactNode, deps: React.DependencyList): void {
-  const { setSlot, setFilterPanelOpen } = usePageHeaderActionsRegion();
+  const settersRef = usePageHeaderActionsSettersRef();
   const renderRef = React.useRef(render);
   renderRef.current = render;
 
-  const setSlotRef = React.useRef(setSlot);
-  setSlotRef.current = setSlot;
-  const setFilterPanelOpenRef = React.useRef(setFilterPanelOpen);
-  setFilterPanelOpenRef.current = setFilterPanelOpen;
+  const depsKey = serializeHeaderActionDeps(deps);
+  const lastDepsKeyRef = React.useRef<string | null>(null);
 
-  // Update slot whenever deps change (setSlot kept in ref to avoid infinite loop)
   React.useEffect(() => {
-    setSlotRef.current(renderRef.current());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+    if (lastDepsKeyRef.current === depsKey) return;
+    lastDepsKeyRef.current = depsKey;
+    settersRef.current.setSlot(renderRef.current());
+    settersRef.current.setFilterPanelOpen(true);
+  }, [depsKey, settersRef]);
 
-  // Clean up only on unmount (page navigation)
   React.useEffect(() => {
     return () => {
-      setSlotRef.current(null);
-      setFilterPanelOpenRef.current(false);
+      lastDepsKeyRef.current = null;
+      settersRef.current.setSlot(null);
+      settersRef.current.setFilterPanelOpen(false);
     };
-  }, []);
+  }, [settersRef]);
 }

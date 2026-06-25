@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
@@ -15,14 +16,14 @@ import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organizati
 import { checkInPointsApi } from '@/features/hr/attendance/lib/api/check-in-points';
 import { organizationActiveListStatusQuery } from '@/features/hr/organization/lib/archive-scope';
 import { mapCheckInPointResponse } from '@/features/hr/attendance/checkpoints/services/check-in-points.service';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
+import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 import { todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
 import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
 
@@ -47,7 +48,10 @@ export function useAttendanceEventsModel() {
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  const [dateBounds, setDateBounds] = React.useState(() => ({ from: todayYMD(), to: todayYMD() }));
+  const [dateBounds, setDateBounds] = React.useState(() => {
+    const today = todayYMD();
+    return { from: today, to: today };
+  });
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [eventTypeFilter, setEventTypeFilter] = React.useState('all');
   const [includeVoided, setIncludeVoided] = React.useState(false);
@@ -166,42 +170,91 @@ export function useAttendanceEventsModel() {
     [employees],
   );
 
-  useEntityFilterSlot(
-    () => (
-      <EntityFilterToolbar
-        defaultDateFilterTab="today"
-        empPickerEmployees={allEmployeesForPicker}
-        selectedEmpIds={selectedEmpIds}
-        onSelectedEmpIdsChange={setSelectedEmpIds}
-        showStatusSection={false}
-        onDateBoundsChange={(b) => setDateBounds({ from: b.from || todayYMD(), to: b.to || todayYMD() })}
-        inlineSelects={[
-          {
-            id: 'eventType',
-            value: eventTypeFilter,
-            onChange: setEventTypeFilter,
-            placeholder: 'نوع الحدث',
-            options: [
-              { value: 'all', label: 'كل الأنواع' },
-              { value: 'check_in', label: 'دخول' },
-              { value: 'check_out', label: 'خروج' },
-              { value: 'break_start', label: 'بداية استراحة' },
-              { value: 'break_end', label: 'نهاية استراحة' },
-            ],
-          },
-        ]}
-      />
-    ),
-    [selectedEmpKey, eventTypeFilter, dateBounds.from, dateBounds.to, allEmployeesForPicker],
+  const onPeriodChange = React.useCallback(({ from: nextFrom, to: nextTo }: { from: string; to: string }) => {
+    setDateBounds({
+      from: nextFrom || todayYMD(),
+      to: nextTo || todayYMD(),
+    });
+  }, []);
+
+  const isDefaultDate = from === todayYMD() && to === todayYMD();
+  const activeFilterCount =
+    (selectedEmpIds.size > 0 ? 1 : 0)
+    + (eventTypeFilter !== 'all' ? 1 : 0)
+    + (includeVoided ? 1 : 0)
+    + (!isDefaultDate ? 1 : 0);
+
+  const periodFilter = (
+    <EntityPeriodFilter
+      value={{ from, to }}
+      onChange={onPeriodChange}
+      triggerClassName="w-[11rem] max-w-[14rem]"
+    />
   );
+
+  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+    {
+      id: 'eventType',
+      value: eventTypeFilter,
+      onChange: setEventTypeFilter,
+      placeholder: 'نوع الحدث',
+      className: 'w-[9rem]',
+      options: [
+        { value: 'all', label: 'كل الأنواع' },
+        { value: 'check_in', label: 'دخول' },
+        { value: 'check_out', label: 'خروج' },
+        { value: 'break_start', label: 'بداية استراحة' },
+        { value: 'break_end', label: 'نهاية استراحة' },
+      ],
+    },
+    {
+      id: 'includeVoided',
+      value: includeVoided ? 'true' : 'false',
+      onChange: (v) => setIncludeVoided(v === 'true'),
+      placeholder: 'الملغاة',
+      className: 'w-[9.5rem]',
+      options: [
+        { value: 'false', label: 'نشطة فقط' },
+        { value: 'true', label: 'تضمين الملغاة' },
+      ],
+    },
+  ], [eventTypeFilter, includeVoided]);
 
   usePageHeaderActions(
     () => (
-      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs" onClick={() => setCreateOpen(true)}>
-        <Plus className="h-3.5 w-3.5" /> تسجيل حدث
-      </Button>
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-3.5 w-3.5" /> تسجيل حدث
+        </Button>
+      </div>
     ),
-    [setCreateOpen],
+    [activeFilterCount, setCreateOpen],
+  );
+
+  useEntityFilterSlot(
+    () => (
+      <EntityFilterToolbar
+        showDateSection={false}
+        showStatusSection={false}
+        leadingFilters={periodFilter}
+        empPickerEmployees={allEmployeesForPicker}
+        selectedEmpIds={selectedEmpIds}
+        onSelectedEmpIdsChange={setSelectedEmpIds}
+        inlineSelects={inlineSelects}
+        onDateBoundsChange={() => {}}
+      />
+    ),
+    [
+      selectedEmpKey,
+      eventTypeFilter,
+      includeVoided,
+      from,
+      to,
+      allEmployeesForPicker,
+      inlineSelects,
+      onPeriodChange,
+    ],
   );
 
   return {

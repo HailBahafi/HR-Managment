@@ -1,4 +1,5 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import { recomputeTodayDaySummaries } from '@/features/hr/attendance/lib/api/recompute-today-day-summaries';
 
 export type DailyBreakdownCheckInWindow = {
   beforeStartMinutes: number;
@@ -162,7 +163,8 @@ export type CreateAttendanceEventDto = {
 };
 
 export const attendanceEventsApi = {
-  getAll(query?: AttendanceEventListQuery) {
+  async getAll(query?: AttendanceEventListQuery) {
+    await recomputeTodayDaySummaries(query?.companyId);
     return apiRequest<PaginatedResult<AttendanceEventResponseDto>>('/attendance/events', { query });
   },
   getById(id: string) {
@@ -171,13 +173,17 @@ export const attendanceEventsApi = {
   getDailyBreakdown(params: { employeeId: string; workDate: string; companyId?: string; timezoneOffsetMinutes?: number }) {
     return apiRequest<DailyBreakdownResponseDto>('/attendance/events/daily-breakdown', { query: params });
   },
-  create(payload: CreateAttendanceEventDto) {
-    return apiRequest<AttendanceEventResponseDto>('/attendance/events', { method: 'POST', body: payload });
+  async create(payload: CreateAttendanceEventDto) {
+    const result = await apiRequest<AttendanceEventResponseDto>('/attendance/events', { method: 'POST', body: payload });
+    await recomputeTodayDaySummaries(payload.companyId);
+    return result;
   },
-  void(id: string, voidReason: string) {
-    return apiRequest<AttendanceEventResponseDto>(`/attendance/events/${id}/void`, {
+  async void(id: string, voidReason: string) {
+    const result = await apiRequest<AttendanceEventResponseDto>(`/attendance/events/${id}/void`, {
       method: 'PATCH',
       body: { voidReason },
     });
+    await recomputeTodayDaySummaries();
+    return result;
   },
 };

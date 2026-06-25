@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -399,9 +399,9 @@ export function EmploymentContractsClient() {
     toast.success('تم نسخ بيانات العقد. راجع الموظف المستهدف والتواريخ ثم احفظ.');
   };
 
-  const openCreate = () => {
+  const openCreate = React.useCallback(() => {
     router.push(`${hrContractsRoutes.employment}?${HR_CONTRACTS_MODE_PARAM}=createContract`);
-  };
+  }, [router]);
 
   const activeFilterCount = (kindFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0);
 
@@ -631,6 +631,28 @@ export function EmploymentContractsClient() {
     return counts;
   }, [filtered, pagination.total, employmentStatusOrder]);
 
+  const employmentInlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+    {
+      id: 'archive',
+      value: archiveScope,
+      onChange: (v) => setArchiveScope(v as OrganizationArchiveScope),
+      placeholder: 'العرض',
+      options: ORGANIZATION_ARCHIVE_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    },
+    {
+      id: 'contract-kind',
+      value: kindFilter,
+      onChange: (v) => setValue('kind', v),
+      options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
+      placeholder: 'نوع العقد',
+    },
+  ], [archiveScope, kindFilter, setValue]);
+
+  const handleStatusFilterChange = React.useCallback(
+    (v: string) => setValue('status', v),
+    [setValue],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -639,28 +661,12 @@ export function EmploymentContractsClient() {
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
-        onStatusFilterChange={(v) => setValue('status', v)}
+        onStatusFilterChange={handleStatusFilterChange}
         statusOrder={employmentStatusOrder}
         statusLabels={CONTRACT_STATUS_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
         onDateBoundsChange={() => {}}
-        inlineSelects={[
-          {
-            id: 'archive',
-            value: archiveScope,
-            onChange: (v) => setArchiveScope(v as OrganizationArchiveScope),
-            placeholder: 'العرض',
-            options: ORGANIZATION_ARCHIVE_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
-          },
-          {
-            id: 'contract-kind',
-            value: kindFilter,
-            onChange: (v) => setValue('kind', v),
-            options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
-            placeholder: 'نوع العقد',
-          },
-        ]}
-        trailingActions={undefined}
+        inlineSelects={employmentInlineSelects}
       />
     ),
     [
@@ -671,6 +677,8 @@ export function EmploymentContractsClient() {
       statusCounts,
       empPickerList,
       employmentStatusOrder,
+      employmentInlineSelects,
+      handleStatusFilterChange,
     ],
   );
 
