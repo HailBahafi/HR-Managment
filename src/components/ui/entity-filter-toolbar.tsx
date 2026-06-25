@@ -526,6 +526,17 @@ export const EntityFilterToolbar = React.forwardRef<
             </>
           )}
           {moreFiltersPopover}
+          {hasAnyActiveFilter && (
+            <button
+              type="button"
+              aria-label="مسح كل الفلاتر"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+              onClick={clearAllFilters}
+            >
+              <X className="h-3.5 w-3.5" />
+              مسح الكل
+            </button>
+          )}
           {hasDataView && dataView ? (
             <div className="ms-auto">
               <Tabs value={dataView.value} onValueChange={dataView.onChange}>
@@ -541,20 +552,9 @@ export const EntityFilterToolbar = React.forwardRef<
             </div>
           ) : null}
           {trailingActions && (
-            <div className="ms-auto flex items-center gap-2">
+            <div className={cn('flex items-center gap-2', !hasDataView && 'ms-auto')}>
               {trailingActions}
             </div>
-          )}
-          {hasAnyActiveFilter && (
-            <button
-              type="button"
-              aria-label="مسح كل الفلاتر"
-              className="flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-              onClick={clearAllFilters}
-            >
-              <X className="h-3.5 w-3.5" />
-              مسح الكل
-            </button>
           )}
         </div>
       </div>
