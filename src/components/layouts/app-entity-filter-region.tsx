@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import { useEntityFilterSlotRegion } from '@/components/layouts/entity-filter-slot-context';
-import { usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderFilterRegion } from '@/components/layouts/page-header-actions-context';
 import { cn } from '@/shared/utils';
 import { HR_PERMISSIONS_BASE } from '@/features/hr/permissions/constants/routes';
 
@@ -12,7 +12,7 @@ const EXCLUDED_FILTER_PREFIXES = ['/hr/dashboard', HR_PERMISSIONS_BASE] as const
 export function AppEntityFilterRegion({ className }: { className?: string }) {
   const pathname = usePathname();
   const { renderFnRef, reRenderSlotRef } = useEntityFilterSlotRegion();
-  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderActionsRegion();
+  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderFilterRegion();
   const excluded = EXCLUDED_FILTER_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );

@@ -3,11 +3,11 @@
 import * as React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderFilterRegion } from '@/components/layouts/page-header-actions-context';
 import { cn } from '@/shared/utils';
 
 export function FilterToggleButton({ activeFilterCount = 0 }: { activeFilterCount?: number }) {
-  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderActionsRegion();
+  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderFilterRegion();
   return (
     <button
       type="button"

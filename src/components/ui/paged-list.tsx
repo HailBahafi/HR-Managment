@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
-import { usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderFilterRegion } from '@/components/layouts/page-header-actions-context';
 import { StickyPagination, DEFAULT_PAGE_SIZE } from '@/components/ui/sticky-pagination';
 import { cn } from '@/shared/utils';
 
@@ -65,7 +65,7 @@ export function useListPagination<T>(
 
 function useViewportFillHeight<T extends HTMLElement>(bottomGap = 16) {
   const ref = useRef<T>(null);
-  const { filterPanelOpen } = usePageHeaderActionsRegion();
+  const { filterPanelOpen } = usePageHeaderFilterRegion();
 
   useLayoutEffect(() => {
     const el = ref.current;
