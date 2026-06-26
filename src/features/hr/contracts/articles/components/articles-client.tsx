@@ -165,6 +165,7 @@ export function ContractArticlesClient() {
         </Button>
       </div>
     ),
+    [archiveScope, activeFilterCount],
     [activeFilterCount, openCreate],
   );
 

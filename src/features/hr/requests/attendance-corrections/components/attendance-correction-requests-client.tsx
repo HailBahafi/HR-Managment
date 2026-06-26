@@ -43,6 +43,10 @@ import {
 } from '@/features/hr/requests/lib/request-approver-states';
 import { RequestApproverStatesPanel } from '@/features/hr/requests/components/request-approver-states-panel';
 import {
+  CorrectionTimesComparisonCell,
+  CorrectionTimesComparisonDetail,
+} from '@/features/hr/requests/components/correction-period-times';
+import {
   useAttendanceCorrectionRequestsStore,
   attendanceCorrectionStatusLabelAr,
 } from '@/features/hr/requests/lib/attendance-correction-store';
@@ -55,32 +59,6 @@ const STATUS_LABELS: Record<string, string> = {
   approved: 'معتمد',
   rejected: 'مرفوض',
 };
-
-function to12h(t: string): string {
-  if (!t) return '—';
-  const [hStr, mStr] = t.split(':');
-  const h = parseInt(hStr ?? '0', 10);
-  const m = mStr ?? '00';
-  if (isNaN(h)) return t;
-  const period = h < 12 ? 'ص' : 'م';
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${m} ${period}`;
-}
-
-function timeCell(a: string, b: string, labelA: string, labelB: string) {
-  return (
-    <div className="text-xs leading-relaxed space-y-0.5">
-      <p>
-        <span className="text-muted-foreground">{labelA}:</span>{' '}
-        <span className="font-mono tabular-nums">{to12h(a)}</span>
-      </p>
-      <p>
-        <span className="text-muted-foreground">{labelB}:</span>{' '}
-        <span className="font-mono tabular-nums">{to12h(b)}</span>
-      </p>
-    </div>
-  );
-}
 
 function statusBadgeClass(s: AttendanceCorrectionRequest['status']) {
   if (s === 'pending') return 'bg-gold/15 text-gold border-gold/30';
@@ -420,14 +398,15 @@ export function AttendanceCorrectionRequestsClient() {
         render: (r) => <span className="text-xs text-muted-foreground   max-w-[200px]">{r.reasonAr || '—'}</span>,
       },
       {
-        key: 'prevTimes',
-        title: 'قبل التصحيح',
-        render: (r) => timeCell(r.previousCheckIn, r.previousCheckOut, 'حضور', 'انصراف'),
-      },
-      {
-        key: 'corrTimes',
-        title: 'بعد التصحيح',
-        render: (r) => timeCell(r.correctedCheckIn, r.correctedCheckOut, 'حضور', 'انصراف'),
+        key: 'times',
+        title: 'أوقات التصحيح',
+        render: (r) => (
+          <CorrectionTimesComparisonCell
+            previousCheckIn={r.previousCheckIn}
+            previousCheckOut={r.previousCheckOut}
+            correctedPeriods={r.correctedPeriods}
+          />
+        ),
       },
       {
         key: 'workDate',
@@ -509,8 +488,11 @@ export function AttendanceCorrectionRequestsClient() {
                 </div>
                 <p className="text-xs text-muted-foreground font-mono" dir="ltr">{r.workDate}</p>
                 <p className="text-xs"><span className="text-muted-foreground">نوع الطلب:</span> {r.requestTypeNameAr}{r.subtypeNameAr ? ` — ${r.subtypeNameAr}` : ''}</p>
-                {timeCell(r.previousCheckIn, r.previousCheckOut, 'سابق حضور', 'سابق انصراف')}
-                {timeCell(r.correctedCheckIn, r.correctedCheckOut, 'مصحح حضور', 'مصحح انصراف')}
+                <CorrectionTimesComparisonCell
+                  previousCheckIn={r.previousCheckIn}
+                  previousCheckOut={r.previousCheckOut}
+                  correctedPeriods={r.correctedPeriods}
+                />
                 <p className="text-xs"><span className="text-muted-foreground">الحالة السابقة:</span> {r.previousStatusAr}</p>
                 <RequestApproverStatesPanel states={r.approverStates} compact className="border-0 bg-transparent p-0" />
                 {canShowApprovalActions(r) ? (
@@ -605,10 +587,11 @@ export function AttendanceCorrectionRequestsClient() {
                 <div><p className="text-xs text-muted-foreground">تاريخ التصحيح</p><p className="text-sm font-medium"><TableDateCell value={detailRow.workDate} /></p></div>
                 <div><p className="text-xs text-muted-foreground">الحالة السابقة</p><p className="text-sm font-medium">{detailRow.previousStatusAr}</p></div>
                 <div><p className="text-xs text-muted-foreground">حالة الطلب</p><p className="text-sm font-medium">{attendanceCorrectionStatusLabelAr(detailRow.status)}</p></div>
-                <div><p className="text-xs text-muted-foreground">حضور سابق</p><p className="text-sm font-medium font-mono">{to12h(detailRow.previousCheckIn)}</p></div>
-                <div><p className="text-xs text-muted-foreground">انصراف سابق</p><p className="text-sm font-medium font-mono">{to12h(detailRow.previousCheckOut)}</p></div>
-                <div><p className="text-xs text-muted-foreground">حضور مصحح</p><p className="text-sm font-medium font-mono">{to12h(detailRow.correctedCheckIn)}</p></div>
-                <div><p className="text-xs text-muted-foreground">انصراف مصحح</p><p className="text-sm font-medium font-mono">{to12h(detailRow.correctedCheckOut)}</p></div>
+                <CorrectionTimesComparisonDetail
+                  previousCheckIn={detailRow.previousCheckIn}
+                  previousCheckOut={detailRow.previousCheckOut}
+                  correctedPeriods={detailRow.correctedPeriods}
+                />
                 <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">السبب</p><p className="text-sm">{detailRow.reasonAr || '—'}</p></div>
                 <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">ملاحظات القرار</p><p className="text-sm">{detailRow.decisionNotesAr || '—'}</p></div>
               </div>

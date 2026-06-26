@@ -10,6 +10,12 @@ import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-comp
 import type { RequestApproverStatesSnapshot } from './api/request-approver-states-types';
 import { normalizeRequestApproverStates } from './request-approver-states';
 
+export type AttendanceCorrectionPeriod = {
+  periodId: string;
+  checkInAt: string | null;
+  checkOutAt: string | null;
+};
+
 export type AttendanceCorrectionRequest = {
   id: string;
   employeeId: string;
@@ -27,6 +33,7 @@ export type AttendanceCorrectionRequest = {
   previousCheckOut: string;
   correctedCheckIn: string;
   correctedCheckOut: string;
+  correctedPeriods: AttendanceCorrectionPeriod[];
   previousStatusAr: string;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   reasonAr: string;
@@ -79,7 +86,31 @@ function translateAttendanceStatus(s: string | null | undefined): string {
   return ATTENDANCE_STATUS_AR[s] ?? s;
 }
 
+function mapCorrectedPeriods(r: ApiCorrectionRequest): AttendanceCorrectionPeriod[] {
+  const fromNew = r.correctedTimes?.periods;
+  if (fromNew?.length) {
+    return fromNew.map((p) => ({
+      periodId: p.periodId,
+      checkInAt: p.checkInAt,
+      checkOutAt: p.checkOutAt,
+    }));
+  }
+
+  if (r.correctedCheckInAt || r.correctedCheckOutAt) {
+    return [{
+      periodId: 'period-1',
+      checkInAt: r.correctedCheckInAt,
+      checkOutAt: r.correctedCheckOutAt,
+    }];
+  }
+
+  return [];
+}
+
 export function mapCorrectionRequest(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
+  const correctedPeriods = mapCorrectedPeriods(r);
+  const firstPeriod = correctedPeriods[0];
+
   return {
     id: r.id,
     employeeId: r.employeeId,
@@ -93,8 +124,9 @@ export function mapCorrectionRequest(r: ApiCorrectionRequest): AttendanceCorrect
     workDate: r.workDate,
     previousCheckIn: isoToTime(r.previousCheckInAt),
     previousCheckOut: isoToTime(r.previousCheckOutAt),
-    correctedCheckIn: isoToTime(r.correctedCheckInAt),
-    correctedCheckOut: isoToTime(r.correctedCheckOutAt),
+    correctedCheckIn: isoToTime(firstPeriod?.checkInAt ?? r.correctedCheckInAt),
+    correctedCheckOut: isoToTime(firstPeriod?.checkOutAt ?? r.correctedCheckOutAt),
+    correctedPeriods,
     previousStatusAr: translateAttendanceStatus(r.previousStatus),
     status: r.status as AttendanceCorrectionRequest['status'],
     reasonAr: r.reasonAr ?? '',

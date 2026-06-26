@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSidebar } from '@/components/layouts/sidebar-context';
 import { usePageTitle } from '@/components/layouts/page-title-context';
-import { usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderActionsSlotRegion } from '@/components/layouts/page-header-actions-context';
 import { FilterTrigger } from '@/components/layouts/filter-panel';
 import { Logo } from '@/components/layouts/logo';
 import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
@@ -333,7 +333,17 @@ export function Topbar() {
   const { meta } = usePageTitle();
   const pathname = usePathname();
 
-  const { slot: headerActionsSlot } = usePageHeaderActionsRegion();
+  const { renderFnRef, reRenderSlotRef } = usePageHeaderActionsSlotRegion();
+  const [, forceHeaderActionsUpdate] = React.useReducer((n: number) => n + 1, 0);
+
+  React.useLayoutEffect(() => {
+    reRenderSlotRef.current = forceHeaderActionsUpdate;
+    return () => {
+      reRenderSlotRef.current = null;
+    };
+  }, [reRenderSlotRef]);
+
+  const headerActionsSlot = renderFnRef.current?.() ?? null;
   const [activeMenu, setActiveMenu] = React.useState<string | null>(null);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const openMenu   = (key: string) => { if (closeTimer.current) clearTimeout(closeTimer.current); setActiveMenu(key); };

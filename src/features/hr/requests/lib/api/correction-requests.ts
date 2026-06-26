@@ -5,6 +5,16 @@ import type {
 
 export type CorrectionRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
+export type CorrectionPeriodTimeDto = {
+  periodId: string;
+  checkInAt: string | null;
+  checkOutAt: string | null;
+};
+
+export type CorrectionTimesDto = {
+  periods: CorrectionPeriodTimeDto[];
+};
+
 export type ApiCorrectionRequest = {
   id: string;
   companyId: string;
@@ -22,6 +32,7 @@ export type ApiCorrectionRequest = {
   previousStatus: string | null;
   correctedCheckInAt: string | null;
   correctedCheckOutAt: string | null;
+  correctedTimes?: CorrectionTimesDto | null;
   reasonAr: string | null;
   decisionNotesAr: string | null;
   attachments: unknown[];
@@ -47,6 +58,7 @@ export type CreateCorrectionRequestDto = {
   workDate: string;
   correctedCheckInAt?: string;
   correctedCheckOutAt?: string;
+  correctedTimes?: CorrectionTimesDto;
   reasonAr?: string;
   attachments?: unknown[];
   createdBy?: string;
@@ -56,6 +68,7 @@ export type UpdateCorrectionRequestDto = {
   subtypeSlug?: string | null;
   correctedCheckInAt?: string | null;
   correctedCheckOutAt?: string | null;
+  correctedTimes?: CorrectionTimesDto | null;
   reasonAr?: string;
   attachments?: unknown[];
   updatedBy?: string;
