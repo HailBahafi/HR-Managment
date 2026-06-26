@@ -29,6 +29,7 @@ import {
   ymdToMDYDisplay,
 } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { SelectWithClear } from '@/components/ui/select-with-clear';
 
 export const DATE_TAB_BASE =
   'discipline-tab-trigger shrink-0 gap-1 px-3 text-[11px] transition-all duration-150 border';
@@ -145,71 +146,6 @@ export interface EntityFilterToolbarProps {
 
   /** تبديل عرض البيانات (جدول / شبكة / بطاقات / تقويم …) قبل `trailingActions` */
   dataView?: EntityDataViewConfig;
-}
-
-// ─── Shared clearable select used by every filter dropdown in the toolbar ─────
-
-function SelectWithClear({
-  value,
-  onValueChange,
-  onClear,
-  placeholder,
-  displayLabel,
-  children,
-  className,
-}: {
-  value: string;
-  onValueChange: (v: string) => void;
-  onClear: () => void;
-  placeholder?: string;
-  /** Overrides the selected item label in the trigger (e.g. custom date range text). */
-  displayLabel?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const isActive = value !== '' && value !== undefined;
-  return (
-    <div className="relative shrink-0">
-      <Select
-        value={isActive ? value : undefined}
-        onValueChange={onValueChange}
-      >
-        <SelectTrigger
-          dir="rtl"
-          hideChevron={isActive}
-          className={cn(
-            'h-8 text-xs overflow-hidden',
-            isActive && 'pe-7',
-            'focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus:border-input',
-            'data-[state=open]:ring-0 data-[state=open]:border-input',
-            className,
-          )}
-        >
-          {displayLabel ? (
-            <span className="min-w-0 flex-1 truncate text-right" dir="ltr">
-              {displayLabel}
-            </span>
-          ) : (
-            <SelectValue placeholder={placeholder} className="truncate" />
-          )}
-        </SelectTrigger>
-        <SelectContent dir="rtl">
-          {children}
-        </SelectContent>
-      </Select>
-      {isActive && (
-        <button
-          type="button"
-          aria-label="مسح"
-          className="absolute end-2 top-1/2 -translate-y-1/2 z-10 flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.stopPropagation(); onClear(); }}
-        >
-          <X className="h-3 w-3" />
-        </button>
-      )}
-    </div>
-  );
 }
 
 export const EntityFilterToolbar = React.forwardRef<

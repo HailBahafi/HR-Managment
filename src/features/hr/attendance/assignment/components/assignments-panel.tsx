@@ -3,13 +3,12 @@
 import * as React from 'react';
 import { CalendarDays, Clock, Link2Off, Plus, Users } from 'lucide-react';
 import { format, parse, isValid } from 'date-fns';
-import { arSA } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/shared/utils';
+import { cn, formatDisplayDate } from '@/shared/utils';
 import { shiftColorStyle } from '@/shared/shift-color';
 import { Badge } from '@/components/ui/badge';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
@@ -214,10 +213,7 @@ export function AssignmentsPanel() {
                       >
                         <CalendarDays className="h-4 w-4 shrink-0" />
                         {model.editEffectiveFrom
-                          ? (() => {
-                              const d = parse(model.editEffectiveFrom, 'yyyy-MM-dd', new Date());
-                              return isValid(d) ? format(d, 'dd MMMM yyyy', { locale: arSA }) : model.editEffectiveFrom;
-                            })()
+                          ? formatDisplayDate(model.editEffectiveFrom)
                           : 'اختر التاريخ'}
                       </Button>
                     </PopoverTrigger>

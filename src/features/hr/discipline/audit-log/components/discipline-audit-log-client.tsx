@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell } from '@/components/ui/table-cells';
 import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
-import { cn } from '@/shared/utils';
+import { cn, formatDisplayDateTime } from '@/shared/utils';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import type { HRDisciplineAuditCategory, HRDisciplineAuditAction } from '@/features/hr/discipline/lib/discipline-audit-log';
 import {
@@ -53,15 +53,7 @@ type StatusFilter = 'all' | HRDisciplineAuditAction;
 type DisciplineViewMode = 'cards' | 'list';
 
 function formatOccurred(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return new Intl.DateTimeFormat('ar-SA-u-ca-gregory', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(d);
-  } catch {
-    return iso;
-  }
+  return formatDisplayDateTime(iso);
 }
 
 function SnapshotComparisonTable({ previousSnapshotAr, currentSnapshotAr }: { previousSnapshotAr: string; currentSnapshotAr: string }) {

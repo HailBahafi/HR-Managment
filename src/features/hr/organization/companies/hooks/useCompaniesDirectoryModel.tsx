@@ -18,6 +18,7 @@ import {
 } from '@/features/hr/organization/lib/api/companies';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { slugify } from '@/features/hr/requests/lib/types';
+import { formatDisplayDateTime } from '@/shared/utils';
 import {
   COMPANY_EMPTY_FORM,
   companyToDraftForm,
@@ -125,7 +126,7 @@ export function useCompaniesDirectoryModel() {
   }, [confirmId, reloadList]);
 
   const formatDate = React.useCallback(
-    (iso: string | null) => (iso ? new Date(iso).toLocaleString('ar-SA') : '—'),
+    (iso: string | null) => (iso ? formatDisplayDateTime(iso) : '—'),
     [],
   );
 

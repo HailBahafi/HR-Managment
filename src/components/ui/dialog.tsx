@@ -95,7 +95,7 @@ export const dialogConfirmFooterClass =
 
 /** Extra styling for form dialogs with scrollable body. */
 export const dialogFormFooterClass =
-  'shrink-0 border-t border-border bg-muted/20 px-6 py-4';
+  'shrink-0 border-t border-border bg-muted/20 p-4';
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn(dialogConfirmFooterClass, className)} {...props} />

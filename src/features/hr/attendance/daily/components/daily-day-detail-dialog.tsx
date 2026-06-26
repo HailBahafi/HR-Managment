@@ -34,6 +34,11 @@ import {
 } from '@/features/hr/attendance/lib/api/attendance-events';
 import { STATUS } from '@/features/hr/attendance/daily/constants/daily-attendance-status';
 import { fmtFull, minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
+import {
+  AttendancePunchPair,
+  durationBetweenIso,
+  formatMinutesAr,
+} from '@/features/hr/attendance/components/attendance-punch-pair';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { toast } from 'sonner';
 
@@ -127,14 +132,23 @@ function ActualRegistrationBlock({
   actual: PeriodActual;
   offsetMinutes: number;
 }) {
+  const duration =
+    formatMinutesAr(actual.workedMinutes) ??
+    durationBetweenIso(actual.checkInAt, actual.checkOutAt);
+
   return (
-    <div className="grid gap-2 rounded-lg border border-border/50 bg-muted/10 p-2.5">
+    <div className="space-y-2.5 rounded-lg border border-border/50 bg-muted/10 p-3">
       <p className="text-[11px] font-semibold text-muted-foreground">التسجيل الفعلي</p>
-      <DetailRow label="دخول" value={fmtClock(actual.checkInAt, offsetMinutes)} />
-      <DetailRow label="خروج" value={fmtClock(actual.checkOutAt, offsetMinutes)} />
-      <DetailRow label="مدة العمل" value={minutesToHHMM(actual.workedMinutes)} />
+      <AttendancePunchPair
+        checkInTime={fmtClock(actual.checkInAt, offsetMinutes)}
+        checkOutTime={fmtClock(actual.checkOutAt, offsetMinutes)}
+        duration={duration}
+      />
       {actual.breakMinutes > 0 ? (
-        <DetailRow label="استراحات" value={minutesToHHMM(actual.breakMinutes)} />
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-xs">
+          <span className="text-muted-foreground">استراحات</span>
+          <span className="font-semibold tabular-nums">{minutesToHHMM(actual.breakMinutes)}</span>
+        </div>
       ) : null}
     </div>
   );

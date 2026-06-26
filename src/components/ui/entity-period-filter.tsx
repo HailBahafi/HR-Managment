@@ -5,7 +5,7 @@ import { CalendarDays, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker, type DateRangeValue } from '@/components/ui/DateRangePicker';
 import { normalizePeriodRange } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { cn } from '@/shared/utils';
+import { cn, formatDisplayDate } from '@/shared/utils';
 
 export type PeriodRange = DateRangeValue;
 
@@ -17,16 +17,8 @@ type Props = {
   triggerClassName?: string;
 };
 
-const AR_MONTH_NAMES = [
-  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-];
-
 function formatShortDate(ymd: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
-  if (!m) return '—';
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return d.toLocaleDateString('ar', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatDisplayDate(ymd);
 }
 
 function fullMonthBounds(year: number, month: number): { from: string; to: string } {
@@ -46,7 +38,7 @@ function formatPeriodLabel(from: string, to: string): string {
     const month = Number(fromMatch[2]);
     const bounds = fullMonthBounds(year, month);
     if (from === bounds.from && to === bounds.to) {
-      return `${AR_MONTH_NAMES[month - 1]} ${year}`;
+      return `${year}/${String(month).padStart(2, '0')}`;
     }
   }
   if (from === to) return formatShortDate(from);
@@ -83,7 +75,7 @@ export function EntityPeriodFilter({
       >
         <span className="flex min-w-0 items-center gap-1.5">
           <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span className={cn('truncate', !label && 'text-muted-foreground')}>
+          <span className={cn('truncate font-mono tabular-nums', !label && 'text-muted-foreground')} dir="ltr">
             {label || placeholder}
           </span>
         </span>

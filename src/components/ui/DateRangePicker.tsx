@@ -12,7 +12,7 @@ import {
   DialogTitle,
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
-import { cn } from '@/shared/utils';
+import { cn, formatDisplayDate } from '@/shared/utils';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -70,13 +70,10 @@ function daysDiff(a: string, b: string): number {
 }
 
 function displayDate(ymd: string): string {
-  const d = ymdToDate(ymd);
-  if (!d) return '—';
-  return d.toLocaleDateString('ar', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatDisplayDate(ymd);
 }
 
 const DAY_LABELS  = ['سبت', 'أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة'];
-const MONTH_NAMES = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
 // ─── tab pill ─────────────────────────────────────────────────────────────────
 
@@ -290,8 +287,9 @@ export function DateRangePicker({
     const thisYear  = new Date().getFullYear();
     const thisMonth = new Date().getMonth();
 
-    return MONTH_NAMES.map((name, idx) => {
-      const key       = `${yearView}-${String(idx + 1).padStart(2, '0')}`;
+    return Array.from({ length: 12 }, (_, idx) => {
+      const monthNum = String(idx + 1).padStart(2, '0');
+      const key       = `${yearView}-${monthNum}`;
       const selected  = selectedMonth === key;
       const isPast    = disablePastDates &&
         (yearView < thisYear || (yearView === thisYear && idx < thisMonth));
@@ -304,7 +302,7 @@ export function DateRangePicker({
           disabled={isPast}
           onClick={() => !isPast && handleMonthClick(yearView, idx)}
           className={cn(
-            'flex h-10 items-center justify-center rounded-xl text-sm font-medium',
+            'flex h-10 items-center justify-center rounded-xl text-sm font-medium font-mono tabular-nums',
             'transition-all duration-150 focus-visible:outline-none select-none',
             isPast    && 'cursor-not-allowed opacity-30 text-muted-foreground',
             !isPast && !selected && 'cursor-pointer text-foreground hover:bg-primary/15',
@@ -312,14 +310,15 @@ export function DateRangePicker({
             isCurrent && !selected && !isPast &&
               'ring-2 ring-primary/50 ring-offset-1 text-primary font-bold',
           )}
+          dir="ltr"
         >
-          {name}
+          {`${yearView}/${monthNum}`}
         </button>
       );
     });
   };
 
-  const rangeMonthLabel = currentDate.toLocaleDateString('ar', { month: 'long', year: 'numeric' });
+  const rangeMonthLabel = `${currentDate.getFullYear()}/${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -478,7 +477,7 @@ export function DateRangePicker({
                     الشهر المحدد
                   </span>
                   <span className="text-sm font-semibold text-foreground">
-                    {MONTH_NAMES[m - 1]} {y}
+                    {`${y}/${String(m).padStart(2, '0')}`}
                   </span>
                 </div>
               );

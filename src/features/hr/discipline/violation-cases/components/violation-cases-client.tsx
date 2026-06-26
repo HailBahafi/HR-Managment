@@ -13,12 +13,11 @@ import {
   type WorkflowStatusTone,
 } from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
-import { cn, formatDisplayDateTime } from '@/shared/utils';
+import { cn, formatDisplayDate, formatDisplayDateTime } from '@/shared/utils';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format, parse, isValid } from 'date-fns';
-import { arSA } from 'date-fns/locale';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -268,12 +267,7 @@ function AppealDialog({
                   className={cn('w-full justify-start gap-2 text-sm', !date && 'text-muted-foreground')}
                 >
                   <CalendarDays className="h-4 w-4 shrink-0" />
-                  {date
-                    ? (() => {
-                        const d = parse(date, 'yyyy-MM-dd', new Date());
-                        return isValid(d) ? format(d, 'dd MMMM yyyy', { locale: arSA }) : date;
-                      })()
-                    : 'اختر التاريخ'}
+                  {date ? formatDisplayDate(date) : 'اختر التاريخ'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">

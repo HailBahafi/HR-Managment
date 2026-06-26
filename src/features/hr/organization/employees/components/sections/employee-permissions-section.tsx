@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Check, Shield, Plus, X, Ban, ChevronDown, UserPlus } from 'lucide-react';
+import { CreateUserAttentionButton } from '@/features/hr/organization/employees/components/create-user-attention-button';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -98,15 +99,10 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
                 <UserPlus className="h-4 w-4 shrink-0" />
                 هذا الموظف غير مرتبط بحساب مستخدم — أنشئ له حساباً لتفعيل الصلاحيات
               </div>
-              <Button
-                type="button"
-                size="sm"
-                className="gap-2 bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+              <CreateUserAttentionButton
+                className="shrink-0"
                 onClick={() => setCreateUserOpen(true)}
-              >
-                <UserPlus className="h-3.5 w-3.5" />
-                إنشاء حساب مستخدم
-              </Button>
+              />
             </div>
           )}
 
@@ -125,7 +121,6 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
                     {allRoles.map((r) => (
                       <SelectItem key={r.id} value={r.id} className="text-sm">
                         {r.nameAr}
-                        {r.isSystem && <span className="ml-2 text-[10px] text-muted-foreground">(نظامي)</span>}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -264,24 +259,30 @@ export function EmployeePermissionsSection({ model }: { model: EmployeeProfileMo
         </p>
 
         {addingExtra && (
-          <div className="flex gap-2 mb-4">
-            <Select value={extraPickId} onValueChange={setExtraPickId}>
-              <SelectTrigger className="h-9 flex-1 rounded-lg text-sm">
-                <SelectValue placeholder="اختر صلاحية للمنح…" />
-              </SelectTrigger>
-              <SelectContent className="max-h-64">
-                {grantablePermissions.map((p) => (
-                  <SelectItem key={p.id} value={p.id} className="text-sm">
-                    <span dir="ltr" className="font-mono text-[11px] text-muted-foreground">{p.code}</span>
-                    <span className="mr-2">{permLabel(p)}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <Select value={extraPickId} onValueChange={setExtraPickId}>
+                <SelectTrigger className="h-9 w-full rounded-lg text-sm">
+                  <SelectValue placeholder="اختر صلاحية للمنح…" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64" align="end">
+                  {grantablePermissions.map((p) => (
+                    <SelectItem key={p.id} value={p.id} className="items-start py-2">
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="truncate text-sm leading-snug">{permLabel(p)}</span>
+                        <span className="truncate font-mono text-[10px] text-muted-foreground" dir="ltr">
+                          {p.code}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               type="button"
               size="sm"
-              className="h-9 gap-1 text-xs"
+              className="h-9 w-full shrink-0 gap-1 text-xs sm:w-auto"
               disabled={!extraPickId || isMutating}
               onClick={() => {
                 if (extraPickId) {

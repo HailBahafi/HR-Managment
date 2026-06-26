@@ -2,9 +2,14 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/shared/utils';
 import { Check, X, Clock, Eye, Pause, AlertCircle, ShieldCheck } from 'lucide-react';
 
-type StatusBadgeProps = { status: string; /** Override label while keeping colors/icon for `status` */ labelOverride?: string };
+type StatusBadgeProps = {
+  status: string;
+  /** Override label while keeping colors/icon for `status` */
+  labelOverride?: string;
+  className?: string;
+};
 
-export function StatusBadge({ status, labelOverride }: StatusBadgeProps) {
+export function StatusBadge({ status, labelOverride, className }: StatusBadgeProps) {
   const config: Record<string, { label: string; variant: 'success' | 'warning' | 'destructive' | 'secondary' | 'gold' | 'subtle'; icon?: React.ElementType }> = {
     active: { label: 'نشط', variant: 'success', icon: Check },
     suspended: { label: 'موقوف', variant: 'warning', icon: Pause },
@@ -35,8 +40,8 @@ export function StatusBadge({ status, labelOverride }: StatusBadgeProps) {
   const label = labelOverride ?? c.label;
 
   return (
-    <Badge variant={c.variant} className={cn('gap-1')}>
-      {Icon && <Icon className="h-3 w-3" />}
+    <Badge variant={c.variant} className={cn('gap-1', className)}>
+      {Icon && <Icon className="h-3 w-3 shrink-0" />}
       {label}
     </Badge>
   );

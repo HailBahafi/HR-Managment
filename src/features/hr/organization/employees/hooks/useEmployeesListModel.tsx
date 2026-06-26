@@ -16,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
-import { hasDateRangeFilter } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeesRegisterPrintHtml } from '@/components/pdf/print/employees-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import {
@@ -66,7 +65,6 @@ export function useEmployeesListModel() {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [view, setView] = React.useState<'table' | 'grid'>('table');
   const [newEmpOpen, setNewEmpOpen] = React.useState(false);
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
   const [toolbarStatus, setToolbarStatus] = React.useState<string>('all');
   const [archiveScope, setArchiveScope] = React.useState<OrganizationArchiveScope>(
     ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
@@ -104,10 +102,8 @@ export function useEmployeesListModel() {
     ...(deptFilter !== 'all' ? { departmentId: deptFilter } : {}),
     ...(toolbarStatus !== 'all' ? { contractStatus: toolbarStatus } : {}),
     ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
-    ...(dateBounds.from ? { startDateFrom: dateBounds.from } : {}),
-    ...(dateBounds.to ? { startDateTo: dateBounds.to } : {}),
     ...organizationListArchiveQuery(archiveScope),
-  }), [companyId, branchFilter, deptFilter, toolbarStatus, debouncedSearch, dateBounds.from, dateBounds.to, archiveScope]);
+  }), [companyId, branchFilter, deptFilter, toolbarStatus, debouncedSearch, archiveScope]);
 
   const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     if (!companyId) return { items: [] as EmployeeResponseDto[], total: 0 };
@@ -151,7 +147,7 @@ export function useEmployeesListModel() {
     enabled: !!companyId,
     bulkMode,
     loadBulk: bulkMode ? loadBulk : undefined,
-    resetDeps: [companyId, branchFilter, deptFilter, toolbarStatus, archiveScope, debouncedSearch, dateBounds.from, dateBounds.to, selectedEmpKey, view],
+    resetDeps: [companyId, branchFilter, deptFilter, toolbarStatus, archiveScope, debouncedSearch, selectedEmpKey, view],
   });
 
   const getBranch = React.useCallback(
@@ -209,12 +205,9 @@ export function useEmployeesListModel() {
     if (deptFilter !== 'all') parts.push(`قسم: ${departments.find((d) => d.id === deptFilter)?.nameAr ?? deptFilter}`);
     if (search.trim()) parts.push(`بحث: ${search.trim()}`);
     parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل (ضمن الفلاتر)' : `الموظفون: ${selectedEmpIds.size} محدد من القائمة`);
-    if (hasDateRangeFilter(dateBounds.from, dateBounds.to)) {
-      parts.push(`تاريخ الالتحاق: ${dateBounds.from} — ${dateBounds.to}`);
-    }
     parts.push(`حالة العقد: ${toolbarStatus === 'all' ? 'الكل' : (EMP_CONTRACT_STATUS_LABELS[toolbarStatus] ?? toolbarStatus)}`);
     return parts.join(' · ');
-  }, [branchFilter, deptFilter, search, selectedEmpIds.size, dateBounds.from, dateBounds.to, toolbarStatus, branches, departments]);
+  }, [branchFilter, deptFilter, search, selectedEmpIds.size, toolbarStatus, branches, departments]);
 
   const handleDelete = React.useCallback(async () => {
     if (!deleteId) return;
@@ -324,6 +317,7 @@ export function useEmployeesListModel() {
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
+        showDateSection={false}
         inlineSelects={[
           {
             id: 'archive',
@@ -355,7 +349,6 @@ export function useEmployeesListModel() {
         statusOrder={EMP_CONTRACT_STATUS_ORDER}
         statusLabels={EMP_CONTRACT_STATUS_LABELS}
         statusCounts={contractStatusCounts}
-        onDateBoundsChange={setDateBounds}
         dataView={{
           value: view,
           onChange: (v) => setView(v as 'table' | 'grid'),
@@ -369,7 +362,6 @@ export function useEmployeesListModel() {
     [
       archiveScope,
       branchFilter, deptFilter, view, toolbarStatus, selectedEmpKey,
-      dateBounds.from, dateBounds.to,
       contractStatusCounts.all, contractStatusCounts.active,
       contractStatusCounts.suspended, contractStatusCounts.ended,
       empPickerList, branchSelectOptions, deptSelectOptions,

@@ -13,8 +13,8 @@
   max-width: min(var(--radix-popover-trigger-width), calc(100vw - 2rem));
 }
 .select-match-trigger {
-  width: 100%;
-  min-width: var(--radix-select-trigger-width);
+  width: var(--radix-select-trigger-width);
+  max-width: calc(100vw - 2rem);
 }
 
 /* ── Radix UI enter/exit animation system ───────────────────────────────────

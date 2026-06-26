@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -319,30 +320,62 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
 export function Sidebar() {
   const { open, setOpen } = useSidebar();
   const close = React.useCallback(() => setOpen(false), [setOpen]);
+  const [mounted, setMounted] = React.useState(false);
 
-  return (
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, close]);
+
+  React.useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onDesktop = () => {
+      if (mq.matches) setOpen(false);
+    };
+    onDesktop();
+    mq.addEventListener('change', onDesktop);
+    return () => mq.removeEventListener('change', onDesktop);
+  }, [setOpen]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  if (!mounted || !open) return null;
+
+  return createPortal(
     <>
-      {/* Backdrop */}
       <div
-        className={cn(
-          'fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden',
-          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
-        )}
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
         onClick={close}
-        aria-hidden="true"
+        aria-hidden
       />
-
-      {/* Mobile drawer */}
       <aside
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex w-72 flex-col shadow-luxe transition-transform duration-300 ease-in-out lg:hidden',
-          open ? 'translate-x-0' : 'translate-x-full',
+          'fixed inset-y-0 right-0 z-50 flex w-[min(100vw-2rem,18rem)] max-w-[85vw] flex-col shadow-luxe lg:hidden',
         )}
+        role="dialog"
+        aria-modal="true"
+        aria-label="القائمة الرئيسية"
       >
         <React.Suspense fallback={null}>
           <MobileDrawer onClose={close} />
         </React.Suspense>
       </aside>
-    </>
+    </>,
+    document.body,
   );
 }

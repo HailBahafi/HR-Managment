@@ -8,7 +8,7 @@ import {
   ShieldAlert, UserX, Timer, ArrowUpRight, ChevronLeft,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getInitials, cn, formatNumber, toWesternDigits } from '@/shared/utils';
+import { getInitials, cn, formatNumber, formatDisplayDate } from '@/shared/utils';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useHRViolationCasesStore } from '@/features/hr/discipline/lib/violation-cases-store';
 import { useHRContractsStore } from '@/features/hr/contracts/lib/contracts-store';
@@ -78,15 +78,7 @@ export function DashboardPage() {
   const activeContracts  = contracts.filter(c => c.status === 'active').length;
   const pendingLeaves    = 0;
 
-  const dateAr = toWesternDigits(
-    new Intl.DateTimeFormat('ar-SA', {
-      numberingSystem: 'latn',
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }).format(new Date()),
-  );
+  const dateAr = formatDisplayDate(new Date().toISOString());
 
   return (
     <div className="space-y-5 animate-fade-in" dir="rtl">

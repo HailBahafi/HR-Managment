@@ -1,12 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { format, isValid } from 'date-fns';
-import { arSA } from 'date-fns/locale';
 import { CalendarDays, X } from 'lucide-react';
 import type { Matcher } from 'react-day-picker';
+import { format, isValid } from 'date-fns';
 
-import { cn, toWesternDigits } from '@/shared/utils';
+import { cn, formatDisplayDate } from '@/shared/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -68,6 +67,7 @@ export function SingleDatePicker({
 }: SingleDatePickerProps) {
   const [open, setOpen] = React.useState(false);
   const selected = parseIsoDateLocal(value);
+  const displayLabel = value ? formatDisplayDate(value) : null;
 
   const disabledMatchers = React.useMemo((): Matcher | Matcher[] | undefined => {
     const list: Matcher[] = [];
@@ -78,10 +78,6 @@ export function SingleDatePicker({
     if (list.length === 0) return undefined;
     return list.length === 1 ? list[0]! : list;
   }, [min, max]);
-
-  const dayLabel = selected ? toWesternDigits(format(selected, 'd', { locale: arSA })) : null;
-  const monthYearLabel = selected ? toWesternDigits(format(selected, 'MMMM yyyy', { locale: arSA })) : null;
-  const weekdayLabel = selected ? format(selected, 'EEEE', { locale: arSA }) : null;
 
   return (
     <div className={cn('w-full', wrapperClassName)}>
@@ -106,14 +102,11 @@ export function SingleDatePicker({
           >
             <CalendarDays className={cn('h-4 w-4 shrink-0', selected ? 'text-primary' : 'text-muted-foreground')} />
             <span
-              className="min-w-0 flex-1 truncate text-right"
-              title={selected ? `${weekdayLabel}، ${dayLabel} ${monthYearLabel}` : undefined}
+              className="min-w-0 flex-1 truncate text-right font-mono tabular-nums"
+              dir="ltr"
+              title={displayLabel ?? undefined}
             >
-              {selected ? (
-                <span className="font-medium">{weekdayLabel}، {dayLabel} {monthYearLabel}</span>
-              ) : (
-                <span>{placeholder}</span>
-              )}
+              {displayLabel ?? placeholder}
             </span>
             {selected && !disabled && (
               <span

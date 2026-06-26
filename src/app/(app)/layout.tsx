@@ -21,7 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Topbar />
                 <Sidebar />
                 <FilterPanel />
-                <main className="flex flex-1 flex-col min-h-0 min-w-0 overflow-hidden p-4">
+                <main className="relative z-0 flex w-full min-w-0 flex-1 flex-col overflow-hidden p-4">
                   <AppEntityFilterRegion />
                   <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
                     <AuthenticatedShell>{children}</AuthenticatedShell>
