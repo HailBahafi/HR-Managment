@@ -27,11 +27,10 @@ import {
   canActOnLeave, getApprovalStage,
   LEAVE_TYPE_LABELS,
 } from '@/features/hr/leaves/unified-management/lib/leaves-utils';
-import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
+import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import { organizationActiveListStatusQuery } from '@/features/hr/organization/lib/archive-scope';
-import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/features/hr/leaves/unified-management/types';
 import type { LeaveTypeResponseDto } from '@/features/hr/leaves/leave-types/lib/api/leave-types';
 import { loadCompanyLeaveTypes } from '@/features/hr/leaves/lib/leave-types-utils';
@@ -272,9 +271,6 @@ const LEAVE_STATUS_LABELS_FOR_TOOLBAR: Record<string, string> = {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function UnifiedManagementClient() {
-  const { data: employeesResult } = useEmployees();
-  const employeesList = React.useMemo(() => employeesResult?.items ?? [], [employeesResult]);
-
   const companyId = useDefaultCompanyId();
   const authUser = useAuthStore((s) => s.user);
   const { data: currentEmployee } = useCurrentEmployee();
@@ -283,51 +279,168 @@ export function UnifiedManagementClient() {
 
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
   const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
-  React.useEffect(() => {
-    void (async () => {
+  const branchesLoadedRef = React.useRef<string | null>(null);
+  const departmentsLoadedRef = React.useRef<string | null>(null);
+  const branchesLoadRef = React.useRef<Promise<void> | null>(null);
+  const departmentsLoadRef = React.useRef<Promise<void> | null>(null);
+
+  const loadBranches = React.useCallback(async () => {
+    if (!companyId) return;
+    if (branchesLoadedRef.current === companyId) return;
+    if (branchesLoadRef.current) return branchesLoadRef.current;
+    branchesLoadRef.current = (async () => {
       try {
-        const scope = await resolveOrganizationScope();
-        const cid = scope.companyId ?? companyId ?? undefined;
-        const [branchRes, deptRes] = await Promise.all([
-          branchesApi.getAll({
-            ...(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-            ...organizationActiveListStatusQuery(),
-          }),
-          departmentsApi.getAll({
-            ...(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-            ...organizationActiveListStatusQuery(),
-          }),
-        ]);
-        setBranches(branchRes.items.filter((b) => b.isActive));
-        setDepartments(deptRes.items.filter((d) => d.isActive));
+        const res = await branchesApi.getAll({
+          companyId,
+          limit: 200,
+          ...organizationActiveListStatusQuery(),
+        });
+        setBranches(res.items.filter((b) => b.isActive));
+        branchesLoadedRef.current = companyId;
       } catch {
-        // silently ignore — branch/department filters stay empty
+        // branch filter stays empty until retry
+      } finally {
+        branchesLoadRef.current = null;
       }
     })();
+    return branchesLoadRef.current;
+  }, [companyId]);
+
+  const loadDepartments = React.useCallback(async () => {
+    if (!companyId) return;
+    if (departmentsLoadedRef.current === companyId) return;
+    if (departmentsLoadRef.current) return departmentsLoadRef.current;
+    departmentsLoadRef.current = (async () => {
+      try {
+        const res = await departmentsApi.getAll({
+          companyId,
+          limit: 200,
+          ...organizationActiveListStatusQuery(),
+        });
+        setDepartments(res.items.filter((d) => d.isActive));
+        departmentsLoadedRef.current = companyId;
+      } catch {
+        // department filter stays empty until retry
+      } finally {
+        departmentsLoadRef.current = null;
+      }
+    })();
+    return departmentsLoadRef.current;
   }, [companyId]);
 
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
   const [leaveRequestTypes, setLeaveRequestTypes] = React.useState<ApiRequestType[]>([]);
+  const leaveTypesLoadedRef = React.useRef<string | null>(null);
+  const leaveTypesLoadRef = React.useRef<Promise<void> | null>(null);
+  const addCatalogLoadedRef = React.useRef<string | null>(null);
 
-  const reloadLeaveTypes = React.useCallback(async () => {
+  const leaveTypesRef = React.useRef(leaveTypes);
+  leaveTypesRef.current = leaveTypes;
+
+  const loadLeaveTypesForFilter = React.useCallback(async () => {
     if (!companyId) return;
-    try {
-      const ltRes = await loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true });
-      setLeaveTypes(ltRes.items);
-      setLeaveRequestTypes(await loadLeaveRequestTypes(companyId));
-    } catch {
-      toast.error('فشل تحميل أنواع الإجازات');
-    }
+    if (leaveTypesLoadedRef.current === companyId) return;
+    if (leaveTypesLoadRef.current) return leaveTypesLoadRef.current;
+    leaveTypesLoadRef.current = (async () => {
+      try {
+        const ltRes = await loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true });
+        setLeaveTypes(ltRes.items);
+        leaveTypesLoadedRef.current = companyId;
+      } catch {
+        toast.error('فشل تحميل أنواع الإجازات');
+      } finally {
+        leaveTypesLoadRef.current = null;
+      }
+    })();
+    return leaveTypesLoadRef.current;
   }, [companyId]);
 
+  const employeesCacheRef = React.useRef<{ companyId: string; items: EmployeeResponseDto[] } | null>(null);
+  const employeesLoadRef = React.useRef<Promise<EmployeeResponseDto[]> | null>(null);
+  const [employeesList, setEmployeesList] = React.useState<EmployeeResponseDto[]>([]);
+  const [employeesLoading, setEmployeesLoading] = React.useState(false);
+  const [filterEmpActivated, setFilterEmpActivated] = React.useState(false);
+
+  const loadEmployees = React.useCallback(async (): Promise<EmployeeResponseDto[]> => {
+    if (!companyId) return [];
+    if (employeesCacheRef.current?.companyId === companyId) {
+      return employeesCacheRef.current.items;
+    }
+    if (employeesLoadRef.current) return employeesLoadRef.current;
+    employeesLoadRef.current = (async () => {
+      setEmployeesLoading(true);
+      try {
+        const res = await employeesApi.getAll({ companyId, limit: 500 });
+        employeesCacheRef.current = { companyId, items: res.items };
+        setEmployeesList(res.items);
+        return res.items;
+      } catch {
+        toast.error('فشل تحميل الموظفين');
+        return [];
+      } finally {
+        setEmployeesLoading(false);
+        employeesLoadRef.current = null;
+      }
+    })();
+    return employeesLoadRef.current;
+  }, [companyId]);
+
+  const loadFilterEmployees = React.useCallback(() => {
+    if (!companyId) return;
+    setFilterEmpActivated(true);
+    void loadEmployees();
+  }, [companyId, loadEmployees]);
+
+  const ensureAddDialogData = React.useCallback(async () => {
+    if (!companyId) return;
+    const tasks: Promise<unknown>[] = [loadEmployees(), loadBranches()];
+    if (addCatalogLoadedRef.current !== companyId) {
+      tasks.push((async () => {
+        try {
+          const [ltRes, rtRes] = await Promise.all([
+            loadCompanyLeaveTypes({ companyId, limit: 200, isActive: true }),
+            loadLeaveRequestTypes(companyId),
+          ]);
+          setLeaveTypes(ltRes.items);
+          leaveTypesLoadedRef.current = companyId;
+          setLeaveRequestTypes(rtRes);
+          addCatalogLoadedRef.current = companyId;
+        } catch {
+          toast.error('فشل تحميل بيانات النموذج');
+        }
+      })());
+    }
+    await Promise.all(tasks);
+  }, [companyId, loadEmployees, loadBranches]);
+
   React.useEffect(() => {
-    void reloadLeaveTypes();
-  }, [reloadLeaveTypes]);
+    branchesLoadedRef.current = null;
+    departmentsLoadedRef.current = null;
+    leaveTypesLoadedRef.current = null;
+    addCatalogLoadedRef.current = null;
+    employeesCacheRef.current = null;
+    setBranches([]);
+    setDepartments([]);
+    setLeaveTypes([]);
+    setLeaveRequestTypes([]);
+    setEmployeesList([]);
+    setFilterEmpActivated(false);
+  }, [companyId]);
 
   const [branchId, setBranchId] = React.useState('all');
   const [departmentId, setDepartmentId] = React.useState('all');
   const [leaveType, setLeaveType] = React.useState<string>('all');
   const [approvalStageFilter, setApprovalStageFilter] = React.useState<string>('all');
+
+  const handleBranchChange = React.useCallback((v: string) => {
+    setBranchId(v);
+    if (v !== 'all') void loadEmployees();
+  }, [loadEmployees]);
+
+  const handleDepartmentChange = React.useCallback((v: string) => {
+    setDepartmentId(v);
+    if (v !== 'all') void loadEmployees();
+  }, [loadEmployees]);
 
   const branchInlineOptions = React.useMemo(
     () => [{ value: 'all', label: 'جميع الفروع' }, ...branches.map((b) => ({ value: b.id, label: b.nameAr }))],
@@ -363,7 +476,8 @@ export function UnifiedManagementClient() {
     {
       id: 'branch',
       value: branchId,
-      onChange: setBranchId,
+      onChange: handleBranchChange,
+      onOpen: () => { void loadBranches(); },
       placeholder: 'الفرع',
       className: 'w-[9rem]',
       options: branchInlineOptions,
@@ -371,7 +485,8 @@ export function UnifiedManagementClient() {
     {
       id: 'dept',
       value: departmentId,
-      onChange: setDepartmentId,
+      onChange: handleDepartmentChange,
+      onOpen: () => { void loadDepartments(); },
       placeholder: 'القسم',
       className: 'w-[9rem]',
       options: deptInlineOptions,
@@ -380,6 +495,7 @@ export function UnifiedManagementClient() {
       id: 'type',
       value: leaveType,
       onChange: setLeaveType,
+      onOpen: () => { void loadLeaveTypesForFilter(); },
       placeholder: 'نوع الإجازة',
       className: 'w-[9.5rem]',
       options: typeInlineOptions,
@@ -397,6 +513,11 @@ export function UnifiedManagementClient() {
     departmentId,
     leaveType,
     approvalStageFilter,
+    handleBranchChange,
+    handleDepartmentChange,
+    loadBranches,
+    loadDepartments,
+    loadLeaveTypesForFilter,
     branchInlineOptions,
     deptInlineOptions,
     typeInlineOptions,
@@ -407,9 +528,9 @@ export function UnifiedManagementClient() {
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
 
-  const empPickerList = React.useMemo(() =>
-    employeesList.map(e => ({ id: e.id, name: e.nameAr })),
-    [employeesList],
+  const empPickerList = React.useMemo(
+    () => (filterEmpActivated ? employeesList.map((e) => ({ id: e.id, name: e.nameAr })) : []),
+    [filterEmpActivated, employeesList],
   );
 
   const employeeById = React.useMemo(
@@ -470,7 +591,7 @@ export function UnifiedManagementClient() {
     if (!companyId) return { items: [] as UnifiedLeaveRecord[], total: 0 };
     try {
       const res = await leaveRequestsNewApi.list(buildListQuery(page, pageSize));
-      const mapped = res.items.map((r) => mapApiLeave(r, leaveTypes));
+      const mapped = res.items.map((r) => mapApiLeave(r, leaveTypesRef.current));
       if (bulkMode) {
         const items = applyClientFilters(mapped);
         return { items, total: items.length };
@@ -480,7 +601,7 @@ export function UnifiedManagementClient() {
       toast.error('فشل تحميل طلبات الإجازات');
       return { items: [], total: 0 };
     }
-  }, [applyClientFilters, buildListQuery, bulkMode, companyId, leaveTypes]);
+  }, [applyClientFilters, buildListQuery, bulkMode, companyId]);
 
   const loadBulk = React.useCallback(async () => {
     if (!companyId) return { items: [] as UnifiedLeaveRecord[], total: 0 };
@@ -488,14 +609,14 @@ export function UnifiedManagementClient() {
       const res = await fetchAllPaginatedItems((page, limit) =>
         leaveRequestsNewApi.list({ ...buildListQuery(page, limit) }),
       );
-      const mapped = res.items.map((r) => mapApiLeave(r, leaveTypes));
+      const mapped = res.items.map((r) => mapApiLeave(r, leaveTypesRef.current));
       const items = applyClientFilters(mapped);
       return { items, total: items.length };
     } catch {
       toast.error('فشل تحميل طلبات الإجازات');
       return { items: [], total: 0 };
     }
-  }, [applyClientFilters, buildListQuery, companyId, leaveTypes]);
+  }, [applyClientFilters, buildListQuery, companyId]);
 
   const {
     items: filtered,
@@ -537,7 +658,7 @@ export function UnifiedManagementClient() {
         { updatedBy: updatedByActor },
       );
       const updated = await leaveRequestsNewApi.decide(leave.id, payload);
-      const mapped = mapApiLeave(updated, leaveTypes);
+      const mapped = mapApiLeave(updated, leaveTypesRef.current);
       if (detailLeave?.id === leave.id) setDetailLeave(mapped);
       await reloadLeaves();
       if (payload.approverStates && isRequestFullyApproved(payload.approverStates)) {
@@ -549,7 +670,7 @@ export function UnifiedManagementClient() {
       const { displayMessage } = handleApiError(err, 'leave-requests.decide.approve');
       toast.error(displayMessage);
     }
-  }, [companyId, currentEmployeeId, detailLeave?.id, leaveTypes, reloadLeaves, updatedByActor]);
+  }, [companyId, currentEmployeeId, detailLeave?.id, reloadLeaves, updatedByActor]);
 
   const handleReject = React.useCallback(async (leave: UnifiedLeaveRecord) => {
     if (!companyId || !currentEmployeeId) return;
@@ -571,7 +692,7 @@ export function UnifiedManagementClient() {
         { updatedBy: updatedByActor },
       );
       const updated = await leaveRequestsNewApi.decide(leave.id, payload);
-      const mapped = mapApiLeave(updated, leaveTypes);
+      const mapped = mapApiLeave(updated, leaveTypesRef.current);
       if (detailLeave?.id === leave.id) setDetailLeave(mapped);
       await reloadLeaves();
       toast.message('تم رفض الطلب.');
@@ -579,7 +700,7 @@ export function UnifiedManagementClient() {
       const { displayMessage } = handleApiError(err, 'leave-requests.decide.reject');
       toast.error(displayMessage);
     }
-  }, [companyId, currentEmployeeId, detailLeave?.id, leaveTypes, reloadLeaves, updatedByActor]);
+  }, [companyId, currentEmployeeId, detailLeave?.id, reloadLeaves, updatedByActor]);
 
   const activeFilterCount =
     (branchId !== 'all' ? 1 : 0) + (departmentId !== 'all' ? 1 : 0) +
@@ -587,11 +708,18 @@ export function UnifiedManagementClient() {
     (statusFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0) +
     (dateBounds.from !== '' ? 1 : 0);
 
-  const onAddClick = React.useCallback(() => { setEditLeave(null); setAddOpen(true); }, []);
+  const onAddClick = React.useCallback(() => {
+    setEditLeave(null);
+    setAddOpen(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (addOpen) void ensureAddDialogData();
+  }, [addOpen, ensureAddDialogData]);
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button
           variant="luxe"
@@ -620,6 +748,8 @@ export function UnifiedManagementClient() {
         statusLabels={LEAVE_STATUS_LABELS_FOR_TOOLBAR}
         statusCounts={statusCounts}
         onDateBoundsChange={setDateBounds}
+        onEmployeePickerOpen={loadFilterEmployees}
+        employeePickerLoading={filterEmpActivated && employeesLoading}
         dataView={{
           value: view,
           onChange: (v) => setView(v as 'table' | 'card'),
@@ -635,7 +765,7 @@ export function UnifiedManagementClient() {
       statusFilter, selectedEmpKey,
       dateBounds.from, dateBounds.to,
       statusCounts.all, statusCounts.pending, statusCounts.approved, statusCounts.rejected, statusCounts.cancelled,
-      view, empPickerList, inlineSelects,
+      view, empPickerList, inlineSelects, loadFilterEmployees, filterEmpActivated, employeesLoading,
     ],
   );
 

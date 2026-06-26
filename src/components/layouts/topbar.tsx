@@ -25,6 +25,7 @@ import {
 import { useSidebar } from '@/components/layouts/sidebar-context';
 import { usePageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActionsSlotRegion } from '@/components/layouts/page-header-actions-context';
+import { PageHeaderActionsRow } from '@/components/layouts/page-header-actions-row';
 import { FilterTrigger } from '@/components/layouts/filter-panel';
 import { Logo } from '@/components/layouts/logo';
 import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
@@ -343,6 +344,11 @@ export function Topbar() {
     };
   }, [reRenderSlotRef]);
 
+  // Re-read header slot after route changes (Topbar renders before page children).
+  React.useLayoutEffect(() => {
+    forceHeaderActionsUpdate();
+  }, [pathname]);
+
   const headerActionsSlot = renderFnRef.current?.() ?? null;
   const [activeMenu, setActiveMenu] = React.useState<string | null>(null);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -535,27 +541,27 @@ export function Topbar() {
       {/* ── Row 2: page title + page-level actions ── */}
       <div
         className={cn(
-          'flex items-center justify-between gap-3 border-t px-4 py-2 sm:px-5 sm:py-2.5',
+          'flex flex-row flex-nowrap items-center justify-between gap-2 border-t px-3 py-2 sm:gap-3 sm:px-5 sm:py-2.5',
           'border-border/25 bg-white/55 backdrop-blur-sm dark:border-border/30 dark:bg-muted/15',
         )}
       >
         {/* Title + subtitle */}
         {meta.titleAr ? (
-          <div className="flex min-w-0 items-start gap-2.5">
-            {PageIcon && <PageIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
-            <div className="min-w-0">
-              <h1 className="truncate text-base font-bold leading-tight tracking-tight text-foreground sm:text-[17px]">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:items-start sm:gap-2.5">
+            {PageIcon && <PageIcon className="h-4 w-4 shrink-0 text-primary sm:mt-0.5" />}
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-bold leading-tight tracking-tight text-foreground sm:text-[17px]">
                 {meta.titleAr}
               </h1>
               {meta.descriptionAr && (
-                <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground sm:text-xs">
+                <p className="mt-0.5 hidden truncate text-[11px] leading-snug text-muted-foreground sm:block sm:text-xs">
                   {meta.descriptionAr}
                 </p>
               )}
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <div className="h-4 w-4 shrink-0 rounded bg-muted" />
             <div className="h-3 w-40 animate-pulse rounded-full bg-muted" />
           </div>
@@ -563,9 +569,7 @@ export function Topbar() {
 
         {/* Per-page actions (filter toggle, add button, …) */}
         {headerActionsSlot ? (
-          <div className="flex shrink-0 items-center gap-2">
-            {headerActionsSlot}
-          </div>
+          <PageHeaderActionsRow>{headerActionsSlot}</PageHeaderActionsRow>
         ) : null}
       </div>
     </header>

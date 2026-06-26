@@ -452,7 +452,7 @@ export function AllowanceTypesClient() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         {/* View toggle */}
         <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/30 p-0.5">
           <button

@@ -20,8 +20,7 @@ import {
   EntityFilterToolbar,
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
-import { EMPTY_PERIOD_RANGE, isPeriodFilterActive } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { EMPTY_PERIOD_RANGE } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { cn, formatDisplayDateTime } from '@/shared/utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -196,18 +195,6 @@ export function NotificationsAdminClient() {
     () => m.setDateBounds({ ...EMPTY_PERIOD_RANGE }),
     [m.setDateBounds],
   );
-  const periodFilterActive = isPeriodFilterActive(m.dateBounds);
-
-  const periodFilter = React.useMemo(
-    () => (
-      <EntityPeriodFilter
-        value={m.dateBounds}
-        onChange={onPeriodChange}
-        triggerClassName="w-[11rem] max-w-[14rem]"
-      />
-    ),
-    [m.dateBounds, onPeriodChange],
-  );
 
   const extraFilters = React.useMemo(
     () => (
@@ -225,21 +212,21 @@ export function NotificationsAdminClient() {
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        showDateSection={false}
         showStatusSection={false}
         showEmployeePicker={false}
-        leadingFilters={periodFilter}
-        periodFilterActive={periodFilterActive}
+        periodValue={m.dateBounds}
+        onPeriodChange={onPeriodChange}
+        defaultPeriod={EMPTY_PERIOD_RANGE}
+        defaultDateFilterTab="all"
         onPeriodFilterClear={onPeriodFilterClear}
         inlineSelects={inlineSelects}
         beforeEmployeePicker={extraFilters}
-        onDateBoundsChange={() => {}}
       />
     ),
     [
       inlineSelects,
-      periodFilter,
-      periodFilterActive,
+      m.dateBounds,
+      onPeriodChange,
       onPeriodFilterClear,
       extraFilters,
     ],
@@ -247,7 +234,7 @@ export function NotificationsAdminClient() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={m.activeFilterCount} />
         <Button
           type="button"

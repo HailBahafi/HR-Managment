@@ -22,7 +22,6 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
 import { Button } from '@/components/ui/button';
 import { isPeriodFilterActive, normalizePeriodRange, todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
 import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
@@ -194,14 +193,6 @@ export function useAttendanceEventsModel() {
     + (includeVoided ? 1 : 0)
     + (periodFilterActive ? 1 : 0);
 
-  const periodFilter = (
-    <EntityPeriodFilter
-      value={{ from, to }}
-      onChange={onPeriodChange}
-      triggerClassName="w-[11rem] max-w-[14rem]"
-    />
-  );
-
   const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
     {
       id: 'eventType',
@@ -232,7 +223,7 @@ export function useAttendanceEventsModel() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs" onClick={() => setCreateOpen(true)}>
           <Plus className="h-3.5 w-3.5" /> تسجيل حدث
@@ -245,16 +236,15 @@ export function useAttendanceEventsModel() {
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        showDateSection={false}
         showStatusSection={false}
-        leadingFilters={periodFilter}
-        periodFilterActive={periodFilterActive}
+        periodValue={{ from, to }}
+        onPeriodChange={onPeriodChange}
+        defaultPeriod={defaultPeriod}
         onPeriodFilterClear={onPeriodFilterClear}
         empPickerEmployees={allEmployeesForPicker}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         inlineSelects={inlineSelects}
-        onDateBoundsChange={() => {}}
       />
     ),
     [

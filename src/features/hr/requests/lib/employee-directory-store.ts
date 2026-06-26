@@ -59,6 +59,7 @@ function uid() { return `emp_${Date.now().toString(36)}_${Math.random().toString
 
 interface DirectoryState {
   employees: HREmployeeDirectoryRow[];
+  loadedCompanyId: string | null;
   isLoading: boolean;
   error: string | null;
   fetch: () => Promise<void>;
@@ -73,16 +74,26 @@ interface DirectoryState {
 
 export const useHREmployeeDirectoryStore = create<DirectoryState>()((set, get) => ({
   employees: [],
+  loadedCompanyId: null,
   isLoading: false,
   error: null,
 
   fetch: async () => {
     const companyId = getDefaultCompanyId();
     if (!companyId) return;
+
+    const { employees, loadedCompanyId, isLoading } = get();
+    if (isLoading) return;
+    if (loadedCompanyId === companyId && employees.length > 0) return;
+
     set({ isLoading: true, error: null });
     try {
       const result = await employeesApi.list({ companyId, limit: 500 });
-      set({ employees: result.items.map(mapApi), isLoading: false });
+      set({
+        employees: result.items.map(mapApi),
+        loadedCompanyId: companyId,
+        isLoading: false,
+      });
     } catch (e) {
       set({ error: (e as Error).message, isLoading: false });
     }

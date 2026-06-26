@@ -106,6 +106,7 @@ export function mapEmployeeContractFromApi(c: ApiEmployeeContract): HRContractRe
 
 interface HRContractsState {
   contracts: HRContractRecord[];
+  loadedCompanyId: string | null;
   isLoading: boolean;
   error: string | null;
   fetch: (params?: { employeeId?: string }) => Promise<void>;
@@ -120,21 +121,48 @@ interface HRContractsState {
   syncExpiredByEndDate: () => void;
 }
 
+let contractsFetchPromise: Promise<void> | null = null;
+
 export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
   contracts: [],
+  loadedCompanyId: null,
   isLoading: false,
   error: null,
 
   fetch: async (params) => {
     const companyId = getDefaultCompanyId();
     if (!companyId) return;
-    set({ isLoading: true, error: null });
-    try {
-      const contracts = await fetchAllEmployeeContracts(params);
-      set({ contracts, isLoading: false });
-    } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
+
+    const scopedFetch = Boolean(params?.employeeId);
+    if (!scopedFetch) {
+      const { loadedCompanyId, isLoading } = get();
+      if (loadedCompanyId === companyId) return;
+      if (isLoading && contractsFetchPromise) return contractsFetchPromise;
     }
+
+    const run = async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const contracts = await fetchAllEmployeeContracts(params);
+        set({
+          contracts,
+          loadedCompanyId: scopedFetch ? get().loadedCompanyId : companyId,
+          isLoading: false,
+        });
+      } catch (e) {
+        set({ error: (e as Error).message, isLoading: false });
+      }
+    };
+
+    if (scopedFetch) {
+      await run();
+      return;
+    }
+
+    contractsFetchPromise = run().finally(() => {
+      contractsFetchPromise = null;
+    });
+    return contractsFetchPromise;
   },
 
   add: async (data) => {

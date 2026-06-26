@@ -166,6 +166,38 @@ export const INVESTIGATION_RECOMMENDATION_LABELS: Record<HRInvestigationRecommen
 export const INVESTIGATION_DEDUCTION_TYPE_LABELS: Record<HRInvestigationDeductionType, string> = {
   days: 'أيام', hours: 'ساعات', fixed_amount: 'مبلغ ثابت',
 };
+
+export function normalizeInvestigationDeductionType(
+  raw: string | null | undefined,
+): HRInvestigationDeductionType | null {
+  if (!raw) return null;
+  const trimmed = raw.trim().toLowerCase();
+  if (trimmed === 'days' || trimmed === 'day') return 'days';
+  if (trimmed === 'hours' || trimmed === 'hour') return 'hours';
+  if (trimmed === 'fixed_amount' || trimmed === 'fixedamount' || trimmed === 'amount') return 'fixed_amount';
+  if (trimmed in INVESTIGATION_DEDUCTION_TYPE_LABELS) {
+    return trimmed as HRInvestigationDeductionType;
+  }
+  return null;
+}
+
+export function formatInvestigationDeductionType(
+  type: HRInvestigationDeductionType | string | null | undefined,
+): string | null {
+  const normalized = typeof type === 'string' ? normalizeInvestigationDeductionType(type) : type;
+  if (!normalized) return typeof type === 'string' && type.trim() ? type.trim() : null;
+  return INVESTIGATION_DEDUCTION_TYPE_LABELS[normalized];
+}
+
+export function formatInvestigationDeductionValue(
+  value: number | string | null | undefined,
+): string | null {
+  if (value == null || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(String(value).trim());
+  if (Number.isNaN(n)) return String(value).trim() || null;
+  return Number.isInteger(n) ? String(n) : String(n);
+}
+
 export const INVESTIGATION_RESULT_FILTER_ORDER: HRInvestigationResult[] = ['pending', 'proven', 'not_proven'];
 export const PENALTY_TYPE_LABELS: Record<HRPenaltyType, string> = {
   reprimand: 'توبيخ', warning: 'إنذار رسمي', monetary: 'غرامة مالية',

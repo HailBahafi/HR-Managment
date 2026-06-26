@@ -22,6 +22,7 @@ export type SelectWithClearProps = {
   className?: string;
   /** When false, hides the clear button even if a value is selected. */
   showClear?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /** Clearable filter select — placeholder when empty; × resets via `onClear`. */
@@ -34,12 +35,13 @@ export function SelectWithClear({
   children,
   className,
   showClear = true,
+  onOpenChange,
 }: SelectWithClearProps) {
   const isActive = value !== '' && value !== undefined;
 
   return (
     <div className={cn('relative shrink-0', className)}>
-      <Select value={isActive ? value : undefined} onValueChange={onValueChange}>
+      <Select value={isActive ? value : undefined} onValueChange={onValueChange} onOpenChange={onOpenChange}>
         <SelectTrigger
           dir="rtl"
           hideChevron={isActive && showClear}

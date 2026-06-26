@@ -31,6 +31,7 @@ function mapApiArticle(a: ApiContractArticle): HRContractArticle {
 
 type State = {
   articles: HRContractArticle[];
+  loadedCompanyId: string | null;
   isLoading: boolean;
   error: string | null;
   fetch: () => Promise<void>;
@@ -40,21 +41,39 @@ type State = {
   getById: (id: string) => HRContractArticle | undefined;
 };
 
+let articlesFetchPromise: Promise<void> | null = null;
+
 export const useHRContractArticlesStore = create<State>()((set, get) => ({
   articles: [],
+  loadedCompanyId: null,
   isLoading: false,
   error: null,
 
   fetch: async () => {
     const companyId = getDefaultCompanyId();
     if (!companyId) return;
-    set({ isLoading: true, error: null });
-    try {
-      const result = await contractArticlesApi.list({ companyId, limit: 200, ...payrollListArchiveQuery() });
-      set({ articles: result.items.map(mapApiArticle), isLoading: false });
-    } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
-    }
+
+    const { loadedCompanyId, isLoading } = get();
+    if (loadedCompanyId === companyId) return;
+    if (isLoading && articlesFetchPromise) return articlesFetchPromise;
+
+    articlesFetchPromise = (async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const result = await contractArticlesApi.list({ companyId, limit: 200, ...payrollListArchiveQuery() });
+        set({
+          articles: result.items.map(mapApiArticle),
+          loadedCompanyId: companyId,
+          isLoading: false,
+        });
+      } catch (e) {
+        set({ error: (e as Error).message, isLoading: false, loadedCompanyId: null });
+      } finally {
+        articlesFetchPromise = null;
+      }
+    })();
+
+    return articlesFetchPromise;
   },
 
   add: async (a) => {

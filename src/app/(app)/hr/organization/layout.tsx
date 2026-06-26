@@ -21,11 +21,11 @@ export default function OrganizationModuleLayout({ children }: { children: React
   }
 
   if (isPagesSection) {
-    return <>{children}</>;
+    return <div className="flex min-h-0 flex-1 flex-col">{children}</div>;
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 animate-fade-in">
       <SetPageTitle
         titleAr="الهيكل الإداري"
         descriptionAr="الموظفون، جهات الاتصال، المسميات، الفروع، الأقسام، والهيكل التنظيمي"

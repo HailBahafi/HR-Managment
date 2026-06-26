@@ -311,7 +311,7 @@ export function PayrollSalaryApprovalClient() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button
           size="sm"

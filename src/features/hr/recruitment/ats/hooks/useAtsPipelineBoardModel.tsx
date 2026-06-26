@@ -150,7 +150,7 @@ export function useAtsPipelineBoardModel() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
       </div>
     ),

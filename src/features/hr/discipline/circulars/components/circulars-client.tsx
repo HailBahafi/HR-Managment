@@ -121,7 +121,7 @@ export function CircularsClient() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
           onClick={() => { setDraft({ ...EMPTY, date: new Date().toISOString().slice(0, 10), executeSend: false }); setFormError(null); setDrawerOpen(true); }}>

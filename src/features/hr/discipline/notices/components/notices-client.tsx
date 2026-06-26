@@ -24,8 +24,6 @@ import {
   type EntityFilterToolbarHandle,
 } from '@/components/ui/entity-filter-toolbar';
 import {
-  DEFAULT_DATE_FILTER_META,
-  defaultDateFilterBounds,
   type DateFilterTab,
 } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
@@ -47,6 +45,11 @@ import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/d
 
 const KIND_OPTIONS = (Object.entries(NOTICE_KIND_LABELS) as [HRDisciplineNoticeKind, string][]).map(([v, l]) => ({ value: v, label: l }));
 
+function noticeAttachmentsNote(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 type KindFilter = 'all' | HRDisciplineNoticeKind;
 type DisciplineViewMode = 'cards' | 'list';
 
@@ -67,9 +70,10 @@ export function NoticesClient() {
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [kindFilter, setKindFilter] = React.useState<KindFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
   const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
-    ...DEFAULT_DATE_FILTER_META,
+    tab: 'all',
+    hasRestriction: false,
   }));
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
@@ -119,7 +123,7 @@ export function NoticesClient() {
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (kindFilter !== 'all' ? 1 : 0) + (dateRangeActive ? 1 : 0);
 
   const noticesPdfRows = React.useMemo(
-    () => listFiltered.map((n) => [n.employeeNameAr, n.date, NOTICE_KIND_LABELS[n.kind], n.reasonAr, n.attachmentsNote || '—']),
+    () => listFiltered.map((n) => [n.employeeNameAr, n.date, n.kindLabel, n.reasonAr, n.attachmentsNote || '—']),
     [listFiltered],
   );
 
@@ -127,7 +131,7 @@ export function NoticesClient() {
     if (listFiltered.length === 0) { toast.error('لا توجد إنذارات للتصدير ضمن الفلاتر الحالية.'); return; }
     const rows: XlsxCell[][] = [
       ['الموظف', 'التاريخ', 'النوع', 'السبب', 'المرفقات'],
-      ...listFiltered.map((n) => [n.employeeNameAr, n.date, NOTICE_KIND_LABELS[n.kind], n.reasonAr, n.attachmentsNote || '—']),
+      ...listFiltered.map((n) => [n.employeeNameAr, n.date, n.kindLabel, n.reasonAr, n.attachmentsNote || '—']),
     ];
     await downloadXlsxFromAoA('discipline-notices.xlsx', 'الإنذارات', rows);
     toast.success('تم تنزيل ملف Excel.');
@@ -135,7 +139,7 @@ export function NoticesClient() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -202,7 +206,7 @@ export function NoticesClient() {
       title: 'نوع الإنذار',
       headerClassName: 'whitespace-nowrap',
       className: 'whitespace-nowrap text-xs',
-      render: (n) => NOTICE_KIND_LABELS[n.kind],
+      render: (n) => n.kindLabel,
     },
     {
       key: 'date',
@@ -216,6 +220,12 @@ export function NoticesClient() {
       title: 'السبب',
       className: 'max-w-[20rem] truncate text-xs text-muted-foreground',
       render: (n) => n.reasonAr,
+    },
+    {
+      key: 'attachments',
+      title: 'المرفقات',
+      className: 'max-w-[14rem] truncate text-xs text-muted-foreground',
+      render: (n) => noticeAttachmentsNote(n.attachmentsNote) ?? '',
     },
     {
       key: 'actions',
@@ -266,6 +276,7 @@ export function NoticesClient() {
     () => (
       <EntityFilterToolbar
         ref={filterToolbarRef}
+        defaultDateFilterTab="all"
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -315,7 +326,7 @@ export function NoticesClient() {
               : 'لا توجد إنذارات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => setDateBounds({ from: '', to: '' })}>عرض كل الفترات</Button>
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>عرض كل الفترات</Button>
           ) : null}
         </div>
       ) : listFiltered.length === 0 ? (
@@ -327,11 +338,13 @@ export function NoticesClient() {
         <DisciplinePaginatedList pagination={pagination}>
           {viewMode === 'cards' ? (
           <EntityActionCardGrid>
-            {items.map((n) => (
+            {items.map((n) => {
+            const attachmentsNote = noticeAttachmentsNote(n.attachmentsNote);
+            return (
             <EntityActionCard
               key={n.id}
               title={n.employeeNameAr ?? '—'}
-              status={{ label: NOTICE_KIND_LABELS[n.kind], tone: 'primary' }}
+              status={{ label: n.kindLabel, tone: 'primary' }}
               chips={
                 <EntityActionCardChip className="font-mono tabular-nums">
                   <span className="inline-flex items-center gap-1" dir="ltr">
@@ -341,10 +354,19 @@ export function NoticesClient() {
                 </EntityActionCardChip>
               }
               description={n.reasonAr}
+              footerNote={
+                attachmentsNote ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    <span className="font-medium text-foreground/80">ملاحظة: </span>
+                    {attachmentsNote}
+                  </p>
+                ) : undefined
+              }
               onClick={() => setDetailRow(n)}
               onDelete={() => setDeleteId(n.id)}
             />
-            ))}
+            );
+            })}
           </EntityActionCardGrid>
           ) : (
           <DataTable
@@ -400,11 +422,15 @@ export function NoticesClient() {
         title="تفاصيل الإنذار"
         fields={detailRow ? [
           { label: 'الموظف', value: detailRow.employeeNameAr },
-          { label: 'نوع الإنذار', value: NOTICE_KIND_LABELS[detailRow.kind] },
+          { label: 'نوع الإنذار', value: detailRow.kindLabel },
           { label: 'التاريخ', value: <TableDateCell value={detailRow.date} /> },
           { label: 'السبب', value: detailRow.reasonAr },
-          { label: 'مخالفة مرتبطة', value: detailRow.linkedCaseNumber ?? '—' },
-          { label: 'ملاحظة المرفقات', value: detailRow.attachmentsNote ?? '—' },
+          ...(detailRow.linkedCaseNumber
+            ? [{ label: 'مخالفة مرتبطة', value: detailRow.linkedCaseNumber }]
+            : []),
+          ...(noticeAttachmentsNote(detailRow.attachmentsNote)
+            ? [{ label: 'ملاحظة المرفقات', value: noticeAttachmentsNote(detailRow.attachmentsNote)! }]
+            : []),
           { label: 'أُنشئ', value: <TableDateCell value={detailRow.createdAt} mode="datetime" /> },
         ] : []}
       />

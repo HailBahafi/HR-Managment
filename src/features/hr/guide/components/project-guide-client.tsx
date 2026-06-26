@@ -48,11 +48,12 @@ export function ProjectGuideClient() {
         type="button"
         variant="outline"
         size="sm"
-        className="h-8 lg:hidden shrink-0"
+        className="h-8 shrink-0 lg:hidden"
+        aria-label="فهرس الدليل"
         onClick={() => setMobileNavOpen((v) => !v)}
       >
         {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        <span className="ms-2">الفهرس</span>
+        <span className="ms-2 hidden sm:inline">الفهرس</span>
       </Button>
     ),
     [mobileNavOpen],

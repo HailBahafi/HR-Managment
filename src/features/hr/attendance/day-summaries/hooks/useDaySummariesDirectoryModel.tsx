@@ -20,7 +20,6 @@ import {
 } from '@/features/hr/attendance/day-summaries/utils/month-date-range';
 import { isPeriodFilterActive, normalizePeriodRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { Button } from '@/components/ui/button';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
 import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
@@ -160,14 +159,6 @@ export function useDaySummariesDirectoryModel() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
-  const periodFilter = (
-    <EntityPeriodFilter
-      value={{ from, to }}
-      onChange={onPeriodChange}
-      triggerClassName="w-[11rem] max-w-[14rem]"
-    />
-  );
-
   const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
     {
       id: 'status',
@@ -205,7 +196,7 @@ export function useDaySummariesDirectoryModel() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button
           type="button"
@@ -225,16 +216,15 @@ export function useDaySummariesDirectoryModel() {
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        showDateSection={false}
         showStatusSection={false}
-        leadingFilters={periodFilter}
-        periodFilterActive={periodFilterActive}
+        periodValue={{ from, to }}
+        onPeriodChange={onPeriodChange}
+        defaultPeriod={defaultPeriod}
         onPeriodFilterClear={onPeriodFilterClear}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         inlineSelects={inlineSelects}
-        onDateBoundsChange={() => {}}
       />
     ),
     [

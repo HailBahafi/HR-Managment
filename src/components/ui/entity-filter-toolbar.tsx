@@ -23,12 +23,9 @@ import {
 import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   effectiveDateRange,
-  dateFilterHasRestriction,
-  hasDateRangeFilter,
-  normalizePeriodRange,
-  ymdToMDYDisplay,
+  isPeriodFilterActive,
 } from '@/features/hr/discipline/lib/discipline-date-filter';
-import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { EntityPeriodFilter, type PeriodRange } from '@/components/ui/entity-period-filter';
 import { SelectWithClear } from '@/components/ui/select-with-clear';
 
 export const DATE_TAB_BASE =
@@ -77,6 +74,8 @@ export type EntityFilterInlineSelect = {
   options: readonly { value: string; label: string }[];
   placeholder?: string;
   className?: string;
+  /** Called when the dropdown opens (lazy-load options). */
+  onOpen?: () => void;
 };
 
 const EMPTY_EMP_PICKER_LIST: { id: string; name: string }[] = [];
@@ -89,17 +88,17 @@ const noopSetEmp = () => {};
 const noopStatus = () => {};
 
 const DATA_VIEW_TAB_CLASS =
-  'entity-toolbar-view-tab h-7 gap-1 px-2.5 text-[11px] transition-all duration-150 data-[state=active]:!font-semibold data-[state=active]:!shadow-sm data-[state=active]:ring-2 data-[state=active]:ring-primary/40 data-[state=active]:ring-offset-2 data-[state=active]:ring-offset-background data-[state=active]:border data-[state=active]:border-primary/35';
+  'entity-toolbar-view-tab flex h-8 w-8 shrink-0 items-center justify-center p-0 transition-all duration-150 data-[state=active]:!shadow-sm data-[state=active]:ring-2 data-[state=active]:ring-primary/40 data-[state=active]:ring-offset-2 data-[state=active]:ring-offset-background data-[state=active]:border data-[state=active]:border-primary/35';
 
 function DataViewIcon({ name }: { name?: EntityDataViewIcon }) {
   switch (name) {
     case 'layout-grid':
-      return <LayoutGrid className="h-3 w-3 shrink-0" />;
+      return <LayoutGrid className="h-3.5 w-3.5 shrink-0" />;
     case 'calendar-days':
-      return <CalendarDays className="h-3 w-3 shrink-0" />;
+      return <CalendarDays className="h-3.5 w-3.5 shrink-0" />;
     case 'list':
     default:
-      return <List className="h-3 w-3 shrink-0" />;
+      return <List className="h-3.5 w-3.5 shrink-0" />;
   }
 }
 
@@ -107,6 +106,9 @@ export interface EntityFilterToolbarProps {
   empPickerEmployees?: { id: string; name: string }[];
   selectedEmpIds?: Set<string>;
   onSelectedEmpIdsChange?: (s: Set<string>) => void;
+  /** Lazy-load employee list when the user presses the filter trigger. */
+  onEmployeePickerOpen?: () => void;
+  employeePickerLoading?: boolean;
 
   statusFilter?: string;
   onStatusFilterChange?: (v: string) => void;
@@ -116,6 +118,12 @@ export interface EntityFilterToolbarProps {
 
   onDateBoundsChange?: (bounds: { from: string; to: string }) => void;
   onDateFilterMetaChange?: (meta: { tab: DateFilterTab; hasRestriction: boolean }) => void;
+
+  /** Controlled period filter (optional). Pair with `onPeriodChange`. */
+  periodValue?: PeriodRange;
+  onPeriodChange?: (range: PeriodRange) => void;
+  /** Default period for reset and active-state detection (derived from `defaultDateFilterTab` when omitted). */
+  defaultPeriod?: PeriodRange;
 
   showDateSection?: boolean;
   showStatusSection?: boolean;
@@ -156,6 +164,8 @@ export const EntityFilterToolbar = React.forwardRef<
     empPickerEmployees = EMPTY_EMP_PICKER_LIST,
     selectedEmpIds = EMPTY_SELECTED_EMP_IDS,
     onSelectedEmpIdsChange = noopSetEmp,
+    onEmployeePickerOpen,
+    employeePickerLoading = false,
     statusFilter = 'all',
     onStatusFilterChange = noopStatus,
     statusOrder = EMPTY_STATUS_ORDER_LIST,
@@ -163,6 +173,9 @@ export const EntityFilterToolbar = React.forwardRef<
     statusCounts = DEFAULT_STATUS_COUNTS,
     onDateBoundsChange = noopBounds,
     onDateFilterMetaChange,
+    periodValue,
+    onPeriodChange,
+    defaultPeriod,
     showDateSection = true,
     showStatusSection = true,
     showEmployeePicker = true,
@@ -179,28 +192,39 @@ export const EntityFilterToolbar = React.forwardRef<
   },
   ref,
 ) {
-  const [dateFilterTab, setDateFilterTab] = React.useState<DateFilterTab>(defaultDateFilterTab);
-  const [appliedCustomFrom, setAppliedCustomFrom] = React.useState('');
-  const [appliedCustomTo, setAppliedCustomTo] = React.useState('');
-  const [customDialogOpen, setCustomDialogOpen] = React.useState(false);
-  const customApplyPendingRef = React.useRef(false);
-
-  const effectiveBounds = React.useMemo(
-    () => (showDateSection ? effectiveDateRange(dateFilterTab, appliedCustomFrom, appliedCustomTo) : { from: '', to: '' }),
-    [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo],
+  const resolvedDefaultPeriod = React.useMemo(
+    () => defaultPeriod ?? effectiveDateRange(defaultDateFilterTab, '', ''),
+    [defaultPeriod, defaultDateFilterTab],
   );
-  const effectiveBoundsFrom = effectiveBounds.from;
-  const effectiveBoundsTo = effectiveBounds.to;
+
+  const [internalPeriod, setInternalPeriod] = React.useState<PeriodRange>(resolvedDefaultPeriod);
+  const isPeriodControlled = periodValue != null && onPeriodChange != null;
+  const period = isPeriodControlled ? periodValue! : internalPeriod;
+
+  React.useEffect(() => {
+    if (!isPeriodControlled) {
+      setInternalPeriod(resolvedDefaultPeriod);
+    }
+  }, [resolvedDefaultPeriod, isPeriodControlled]);
+
+  const applyPeriod = React.useCallback((range: PeriodRange) => {
+    if (isPeriodControlled) {
+      onPeriodChange!(range);
+    } else {
+      setInternalPeriod(range);
+    }
+  }, [isPeriodControlled, onPeriodChange]);
 
   const onDateBoundsChangeRef = React.useRef(onDateBoundsChange);
   onDateBoundsChangeRef.current = onDateBoundsChange;
   const lastEmittedBoundsKeyRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    const key = `${effectiveBoundsFrom}\u0000${effectiveBoundsTo}`;
+    if (!showDateSection) return;
+    const key = `${period.from}\u0000${period.to}`;
     if (lastEmittedBoundsKeyRef.current === key) return;
     lastEmittedBoundsKeyRef.current = key;
-    onDateBoundsChangeRef.current({ from: effectiveBoundsFrom, to: effectiveBoundsTo });
-  }, [effectiveBoundsFrom, effectiveBoundsTo]);
+    onDateBoundsChangeRef.current(period);
+  }, [showDateSection, period.from, period.to]);
 
   const onDateFilterMetaChangeRef = React.useRef(onDateFilterMetaChange);
   onDateFilterMetaChangeRef.current = onDateFilterMetaChange;
@@ -213,106 +237,58 @@ export const EntityFilterToolbar = React.forwardRef<
       onDateFilterMetaChangeRef.current?.({ tab: 'all', hasRestriction: false });
       return;
     }
-    const hasR = dateFilterHasRestriction(dateFilterTab, appliedCustomFrom, appliedCustomTo);
-    const key = `${dateFilterTab}|${hasR ? 1 : 0}`;
+    const hasR = isPeriodFilterActive(period, resolvedDefaultPeriod);
+    const key = `${hasR ? 'custom' : defaultDateFilterTab}|${hasR ? 1 : 0}`;
     if (lastEmittedMetaKeyRef.current === key) return;
     lastEmittedMetaKeyRef.current = key;
     onDateFilterMetaChangeRef.current?.({
-      tab: dateFilterTab,
+      tab: hasR ? 'custom' : defaultDateFilterTab,
       hasRestriction: hasR,
     });
-  }, [showDateSection, dateFilterTab, appliedCustomFrom, appliedCustomTo]);
-
-  const openCustomDateDialog = React.useCallback(() => {
-    setCustomDialogOpen(true);
-  }, []);
+  }, [showDateSection, period, resolvedDefaultPeriod, defaultDateFilterTab]);
 
   const resetDateFilter = React.useCallback(() => {
-    setDateFilterTab(defaultDateFilterTab);
-    setAppliedCustomFrom('');
-    setAppliedCustomTo('');
-  }, [defaultDateFilterTab]);
+    applyPeriod(resolvedDefaultPeriod);
+  }, [applyPeriod, resolvedDefaultPeriod]);
 
   const resetStatusFilter = React.useCallback(() => {
     onStatusFilterChange('all');
   }, [onStatusFilterChange]);
-
-  const prevDateTabRef = React.useRef<DateFilterTab>(defaultDateFilterTab);
-
-  const handleDatePeriodSelect = React.useCallback((v: string) => {
-    const next = v as DateFilterTab;
-    if (next === 'custom') {
-      prevDateTabRef.current = dateFilterTab;
-      setDateFilterTab('custom');
-      openCustomDateDialog();
-      return;
-    }
-    setDateFilterTab(next);
-  }, [dateFilterTab, openCustomDateDialog]);
 
   React.useImperativeHandle(ref, () => ({
     resetDateFilter,
     resetStatusFilter,
   }), [resetDateFilter, resetStatusFilter]);
 
-  const showDateReset = showDateSection && dateFilterTab !== defaultDateFilterTab;
-  const showStatusReset = showStatusSection && statusFilter !== 'all';
-
-  const dateTabForSelect: DateFilterTab =
-    dateFilterTab === 'all' || dateFilterTab === 'today' || dateFilterTab === 'week' || dateFilterTab === 'month' || dateFilterTab === 'custom'
-      ? dateFilterTab
-      : 'all';
-
-  const datePeriodDisplayLabel = React.useMemo(() => {
-    if (dateFilterTab !== 'custom') return undefined;
-    if (!hasDateRangeFilter(appliedCustomFrom, appliedCustomTo)) return undefined;
-    const from = ymdToMDYDisplay(appliedCustomFrom) || '…';
-    const to = ymdToMDYDisplay(appliedCustomTo) || '…';
-    return `المحدد: ${from} — ${to}`;
-  }, [dateFilterTab, appliedCustomFrom, appliedCustomTo]);
+  const internalPeriodActive = showDateSection && isPeriodFilterActive(period, resolvedDefaultPeriod);
 
   const statusSelectValue =
     statusFilter === 'all' || statusOrder.includes(statusFilter) ? statusFilter : 'all';
 
   const useFilterDropdowns = filterLayout === 'tabs' || filterLayout === 'collapsible';
 
-  const filterDropdownRow = useFilterDropdowns && (showDateSection || showStatusSection) ? (
-    <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-2 gap-y-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {showDateSection ? (
-        <SelectWithClear
-          value={dateTabForSelect === 'all' ? '' : dateTabForSelect}
-          displayLabel={datePeriodDisplayLabel}
-          onValueChange={(v) => handleDatePeriodSelect(v || 'all')}
-          onClear={resetDateFilter}
-          placeholder="اختر الفترة"
-          className={cn(
-            datePeriodDisplayLabel
-              ? 'w-auto min-w-[11rem] max-w-[20rem]'
-              : 'w-[9.25rem] max-w-[9.25rem]',
-          )}
-        >
-          <SelectItem value="today">اليوم</SelectItem>
-          <SelectItem value="week">هذا الأسبوع</SelectItem>
-          <SelectItem value="month">هذا الشهر</SelectItem>
-          <SelectItem value="custom">مخصص…</SelectItem>
-        </SelectWithClear>
-      ) : null}
-      {showStatusSection && statusOrder.length > 0 ? (
-        <SelectWithClear
-          value={statusSelectValue === 'all' ? '' : statusSelectValue}
-          onValueChange={(v) => onStatusFilterChange(v || 'all')}
-          onClear={resetStatusFilter}
-          placeholder="اختر الحالة"
-          className="w-[9.25rem] max-w-[9.25rem]"
-        >
-          {statusOrder.map((s) => (
-            <SelectItem key={s} value={s}>
-              {statusLabels[s] ?? s}
-            </SelectItem>
-          ))}
-        </SelectWithClear>
-      ) : null}
-    </div>
+  const statusFilterControl = useFilterDropdowns && showStatusSection && statusOrder.length > 0 ? (
+    <SelectWithClear
+      value={statusSelectValue === 'all' ? '' : statusSelectValue}
+      onValueChange={(v) => onStatusFilterChange(v || 'all')}
+      onClear={resetStatusFilter}
+      placeholder="اختر الحالة"
+      className="w-[9.25rem] max-w-[9.25rem]"
+    >
+      {statusOrder.map((s) => (
+        <SelectItem key={s} value={s}>
+          {statusLabels[s] ?? s}
+        </SelectItem>
+      ))}
+    </SelectWithClear>
+  ) : null;
+
+  const periodFilterControl = showDateSection ? (
+    <EntityPeriodFilter
+      value={period}
+      onChange={applyPeriod}
+      triggerClassName="w-[11rem] max-w-[14rem]"
+    />
   ) : null;
 
   const hasSecondaryFilters =
@@ -336,9 +312,12 @@ export const EntityFilterToolbar = React.forwardRef<
             onValueChange={(v) => sel.onChange(v || 'all')}
             onClear={() => sel.onChange('all')}
             placeholder={sel.placeholder ?? '—'}
+            onOpenChange={(open) => {
+              if (open) sel.onOpen?.();
+            }}
             className={cn('w-[9rem] max-w-[9rem]', sel.className)}
           >
-            {sel.options.filter((o) => o.value !== 'all').map((o) => (
+            {sel.options.filter((o) => o.value !== 'all' && o.value !== '').map((o) => (
               <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
             ))}
           </SelectWithClear>
@@ -346,7 +325,13 @@ export const EntityFilterToolbar = React.forwardRef<
       })}
       {beforeEmployeePicker}
       {showEmployeePicker ? (
-        <EmployeePicker employees={empPickerEmployees} selected={selectedEmpIds} onChange={onSelectedEmpIdsChange} />
+        <EmployeePicker
+          employees={empPickerEmployees}
+          selected={selectedEmpIds}
+          onChange={onSelectedEmpIdsChange}
+          loading={employeePickerLoading}
+          onRequestLoad={onEmployeePickerOpen}
+        />
       ) : null}
     </>
   ) : null;
@@ -360,18 +345,16 @@ export const EntityFilterToolbar = React.forwardRef<
 
   const hasAnyActiveFilter = React.useMemo(() =>
     periodFilterActive ||
+    internalPeriodActive ||
     (showEmployeePicker && selectedEmpIds.size > 0) ||
-    (showDateSection && dateFilterTab !== defaultDateFilterTab) ||
     (showStatusSection && statusFilter !== 'all') ||
     (inlineSelects?.some((s) => s.value !== 'all' && s.value !== '') ?? false) ||
     (moreFilters?.some((s) => s.value !== 'all' && s.value !== '') ?? false),
     [
       periodFilterActive,
+      internalPeriodActive,
       showEmployeePicker,
       selectedEmpIds.size,
-      showDateSection,
-      dateFilterTab,
-      defaultDateFilterTab,
       showStatusSection,
       statusFilter,
       inlineSelects,
@@ -485,12 +468,14 @@ export const EntityFilterToolbar = React.forwardRef<
           {leadingFilters}
           {leadingFilters ? (
             <>
+              {periodFilterControl}
               {pickerBlock}
-              {filterDropdownRow}
+              {statusFilterControl}
             </>
           ) : (
             <>
-              {filterDropdownRow}
+              {periodFilterControl}
+              {statusFilterControl}
               {pickerBlock}
             </>
           )}
@@ -511,9 +496,14 @@ export const EntityFilterToolbar = React.forwardRef<
               <Tabs value={dataView.value} onValueChange={dataView.onChange}>
                 <TabsList className="h-8 shrink-0 gap-0.5 bg-muted/70 p-0.5">
                   {dataView.options.map((opt) => (
-                    <TabsTrigger key={opt.value} value={opt.value} className={DATA_VIEW_TAB_CLASS}>
+                    <TabsTrigger
+                      key={opt.value}
+                      value={opt.value}
+                      className={DATA_VIEW_TAB_CLASS}
+                      aria-label={opt.label}
+                      title={opt.label}
+                    >
                       <DataViewIcon name={opt.icon} />
-                      {opt.label}
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -527,32 +517,6 @@ export const EntityFilterToolbar = React.forwardRef<
           )}
         </div>
       </div>
-
-      {showDateSection ? (
-        <DateRangePicker
-          open={customDialogOpen}
-          onOpenChange={(open) => {
-            if (open) {
-              setCustomDialogOpen(true);
-              return;
-            }
-            if (!customApplyPendingRef.current && !appliedCustomFrom && !appliedCustomTo) {
-              setDateFilterTab(prevDateTabRef.current);
-            }
-            customApplyPendingRef.current = false;
-            setCustomDialogOpen(false);
-          }}
-          value={{ from: appliedCustomFrom, to: appliedCustomTo }}
-          onApply={(range) => {
-            const normalized = normalizePeriodRange(range);
-            if (!normalized) return;
-            customApplyPendingRef.current = true;
-            setAppliedCustomFrom(normalized.from);
-            setAppliedCustomTo(normalized.to);
-            setDateFilterTab('custom');
-          }}
-        />
-      ) : null}
     </>
   );
 });

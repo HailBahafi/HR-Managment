@@ -23,6 +23,10 @@ export function AppEntityFilterRegion({ className }: { className?: string }) {
     return () => { reRenderSlotRef.current = null; };
   }, [reRenderSlotRef]);
 
+  React.useLayoutEffect(() => {
+    forceUpdate();
+  }, [pathname]);
+
   React.useEffect(() => {
     if (excluded) renderFnRef.current = null;
   }, [excluded, renderFnRef]);

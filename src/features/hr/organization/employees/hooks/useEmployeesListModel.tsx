@@ -8,6 +8,7 @@ import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
+import { PageHeaderPrimaryButton } from '@/components/layouts/page-header-primary-button';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -190,8 +191,6 @@ export function useEmployeesListModel() {
         name: emp.nameAr,
         employeeCode: emp.employeeCode,
         position: emp.position ?? '—',
-        department: emp.departmentNameAr ?? '—',
-        branchCity: emp.branchNameAr ?? '—',
         contractType: CONTRACT_TYPE_AR[emp.contractType ?? ''] ?? emp.contractType ?? '—',
         startDate: empStartYmd(emp),
         statusAr: EMP_CONTRACT_STATUS_LABELS[emp.contractStatus ?? ''] ?? emp.contractStatus ?? '—',
@@ -228,7 +227,7 @@ export function useEmployeesListModel() {
       return;
     }
     const rows: XlsxCell[][] = [[
-      'الموظف', 'رقم الموظف', 'المسمى', 'القسم', 'الفرع',
+      'الموظف', 'رقم الموظف', 'المسمى',
       'نوع العقد', 'تاريخ الالتحاق', 'حالة العقد',
     ]];
     for (const emp of filtered) {
@@ -236,8 +235,6 @@ export function useEmployeesListModel() {
         emp.nameAr,
         emp.employeeCode,
         emp.position ?? '—',
-        emp.departmentNameAr ?? '—',
-        emp.branchNameAr ?? '—',
         CONTRACT_TYPE_AR[emp.contractType ?? ''] ?? emp.contractType ?? '—',
         empStartYmd(emp),
         EMP_CONTRACT_STATUS_LABELS[emp.contractStatus ?? ''] ?? emp.contractStatus ?? '—',
@@ -272,12 +269,11 @@ export function useEmployeesListModel() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton />
-        <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={() => setNewEmpOpen(true)}>
-          <Plus className="h-4 w-4" />
+        <PageHeaderPrimaryButton icon={Plus} label="موظف جديد" onClick={() => setNewEmpOpen(true)}>
           موظف جديد
-        </Button>
+        </PageHeaderPrimaryButton>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

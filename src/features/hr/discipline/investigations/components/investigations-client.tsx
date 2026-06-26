@@ -23,7 +23,8 @@ import type {
   HRInvestigationResult,
 } from '@/features/hr/discipline/lib/types';
 import {
-  INVESTIGATION_DEDUCTION_TYPE_LABELS,
+  formatInvestigationDeductionType,
+  formatInvestigationDeductionValue,
   INVESTIGATION_RECOMMENDATION_LABELS,
   INVESTIGATION_RESULT_LABELS,
   INVESTIGATION_RESULT_FILTER_ORDER,
@@ -46,8 +47,6 @@ import {
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
 import {
-  DEFAULT_DATE_FILTER_META,
-  defaultDateFilterBounds,
   type DateFilterTab,
 } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
@@ -92,17 +91,30 @@ const OPEN_EMPTY: OpenDraftForm = {
   date: '',
 };
 
+function investigationDeductionTypeLabel(
+  inv: HRDisciplineInvestigationRecord,
+): string | null {
+  return formatInvestigationDeductionType(inv.deductionType);
+}
+
+function investigationDeductionValueLabel(
+  inv: HRDisciplineInvestigationRecord,
+): string | null {
+  return formatInvestigationDeductionValue(inv.deductionValue);
+}
+
 export function InvestigationsClient() {
   const m = useDisciplineInvestigationsDirectoryModel();
-  const { setListFilters, items, pagination, filteredItems, sourceInvestigations, dateFilteredItems } = m;
+  const { setListFilters, pagination, filteredItems, sourceInvestigations, dateFilteredItems } = m;
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [resultFilter, setResultFilter] = React.useState<ResultFilter>('all');
   const [recommendationFilter, setRecommendationFilter] = React.useState<RecommendationFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
   const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
-    ...DEFAULT_DATE_FILTER_META,
+    tab: 'all',
+    hasRestriction: false,
   }));
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
@@ -220,7 +232,7 @@ export function InvestigationsClient() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -316,21 +328,29 @@ export function InvestigationsClient() {
       title: 'التوصية',
       headerClassName: 'whitespace-nowrap',
       className: 'whitespace-nowrap text-xs',
-      render: (inv) => inv.recommendationType ? INVESTIGATION_RECOMMENDATION_LABELS[inv.recommendationType] : '—',
+      render: (inv) => {
+        if (inv.recommendationType === 'deduction' && inv.recommendation.trim()) {
+          return inv.recommendation;
+        }
+        return inv.recommendationType ? INVESTIGATION_RECOMMENDATION_LABELS[inv.recommendationType] : '—';
+      },
     },
     {
       key: 'deductionType',
       title: 'نوع الاستقطاع',
       headerClassName: 'whitespace-nowrap',
       className: 'whitespace-nowrap text-xs text-muted-foreground',
-      render: (inv) => inv.deductionType ? INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType] : '—',
+      render: (inv) => investigationDeductionTypeLabel(inv) ?? '—',
     },
     {
       key: 'deductionValue',
       title: 'قيمة الاستقطاع',
       headerClassName: 'whitespace-nowrap',
       className: 'whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground',
-      render: (inv) => <span dir="ltr">{inv.deductionValue != null ? inv.deductionValue : '—'}</span>,
+      render: (inv) => {
+        const value = investigationDeductionValueLabel(inv);
+        return value ? <span dir="ltr">{value}</span> : '—';
+      },
     },
     {
       key: 'employeeStatement',
@@ -448,6 +468,7 @@ export function InvestigationsClient() {
     () => (
       <EntityFilterToolbar
         ref={filterToolbarRef}
+        defaultDateFilterTab="all"
         inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
@@ -510,7 +531,7 @@ export function InvestigationsClient() {
               : 'لا توجد تحقيقات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => setDateBounds({ from: '', to: '' })}>
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
               عرض كل الفترات
             </Button>
           ) : null}
@@ -528,7 +549,7 @@ export function InvestigationsClient() {
         <DisciplinePaginatedList pagination={pagination}>
           {viewMode === 'cards' ? (
           <EntityActionCardGrid>
-            {items.map((inv) => (
+            {listFiltered.map((inv) => (
             <EntityActionCard
               key={inv.id}
               reference={inv.caseNumber}
@@ -580,10 +601,14 @@ export function InvestigationsClient() {
               ) : null}
               {inv.recommendationType === 'deduction' ? (
                 <div className="space-y-0.5 text-xs text-muted-foreground">
-                  <p>التوصية: {INVESTIGATION_RECOMMENDATION_LABELS.deduction}</p>
-                  {inv.deductionType ? <p>نوع الاستقطاع: {INVESTIGATION_DEDUCTION_TYPE_LABELS[inv.deductionType]}</p> : null}
-                  {inv.deductionValue != null ? (
-                    <p className="font-mono tabular-nums" dir="ltr">قيمة الاستقطاع: {inv.deductionValue}</p>
+                  <p>التوصية: {inv.recommendation || INVESTIGATION_RECOMMENDATION_LABELS.deduction}</p>
+                  {investigationDeductionTypeLabel(inv) ? (
+                    <p>نوع الاستقطاع: {investigationDeductionTypeLabel(inv)}</p>
+                  ) : null}
+                  {investigationDeductionValueLabel(inv) ? (
+                    <p className="font-mono tabular-nums" dir="ltr">
+                      قيمة الاستقطاع: {investigationDeductionValueLabel(inv)}
+                    </p>
                   ) : null}
                 </div>
               ) : inv.recommendationType === 'warning' ? (
@@ -598,7 +623,7 @@ export function InvestigationsClient() {
             alwaysShowTable
             tableClassName="min-w-[720px]"
             columns={columns}
-            data={items}
+            data={listFiltered}
             keyExtractor={(inv) => inv.id}
             onRowClick={(inv) => setDetailRow(inv)}
           />
@@ -694,9 +719,15 @@ export function InvestigationsClient() {
           { label: 'المحقق', value: detailRow.investigatorName },
           { label: 'التاريخ', value: <TableDateCell value={detailRow.date} /> },
           { label: 'النتيجة', value: INVESTIGATION_RESULT_LABELS[detailRow.result] },
-          { label: 'التوصية', value: detailRow.recommendationType ? INVESTIGATION_RECOMMENDATION_LABELS[detailRow.recommendationType] : '—' },
-          { label: 'نوع الاستقطاع', value: detailRow.deductionType ? INVESTIGATION_DEDUCTION_TYPE_LABELS[detailRow.deductionType] : '—' },
-          { label: 'قيمة الاستقطاع', value: detailRow.deductionValue != null ? detailRow.deductionValue : '—' },
+          { label: 'التوصية', value: detailRow.recommendationType === 'deduction' && detailRow.recommendation.trim()
+            ? detailRow.recommendation
+            : (detailRow.recommendationType ? INVESTIGATION_RECOMMENDATION_LABELS[detailRow.recommendationType] : '—') },
+          ...(investigationDeductionTypeLabel(detailRow)
+            ? [{ label: 'نوع الاستقطاع', value: investigationDeductionTypeLabel(detailRow)! }]
+            : []),
+          ...(investigationDeductionValueLabel(detailRow)
+            ? [{ label: 'قيمة الاستقطاع', value: investigationDeductionValueLabel(detailRow)! }]
+            : []),
           { label: 'أقوال الموظف', value: detailRow.employeeStatement || '—' },
           { label: 'أقوال الشهود', value: detailRow.witnessStatement || '—' },
         ] : []}

@@ -302,12 +302,12 @@ export function FormField({ label, required, error, children, span2 }: { label: 
 
 export function PageHeader({ title, description, children }: { title: string; description?: string; children?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h2 className="font-display text-2xl font-bold tracking-tight">{title}</h2>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+    <div className="flex flex-row flex-nowrap items-start justify-between gap-3 sm:gap-4">
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate font-display text-xl font-bold tracking-tight sm:text-2xl">{title}</h2>
+        {description && <p className="mt-1 truncate text-sm text-muted-foreground">{description}</p>}
       </div>
-      {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
+      {children && <div className="flex shrink-0 flex-nowrap items-center gap-2">{children}</div>}
     </div>
   );
 }

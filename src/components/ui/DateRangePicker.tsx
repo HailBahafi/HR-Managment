@@ -75,6 +75,15 @@ function displayDate(ymd: string): string {
 
 const DAY_LABELS  = ['سبت', 'أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة'];
 
+const MONTH_NAMES_AR = [
+  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+] as const;
+
+function formatMonthYearLabel(year: number, monthIndex: number): string {
+  return `${MONTH_NAMES_AR[monthIndex]} ${year}`;
+}
+
 // ─── tab pill ─────────────────────────────────────────────────────────────────
 
 function TabPill({ active, onClick, icon, label }: {
@@ -302,7 +311,7 @@ export function DateRangePicker({
           disabled={isPast}
           onClick={() => !isPast && handleMonthClick(yearView, idx)}
           className={cn(
-            'flex h-10 items-center justify-center rounded-xl text-sm font-medium font-mono tabular-nums',
+            'flex h-10 items-center justify-center rounded-xl px-1 text-xs font-medium',
             'transition-all duration-150 focus-visible:outline-none select-none',
             isPast    && 'cursor-not-allowed opacity-30 text-muted-foreground',
             !isPast && !selected && 'cursor-pointer text-foreground hover:bg-primary/15',
@@ -310,9 +319,9 @@ export function DateRangePicker({
             isCurrent && !selected && !isPast &&
               'ring-2 ring-primary/50 ring-offset-1 text-primary font-bold',
           )}
-          dir="ltr"
+          title={formatMonthYearLabel(yearView, idx)}
         >
-          {`${yearView}/${monthNum}`}
+          {MONTH_NAMES_AR[idx]}
         </button>
       );
     });
@@ -477,7 +486,7 @@ export function DateRangePicker({
                     الشهر المحدد
                   </span>
                   <span className="text-sm font-semibold text-foreground">
-                    {`${y}/${String(m).padStart(2, '0')}`}
+                    {formatMonthYearLabel(y, m - 1)}
                   </span>
                 </div>
               );

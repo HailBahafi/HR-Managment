@@ -27,6 +27,8 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { useHRPayrollPeriodsStore, PERIOD_STATUS_LABELS } from '@/features/hr/payroll/lib/payroll-periods-store';
 import {
   mapEmployeesPayrollSummaryToPreviews,
+  mapPreviewsToPayrollPrintRows,
+  sumPayrollPrintRows,
 } from '@/features/hr/payroll/lib/compensation-preview';
 import { useEmployeesPayrollSummary } from '@/features/hr/payroll/compensation/hooks/useEmployeesPayrollSummary';
 import { CompensationReportPanel } from '@/features/hr/payroll/compensation/components/compensation-report-panel';
@@ -102,9 +104,7 @@ export function PayrollMultiPeriodExplorer() {
       onChange: (v) => setSelectedId(v && v !== 'all' ? v : null),
       placeholder: 'فترة الراتب',
       className: 'w-[13rem] max-w-[13rem]',
-      options: periodDropdownOptions.length > 0
-        ? periodDropdownOptions
-        : [{ value: '', label: 'لا توجد فترات' }],
+      options: periodDropdownOptions,
     },
   ], [selectedId, periodDropdownOptions]);
 
@@ -130,16 +130,12 @@ export function PayrollMultiPeriodExplorer() {
       const allow = new Set(employeeIdsForFilter);
       previews = previews.filter(r => allow.has(r.employeeId));
     }
+    const rows = mapPreviewsToPayrollPrintRows(previews);
     return {
       monthNameAr: selectedPeriod.nameAr || selectedPeriod.code,
       branchNameAr: 'المقر الرئيسي',
-      rows: previews.map((r, i) => ({
-        no: i + 1,
-        employeeName: r.namePrimary,
-        baseSalary: r.baseSalary,
-        bonusOrOvertime: r.entitlementOvertimeSar + r.entitlementBonusSar,
-        totalSalary: r.lineNetSar,
-      })),
+      rows,
+      totals: sumPayrollPrintRows(rows),
     };
   }, [selectedPeriod, payrollSummary, employeeIdsForFilter]);
 
@@ -183,28 +179,42 @@ export function PayrollMultiPeriodExplorer() {
       }
       const headers = [
         '#', 'اسم الموظف', 'الراتب الأساسي', 'البدلات',
-        'مستحقات (أوفرتايم + مكافآت)', 'خصومات (غياب + تأخير + جزاءات)', 'الصافي',
+        'أوفر تايم', 'مكافآت', 'الإجمالي', 'السلف',
+        'غياب', 'تأخير', 'جزاءات', 'إضافة/خصم مباشر', 'الصافي',
       ];
       const rows = previews.map((r, i) => [
         i + 1,
         r.namePrimary,
         r.baseSalary,
         r.allowancesMonthlyTotal,
-        r.entitlementOvertimeSar + r.entitlementBonusSar,
-        r.dedAbsenceSar + r.dedLateSar + r.dedPenaltiesSar,
+        r.entitlementOvertimeSar,
+        r.entitlementBonusSar,
+        r.grossSar,
+        r.dedAdvancesSar,
+        r.dedAbsenceSar,
+        r.dedLateSar,
+        r.dedPenaltiesSar,
+        r.dedAdminSar,
         r.lineNetSar,
       ]);
       const totalRow = [
         '', 'المجموع',
         previews.reduce((s, r) => s + r.baseSalary, 0),
         previews.reduce((s, r) => s + r.allowancesMonthlyTotal, 0),
-        previews.reduce((s, r) => s + r.entitlementOvertimeSar + r.entitlementBonusSar, 0),
-        previews.reduce((s, r) => s + r.dedAbsenceSar + r.dedLateSar + r.dedPenaltiesSar, 0),
+        previews.reduce((s, r) => s + r.entitlementOvertimeSar, 0),
+        previews.reduce((s, r) => s + r.entitlementBonusSar, 0),
+        previews.reduce((s, r) => s + r.grossSar, 0),
+        previews.reduce((s, r) => s + r.dedAdvancesSar, 0),
+        previews.reduce((s, r) => s + r.dedAbsenceSar, 0),
+        previews.reduce((s, r) => s + r.dedLateSar, 0),
+        previews.reduce((s, r) => s + r.dedPenaltiesSar, 0),
+        previews.reduce((s, r) => s + r.dedAdminSar, 0),
         previews.reduce((s, r) => s + r.lineNetSar, 0),
       ];
       const ws = XLSX.utils.aoa_to_sheet([headers, ...rows, totalRow]);
       ws['!cols'] = [
-        { wch: 4 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 28 }, { wch: 28 }, { wch: 14 },
+        { wch: 4 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
+        { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 14 }, { wch: 12 },
       ];
       XLSX.utils.book_append_sheet(wb, ws, (selectedPeriod.nameAr || selectedPeriod.code).slice(0, 31));
       XLSX.writeFile(wb, `payroll-${selectedPeriod.code}.xlsx`);
@@ -218,7 +228,7 @@ export function PayrollMultiPeriodExplorer() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button variant="secondary" size="sm" className="h-8 gap-1.5 text-xs shrink-0" asChild disabled={!selectedId}>
           <Link
@@ -275,6 +285,7 @@ export function PayrollMultiPeriodExplorer() {
             monthNameAr={payrollPrintData.monthNameAr}
             branchNameAr={payrollPrintData.branchNameAr}
             rows={payrollPrintData.rows}
+            totals={payrollPrintData.totals}
           />
         </div>
       )}

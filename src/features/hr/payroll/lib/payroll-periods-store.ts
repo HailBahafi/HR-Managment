@@ -213,10 +213,14 @@ function fromBackendInput(dto: MonthlyInputResponseDto, baseSalarySnapshot = 0):
 
 interface State {
   periods: HRPayrollPeriodRecord[];
+  catalogCompanyId: string | null;
+  fullLoadCompanyId: string | null;
   isLoading: boolean;
   error: string | null;
   /** Raw backend inputs keyed by periodId → employeeId → list. Used to populate lines after materialize. */
   _rawInputs: Record<string, Record<string, MonthlyInputResponseDto[]>>;
+  /** Period list only — for reports / dropdowns without loading all monthly inputs. */
+  fetchCatalog: () => Promise<void>;
   fetch: () => Promise<void>;
   /** Fetch a single period by id when it is missing from the cached list (e.g. deep link refresh). */
   ensurePeriodLoaded: (id: string) => Promise<HRPayrollPeriodRecord | null>;
@@ -232,38 +236,83 @@ interface State {
   refreshMonthlyInputsForPeriod: (periodId: string) => Promise<void>;
 }
 
+let periodsCatalogFetchPromise: Promise<void> | null = null;
+let periodsFullFetchPromise: Promise<void> | null = null;
+
 export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
   periods: [],
+  catalogCompanyId: null,
+  fullLoadCompanyId: null,
   isLoading: false,
   error: null,
   _rawInputs: {},
 
+  fetchCatalog: async () => {
+    const companyId = getDefaultCompanyId();
+    if (!companyId) return;
+
+    const { catalogCompanyId, isLoading } = get();
+    if (catalogCompanyId === companyId) return;
+    if (isLoading && periodsCatalogFetchPromise) return periodsCatalogFetchPromise;
+
+    periodsCatalogFetchPromise = (async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const periodsResult = await payrollPeriodsApi.list({ companyId, limit: 200 });
+        set({
+          periods: periodsResult.items.map(mapPayrollPeriodFromApi),
+          catalogCompanyId: companyId,
+          isLoading: false,
+        });
+      } catch (e) {
+        set({ error: (e as Error).message, isLoading: false, catalogCompanyId: null });
+      } finally {
+        periodsCatalogFetchPromise = null;
+      }
+    })();
+
+    return periodsCatalogFetchPromise;
+  },
+
   fetch: async () => {
     const companyId = getDefaultCompanyId();
     if (!companyId) return;
-    set({ isLoading: true, error: null });
-    try {
-      const [periodsResult, inputsResult] = await Promise.all([
-        payrollPeriodsApi.list({ companyId, limit: 200 }),
-        monthlyInputsApi.list({ companyId, limit: 2000 }),
-      ]);
 
-      // Group backend inputs by periodId → employeeId
-      const rawInputs: Record<string, Record<string, MonthlyInputResponseDto[]>> = {};
-      for (const dto of inputsResult.items) {
-        if (!rawInputs[dto.payrollPeriodId]) rawInputs[dto.payrollPeriodId] = {};
-        if (!rawInputs[dto.payrollPeriodId][dto.employeeId]) rawInputs[dto.payrollPeriodId][dto.employeeId] = [];
-        rawInputs[dto.payrollPeriodId][dto.employeeId].push(dto);
+    const { fullLoadCompanyId, isLoading } = get();
+    if (fullLoadCompanyId === companyId) return;
+    if (isLoading && periodsFullFetchPromise) return periodsFullFetchPromise;
+
+    periodsFullFetchPromise = (async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const [periodsResult, inputsResult] = await Promise.all([
+          payrollPeriodsApi.list({ companyId, limit: 200 }),
+          monthlyInputsApi.list({ companyId, limit: 2000 }),
+        ]);
+
+        // Group backend inputs by periodId → employeeId
+        const rawInputs: Record<string, Record<string, MonthlyInputResponseDto[]>> = {};
+        for (const dto of inputsResult.items) {
+          if (!rawInputs[dto.payrollPeriodId]) rawInputs[dto.payrollPeriodId] = {};
+          if (!rawInputs[dto.payrollPeriodId][dto.employeeId]) rawInputs[dto.payrollPeriodId][dto.employeeId] = [];
+          rawInputs[dto.payrollPeriodId][dto.employeeId].push(dto);
+        }
+
+        set({
+          periods: periodsResult.items.map(mapPayrollPeriodFromApi),
+          _rawInputs: rawInputs,
+          catalogCompanyId: companyId,
+          fullLoadCompanyId: companyId,
+          isLoading: false,
+        });
+      } catch (e) {
+        set({ error: (e as Error).message, isLoading: false, fullLoadCompanyId: null });
+      } finally {
+        periodsFullFetchPromise = null;
       }
+    })();
 
-      set({
-        periods: periodsResult.items.map(mapPayrollPeriodFromApi),
-        _rawInputs: rawInputs,
-        isLoading: false,
-      });
-    } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
-    }
+    return periodsFullFetchPromise;
   },
 
   ensurePeriodLoaded: async (id) => {

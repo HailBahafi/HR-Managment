@@ -58,33 +58,21 @@ export function useEntityFilterSlot(render: () => React.ReactNode, deps: React.D
   const renderRef = React.useRef(render);
   renderRef.current = render;
 
-  renderFnRef.current = () => renderRef.current();
-
   const depsKey = serializeFilterSlotDeps(deps);
-  const lastDepsKeyRef = React.useRef<string | null>(null);
 
   const publishFilterSlot = React.useCallback(() => {
     settersRef.current.setFilterPanelOpen(true);
     reRenderSlotRef.current?.();
   }, [reRenderSlotRef, settersRef]);
 
-  // Sync on mount/update so AppEntityFilterRegion picks up renderFnRef (refs do not trigger re-renders).
   React.useLayoutEffect(() => {
+    renderFnRef.current = () => renderRef.current();
     publishFilterSlot();
-  }, [publishFilterSlot]);
 
-  React.useEffect(() => {
-    if (lastDepsKeyRef.current === depsKey) return;
-    lastDepsKeyRef.current = depsKey;
-    publishFilterSlot();
-  }, [depsKey, publishFilterSlot]);
-
-  React.useEffect(() => {
     return () => {
       renderFnRef.current = null;
-      lastDepsKeyRef.current = null;
       reRenderSlotRef.current?.();
       settersRef.current.setFilterPanelOpen(false);
     };
-  }, [renderFnRef, reRenderSlotRef, settersRef]);
+  }, [depsKey, publishFilterSlot, renderFnRef, reRenderSlotRef, settersRef]);
 }

@@ -99,8 +99,8 @@ export function usePageHeaderFilterRegion(): PageHeaderFilterContextValue & Page
 /**
  * Inject action buttons into topbar Row 2 from any page component.
  *
- * Uses the same ref + callback pattern as `useEntityFilterSlot` so updating
- * the header slot never re-renders the caller — unstable deps cannot loop.
+ * Registers in useLayoutEffect so the previous page's cleanup cannot wipe the
+ * new page's slot between render and effect (refs do not trigger re-renders).
  */
 export function usePageHeaderActions(
   render: () => React.ReactNode,
@@ -112,24 +112,21 @@ export function usePageHeaderActions(
   const renderRef = React.useRef(render);
   renderRef.current = render;
 
-  renderFnRef.current = () => renderRef.current();
-
-  const depsKey = serializeHeaderActionDeps(deps);
-  const lastDepsKeyRef = React.useRef<string | null>(null);
-
-  React.useEffect(() => {
-    if (lastDepsKeyRef.current === depsKey) return;
-    lastDepsKeyRef.current = depsKey;
+  const publish = React.useCallback(() => {
     settersRef.current.setFilterPanelOpen(true);
     reRenderSlotRef.current?.();
-  }, [depsKey, reRenderSlotRef, settersRef]);
+  }, [reRenderSlotRef, settersRef]);
 
-  React.useEffect(() => {
+  const depsKey = serializeHeaderActionDeps(deps);
+
+  React.useLayoutEffect(() => {
+    renderFnRef.current = () => renderRef.current();
+    publish();
+
     return () => {
       renderFnRef.current = null;
-      lastDepsKeyRef.current = null;
       settersRef.current.setFilterPanelOpen(false);
       reRenderSlotRef.current?.();
     };
-  }, [renderFnRef, reRenderSlotRef, settersRef]);
+  }, [depsKey, publish, renderFnRef, reRenderSlotRef, settersRef]);
 }

@@ -31,6 +31,7 @@ function mapApi(r: AllowanceTypeDto): HRAllowanceTypeRecord {
 
 interface State {
   items: HRAllowanceTypeRecord[];
+  loadedCompanyId: string | null;
   isLoading: boolean;
   error: string | null;
   fetch: () => Promise<void>;
@@ -39,21 +40,35 @@ interface State {
   remove: (id: string) => Promise<void>;
 }
 
-export const useHRAllowanceTypesStore = create<State>()((set) => ({
+let allowanceTypesFetchPromise: Promise<void> | null = null;
+
+export const useHRAllowanceTypesStore = create<State>()((set, get) => ({
   items: [],
+  loadedCompanyId: null,
   isLoading: false,
   error: null,
 
   fetch: async () => {
     const companyId = getDefaultCompanyId();
     if (!companyId) return;
-    set({ isLoading: true, error: null });
-    try {
-      const result = await allowanceTypesApi.getAll({ companyId, limit: 200, ...payrollListArchiveQuery() });
-      set({ items: result.items.map(mapApi), isLoading: false });
-    } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
-    }
+
+    const { loadedCompanyId, isLoading } = get();
+    if (loadedCompanyId === companyId) return;
+    if (isLoading && allowanceTypesFetchPromise) return allowanceTypesFetchPromise;
+
+    allowanceTypesFetchPromise = (async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const result = await allowanceTypesApi.getAll({ companyId, limit: 200, ...payrollListArchiveQuery() });
+        set({ items: result.items.map(mapApi), loadedCompanyId: companyId, isLoading: false });
+      } catch (e) {
+        set({ error: (e as Error).message, isLoading: false, loadedCompanyId: null });
+      } finally {
+        allowanceTypesFetchPromise = null;
+      }
+    })();
+
+    return allowanceTypesFetchPromise;
   },
 
   add: async (data) => {

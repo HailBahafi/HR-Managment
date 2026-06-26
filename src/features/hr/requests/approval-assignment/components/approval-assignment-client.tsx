@@ -170,7 +170,7 @@ export function ApprovalAssignmentClient() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={archiveScope !== 'active' ? 1 : 0} />
         <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> إسناد جديد

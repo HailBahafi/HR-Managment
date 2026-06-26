@@ -65,9 +65,9 @@ import {
 } from '@/features/hr/contracts/employment/utils/contract-leave-credit';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
-import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { getSessionCompanyDisplay } from '@/features/hr/organization/lib/session-company-display';
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
@@ -91,22 +91,48 @@ export function EmploymentContractsClient() {
   const searchParams = useSearchParams();
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
-  const { data: activeCompany } = useActiveCompany();
   const companyId = useDefaultCompanyId();
   const { add, update, activate, employeeAccept, terminate, archive, createAmendmentDraft } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { items: allowanceTypes, fetch: fetchAllowanceTypes } = useHRAllowanceTypesStore();
   const { articles, fetch: fetchArticles } = useHRContractArticlesStore();
-  const { employees: allEmployees, fetch: fetchEmployees } = useHREmployeeDirectoryStore();
+  const {
+    employees: allEmployees,
+    fetch: fetchEmployees,
+    isLoading: employeesLoading,
+  } = useHREmployeeDirectoryStore();
   const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
 
-  React.useEffect(() => {
+  const [filterEmpActivated, setFilterEmpActivated] = React.useState(false);
+
+  const loadFilterEmployees = React.useCallback(() => {
     if (!companyId) return;
-    fetchTemplates();
-    fetchArticles();
-    fetchEmployees();
-    fetchAllowanceTypes();
-  }, [companyId, fetchTemplates, fetchArticles, fetchEmployees, fetchAllowanceTypes]);
+    setFilterEmpActivated(true);
+    const { employees: cached, isLoading, loadedCompanyId } = useHREmployeeDirectoryStore.getState();
+    if (loadedCompanyId === companyId && cached.length > 0) return;
+    if (isLoading) return;
+    void fetchEmployees();
+  }, [companyId, fetchEmployees]);
+
+  const ensureFormEmployeesLoaded = React.useCallback(() => {
+    if (!companyId) return;
+    const emps = useHREmployeeDirectoryStore.getState();
+    if (emps.loadedCompanyId === companyId && emps.employees.length > 0) return;
+    if (emps.isLoading) return;
+    void fetchEmployees();
+  }, [companyId, fetchEmployees]);
+
+  const ensureFormCatalogLoaded = React.useCallback(async () => {
+    if (!companyId) return;
+    const tasks: Promise<void>[] = [];
+    const tpl = useHRContractTemplatesStore.getState();
+    const art = useHRContractArticlesStore.getState();
+    const allow = useHRAllowanceTypesStore.getState();
+    if (tpl.templates.length === 0 && !tpl.isLoading) tasks.push(fetchTemplates());
+    if (art.loadedCompanyId !== companyId && !art.isLoading) tasks.push(fetchArticles());
+    if (allow.items.length === 0 && !allow.isLoading) tasks.push(fetchAllowanceTypes());
+    await Promise.all(tasks);
+  }, [companyId, fetchTemplates, fetchArticles, fetchAllowanceTypes]);
 
   const essentialArticleIds = React.useMemo(
     () => articles.filter(a => a.isActive && a.isBasic).map(a => a.id),
@@ -159,8 +185,8 @@ export function EmploymentContractsClient() {
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
   const empPickerList = React.useMemo(
-    () => allEmployees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [allEmployees],
+    () => (filterEmpActivated ? allEmployees.map((e) => ({ id: e.id, name: e.nameAr })) : []),
+    [filterEmpActivated, allEmployees],
   );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
@@ -232,6 +258,13 @@ export function EmploymentContractsClient() {
   const [copySourceContracts, setCopySourceContracts] = React.useState<HRContractRecord[]>([]);
 
   React.useEffect(() => {
+    if (drawerOpen) {
+      void ensureFormCatalogLoaded();
+      ensureFormEmployeesLoaded();
+    }
+  }, [drawerOpen, ensureFormCatalogLoaded, ensureFormEmployeesLoaded]);
+
+  React.useEffect(() => {
     if (!copyFromEmployeeId || !companyId) {
       setCopySourceContracts([]);
       return;
@@ -242,22 +275,23 @@ export function EmploymentContractsClient() {
       .catch(() => setCopySourceContracts([]));
   }, [copyFromEmployeeId, companyId]);
 
-  React.useEffect(() => {
-    if (drawerOpen && companyId && allowanceTypes.length === 0) {
-      void fetchAllowanceTypes();
-    }
-  }, [drawerOpen, companyId, allowanceTypes.length, fetchAllowanceTypes]);
-
   const [contractPdfOpen, setContractPdfOpen] = React.useState(false);
   const [contractPrintable, setContractPrintable] = React.useState<React.ReactElement | null>(null);
 
-  const getEmpName = (id: string) => allEmployees.find(e => e.id === id)?.nameAr ?? id;
+  const getEmpName = (id: string, fallback?: string) =>
+    fallback?.trim()
+    || allEmployees.find(e => e.id === id)?.nameAr
+    || id;
 
   React.useEffect(() => {
     if (!contractPdfOpen) setContractPrintable(null);
   }, [contractPdfOpen]);
 
-  const openEmploymentContractPdf = React.useCallback((source?: FormValues, employeeNameOverride?: string) => {
+  const openEmploymentContractPdf = React.useCallback(async (source?: FormValues, employeeNameOverride?: string) => {
+    await ensureFormCatalogLoaded();
+    ensureFormEmployeesLoaded();
+    const latestArticles = useHRContractArticlesStore.getState().articles;
+    const latestAllowanceTypes = useHRAllowanceTypesStore.getState().items;
     const values = source ?? form;
     if (!values.employeeId.trim()) {
       toast.error('اختر الموظف أولاً');
@@ -271,12 +305,12 @@ export function EmploymentContractsClient() {
     const allowanceRows = values.allowanceLines
       .filter((l) => l.allowanceTypeId.trim())
       .map((l) => ({
-        labelAr: allowanceTypes.find((a) => a.id === l.allowanceTypeId)?.nameAr ?? l.allowanceTypeId,
+        labelAr: latestAllowanceTypes.find((a) => a.id === l.allowanceTypeId)?.nameAr ?? l.allowanceTypeId,
         amount: String(l.amount || '0'),
       }));
     const selectedArticles = values.articleIds
-      .map((id) => articles.find((a) => a.id === id))
-      .filter(Boolean) as typeof articles;
+      .map((id) => latestArticles.find((a) => a.id === id))
+      .filter(Boolean) as typeof latestArticles;
 
     selectedArticles.sort((a, b) => {
       if (a!.isBasic !== b!.isBasic) return a!.isBasic ? -1 : 1;
@@ -290,10 +324,7 @@ export function EmploymentContractsClient() {
         `${(a.body || '').replace(/\s+/g, ' ').trim().slice(0, 480)}${(a.body?.length ?? 0) > 480 ? '…' : ''}`,
     }));
 
-    const company = {
-      nameAr: activeCompany?.nameAr ?? '',
-      nameEn: activeCompany?.nameEn ?? '',
-    };
+    const company = getSessionCompanyDisplay(companyId);
 
     const printable = (
       <EmploymentContractPrintHtml
@@ -318,14 +349,17 @@ export function EmploymentContractsClient() {
     setContractPdfOpen(true);
   }, [
     form,
-    allowanceTypes,
-    articles,
-    activeCompany,
+    companyId,
+    ensureFormCatalogLoaded,
+    ensureFormEmployeesLoaded,
     getEmpName,
   ]);
 
   const openContractPdfFromRecord = React.useCallback((record: HRContractRecord) => {
-    openEmploymentContractPdf(recordToForm(record), record.employeeNameAr || getEmpName(record.employeeId));
+    void openEmploymentContractPdf(
+      recordToForm(record),
+      record.employeeNameAr || getEmpName(record.employeeId, record.employeeNameAr),
+    );
   }, [openEmploymentContractPdf, getEmpName]);
 
   const syncContractInStore = React.useCallback((record: HRContractRecord) => {
@@ -405,7 +439,7 @@ export function EmploymentContractsClient() {
 
   usePageHeaderActions(
     () => (
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openCreate}>
           <Plus className="h-3.5 w-3.5" />
@@ -658,6 +692,8 @@ export function EmploymentContractsClient() {
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
+        onEmployeePickerOpen={loadFilterEmployees}
+        employeePickerLoading={filterEmpActivated && employeesLoading}
         statusFilter={statusFilter}
         onStatusFilterChange={handleStatusFilterChange}
         statusOrder={employmentStatusOrder}
@@ -677,6 +713,9 @@ export function EmploymentContractsClient() {
       employmentStatusOrder,
       employmentInlineSelects,
       handleStatusFilterChange,
+      loadFilterEmployees,
+      filterEmpActivated,
+      employeesLoading,
     ],
   );
 
@@ -737,7 +776,7 @@ export function EmploymentContractsClient() {
                     <User className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold truncate">{getEmpName(c.employeeId)}</p>
+                    <p className="font-semibold truncate">{c.employeeNameAr || getEmpName(c.employeeId, c.employeeNameAr)}</p>
                     <p className="font-mono text-[10px] text-muted-foreground">{c.contractNumber}</p>
                   </div>
                 </div>
@@ -809,7 +848,7 @@ export function EmploymentContractsClient() {
         copySourceContractOptions={copySourceContractOptions}
         getEmpName={getEmpName}
         onSave={() => { void handleSave(); }}
-        onPreviewPdf={() => openEmploymentContractPdf()}
+        onPreviewPdf={() => { void openEmploymentContractPdf(); }}
         onPatch={patch}
         onApplyTemplate={(id) => { void applyTemplate(id); }}
         onCopyFromEmployeeChange={(id) => { setCopyFromEmployeeId(id); setCopyFromContractId(''); }}
