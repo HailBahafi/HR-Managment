@@ -9,6 +9,9 @@ type PageHeaderActionsSlotContextValue = {
 
 type PageHeaderFilterContextValue = {
   filterPanelOpen: boolean;
+};
+
+type PageHeaderActionsSetters = {
   setFilterPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
@@ -18,6 +21,17 @@ const PageHeaderActionsSlotContext =
 const PageHeaderFilterContext =
   React.createContext<PageHeaderFilterContextValue | null>(null);
 
+const PageHeaderActionsSettersRefContext =
+  React.createContext<React.MutableRefObject<PageHeaderActionsSetters> | null>(null);
+
+function serializeHeaderActionDeps(deps: React.DependencyList): string {
+  try {
+    return JSON.stringify(deps);
+  } catch {
+    return String(deps.length);
+  }
+}
+
 export function PageHeaderActionsProvider({ children }: { children: React.ReactNode }) {
   const renderFnRef = React.useRef<(() => React.ReactNode) | null>(null);
   const reRenderSlotRef = React.useRef<(() => void) | null>(null);
@@ -26,17 +40,23 @@ export function PageHeaderActionsProvider({ children }: { children: React.ReactN
     reRenderSlotRef,
   }).current;
 
-  const [filterPanelOpen, setFilterPanelOpen] = React.useState(false);
+  const [filterPanelOpen, setFilterPanelOpen] = React.useState(true);
+
+  const settersRef = React.useRef<PageHeaderActionsSetters>({ setFilterPanelOpen });
+  settersRef.current.setFilterPanelOpen = setFilterPanelOpen;
+
   const filterValue = React.useMemo(
-    () => ({ filterPanelOpen, setFilterPanelOpen }),
+    () => ({ filterPanelOpen }),
     [filterPanelOpen],
   );
 
   return (
     <PageHeaderActionsSlotContext.Provider value={slotValue}>
-      <PageHeaderFilterContext.Provider value={filterValue}>
-        {children}
-      </PageHeaderFilterContext.Provider>
+      <PageHeaderActionsSettersRefContext.Provider value={settersRef}>
+        <PageHeaderFilterContext.Provider value={filterValue}>
+          {children}
+        </PageHeaderFilterContext.Provider>
+      </PageHeaderActionsSettersRefContext.Provider>
     </PageHeaderActionsSlotContext.Provider>
   );
 }
@@ -51,22 +71,29 @@ export function usePageHeaderActionsSlotRegion(): PageHeaderActionsSlotContextVa
   return ctx;
 }
 
-export function usePageHeaderFilterRegion(): PageHeaderFilterContextValue {
+export function usePageHeaderActionsState(): PageHeaderFilterContextValue {
   const ctx = React.useContext(PageHeaderFilterContext);
   if (!ctx) {
-    throw new Error(
-      'usePageHeaderFilterRegion must be used within PageHeaderActionsProvider',
-    );
+    throw new Error('usePageHeaderActionsState must be used within PageHeaderActionsProvider');
   }
   return ctx;
 }
 
-function serializeHeaderActionDeps(deps: React.DependencyList): string {
-  try {
-    return JSON.stringify(deps);
-  } catch {
-    return String(deps.length);
+export function usePageHeaderActionsSettersRef(): React.MutableRefObject<PageHeaderActionsSetters> {
+  const ctx = React.useContext(PageHeaderActionsSettersRefContext);
+  if (!ctx) {
+    throw new Error('usePageHeaderActionsSettersRef must be used within PageHeaderActionsProvider');
   }
+  return ctx;
+}
+
+export function usePageHeaderFilterRegion(): PageHeaderFilterContextValue & PageHeaderActionsSetters {
+  const { filterPanelOpen } = usePageHeaderActionsState();
+  const settersRef = usePageHeaderActionsSettersRef();
+  return {
+    filterPanelOpen,
+    setFilterPanelOpen: settersRef.current.setFilterPanelOpen,
+  };
 }
 
 /**
@@ -80,7 +107,7 @@ export function usePageHeaderActions(
   deps: React.DependencyList,
 ): void {
   const { renderFnRef, reRenderSlotRef } = usePageHeaderActionsSlotRegion();
-  const { setFilterPanelOpen } = usePageHeaderFilterRegion();
+  const settersRef = usePageHeaderActionsSettersRef();
 
   const renderRef = React.useRef(render);
   renderRef.current = render;
@@ -93,15 +120,16 @@ export function usePageHeaderActions(
   React.useEffect(() => {
     if (lastDepsKeyRef.current === depsKey) return;
     lastDepsKeyRef.current = depsKey;
+    settersRef.current.setFilterPanelOpen(true);
     reRenderSlotRef.current?.();
-  }, [depsKey, reRenderSlotRef]);
+  }, [depsKey, reRenderSlotRef, settersRef]);
 
   React.useEffect(() => {
     return () => {
       renderFnRef.current = null;
       lastDepsKeyRef.current = null;
-      setFilterPanelOpen(false);
+      settersRef.current.setFilterPanelOpen(false);
       reRenderSlotRef.current?.();
     };
-  }, [renderFnRef, reRenderSlotRef, setFilterPanelOpen]);
+  }, [renderFnRef, reRenderSlotRef, settersRef]);
 }

@@ -27,6 +27,7 @@ import { usePageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActionsSlotRegion } from '@/components/layouts/page-header-actions-context';
 import { FilterTrigger } from '@/components/layouts/filter-panel';
 import { Logo } from '@/components/layouts/logo';
+import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
 import { NotificationBellPopover } from '@/features/hr/notifications/components/notification-bell-popover';
 import { cn } from '@/shared/utils';
 import { useThemeStore } from '@/shared/store/theme-store';
@@ -37,7 +38,11 @@ import { hrContractsOnlyNavGroups, isHrContractsOnlyNavPath } from '@/features/h
 import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsNavGroups, isHrPermissionsNavPath } from '@/features/hr/permissions/constants/nav';
-import { hrSettingsNavGroups, isHrSettingsNavPath } from '@/features/hr/settings/constants/nav';
+import {
+  hrOrganizationSettingsNavItems,
+  hrOrganizationStructureNavItems,
+  isHrOrganizationNavPath,
+} from '@/features/hr/organization/constants/nav';
 import { useLogout } from '@/features/auth/hooks/use-logout';
 import { useAuthUserDisplay } from '@/features/auth/hooks/use-auth-user-display';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -90,14 +95,24 @@ export const navConfig: NavItem[] = [
   { key: 'dashboard', label: 'الرئيسية', href: '/hr/dashboard', icon: LayoutDashboard },
   {
     key: 'employees', label: 'الهيكل الإداري', icon: Users,
-    groups: [{ items: [
-      { label: 'سجل الموظفين',     href: '/hr/organization/employees',  icon: Users },
-      { label: 'المستخدمين', href: '/hr/organization/contacts',    icon: UserCircle },
-      { label: 'المسميات الوظيفية', href: '/hr/organization/job-titles', icon: Briefcase },
-      { label: 'الفروع',           href: '/hr/organization/branches',   icon: Building2 },
-      { label: 'الأقسام',          href: '/hr/organization/departments', icon: Building2 },
-      { label: 'الهيكل التنظيمي', href: '/hr/organization/chart',       icon: Building2 },
-    ]}],
+    isActive: isHrOrganizationNavPath,
+    groups: [
+      {
+        items: hrOrganizationStructureNavItems.map((item) => ({
+          label: item.labelAr,
+          href: item.href,
+          icon: item.icon,
+        })),
+      },
+      {
+        labelAr: 'الإعدادات',
+        items: hrOrganizationSettingsNavItems.map((item) => ({
+          label: item.labelAr,
+          href: item.href,
+          icon: item.icon,
+        })),
+      },
+    ],
   },
   {
     key: 'recruitment', label: 'التوظيف', icon: UserPlus,
@@ -195,20 +210,6 @@ export const navConfig: NavItem[] = [
     icon: Shield,
     isActive: isHrPermissionsNavPath,
     groups: hrPermissionsNavGroups.map((g) => ({
-      labelAr: g.labelAr,
-      items: g.items.map((item) => ({
-        label: item.labelAr,
-        href: item.href,
-        icon: item.icon,
-      })),
-    })),
-  },
-  {
-    key: 'settings',
-    label: 'الإعدادات',
-    icon: Settings,
-    isActive: isHrSettingsNavPath,
-    groups: hrSettingsNavGroups.map((g) => ({
       labelAr: g.labelAr,
       items: g.items.map((item) => ({
         label: item.labelAr,
@@ -326,6 +327,7 @@ export function Topbar() {
     activeBranchId,
   } = useAuthUserDisplay();
   const defaultCompanyId = useDefaultCompanyId();
+  const { logoUrl, logoAlt } = useDefaultCompanyBranding();
   const setActiveContext = useAuthStore((s) => s.setActiveContext);
   const { toggle } = useSidebar();
   const { meta } = usePageTitle();
@@ -369,11 +371,7 @@ export function Topbar() {
 
         {/* Logo */}
         <Link href="/hr/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50">
-          <Logo size={28} />
-          <div className="hidden flex-col leading-none sm:flex">
-            <span className="font-display text-[15px] font-bold tracking-tight">روز</span>
-            <span className="text-[9px] font-medium tracking-[0.22em] text-muted-foreground uppercase">rose HR</span>
-          </div>
+          <Logo size={28} src={logoUrl} alt={logoAlt} />
         </Link>
 
         <div className="mx-0.5 hidden h-5 w-px bg-border/70 lg:block" />

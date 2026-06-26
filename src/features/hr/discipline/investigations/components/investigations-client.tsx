@@ -40,12 +40,22 @@ import {
   buildSubmitInvestigationResultsDto,
   validateInvestigationResultsDraft,
 } from '@/features/hr/discipline/investigations/services/submit-violation-investigation';
-import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
-  DisciplineFilterToolbar,
-  type DisciplineFilterToolbarHandle,
-  type DisciplineViewMode,
-} from '@/features/hr/discipline/components/discipline-filter-toolbar';
+  EntityFilterToolbar,
+  type EntityFilterToolbarHandle,
+  type EntityFilterInlineSelect,
+} from '@/components/ui/entity-filter-toolbar';
+import {
+  DEFAULT_DATE_FILTER_META,
+  defaultDateFilterBounds,
+  type DateFilterTab,
+} from '@/features/hr/discipline/lib/discipline-date-filter';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -60,6 +70,7 @@ import type { HRDisciplineInvestigationRecord } from '@/features/hr/discipline/l
 type ResultFilter = 'all' | HRInvestigationResult;
 
 type RecommendationFilter = 'all' | HRInvestigationRecommendation;
+type DisciplineViewMode = 'cards' | 'list';
 
 interface OpenDraftForm {
   caseId: string;
@@ -89,11 +100,17 @@ export function InvestigationsClient() {
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [resultFilter, setResultFilter] = React.useState<ResultFilter>('all');
   const [recommendationFilter, setRecommendationFilter] = React.useState<RecommendationFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
-  const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
-  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
-  const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
+  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
+    ...DEFAULT_DATE_FILTER_META,
+  }));
+  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
+    setDateBounds(b);
+  }, []);
+  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
+    setDateMeta(meta);
+  }, []);
 
   const empPickerList = React.useMemo(
     () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
@@ -136,33 +153,21 @@ export function InvestigationsClient() {
   }, [sourceInvestigations]);
 
   const dateRangeActive = dateMeta.hasRestriction;
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (resultFilter !== 'all' ? 1 : 0) + (recommendationFilter !== 'all' ? 1 : 0) + (dateRangeActive ? 1 : 0);
 
-  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (resultFilter !== 'all' ? 1 : 0) + (recommendationFilter !== 'all' ? 1 : 0) + (dateMeta.hasRestriction ? 1 : 0);
-
-  usePageHeaderActions(
-    () => (
-      <div className="flex items-center gap-2">
-        <FilterToggleButton activeFilterCount={activeFilterCount} />
-        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
-          onClick={() => { setOpenDraft({ ...OPEN_EMPTY, date: new Date().toISOString().slice(0, 10) }); setOpenFormError(null); setOpenDrawerOpen(true); }}>
-          <Plus className="h-3.5 w-3.5" />
-          فتح تحقيق
-        </Button>
-      </div>
-    ),
-    [activeFilterCount],
-  );
-
-  const investigationsFilterSummary = React.useMemo(() => {
-    const parts: string[] = [];
-    parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل' : `الموظفون: ${selectedEmpIds.size} محدد`);
-    parts.push(`النتيجة: ${resultFilter === 'all' ? 'الكل' : INVESTIGATION_RESULT_LABELS[resultFilter]}`);
-    if (recommendationFilter !== 'all') {
-      parts.push(`التوصية: ${INVESTIGATION_RECOMMENDATION_LABELS[recommendationFilter]}`);
-    }
-    parts.push(`التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`);
-    return parts.join(' · ');
-  }, [selectedEmpIds.size, resultFilter, recommendationFilter, dateBounds.from, dateBounds.to]);
+  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+    {
+      id: 'recommendation',
+      value: recommendationFilter,
+      onChange: (v) => setRecommendationFilter(v as RecommendationFilter),
+      placeholder: 'التوصية',
+      className: 'w-[9.5rem]',
+      options: [
+        { value: 'all', label: 'كل التوصيات' },
+        ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({ value, label })),
+      ],
+    },
+  ], [recommendationFilter]);
 
   const investigationsPdfRows = React.useMemo(
     () =>
@@ -184,13 +189,12 @@ export function InvestigationsClient() {
           companyNameAr={m.company?.nameAr ?? '—'}
           companyNameEn={m.company?.nameEn ?? m.company?.nameAr ?? '—'}
           titleAr="سجل التحقيقات"
-          filterSummary={investigationsFilterSummary}
           headers={['رقم القضية', 'الموظف', 'المحقق', 'التاريخ', 'النتيجة', 'التوصية']}
           rows={investigationsPdfRows}
           landscape
         />
       ),
-    [investigationsPdfRows, investigationsFilterSummary, m.company],
+    [investigationsPdfRows, m.company],
   );
 
   const handleExportInvestigationsExcel = React.useCallback(async () => {
@@ -213,6 +217,45 @@ export function InvestigationsClient() {
     await downloadXlsxFromAoA('discipline-investigations.xlsx', 'التحقيقات', rows);
     toast.success('تم تنزيل ملف Excel.');
   }, [listFiltered]);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="h-8 w-8 shrink-0" aria-label="تصدير التحقيقات">
+              <FileDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              onSelect={() => {
+                if (investigationsPdfRows.length === 0) {
+                  toast.error('لا توجد تحقيقات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-4 w-4" />
+              PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleExportInvestigationsExcel()}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0"
+          onClick={() => { setOpenDraft({ ...OPEN_EMPTY, date: new Date().toISOString().slice(0, 10) }); setOpenFormError(null); setOpenDrawerOpen(true); }}>
+          <Plus className="h-3.5 w-3.5" />
+          فتح تحقيق
+        </Button>
+      </div>
+    ),
+    [activeFilterCount, handleExportInvestigationsExcel, investigationsPdfRows.length],
+  );
 
   const setOpen = (patch: Partial<OpenDraftForm>) => setOpenDraft((d) => ({ ...d, ...patch }));
   const setResults = (patch: Partial<InvestigationResultsDraftForm>) => setResultsDraft((d) => ({ ...d, ...patch }));
@@ -295,7 +338,7 @@ export function InvestigationsClient() {
       headerClassName: 'whitespace-nowrap',
       className: 'max-w-[14rem] text-xs text-muted-foreground',
       render: (inv) => (
-        <span className="line-clamp-2" title={inv.employeeStatement || undefined}>{inv.employeeStatement || '—'}</span>
+        <span className=" " title={inv.employeeStatement || undefined}>{inv.employeeStatement || '—'}</span>
       ),
     },
     {
@@ -304,7 +347,7 @@ export function InvestigationsClient() {
       headerClassName: 'whitespace-nowrap',
       className: 'max-w-[14rem] text-xs text-muted-foreground',
       render: (inv) => (
-        <span className="line-clamp-2" title={inv.witnessStatement || undefined}>{inv.witnessStatement || '—'}</span>
+        <span className=" " title={inv.witnessStatement || undefined}>{inv.witnessStatement || '—'}</span>
       ),
     },
     {
@@ -403,35 +446,9 @@ export function InvestigationsClient() {
 
   useEntityFilterSlot(
     () => (
-      <DisciplineFilterToolbar
+      <EntityFilterToolbar
         ref={filterToolbarRef}
-        showPrimaryAction={false}
-        primaryActionLabel="فتح تحقيق"
-        onPrimaryAction={() => { setOpenDraft({ ...OPEN_EMPTY, date: new Date().toISOString().slice(0, 10) }); setOpenFormError(null); setOpenDrawerOpen(true); }}
-        toolbarExtraTrailing={(
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => {
-                if (investigationsPdfRows.length === 0) {
-                  toast.error('لا توجد تحقيقات للتصدير ضمن الفلاتر الحالية.');
-                  return;
-                }
-                setPdfOpen(true);
-              }}
-            >
-              <FileDown className="h-3.5 w-3.5" />
-              PDF
-            </Button>
-            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleExportInvestigationsExcel()}>
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              Excel
-            </Button>
-          </>
-        )}
+        inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -440,22 +457,16 @@ export function InvestigationsClient() {
         statusOrder={INVESTIGATION_RESULT_FILTER_ORDER}
         statusLabels={INVESTIGATION_RESULT_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        moreFilters={[
-          {
-            id: 'recommendation',
-            value: recommendationFilter,
-            onChange: (v) => setRecommendationFilter(v as RecommendationFilter),
-            placeholder: 'التوصية',
-            options: [
-              { value: 'all', label: 'كل التوصيات' },
-              ...Object.entries(INVESTIGATION_RECOMMENDATION_LABELS).map(([value, label]) => ({ value, label })),
-            ],
-          },
-        ]}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         onDateBoundsChange={onDateBoundsChange}
         onDateFilterMetaChange={onDateFilterMetaChange}
+        dataView={{
+          value: viewMode,
+          onChange: (v) => setViewMode(v as DisciplineViewMode),
+          options: [
+            { value: 'cards', label: 'بطاقات', icon: 'layout-grid' },
+            { value: 'list', label: 'قائمة', icon: 'list' },
+          ],
+        }}
       />
     ),
     [
@@ -465,10 +476,9 @@ export function InvestigationsClient() {
       recommendationFilter,
       statusCounts,
       viewMode,
-      investigationsPdfRows.length,
+      inlineSelects,
       onDateBoundsChange,
       onDateFilterMetaChange,
-      handleExportInvestigationsExcel,
     ],
   );
 
@@ -496,18 +506,11 @@ export function InvestigationsClient() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/20 py-14 text-center">
           <p className="text-sm text-muted-foreground">
-            {dateMeta.tab === 'today'
-              ? 'لا توجد تحقيقات بتاريخ اليوم ضمن النتائج الحالية.'
-              : dateMeta.tab === 'week'
-                ? 'لا توجد تحقيقات ضمن هذا الأسبوع ضمن النتائج الحالية.'
-                : dateMeta.tab === 'month'
-                  ? 'لا توجد تحقيقات ضمن هذا الشهر ضمن النتائج الحالية.'
-                  : dateMeta.tab === 'custom' && dateRangeActive
-                    ? 'لا توجد تحقيقات ضمن نطاق التاريخ المخصص مع عوامل البحث الحالية.'
-                    : 'لا توجد تحقيقات ضمن النتائج الحالية.'}
+            {dateRangeActive ? 'لا توجد تحقيقات ضمن الفترة المحددة.'
+              : 'لا توجد تحقيقات ضمن النتائج الحالية.'}
           </p>
           {dateRangeActive ? (
-            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => filterToolbarRef.current?.resetDateFilter()}>
+            <Button variant="link" size="sm" className="mt-2 text-xs" onClick={() => setDateBounds({ from: '', to: '' })}>
               عرض كل الفترات
             </Button>
           ) : null}
@@ -562,7 +565,7 @@ export function InvestigationsClient() {
               {inv.employeeStatement?.trim() ? (
                 <div className="space-y-0.5">
                   <p className="text-[10px] font-medium text-muted-foreground/80">أقوال الموظف</p>
-                  <p className="line-clamp-2 text-xs text-muted-foreground text-right" title={inv.employeeStatement}>
+                  <p className="  text-xs text-muted-foreground text-right" title={inv.employeeStatement}>
                     {inv.employeeStatement}
                   </p>
                 </div>
@@ -570,7 +573,7 @@ export function InvestigationsClient() {
               {inv.witnessStatement?.trim() ? (
                 <div className="space-y-0.5">
                   <p className="text-[10px] font-medium text-muted-foreground/80">أقوال الشهود</p>
-                  <p className="line-clamp-2 text-xs text-muted-foreground text-right" title={inv.witnessStatement}>
+                  <p className="  text-xs text-muted-foreground text-right" title={inv.witnessStatement}>
                     {inv.witnessStatement}
                   </p>
                 </div>

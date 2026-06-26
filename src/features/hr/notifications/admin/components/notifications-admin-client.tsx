@@ -5,7 +5,6 @@ import {
   Clock,
   Mail,
   Plus,
-  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,11 +20,8 @@ import {
   EntityFilterToolbar,
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import { EMPTY_PERIOD_RANGE, isPeriodFilterActive } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { cn, formatDisplayDateTime } from '@/shared/utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -128,85 +124,6 @@ function AudienceEmployeesCell({ record }: { record: HRAdminNotificationRecord }
   );
 }
 
-function AdvancedSourceFilters({
-  sourceKind,
-  sourceTable,
-  sourceId,
-  onChange,
-}: {
-  sourceKind: string;
-  sourceTable: string;
-  sourceId: string;
-  onChange: (patch: { sourceKind?: string; sourceTable?: string; sourceId?: string }) => void;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const activeCount =
-    (sourceKind.trim() ? 1 : 0)
-    + (sourceTable.trim() ? 1 : 0)
-    + (sourceId.trim() ? 1 : 0);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 text-xs shrink-0"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          مصدر متقدم
-          {activeCount > 0 ? (
-            <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
-              {activeCount}
-            </Badge>
-          ) : null}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 space-y-3" dir="rtl" align="start">
-        <p className="text-xs font-semibold text-muted-foreground">فلاتر المصدر</p>
-        <FormField label="sourceKind">
-          <Input
-            value={sourceKind}
-            onChange={(e) => onChange({ sourceKind: e.target.value })}
-            placeholder="مثال: manual"
-            className="h-8 text-xs"
-            dir="ltr"
-          />
-        </FormField>
-        <FormField label="sourceTable">
-          <Input
-            value={sourceTable}
-            onChange={(e) => onChange({ sourceTable: e.target.value })}
-            placeholder="جدول المصدر"
-            className="h-8 text-xs"
-            dir="ltr"
-          />
-        </FormField>
-        <FormField label="sourceId">
-          <Input
-            value={sourceId}
-            onChange={(e) => onChange({ sourceId: e.target.value })}
-            placeholder="UUID"
-            className="h-8 text-xs"
-            dir="ltr"
-          />
-        </FormField>
-        {activeCount > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 w-full text-xs"
-            onClick={() => onChange({ sourceKind: '', sourceTable: '', sourceId: '' })}
-          >
-            مسح فلاتر المصدر
-          </Button>
-        ) : null}
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export function NotificationsAdminClient() {
   const m = useNotificationsAdminDirectoryModel();
@@ -262,7 +179,7 @@ export function NotificationsAdminClient() {
       id: 'severity',
       value: m.filters.severity,
       onChange: (v) => m.patchFilters({ severity: (v || 'all') as SeverityFilter }),
-      placeholder: 'التصنيف',
+      placeholder: 'النبرة',
       className: 'w-[8rem]',
       options: SEVERITY_FILTER_ORDER.map((s) => ({
         value: s,
@@ -271,46 +188,60 @@ export function NotificationsAdminClient() {
     },
   ], [m.filters.category, m.filters.severity, m.patchFilters]);
 
-  const onDateBoundsChange = React.useCallback(
-    (bounds: { from: string; to: string }) => m.setDateBounds(bounds),
+  const onPeriodChange = React.useCallback(
+    ({ from, to }: { from: string; to: string }) => m.setDateBounds({ from, to }),
     [m.setDateBounds],
+  );
+  const onPeriodFilterClear = React.useCallback(
+    () => m.setDateBounds({ ...EMPTY_PERIOD_RANGE }),
+    [m.setDateBounds],
+  );
+  const periodFilterActive = isPeriodFilterActive(m.dateBounds);
+
+  const periodFilter = React.useMemo(
+    () => (
+      <EntityPeriodFilter
+        value={m.dateBounds}
+        onChange={onPeriodChange}
+        triggerClassName="w-[11rem] max-w-[14rem]"
+      />
+    ),
+    [m.dateBounds, onPeriodChange],
+  );
+
+  const extraFilters = React.useMemo(
+    () => (
+      <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-xs text-muted-foreground">
+        <Checkbox
+          checked={m.filters.excludeExpired}
+          onCheckedChange={(v) => m.patchFilters({ excludeExpired: v === true })}
+        />
+        إخفاء المنتهية
+      </label>
+    ),
+    [m.filters.excludeExpired, m.patchFilters],
   );
 
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        showDateSection
+        showDateSection={false}
         showStatusSection={false}
         showEmployeePicker={false}
+        leadingFilters={periodFilter}
+        periodFilterActive={periodFilterActive}
+        onPeriodFilterClear={onPeriodFilterClear}
         inlineSelects={inlineSelects}
-        onDateBoundsChange={onDateBoundsChange}
-        trailingActions={(
-          <div className="flex items-center gap-2 shrink-0">
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground whitespace-nowrap">
-              <Checkbox
-                checked={m.filters.excludeExpired}
-                onCheckedChange={(v) => m.patchFilters({ excludeExpired: v === true })}
-              />
-              إخفاء المنتهية
-            </label>
-            <AdvancedSourceFilters
-              sourceKind={m.filters.sourceKind}
-              sourceTable={m.filters.sourceTable}
-              sourceId={m.filters.sourceId}
-              onChange={(patch) => m.patchFilters(patch)}
-            />
-          </div>
-        )}
+        beforeEmployeePicker={extraFilters}
+        onDateBoundsChange={() => {}}
       />
     ),
     [
       inlineSelects,
-      m.filters.excludeExpired,
-      m.filters.sourceId,
-      m.filters.sourceKind,
-      m.filters.sourceTable,
-      m.patchFilters,
-      onDateBoundsChange,
+      periodFilter,
+      periodFilterActive,
+      onPeriodFilterClear,
+      extraFilters,
     ],
   );
 
@@ -345,7 +276,7 @@ export function NotificationsAdminClient() {
         <div className="space-y-1">
           <span className="font-medium">{n.titleAr}</span>
           {n.bodyAr ? (
-            <p className="line-clamp-1 text-xs text-muted-foreground">{n.bodyAr}</p>
+            <p className="  text-xs text-muted-foreground">{n.bodyAr}</p>
           ) : null}
         </div>
       ),

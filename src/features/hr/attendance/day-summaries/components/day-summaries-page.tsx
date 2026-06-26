@@ -10,8 +10,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { TableDateCell } from '@/components/ui/table-cells';
@@ -83,11 +81,6 @@ export function DaySummariesPage() {
   const companyId = useDefaultCompanyId() ?? '';
   const model = useDaySummariesDirectoryModel();
   const [detailRow, setDetailRow] = React.useState<DaySummaryResponseDto | null>(null);
-
-  usePageHeaderActions(
-    () => <FilterToggleButton />,
-    [],
-  );
 
   const columns = React.useMemo((): ColumnDef<DaySummaryResponseDto>[] => [
     {

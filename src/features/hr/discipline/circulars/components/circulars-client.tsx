@@ -29,7 +29,11 @@ import {
   CIRCULAR_AUDIENCE_FILTER_ORDER,
 } from '@/features/hr/discipline/lib/types';
 import type { HRDisciplineCircularRecord } from '@/features/hr/discipline/lib/types';
-import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import {
+  DEFAULT_DATE_FILTER_META,
+  defaultDateFilterBounds,
+  type DateFilterTab,
+} from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DisciplineFilterToolbar,
   type DisciplineFilterToolbarHandle,
@@ -72,8 +76,8 @@ export function CircularsClient() {
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [audienceFilter, setAudienceFilter] = React.useState<AudienceFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({ tab: 'all', hasRestriction: false });
+  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({ ...DEFAULT_DATE_FILTER_META }));
   const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => { setDateBounds(b); }, []);
   const onDateFilterMetaChange = React.useCallback((m: { tab: DateFilterTab; hasRestriction: boolean }) => { setDateMeta(m); }, []);
@@ -205,7 +209,7 @@ export function CircularsClient() {
     {
       key: 'body',
       title: 'النص',
-      className: 'max-w-[24rem] truncate text-xs text-muted-foreground',
+      className: 'max-w-[20rem] truncate text-xs text-muted-foreground',
       render: (c) => c.bodyAr,
     },
     {

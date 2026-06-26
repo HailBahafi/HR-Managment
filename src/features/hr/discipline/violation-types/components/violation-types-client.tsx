@@ -6,7 +6,6 @@ import {
   EntityActionCardChip,
   EntityActionCardGrid,
 } from '@/components/ui/entity-action-card';
-import { ArchiveScopeToggleButton } from '@/components/layouts/archive-scope-toggle-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -16,6 +15,7 @@ import {
 } from '@/features/hr/requests/components/shared-ui';
 import { useViolationTypesDirectoryModel } from '@/features/hr/discipline/violation-types/hooks/useViolationTypesDirectoryModel';
 import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import type { HRViolationDeductionKind } from '@/features/hr/discipline/lib/types';
 import { DEDUCTION_KIND_LABELS } from '@/features/hr/discipline/lib/types';
 import { cn } from '@/shared/utils';
@@ -25,17 +25,21 @@ const DEDUCTION_KIND_OPTIONS = (Object.entries(DEDUCTION_KIND_LABELS) as [HRViol
 export function ViolationTypesClient() {
   const m = useViolationTypesDirectoryModel();
 
+  usePageHeaderActions(
+    () => (
+      <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={m.openCreate} disabled={m.loading}>
+        <Plus className="h-3.5 w-3.5" />
+        إضافة نوع
+      </Button>
+    ),
+    [m.loading, m.openCreate],
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       {m.listError ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive whitespace-pre-wrap">{m.listError}</p>
       ) : null}
-      <div className="flex justify-end shrink-0 gap-2">
-        <ArchiveScopeToggleButton scope={m.archiveScope} onScopeChange={m.setArchiveScope} />
-        <Button variant="luxe" size="sm" onClick={m.openCreate} disabled={m.loading}>
-          <Plus className="h-4 w-4 ml-1" />إضافة نوع
-        </Button>
-      </div>
 
       <DisciplineListViewport>
       {m.loading ? (

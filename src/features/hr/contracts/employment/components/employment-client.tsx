@@ -8,11 +8,10 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { ArchiveScopeToggleButton } from '@/components/layouts/archive-scope-toggle-button';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
   EmptyState,
@@ -66,7 +65,6 @@ import {
 } from '@/features/hr/contracts/employment/utils/contract-leave-credit';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
-import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
@@ -299,7 +297,6 @@ export function EmploymentContractsClient() {
 
     const printable = (
       <EmploymentContractPrintHtml
-        logoSrc={getPdfLogoSrc()}
         company={company}
         employeeNameAr={empAr}
         contractNumber={values.contractNumber.trim() || '—'}
@@ -400,16 +397,15 @@ export function EmploymentContractsClient() {
     toast.success('تم نسخ بيانات العقد. راجع الموظف المستهدف والتواريخ ثم احفظ.');
   };
 
-  const openCreate = () => {
+  const openCreate = React.useCallback(() => {
     router.push(`${hrContractsRoutes.employment}?${HR_CONTRACTS_MODE_PARAM}=createContract`);
-  };
+  }, [router]);
 
   const activeFilterCount = (kindFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0);
 
   usePageHeaderActions(
     () => (
       <div className="flex items-center gap-2">
-        <ArchiveScopeToggleButton scope={archiveScope} onScopeChange={setArchiveScope} />
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button variant="luxe" size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm shrink-0" onClick={openCreate}>
           <Plus className="h-3.5 w-3.5" />
@@ -417,7 +413,7 @@ export function EmploymentContractsClient() {
         </Button>
       </div>
     ),
-    [activeFilterCount, archiveScope],
+    [activeFilterCount, openCreate],
   );
 
   const openView = (c: HRContractRecord) => {
@@ -633,6 +629,28 @@ export function EmploymentContractsClient() {
     return counts;
   }, [filtered, pagination.total, employmentStatusOrder]);
 
+  const employmentInlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+    {
+      id: 'archive',
+      value: archiveScope,
+      onChange: (v) => setArchiveScope(v as OrganizationArchiveScope),
+      placeholder: 'العرض',
+      options: ORGANIZATION_ARCHIVE_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    },
+    {
+      id: 'contract-kind',
+      value: kindFilter,
+      onChange: (v) => setValue('kind', v),
+      options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
+      placeholder: 'نوع العقد',
+    },
+  ], [archiveScope, kindFilter, setValue]);
+
+  const handleStatusFilterChange = React.useCallback(
+    (v: string) => setValue('status', v),
+    [setValue],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
@@ -641,28 +659,12 @@ export function EmploymentContractsClient() {
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
-        onStatusFilterChange={(v) => setValue('status', v)}
+        onStatusFilterChange={handleStatusFilterChange}
         statusOrder={employmentStatusOrder}
         statusLabels={CONTRACT_STATUS_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
         onDateBoundsChange={() => {}}
-        inlineSelects={[
-          {
-            id: 'archive',
-            value: archiveScope,
-            onChange: (v) => setArchiveScope(v as OrganizationArchiveScope),
-            placeholder: 'العرض',
-            options: ORGANIZATION_ARCHIVE_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
-          },
-          {
-            id: 'contract-kind',
-            value: kindFilter,
-            onChange: (v) => setValue('kind', v),
-            options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
-            placeholder: 'نوع العقد',
-          },
-        ]}
-        trailingActions={undefined}
+        inlineSelects={employmentInlineSelects}
       />
     ),
     [
@@ -673,6 +675,8 @@ export function EmploymentContractsClient() {
       statusCounts,
       empPickerList,
       employmentStatusOrder,
+      employmentInlineSelects,
+      handleStatusFilterChange,
     ],
   );
 

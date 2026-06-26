@@ -3,15 +3,16 @@
 import * as React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { usePageHeaderFilterRegion } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderActionsState, usePageHeaderActionsSettersRef } from '@/components/layouts/page-header-actions-context';
 import { cn } from '@/shared/utils';
 
 export function FilterToggleButton({ activeFilterCount = 0 }: { activeFilterCount?: number }) {
-  const { filterPanelOpen, setFilterPanelOpen } = usePageHeaderFilterRegion();
+  const { filterPanelOpen } = usePageHeaderActionsState();
+  const settersRef = usePageHeaderActionsSettersRef();
   return (
     <button
       type="button"
-      onClick={() => setFilterPanelOpen((v) => !v)}
+      onClick={() => settersRef.current.setFilterPanelOpen((v) => !v)}
       className={cn(
         'flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors',
         filterPanelOpen

@@ -25,7 +25,11 @@ import {
   DEDUCTION_STATUS_LABELS,
 } from '@/features/hr/discipline/lib/types';
 import type { HRDeductionStatus, HRViolationDeductionKind } from '@/features/hr/discipline/lib/types';
-import type { DateFilterTab } from '@/features/hr/discipline/lib/discipline-date-filter';
+import {
+  DEFAULT_DATE_FILTER_META,
+  defaultDateFilterBounds,
+  type DateFilterTab,
+} from '@/features/hr/discipline/lib/discipline-date-filter';
 import { cn, formatNumber } from '@/shared/utils';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
 import {
@@ -76,11 +80,10 @@ export function DeductionsClient() {
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [statusFilter, setStatusFilter] = React.useState<'all' | HRDeductionStatus>('all');
   const [kindFilter, setKindFilter] = React.useState<KindFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>({
-    tab: 'all',
-    hasRestriction: false,
-  });
+  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
+    ...DEFAULT_DATE_FILTER_META,
+  }));
   const filterToolbarRef = React.useRef<DisciplineFilterToolbarHandle>(null);
   const [detailRow, setDetailRow] = React.useState<HRDisciplinePayrollDeductionRecord | null>(null);
 
@@ -204,9 +207,6 @@ export function DeductionsClient() {
 
   const kindSelect = (
     <div className="flex min-w-0 items-center gap-2">
-      <Label htmlFor="deduction-kind-filter" className="shrink-0 text-[11px] font-medium text-muted-foreground">
-        نوع الاستقطاع
-      </Label>
       <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as KindFilter)}>
         <SelectTrigger id="deduction-kind-filter" className="h-8 max-w-56 text-xs" dir="rtl">
           <SelectValue placeholder="النوع" />

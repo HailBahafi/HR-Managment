@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  Plus, X, AlertTriangle, Clock, LogIn, LogOut, Coffee,
+  Plus, X, Clock, LogIn, LogOut, Coffee,
   Loader2, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,6 +27,7 @@ import { resolveVisualKey } from '@/features/hr/attendance/daily/utils/daily-att
 import { STATUS } from '@/features/hr/attendance/daily/constants/daily-attendance-status';
 import { fmtDayFull } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { DailyAttendanceLegend } from '@/features/hr/attendance/daily/components/daily-attendance-legend';
+import { DailyDayDetailDialog } from '@/features/hr/attendance/daily/components/daily-day-detail-dialog';
 
 // ─── constants ─────────────────────────────────────────────────────────────────
 
@@ -192,16 +193,15 @@ type TimelineMarker = {
 
 function EventTickMarker({
   marker,
-  onVoid,
+  onClick,
 }: {
   marker: TimelineMarker;
-  onVoid: (e: AttendanceEventResponseDto) => void;
+  onClick: () => void;
 }) {
   const style = getMarkerStyle(marker.eventType, marker.source);
   const label = EVENT_TYPE_META[marker.eventType]?.labelAr;
   const sourceLabel = marker.source ? SOURCE_LABEL[marker.source] : undefined;
-  const title = [label, marker.timeLabel, sourceLabel].filter(Boolean).join(' — ');
-  const voidable = !!marker.event;
+  const title = [label, marker.timeLabel, sourceLabel, '— انقر لعرض تفاصيل اليوم'].filter(Boolean).join(' ');
   const stackShift = marker.stackOffset ?? 0;
 
   const content = (
@@ -219,92 +219,19 @@ function EventTickMarker({
     </>
   );
 
-  if (!voidable) {
-    return (
-      <div
-        title={title}
-        className="pointer-events-none absolute bottom-0 top-0 z-[4] flex w-0 flex-col items-center"
-        style={{ insetInlineStart: pct(marker.mins), transform: `translateX(calc(-50% + ${stackShift}px))` }}
-      >
-        {content}
-      </div>
-    );
-  }
-
   return (
     <button
       type="button"
       title={title}
-      onClick={() => marker.event && onVoid(marker.event)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       className="group/tick absolute bottom-0 top-0 z-[4] flex w-0 cursor-pointer flex-col items-center opacity-90 transition-opacity hover:opacity-100"
       style={{ insetInlineStart: pct(marker.mins), transform: `translateX(calc(-50% + ${stackShift}px))` }}
     >
       {content}
     </button>
-  );
-}
-
-// ─── void dialog ───────────────────────────────────────────────────────────────
-
-function VoidDialog({
-  event, onClose, onVoided,
-}: {
-  event: AttendanceEventResponseDto | null;
-  onClose: () => void;
-  onVoided: (id: string) => void;
-}) {
-  const [reason, setReason] = React.useState('');
-  const [saving, setSaving] = React.useState(false);
-  React.useEffect(() => { if (event) setReason(''); }, [event]);
-
-  const handleVoid = async () => {
-    if (!event) return;
-    setSaving(true);
-    try {
-      await attendanceEventsApi.void(event.id, reason.trim() || 'تصحيح يدوي');
-      toast.success('تم إلغاء الحدث');
-      onVoided(event.id);
-      onClose();
-    } catch { toast.error('فشل إلغاء الحدث'); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-right text-base">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            إلغاء الحدث
-          </DialogTitle>
-        </DialogHeader>
-        {event && (
-          <div className="space-y-4 py-1">
-            <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm space-y-1">
-              <p className="font-medium">{EVENT_TYPE_META[event.eventType]?.labelAr}</p>
-              <p className="font-mono text-xs text-muted-foreground" dir="ltr">{isoToHHMM(event.occurredAt)}</p>
-            </div>
-            <p className="text-xs text-muted-foreground">الحدث لن يُحذف — سيُعلَّم كملغى ويظل في السجل للمراجعة.</p>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">سبب الإلغاء</Label>
-              <Textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="اختياري"
-                className="min-h-[56px] resize-none text-sm"
-              />
-            </div>
-          </div>
-        )}
-        <DialogFooter>
-          <Button variant="destructive" onClick={handleVoid} disabled={saving} className="gap-2">
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-            تأكيد الإلغاء
-          </Button>
-          <Button variant="outline" onClick={onClose}>تراجع</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -321,11 +248,11 @@ function pointerMinsFromRtlBar(el: HTMLElement, clientX: number): number {
 function TimelineBar({
   summary,
   events,
-  onVoid,
+  onOpenDayDetail,
 }: {
   summary: AttendanceDaySummary;
   events: AttendanceEventResponseDto[];
-  onVoid: (e: AttendanceEventResponseDto) => void;
+  onOpenDayDetail: () => void;
 }) {
   const trackRef = React.useRef<HTMLDivElement>(null);
   const [hoverMins, setHoverMins] = React.useState<number | null>(null);
@@ -453,7 +380,7 @@ function TimelineBar({
 
         {/* Check-in / check-out markers — one green line, one red line */}
         {markersWithStack.map((marker) => (
-          <EventTickMarker key={marker.id} marker={marker} onVoid={onVoid} />
+          <EventTickMarker key={marker.id} marker={marker} onClick={onOpenDayDetail} />
         ))}
 
         {/* Voided ticks */}
@@ -515,7 +442,7 @@ function NowCursor({ workDate }: { workDate: string }) {
 // ─── employee row ──────────────────────────────────────────────────────────────
 
 function EmployeeRow({
-  summary, events, workDate, companyId, onEventsChange, allEmployees,
+  summary, events, workDate, companyId, onEventsChange, allEmployees, onOpenDayDetail,
 }: {
   summary: AttendanceDaySummary;
   events: AttendanceEventResponseDto[];
@@ -523,19 +450,16 @@ function EmployeeRow({
   companyId: string;
   onEventsChange: (employeeId: string, newEvents: AttendanceEventResponseDto[]) => void;
   allEmployees: { id: string; name: string }[];
+  onOpenDayDetail: (summary: AttendanceDaySummary) => void;
 }) {
   const [addOpen, setAddOpen] = React.useState(false);
-  const [voidTarget, setVoidTarget] = React.useState<AttendanceEventResponseDto | null>(null);
 
   const vk = resolveVisualKey(summary.status);
   const cfg = STATUS[vk];
 
-  const activeEvents = events.filter((e) => !e.isVoided);
-  const sorted = [...activeEvents].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
-  const checkIn  = sorted.find((e) => e.eventType === 'check_in');
-  const checkOut = [...sorted].reverse().find((e) => e.eventType === 'check_out');
-
-  const handleVoided = (id: string) => onEventsChange(summary.employeeId, events.map((e) => e.id === id ? { ...e, isVoided: true } : e));
+  const openDetail = React.useCallback(() => {
+    onOpenDayDetail(summary);
+  }, [onOpenDayDetail, summary]);
 
   return (
     <>
@@ -560,9 +484,9 @@ function EmployeeRow({
           <div
             className="col-start-2 min-w-0"
             onDoubleClick={() => setAddOpen(true)}
-            title="انقر مرتين لتسجيل حدث"
+            title="انقر على حدث لعرض التفاصيل · انقر مرتين لتسجيل حدث"
           >
-            <TimelineBar summary={summary} events={events} onVoid={setVoidTarget} />
+            <TimelineBar summary={summary} events={events} onOpenDayDetail={openDetail} />
           </div>
         </div>
       </div>
@@ -576,7 +500,6 @@ function EmployeeRow({
         companyId={companyId}
         onCreated={(empId, evt) => onEventsChange(empId, [...events, evt])}
       />
-      <VoidDialog event={voidTarget} onClose={() => setVoidTarget(null)} onVoided={handleVoided} />
     </>
   );
 }
@@ -866,6 +789,19 @@ export function DailyOneDayView({
   const [headerEventsExpanded, setHeaderEventsExpanded] = React.useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = React.useState(false);
   const [registerDefaultEmpId, setRegisterDefaultEmpId] = React.useState<string | null>(null);
+  const [detailSummary, setDetailSummary] = React.useState<AttendanceDaySummary | null>(null);
+  const [detailOpen, setDetailOpen] = React.useState(false);
+
+  const openDayDetail = React.useCallback((summary: AttendanceDaySummary) => {
+    setDetailSummary(summary);
+    setDetailOpen(true);
+  }, []);
+
+  const summaryByEmployeeId = React.useMemo(() => {
+    const map = new Map<string, AttendanceDaySummary>();
+    for (const row of allRows) map.set(row.employeeId, row);
+    return map;
+  }, [allRows]);
 
   const allDayEvents = React.useMemo(() => {
     const items: { event: AttendanceEventResponseDto; employeeId: string; employeeName: string }[] = [];
@@ -886,6 +822,13 @@ export function DailyOneDayView({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft" dir="rtl">
+      <DailyDayDetailDialog
+        summary={detailSummary}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        companyId={companyId}
+      />
+
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3">
         <div>
@@ -929,13 +872,14 @@ export function DailyOneDayView({
             companyId={companyId}
             onEventsChange={handleEventsChange}
             allEmployees={allEmployees}
+            onOpenDayDetail={openDayDetail}
           />
         ))
       )}
 
       {headerEventsExpanded && allDayEvents.length > 0 && (
         <div className="border-t border-border/50 bg-muted/10 px-4 py-2" dir="rtl">
-          {allDayEvents.map(({ event, employeeName }, i) => {
+          {allDayEvents.map(({ event, employeeId, employeeName }, i) => {
             const meta = EVENT_TYPE_META[event.eventType];
             const Icon = meta.icon;
             const isCheckEvent = event.eventType === 'check_in' || event.eventType === 'check_out';
@@ -945,9 +889,17 @@ export function DailyOneDayView({
             const dotColor = markerStyle?.lineColor ?? EVENT_TICK_COLOR[event.eventType];
             const sourceLabel = event.source ? SOURCE_LABEL[event.source] : undefined;
             return (
-              <div
+              <button
                 key={event.id}
-                className={cn('flex items-center justify-between gap-3 py-2 text-xs', i > 0 && 'border-t border-border/40')}
+                type="button"
+                onClick={() => {
+                  const rowSummary = summaryByEmployeeId.get(event.employeeId);
+                  if (rowSummary) openDayDetail(rowSummary);
+                }}
+                className={cn(
+                  'flex w-full items-center justify-between gap-3 py-2 text-xs text-right transition-colors hover:bg-muted/40',
+                  i > 0 && 'border-t border-border/40',
+                )}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
@@ -959,7 +911,7 @@ export function DailyOneDayView({
                   {sourceLabel && <span className="text-[10px] text-muted-foreground/80">{sourceLabel}</span>}
                   <span className="font-mono tabular-nums" dir="ltr">{isoToHHMM(event.occurredAt)}</span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

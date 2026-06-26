@@ -17,7 +17,7 @@ import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
 import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -29,6 +29,7 @@ import {
 } from '@/features/hr/leaves/unified-management/lib/leaves-utils';
 import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
+import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organization/lib/api/departments';
 import { organizationActiveListStatusQuery } from '@/features/hr/organization/lib/archive-scope';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import type { UnifiedLeaveRecord, UnifiedLeaveType, LeaveStatus, UnifiedFilterState } from '@/features/hr/leaves/unified-management/types';
@@ -160,7 +161,7 @@ function LeaveStatusBlock({ leave, compact = false }: { leave: UnifiedLeaveRecor
             {meta.dateLabel}: <span className="font-mono text-foreground" dir="ltr">{meta.dateValue}</span>
           </>
         ) : leave.decisionNotesAr?.trim() ? (
-          <span className="line-clamp-2" title={leave.decisionNotesAr}>{leave.decisionNotesAr}</span>
+          <span className=" " title={leave.decisionNotesAr}>{leave.decisionNotesAr}</span>
         ) : undefined,
       }}
       compact={compact}
@@ -217,7 +218,7 @@ function LeaveDecisionCell({
         <p className="text-muted-foreground">{LEAVE_STATUS_LABELS[leave.status]}</p>
       )}
       {leave.decisionNotesAr?.trim() ? (
-        <p className="line-clamp-2 text-muted-foreground" title={leave.decisionNotesAr}>
+        <p className="  text-muted-foreground" title={leave.decisionNotesAr}>
           {leave.decisionNotesAr}
         </p>
       ) : null}
@@ -281,20 +282,29 @@ export function UnifiedManagementClient() {
   const updatedByActor = authUser?.id ?? undefined;
 
   const [branches, setBranches] = React.useState<BranchResponseDto[]>([]);
+  const [departments, setDepartments] = React.useState<DepartmentResponseDto[]>([]);
   React.useEffect(() => {
     void (async () => {
       try {
         const scope = await resolveOrganizationScope();
-        const res = await branchesApi.getAll({
-          ...(scope.companyId ? { companyId: scope.companyId, limit: 200 } : { limit: 200 }),
-          ...organizationActiveListStatusQuery(),
-        });
-        setBranches(res.items.filter((b) => b.isActive));
+        const cid = scope.companyId ?? companyId ?? undefined;
+        const [branchRes, deptRes] = await Promise.all([
+          branchesApi.getAll({
+            ...(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+            ...organizationActiveListStatusQuery(),
+          }),
+          departmentsApi.getAll({
+            ...(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
+            ...organizationActiveListStatusQuery(),
+          }),
+        ]);
+        setBranches(branchRes.items.filter((b) => b.isActive));
+        setDepartments(deptRes.items.filter((d) => d.isActive));
       } catch {
-        // silently ignore — branch filter stays empty
+        // silently ignore — branch/department filters stay empty
       }
     })();
-  }, []);
+  }, [companyId]);
 
   const [leaveTypes, setLeaveTypes] = React.useState<LeaveTypeResponseDto[]>([]);
   const [leaveRequestTypes, setLeaveRequestTypes] = React.useState<ApiRequestType[]>([]);
@@ -324,8 +334,11 @@ export function UnifiedManagementClient() {
     [branches],
   );
   const deptInlineOptions = React.useMemo(
-    () => [{ value: 'all', label: 'جميع الأقسام' }],
-    [],
+    () => [
+      { value: 'all', label: 'جميع الأقسام' },
+      ...departments.map((d) => ({ value: d.id, label: d.nameAr })),
+    ],
+    [departments],
   );
   const typeInlineOptions = React.useMemo(() => {
     const options = new Map<string, string>();
@@ -346,12 +359,61 @@ export function UnifiedManagementClient() {
     [],
   );
 
+  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+    {
+      id: 'branch',
+      value: branchId,
+      onChange: setBranchId,
+      placeholder: 'الفرع',
+      className: 'w-[9rem]',
+      options: branchInlineOptions,
+    },
+    {
+      id: 'dept',
+      value: departmentId,
+      onChange: setDepartmentId,
+      placeholder: 'القسم',
+      className: 'w-[9rem]',
+      options: deptInlineOptions,
+    },
+    {
+      id: 'type',
+      value: leaveType,
+      onChange: setLeaveType,
+      placeholder: 'نوع الإجازة',
+      className: 'w-[9.5rem]',
+      options: typeInlineOptions,
+    },
+    {
+      id: 'stage',
+      value: approvalStageFilter,
+      onChange: setApprovalStageFilter,
+      placeholder: 'مرحلة الاعتماد',
+      className: 'w-[10rem]',
+      options: stageInlineOptions,
+    },
+  ], [
+    branchId,
+    departmentId,
+    leaveType,
+    approvalStageFilter,
+    branchInlineOptions,
+    deptInlineOptions,
+    typeInlineOptions,
+    stageInlineOptions,
+  ]);
+
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
 
   const empPickerList = React.useMemo(() =>
     employeesList.map(e => ({ id: e.id, name: e.nameAr })),
+    [employeesList],
+  );
+
+  const employeeById = React.useMemo(
+    () => new Map(employeesList.map((e) => [e.id, e])),
     [employeesList],
   );
 
@@ -392,7 +454,9 @@ export function UnifiedManagementClient() {
     const empPick = [...selectedEmpIds];
     return items.filter((l) => {
       if (empPick.length > 0 && !empPick.includes(l.employeeId)) return false;
-      if (branchId !== 'all' && l.requestBranchId !== branchId) return false;
+      const emp = employeeById.get(l.employeeId);
+      if (branchId !== 'all' && emp?.branchId !== branchId) return false;
+      if (departmentId !== 'all' && emp?.departmentId !== departmentId) return false;
       if (approvalStageFilter !== 'all') {
         const stage = getApprovalStage(l);
         if (stage !== approvalStageFilter && !(approvalStageFilter === 'fully_approved' && stage === 'fully_approved')) return false;
@@ -400,7 +464,7 @@ export function UnifiedManagementClient() {
       if (!leaveOverlapsYmdRange(l, dateBounds.from, dateBounds.to)) return false;
       return true;
     });
-  }, [approvalStageFilter, branchId, dateBounds.from, dateBounds.to, selectedEmpIds]);
+  }, [approvalStageFilter, branchId, departmentId, dateBounds.from, dateBounds.to, employeeById, selectedEmpIds]);
 
   const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     if (!companyId) return { items: [] as UnifiedLeaveRecord[], total: 0 };
@@ -546,14 +610,7 @@ export function UnifiedManagementClient() {
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        inlineSelects={[
-          { id: 'type', value: leaveType, onChange: setLeaveType, placeholder: 'نوع الإجازة', options: typeInlineOptions },
-        ]}
-        moreFilters={[
-          { id: 'branch', value: branchId, onChange: setBranchId, placeholder: 'الفرع', options: branchInlineOptions },
-          { id: 'dept', value: departmentId, onChange: setDepartmentId, placeholder: 'القسم', options: deptInlineOptions },
-          { id: 'stage', value: approvalStageFilter, onChange: setApprovalStageFilter, placeholder: 'مرحلة الاعتماد', options: stageInlineOptions },
-        ]}
+        inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -578,8 +635,7 @@ export function UnifiedManagementClient() {
       statusFilter, selectedEmpKey,
       dateBounds.from, dateBounds.to,
       statusCounts.all, statusCounts.pending, statusCounts.approved, statusCounts.rejected, statusCounts.cancelled,
-      view, empPickerList,
-      branchInlineOptions, deptInlineOptions, typeInlineOptions, stageInlineOptions,
+      view, empPickerList, inlineSelects,
     ],
   );
 
@@ -649,7 +705,7 @@ function LeaveTable({ leaves, employees, branches, currentEmployeeId, onDetail, 
         const name = employeeDisplayName(l, employees);
         return (
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
               {name.charAt(0) ?? '?'}
             </div>
             <div>
@@ -753,7 +809,7 @@ function LeaveTable({ leaves, employees, branches, currentEmployeeId, onDetail, 
               <span className="text-xs text-muted-foreground">{l.workingDays} أيام</span>
             </div>
             {l.noteAr?.trim() ? (
-              <p className="line-clamp-2 text-xs text-muted-foreground text-right" title={l.noteAr}>
+              <p className="  text-xs text-muted-foreground text-right" title={l.noteAr}>
                 {l.noteAr}
               </p>
             ) : null}

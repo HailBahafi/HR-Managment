@@ -9,10 +9,11 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet, FileSignature,
-  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,   KeyRound, Settings, Banknote,
+  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,   KeyRound, Banknote,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Logo } from '@/components/layouts/logo';
+import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
 import { useSidebar } from '@/components/layouts/sidebar-context';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrNotificationsNavGroups } from '@/features/hr/notifications/constants/nav';
@@ -21,7 +22,10 @@ import { hrContractsOnlyNavGroups } from '@/features/hr/contracts/constants/nav'
 import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
 import { hrPermissionsNavGroups } from '@/features/hr/permissions/constants/nav';
-import { hrSettingsNavGroups } from '@/features/hr/settings/constants/nav';
+import {
+  hrOrganizationSettingsNavItems,
+  hrOrganizationStructureNavItems,
+} from '@/features/hr/organization/constants/nav';
 
 type MobileNavChild =
   | { label: string; href: string; icon?: React.ElementType; match?: 'exact' | 'prefix' }
@@ -40,12 +44,17 @@ const mobileNav: MobileNavItem[] = [
   {
     key: 'employees', label: 'الهيكل الإداري', href: '/hr/organization/employees', icon: Users,
     children: [
-      { label: 'سجل الموظفين', href: '/hr/organization/employees', icon: Users },
-      { label: 'المستخدمين', href: '/hr/organization/contacts', icon: UserCircle },
-      { label: 'المسميات الوظيفية', href: '/hr/organization/job-titles', icon: Briefcase },
-      { label: 'الفروع', href: '/hr/organization/branches', icon: Building2 },
-      { label: 'الأقسام', href: '/hr/organization/departments', icon: Building2 },
-      { label: 'الهيكل التنظيمي', href: '/hr/organization/chart', icon: Building2 },
+      ...hrOrganizationStructureNavItems.map((item) => ({
+        label: item.labelAr,
+        href: item.href,
+        icon: item.icon,
+      })),
+      { separator: true },
+      ...hrOrganizationSettingsNavItems.map((item) => ({
+        label: item.labelAr,
+        href: item.href,
+        icon: item.icon,
+      })),
     ],
   },
   {
@@ -142,21 +151,10 @@ const mobileNav: MobileNavItem[] = [
       })),
     ),
   },
-  {
-    key: 'settings',
-    label: 'الإعدادات',
-    icon: Settings,
-    children: hrSettingsNavGroups.flatMap((g) =>
-      g.items.map((item) => ({
-        label: item.labelAr,
-        href: item.href,
-        icon: item.icon,
-      })),
-    ),
-  },
 ];
 
 function MobileDrawer({ onClose }: { onClose: () => void }) {
+  const { logoUrl, logoAlt } = useDefaultCompanyBranding();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
@@ -209,7 +207,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-sidebar-border/50 p-4">
         <div className="flex items-center gap-2.5">
-          <Logo size={30} />
+          <Logo size={30} src={logoUrl} alt={logoAlt} />
           <div className="flex flex-col leading-none">
             <span className="font-display text-base font-bold tracking-tight">روز</span>
             <span className="text-[9px] text-sidebar-foreground/60 tracking-[0.2em] uppercase">rose HR</span>

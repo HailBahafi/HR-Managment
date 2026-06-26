@@ -17,6 +17,14 @@ jest.mock('@/components/layouts/page-title-context', () => ({
   useSetPageTitle: jest.fn(),
 }));
 
+jest.mock('@/components/layouts/page-header-actions-context', () => ({
+  usePageHeaderActions: jest.fn(),
+}));
+
+jest.mock('@/components/layouts/entity-filter-slot-context', () => ({
+  useEntityFilterSlot: jest.fn(),
+}));
+
 const mockRoles = [
   {
     id: 'r1', nameAr: 'مدير الموارد البشرية', nameEn: 'HR Manager',
@@ -116,12 +124,12 @@ function renderPage() {
 describe('PermissionsManagementPage', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('renders the page heading', () => {
+  it('renders the page via layout title context', () => {
     renderPage();
-    expect(screen.getByText('الأدوار')).toBeInTheDocument();
+    expect(screen.getByText('مدير الموارد البشرية')).toBeInTheDocument();
   });
 
-  it('renders the add-role button', () => {
+  it('renders the add-role button in header', () => {
     renderPage();
     expect(screen.getAllByRole('button', { name: /إضافة دور/i }).length).toBeGreaterThanOrEqual(1);
   });
@@ -139,21 +147,17 @@ describe('PermissionsManagementPage', () => {
     });
   });
 
-  it('opens edit panel when "تعديل الصلاحيات" is clicked', async () => {
+  it('opens edit panel when a role card is clicked', async () => {
     renderPage();
-    await userEvent.click(screen.getByRole('button', { name: /تعديل الصلاحيات/i }));
+    await userEvent.click(screen.getByText('مدير الموارد البشرية'));
     await waitFor(() => {
       expect(screen.getByText(/تعديل:/i)).toBeInTheDocument();
     });
   });
 
-  it('opens delete dialog when delete button is clicked', async () => {
+  it('opens delete dialog when card delete button is clicked', async () => {
     renderPage();
-    const trashBtn = screen.getAllByRole('button').find(
-      (b) => b.className.includes('destructive') && !(b as HTMLButtonElement).disabled,
-    );
-    if (!trashBtn) { expect(true).toBe(true); return; }
-    await userEvent.click(trashBtn);
+    await userEvent.click(screen.getByRole('button', { name: /حذف مدير الموارد البشرية/i }));
     await waitFor(() => {
       expect(screen.getByText(/هل أنت متأكد من حذف/i)).toBeInTheDocument();
     });

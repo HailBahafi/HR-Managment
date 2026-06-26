@@ -1,13 +1,21 @@
 'use client';
 
 import * as React from 'react';
-import { FileDown, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { FileDown, FileSpreadsheet, Plus, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { AttendanceRegisterPrintHtml } from '@/components/pdf/print/attendance-register-print-html';
-import { hasDateRangeFilter, thisCalendarMonthYMD, todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { hasDateRangeFilter, normalizePeriodRange, thisCalendarMonthYMD, todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
 import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
 import { enumerateDates } from '@/features/hr/attendance/lib/utils';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -19,9 +27,9 @@ import { resolveVisualKey } from '@/features/hr/attendance/daily/utils/daily-att
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { attendanceEventsApi } from '@/features/hr/attendance/lib/api/attendance-events';
+import { recomputeTodayDaySummaries } from '@/features/hr/attendance/lib/api/recompute-today-day-summaries';
 import { companiesApi } from '@/features/hr/lib/api/companies';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 
 export type AttendanceViewMode = 'card' | 'table';
@@ -38,6 +46,7 @@ export function useDailyAttendanceModel() {
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [recomputeOpen, setRecomputeOpen] = React.useState(false);
+  const [registerOpen, setRegisterOpen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<AttendanceViewMode>('card');
 
   const { from: filterFrom, to: filterTo } = dateBounds;
@@ -62,6 +71,7 @@ export function useDailyAttendanceModel() {
 
   const reloadAttendanceData = React.useCallback(async (from: string, to: string) => {
     try {
+      await recomputeTodayDaySummaries();
       const [summRes, evtRes] = await Promise.all([
         attendanceDaySummariesApi.getAll({ limit: 2000, from, to } as Parameters<typeof attendanceDaySummariesApi.getAll>[0]),
         attendanceEventsApi.getAll({ limit: 2000, workDateFrom: from, workDateTo: to }),
@@ -231,10 +241,69 @@ export function useDailyAttendanceModel() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
+  const isDefaultDate = filterFrom === todayYMD() && filterTo === todayYMD();
+  const activeFilterCount =
+    (statusFilter !== 'all' ? 1 : 0)
+    + (selectedEmpIds.size > 0 ? 1 : 0)
+    + (!isDefaultDate ? 1 : 0);
+
+  usePageHeaderActions(
+    () => (
+      <div className="flex items-center gap-2">
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
+        <Button
+          type="button"
+          size="sm"
+          variant="luxe"
+          onClick={() => setRegisterOpen(true)}
+          className="h-8 gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          تسجيل حضور
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 gap-2"
+          onClick={() => setRecomputeOpen(true)}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          تحديث البيانات
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="h-8 w-8 shrink-0" aria-label="تصدير الحضور">
+              <FileDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem
+              onSelect={() => {
+                if (attendancePdfRows.length === 0) {
+                  toast.error('لا توجد سجلات للتصدير ضمن الفلاتر الحالية.');
+                  return;
+                }
+                setPdfOpen(true);
+              }}
+            >
+              <FileDown className="h-4 w-4" />
+              PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void handleExportAttendanceExcel()}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    ),
+    [activeFilterCount, attendancePdfRows.length, handleExportAttendanceExcel],
+  );
+
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        defaultDateFilterTab="today"
         empPickerEmployees={allEmployees}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -243,56 +312,31 @@ export function useDailyAttendanceModel() {
         statusOrder={ATT_VISUAL_STATUS_ORDER}
         statusLabels={attendanceStatusLabels}
         statusCounts={attendanceStatusCounts}
-        onDateBoundsChange={(b) => setDateBounds({ from: b.from || todayYMD(), to: b.to || todayYMD() })}
-        trailingActions={(
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => setRecomputeOpen(true)}
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              تحديث البيانات
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => {
-                if (attendancePdfRows.length === 0) {
-                  toast.error('لا توجد سجلات للتصدير ضمن الفلاتر الحالية.');
-                  return;
-                }
-                setPdfOpen(true);
-              }}
-            >
-              <FileDown className="h-3.5 w-3.5" />
-              PDF
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => void handleExportAttendanceExcel()}
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              Excel
-            </Button>
-          </>
-        )}
+        onDateBoundsChange={(b) => {
+          const normalized = normalizePeriodRange(b);
+          if (normalized) {
+            setDateBounds(normalized);
+            return;
+          }
+          setDateBounds({ from: todayYMD(), to: todayYMD() });
+        }}
+        dataView={{
+          value: viewMode,
+          onChange: (v) => setViewMode(v as AttendanceViewMode),
+          options: [
+            { value: 'card', label: 'بطاقات', icon: 'layout-grid' },
+            { value: 'table', label: 'جدول', icon: 'list' },
+          ],
+        }}
       />
     ),
     [
       statusFilter,
       selectedEmpKey,
+      viewMode,
+      allEmployees.length,
       dateBounds.from,
       dateBounds.to,
-      from,
-      to,
       attendanceStatusCounts.all,
       attendanceStatusCounts.present,
       attendanceStatusCounts.late,
@@ -302,8 +346,6 @@ export function useDailyAttendanceModel() {
       attendanceStatusCounts.rest_day,
       attendanceStatusCounts.unscheduled,
       attendanceStatusCounts.on_leave,
-      // allEmployees, handleExportAttendanceExcel, attendancePdfRows.length omitted —
-      // renderRef.current() always captures the latest values without needing re-registration.
     ],
   );
 
@@ -328,6 +370,8 @@ export function useDailyAttendanceModel() {
     setPdfOpen,
     recomputeOpen,
     setRecomputeOpen,
+    registerOpen,
+    setRegisterOpen,
     refreshAfterRecompute,
     viewMode,
     setViewMode,
