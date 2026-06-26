@@ -188,7 +188,10 @@ export function DateRangePicker({
     if (mode === 'range') {
       const err = validate(tempStart, tempEnd);
       if (err) { setError(err); return; }
-      onApply({ from: tempStart ?? '', to: tempEnd ?? '' }, 'range');
+      const from = tempStart ?? '';
+      let to = tempEnd ?? '';
+      if (allowSingleDate && from && !to) to = from;
+      onApply({ from, to }, 'range');
     } else {
       if (!selectedMonth) return;
       const [y, m] = selectedMonth.split('-').map(Number);

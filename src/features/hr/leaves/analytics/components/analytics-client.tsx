@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
+import { themeAvatarClassFromKey } from '@/shared/theme-avatar-palette';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -361,7 +362,7 @@ function EmployeeBalanceGroupCard({
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const initials = group.employeeNameAr.split(' ').map((w) => w[0]).slice(0, 2).join('');
-  const hue = ((group.employeeId.charCodeAt(0) ?? 0) * 47) % 360;
+  const avatarClass = themeAvatarClassFromKey(group.employeeId);
   const p = pct(group.usedDays, group.totalDays);
   const danger = group.totalDays > 0 && p >= 90;
   const warn = group.totalDays > 0 && p >= 70;
@@ -375,8 +376,10 @@ function EmployeeBalanceGroupCard({
         aria-expanded={expanded}
       >
         <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-          style={{ background: `hsl(${hue} 55% 45%)` }}
+          className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
+            avatarClass,
+          )}
         >
           {initials}
         </div>

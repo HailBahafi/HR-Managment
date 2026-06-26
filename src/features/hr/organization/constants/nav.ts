@@ -13,7 +13,7 @@ export const hrOrganizationStructureNavItems = [
 export const hrOrganizationSettingsNavItems = [
   { labelAr: 'إعدادات الشركة', href: hrOrganizationRoutes.pagesCompany, icon: Landmark },
   { labelAr: 'إعدادات الموارد البشرية', href: hrOrganizationRoutes.pagesHr, icon: Bell },
-  { labelAr: 'إعدادات النظام والمنظمة', href: hrOrganizationRoutes.pagesOrganization, icon: Building2 },
+  { labelAr: 'إعدادات النظام', href: hrOrganizationRoutes.pagesOrganization, icon: Building2 },
 ] as const;
 
 export function isHrOrganizationNavPath(pathname: string): boolean {

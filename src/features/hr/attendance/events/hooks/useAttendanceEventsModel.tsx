@@ -24,7 +24,7 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
 import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
 import { Button } from '@/components/ui/button';
-import { todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { isPeriodFilterActive, normalizePeriodRange, todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
 import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
 
 export type EventsFilterState = {
@@ -170,19 +170,29 @@ export function useAttendanceEventsModel() {
     [employees],
   );
 
-  const onPeriodChange = React.useCallback(({ from: nextFrom, to: nextTo }: { from: string; to: string }) => {
-    setDateBounds({
-      from: nextFrom || todayYMD(),
-      to: nextTo || todayYMD(),
-    });
+  const defaultPeriod = React.useMemo(() => {
+    const today = todayYMD();
+    return { from: today, to: today };
   }, []);
 
-  const isDefaultDate = from === todayYMD() && to === todayYMD();
+  const onPeriodChange = React.useCallback((range: { from: string; to: string }) => {
+    const normalized = normalizePeriodRange(range);
+    if (!normalized) return;
+    setDateBounds(normalized);
+  }, []);
+
+  const onPeriodFilterClear = React.useCallback(() => {
+    const today = todayYMD();
+    setDateBounds({ from: today, to: today });
+  }, []);
+
+  const periodFilterActive = isPeriodFilterActive(dateBounds, defaultPeriod);
+
   const activeFilterCount =
     (selectedEmpIds.size > 0 ? 1 : 0)
     + (eventTypeFilter !== 'all' ? 1 : 0)
     + (includeVoided ? 1 : 0)
-    + (!isDefaultDate ? 1 : 0);
+    + (periodFilterActive ? 1 : 0);
 
   const periodFilter = (
     <EntityPeriodFilter
@@ -238,6 +248,8 @@ export function useAttendanceEventsModel() {
         showDateSection={false}
         showStatusSection={false}
         leadingFilters={periodFilter}
+        periodFilterActive={periodFilterActive}
+        onPeriodFilterClear={onPeriodFilterClear}
         empPickerEmployees={allEmployeesForPicker}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -251,6 +263,8 @@ export function useAttendanceEventsModel() {
       includeVoided,
       from,
       to,
+      periodFilterActive,
+      onPeriodFilterClear,
       allEmployeesForPicker,
       inlineSelects,
       onPeriodChange,

@@ -21,6 +21,7 @@ import {
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
 import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import { EMPTY_PERIOD_RANGE, isPeriodFilterActive } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { cn, formatDisplayDateTime } from '@/shared/utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -191,6 +192,11 @@ export function NotificationsAdminClient() {
     ({ from, to }: { from: string; to: string }) => m.setDateBounds({ from, to }),
     [m.setDateBounds],
   );
+  const onPeriodFilterClear = React.useCallback(
+    () => m.setDateBounds({ ...EMPTY_PERIOD_RANGE }),
+    [m.setDateBounds],
+  );
+  const periodFilterActive = isPeriodFilterActive(m.dateBounds);
 
   const periodFilter = React.useMemo(
     () => (
@@ -223,6 +229,8 @@ export function NotificationsAdminClient() {
         showStatusSection={false}
         showEmployeePicker={false}
         leadingFilters={periodFilter}
+        periodFilterActive={periodFilterActive}
+        onPeriodFilterClear={onPeriodFilterClear}
         inlineSelects={inlineSelects}
         beforeEmployeePicker={extraFilters}
         onDateBoundsChange={() => {}}
@@ -231,6 +239,8 @@ export function NotificationsAdminClient() {
     [
       inlineSelects,
       periodFilter,
+      periodFilterActive,
+      onPeriodFilterClear,
       extraFilters,
     ],
   );

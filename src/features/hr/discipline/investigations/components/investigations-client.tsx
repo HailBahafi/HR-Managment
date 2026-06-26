@@ -45,7 +45,11 @@ import {
   type EntityFilterToolbarHandle,
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import {
+  DEFAULT_DATE_FILTER_META,
+  defaultDateFilterBounds,
+  type DateFilterTab,
+} from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,10 +100,16 @@ export function InvestigationsClient() {
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [resultFilter, setResultFilter] = React.useState<ResultFilter>('all');
   const [recommendationFilter, setRecommendationFilter] = React.useState<RecommendationFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
+    ...DEFAULT_DATE_FILTER_META,
+  }));
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
-  const onPeriodChange = React.useCallback(({ from, to }: { from: string; to: string }) => {
-    setDateBounds({ from, to });
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
+    setDateBounds(b);
+  }, []);
+  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
+    setDateMeta(meta);
   }, []);
 
   const empPickerList = React.useMemo(
@@ -142,12 +152,8 @@ export function InvestigationsClient() {
     return counts;
   }, [sourceInvestigations]);
 
-  const dateRangeActive = Boolean(dateBounds.from || dateBounds.to);
+  const dateRangeActive = dateMeta.hasRestriction;
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (resultFilter !== 'all' ? 1 : 0) + (recommendationFilter !== 'all' ? 1 : 0) + (dateRangeActive ? 1 : 0);
-
-  const periodFilter = (
-    <EntityPeriodFilter value={dateBounds} onChange={onPeriodChange} triggerClassName="w-[11rem] max-w-[14rem]" />
-  );
 
   const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
     {
@@ -162,17 +168,6 @@ export function InvestigationsClient() {
       ],
     },
   ], [recommendationFilter]);
-
-  const investigationsFilterSummary = React.useMemo(() => {
-    const parts: string[] = [];
-    parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل' : `الموظفون: ${selectedEmpIds.size} محدد`);
-    parts.push(`النتيجة: ${resultFilter === 'all' ? 'الكل' : INVESTIGATION_RESULT_LABELS[resultFilter]}`);
-    if (recommendationFilter !== 'all') {
-      parts.push(`التوصية: ${INVESTIGATION_RECOMMENDATION_LABELS[recommendationFilter]}`);
-    }
-    parts.push(`التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`);
-    return parts.join(' · ');
-  }, [selectedEmpIds.size, resultFilter, recommendationFilter, dateBounds.from, dateBounds.to]);
 
   const investigationsPdfRows = React.useMemo(
     () =>
@@ -194,13 +189,12 @@ export function InvestigationsClient() {
           companyNameAr={m.company?.nameAr ?? '—'}
           companyNameEn={m.company?.nameEn ?? m.company?.nameAr ?? '—'}
           titleAr="سجل التحقيقات"
-          filterSummary={investigationsFilterSummary}
           headers={['رقم القضية', 'الموظف', 'المحقق', 'التاريخ', 'النتيجة', 'التوصية']}
           rows={investigationsPdfRows}
           landscape
         />
       ),
-    [investigationsPdfRows, investigationsFilterSummary, m.company],
+    [investigationsPdfRows, m.company],
   );
 
   const handleExportInvestigationsExcel = React.useCallback(async () => {
@@ -454,8 +448,6 @@ export function InvestigationsClient() {
     () => (
       <EntityFilterToolbar
         ref={filterToolbarRef}
-        showDateSection={false}
-        leadingFilters={periodFilter}
         inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
@@ -465,7 +457,8 @@ export function InvestigationsClient() {
         statusOrder={INVESTIGATION_RESULT_FILTER_ORDER}
         statusLabels={INVESTIGATION_RESULT_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        onDateBoundsChange={() => {}}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
         dataView={{
           value: viewMode,
           onChange: (v) => setViewMode(v as DisciplineViewMode),
@@ -484,7 +477,8 @@ export function InvestigationsClient() {
       statusCounts,
       viewMode,
       inlineSelects,
-      periodFilter,
+      onDateBoundsChange,
+      onDateFilterMetaChange,
     ],
   );
 

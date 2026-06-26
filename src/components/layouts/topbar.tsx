@@ -27,6 +27,7 @@ import { usePageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActionsRegion } from '@/components/layouts/page-header-actions-context';
 import { FilterTrigger } from '@/components/layouts/filter-panel';
 import { Logo } from '@/components/layouts/logo';
+import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
 import { NotificationBellPopover } from '@/features/hr/notifications/components/notification-bell-popover';
 import { cn } from '@/shared/utils';
 import { useThemeStore } from '@/shared/store/theme-store';
@@ -326,6 +327,7 @@ export function Topbar() {
     activeBranchId,
   } = useAuthUserDisplay();
   const defaultCompanyId = useDefaultCompanyId();
+  const { logoUrl, logoAlt } = useDefaultCompanyBranding();
   const setActiveContext = useAuthStore((s) => s.setActiveContext);
   const { toggle } = useSidebar();
   const { meta } = usePageTitle();
@@ -359,11 +361,7 @@ export function Topbar() {
 
         {/* Logo */}
         <Link href="/hr/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50">
-          <Logo size={28} />
-          <div className="hidden flex-col leading-none sm:flex">
-            <span className="font-display text-[15px] font-bold tracking-tight">روز</span>
-            <span className="text-[9px] font-medium tracking-[0.22em] text-muted-foreground uppercase">rose HR</span>
-          </div>
+          <Logo size={28} src={logoUrl} alt={logoAlt} />
         </Link>
 
         <div className="mx-0.5 hidden h-5 w-px bg-border/70 lg:block" />

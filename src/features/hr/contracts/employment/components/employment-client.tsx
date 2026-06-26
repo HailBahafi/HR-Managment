@@ -65,7 +65,6 @@ import {
 } from '@/features/hr/contracts/employment/utils/contract-leave-credit';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
-import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
@@ -298,7 +297,6 @@ export function EmploymentContractsClient() {
 
     const printable = (
       <EmploymentContractPrintHtml
-        logoSrc={getPdfLogoSrc()}
         company={company}
         employeeNameAr={empAr}
         contractNumber={values.contractNumber.trim() || '—'}

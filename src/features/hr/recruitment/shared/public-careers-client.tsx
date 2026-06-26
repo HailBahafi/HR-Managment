@@ -39,8 +39,7 @@ export function PublicCareersClient() {
     <div className="space-y-8">
       <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background px-6 py-10 sm:px-10 sm:py-12">
         <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, hsl(var(--primary)) 0%, transparent 45%)' }}
+          className="pointer-events-none absolute inset-0 opacity-40 surface-radial-primary-end"
         />
         <div className="relative max-w-2xl">
           <Badge variant="secondary" className="mb-3 text-[10px]">بوابة التوظيف</Badge>

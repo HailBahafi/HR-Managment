@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/shared/utils';
+import { shiftColorStyle } from '@/shared/shift-color';
 import { Badge } from '@/components/ui/badge';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import {
@@ -138,8 +139,11 @@ export function AssignmentsPanel() {
               <DialogHeader>
                 <div className="flex items-center gap-3">
                   <div
-                    className="flex h-10 w-10 items-center justify-center rounded-xl text-white"
-                    style={{ background: viewBatch.colorHex ? `#${viewBatch.colorHex.replace('#', '')}` : '#6366f1' }}
+                    className={cn(
+                      'flex h-10 w-10 items-center justify-center rounded-xl text-primary-foreground',
+                      viewBatch.colorHex ? 'bg-shift-color' : 'bg-primary',
+                    )}
+                    style={shiftColorStyle(viewBatch.colorHex)}
                   >
                     <Clock className="h-5 w-5" />
                   </div>
@@ -178,8 +182,11 @@ export function AssignmentsPanel() {
               <DialogHeader>
                 <div className="flex items-center gap-3">
                   <div
-                    className="flex h-10 w-10 items-center justify-center rounded-xl text-white"
-                    style={{ background: model.editBatch.colorHex ? `#${model.editBatch.colorHex.replace('#', '')}` : '#6366f1' }}
+                    className={cn(
+                      'flex h-10 w-10 items-center justify-center rounded-xl text-primary-foreground',
+                      model.editBatch.colorHex ? 'bg-shift-color' : 'bg-primary',
+                    )}
+                    style={shiftColorStyle(model.editBatch.colorHex)}
                   >
                     <Clock className="h-5 w-5" />
                   </div>

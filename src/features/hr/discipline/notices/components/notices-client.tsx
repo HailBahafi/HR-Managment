@@ -23,7 +23,11 @@ import {
   EntityFilterToolbar,
   type EntityFilterToolbarHandle,
 } from '@/components/ui/entity-filter-toolbar';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import {
+  DEFAULT_DATE_FILTER_META,
+  defaultDateFilterBounds,
+  type DateFilterTab,
+} from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,10 +67,16 @@ export function NoticesClient() {
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [kindFilter, setKindFilter] = React.useState<KindFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
+    ...DEFAULT_DATE_FILTER_META,
+  }));
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
-  const onPeriodChange = React.useCallback(({ from, to }: { from: string; to: string }) => {
-    setDateBounds({ from, to });
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
+    setDateBounds(b);
+  }, []);
+  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
+    setDateMeta(meta);
   }, []);
 
   const empPickerList = React.useMemo(
@@ -105,12 +115,8 @@ export function NoticesClient() {
     return counts;
   }, [filtered]);
 
-  const dateRangeActive = Boolean(dateBounds.from || dateBounds.to);
+  const dateRangeActive = dateMeta.hasRestriction;
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (kindFilter !== 'all' ? 1 : 0) + (dateRangeActive ? 1 : 0);
-
-  const periodFilter = (
-    <EntityPeriodFilter value={dateBounds} onChange={onPeriodChange} triggerClassName="w-[11rem] max-w-[14rem]" />
-  );
 
   const noticesPdfRows = React.useMemo(
     () => listFiltered.map((n) => [n.employeeNameAr, n.date, NOTICE_KIND_LABELS[n.kind], n.reasonAr, n.attachmentsNote || '—']),
@@ -166,14 +172,6 @@ export function NoticesClient() {
     [activeFilterCount, handleExportNoticesExcel, noticesPdfRows.length],
   );
 
-  const noticesFilterSummary = React.useMemo(() => {
-    const parts: string[] = [];
-    parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل' : `الموظفون: ${selectedEmpIds.size} محدد`);
-    parts.push(`نوع الإنذار: ${kindFilter === 'all' ? 'الكل' : NOTICE_KIND_LABELS[kindFilter]}`);
-    parts.push(`التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`);
-    return parts.join(' · ');
-  }, [selectedEmpIds.size, kindFilter, dateBounds.from, dateBounds.to]);
-
   const printable = React.useMemo(
     () =>
       noticesPdfRows.length === 0 ? null : (
@@ -181,13 +179,12 @@ export function NoticesClient() {
           companyNameAr={companyNameAr}
           companyNameEn={companyNameEn}
           titleAr="سجل الإنذارات"
-          filterSummary={noticesFilterSummary}
           headers={['الموظف', 'التاريخ', 'النوع', 'السبب', 'المرفقات']}
           rows={noticesPdfRows}
           landscape
         />
       ),
-    [noticesPdfRows, noticesFilterSummary],
+    [noticesPdfRows, companyNameAr, companyNameEn],
   );
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
@@ -269,8 +266,6 @@ export function NoticesClient() {
     () => (
       <EntityFilterToolbar
         ref={filterToolbarRef}
-        showDateSection={false}
-        leadingFilters={periodFilter}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -279,7 +274,8 @@ export function NoticesClient() {
         statusOrder={NOTICE_KIND_FILTER_ORDER}
         statusLabels={NOTICE_KIND_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        onDateBoundsChange={() => {}}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
         dataView={{
           value: viewMode,
           onChange: (v) => setViewMode(v as DisciplineViewMode),
@@ -290,7 +286,7 @@ export function NoticesClient() {
         }}
       />
     ),
-    [empPickerList, selectedEmpIds, kindFilter, statusCounts, viewMode, dateBounds.from, dateBounds.to, periodFilter],
+    [empPickerList, selectedEmpIds, kindFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
   );
 
   if (loading) {

@@ -9,6 +9,7 @@ export type UserCompanyLink = {
   companyNameAr?: string | null;
   companyNameEn?: string | null;
   companyLogoUrl?: string | null;
+  companyCommercialRegistrationNo?: string | null;
   companyPrimaryColor?: string | null;
   companySecondaryColor?: string | null;
   isDefault: boolean;

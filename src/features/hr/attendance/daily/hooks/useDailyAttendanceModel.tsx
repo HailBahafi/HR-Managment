@@ -15,7 +15,7 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { AttendanceRegisterPrintHtml } from '@/components/pdf/print/attendance-register-print-html';
-import { hasDateRangeFilter, thisCalendarMonthYMD, todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
+import { hasDateRangeFilter, normalizePeriodRange, thisCalendarMonthYMD, todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
 import type { AttendanceDaySummary, AttendanceEvent } from '@/features/hr/attendance/lib/types';
 import { enumerateDates } from '@/features/hr/attendance/lib/utils';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
@@ -304,7 +304,6 @@ export function useDailyAttendanceModel() {
   useEntityFilterSlot(
     () => (
       <EntityFilterToolbar
-        defaultDateFilterTab="today"
         empPickerEmployees={allEmployees}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -313,7 +312,14 @@ export function useDailyAttendanceModel() {
         statusOrder={ATT_VISUAL_STATUS_ORDER}
         statusLabels={attendanceStatusLabels}
         statusCounts={attendanceStatusCounts}
-        onDateBoundsChange={(b) => setDateBounds({ from: b.from || todayYMD(), to: b.to || todayYMD() })}
+        onDateBoundsChange={(b) => {
+          const normalized = normalizePeriodRange(b);
+          if (normalized) {
+            setDateBounds(normalized);
+            return;
+          }
+          setDateBounds({ from: todayYMD(), to: todayYMD() });
+        }}
         dataView={{
           value: viewMode,
           onChange: (v) => setViewMode(v as AttendanceViewMode),
@@ -328,6 +334,7 @@ export function useDailyAttendanceModel() {
       statusFilter,
       selectedEmpKey,
       viewMode,
+      allEmployees.length,
       dateBounds.from,
       dateBounds.to,
       attendanceStatusCounts.all,

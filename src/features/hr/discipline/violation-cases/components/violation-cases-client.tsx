@@ -46,7 +46,11 @@ import {
   type EntityFilterToolbarHandle,
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import {
+  DEFAULT_DATE_FILTER_META,
+  defaultDateFilterBounds,
+  type DateFilterTab,
+} from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -369,7 +373,10 @@ export function ViolationCasesClient() {
   const [viewMode, setViewMode] = React.useState<ViolationViewMode>('cards');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [violationTypeFilter, setViolationTypeFilter] = React.useState('all');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
+    ...DEFAULT_DATE_FILTER_META,
+  }));
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
 
   const [pdfOpen, setPdfOpen] = React.useState(false);
@@ -393,8 +400,11 @@ export function ViolationCasesClient() {
   const [investigationCase, setInvestigationCase] = React.useState<ViolationCaseRecord | null>(null);
   const [appealCase, setAppealCase] = React.useState<ViolationCaseRecord | null>(null);
 
-  const onPeriodChange = React.useCallback(({ from, to }: { from: string; to: string }) => {
-    setDateBounds({ from, to });
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
+    setDateBounds(b);
+  }, []);
+  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
+    setDateMeta(meta);
   }, []);
 
   // Sync toolbar filters to list model
@@ -438,14 +448,6 @@ export function ViolationCasesClient() {
     },
   ], [violationTypeFilter, typeInlineOptions]);
 
-  const periodFilter = (
-    <EntityPeriodFilter
-      value={dateBounds}
-      onChange={onPeriodChange}
-      triggerClassName="w-[11rem] max-w-[14rem]"
-    />
-  );
-
   const statusCounts = React.useMemo(() => {
     const counts: Record<string, number> = { all: sourceCases.length };
     for (const s of STATUS_ORDER) counts[s] = 0;
@@ -453,7 +455,7 @@ export function ViolationCasesClient() {
     return counts;
   }, [sourceCases]);
 
-  const dateRangeActive = Boolean(dateBounds.from || dateBounds.to);
+  const dateRangeActive = dateMeta.hasRestriction;
   const activeFilterCount =
     (selectedEmpIds.size > 0 ? 1 : 0)
     + (statusFilter !== 'all' ? 1 : 0)
@@ -525,11 +527,10 @@ export function ViolationCasesClient() {
           companyNameAr={companyNameAr}
           companyNameEn={companyNameEn}
           titleAr="سجل مخالفات الموظفين"
-          filterSummary={`الموظفون: ${selectedEmpIds.size === 0 ? 'الكل' : `${selectedEmpIds.size} محدد`} · الحالة: ${statusFilter === 'all' ? 'الكل' : STATUS_LABELS[statusFilter as ViolationRecordStatus]} · التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`}
           rows={violationPdfRows}
         />
       ),
-    [violationPdfRows, selectedEmpIds.size, statusFilter, dateBounds.from, dateBounds.to],
+    [violationPdfRows, companyNameAr, companyNameEn],
   );
 
   const empOptions = employees.map(e => ({ value: e.id, label: e.nameAr }));
@@ -816,8 +817,6 @@ export function ViolationCasesClient() {
     () => (
       <EntityFilterToolbar
         ref={filterToolbarRef}
-        showDateSection={false}
-        leadingFilters={periodFilter}
         inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
@@ -827,7 +826,8 @@ export function ViolationCasesClient() {
         statusOrder={STATUS_ORDER}
         statusLabels={STATUS_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        onDateBoundsChange={() => {}}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
         dataView={{
           value: viewMode,
           onChange: (v) => setViewMode(v as ViolationViewMode),
@@ -845,10 +845,10 @@ export function ViolationCasesClient() {
       violationTypeFilter,
       statusCounts,
       viewMode,
-      dateBounds.from,
-      dateBounds.to,
+      dateMeta.hasRestriction,
       inlineSelects,
-      onPeriodChange,
+      onDateBoundsChange,
+      onDateFilterMetaChange,
     ],
   );
 

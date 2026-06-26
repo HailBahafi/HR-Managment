@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/layouts/logo';
+import {
+  persistLoginBranding,
+  useLoginPageBranding,
+} from '@/features/auth/hooks/use-default-company-branding';
 import { authApi } from '@/features/auth/lib/api/auth';
 import { setAccessTokenCookie } from '@/features/auth/lib/auth-cookie';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -58,6 +62,8 @@ export function LoginPage() {
   });
 
   const appTitle = publicConfig.appName.trim() || 'نظام الموارد البشرية';
+  const { logoUrl, logoAlt, companyNameAr } = useLoginPageBranding();
+  const welcomeTitle = companyNameAr || appTitle;
 
   const onSubmit = async (values: FormValues) => {
     if (!publicConfig.apiUrl) {
@@ -79,6 +85,7 @@ export function LoginPage() {
 
       useAuthStore.getState().setUser(result.user);
       useAuthStore.getState().setAccessProfile(result.accessProfile);
+      persistLoginBranding(result.accessProfile);
       setAccessTokenCookie(result.access_token);
 
       const destination = resolvePostLoginPath(getReturnToFromLocation());
@@ -105,10 +112,10 @@ export function LoginPage() {
       <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
         <div className="w-full max-w-[420px] rounded-[28px] border border-white/70 bg-gradient-to-b from-primary/10 via-white to-white p-8 shadow-elevated dark:border-border/50 dark:from-primary/15 dark:via-card dark:to-card sm:p-10">
           <div className="flex flex-col items-center space-y-4 text-center">
-            <Logo size={56} />
+            <Logo size={56} src={logoUrl} alt={logoAlt} />
             <div className="space-y-2">
               <h1 className="font-display text-3xl font-bold tracking-tight text-primary">تسجيل الدخول</h1>
-              <p className="text-sm text-muted-foreground">أهلاً بك في {appTitle}</p>
+              <p className="text-sm text-muted-foreground">أهلاً بك في {welcomeTitle}</p>
             </div>
           </div>
 

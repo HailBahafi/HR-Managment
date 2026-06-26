@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
 import { Logo } from '@/components/layouts/logo';
+import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
 import { useSidebar } from '@/components/layouts/sidebar-context';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrNotificationsNavGroups } from '@/features/hr/notifications/constants/nav';
@@ -153,6 +154,7 @@ const mobileNav: MobileNavItem[] = [
 ];
 
 function MobileDrawer({ onClose }: { onClose: () => void }) {
+  const { logoUrl, logoAlt } = useDefaultCompanyBranding();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
@@ -205,7 +207,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-sidebar-border/50 p-4">
         <div className="flex items-center gap-2.5">
-          <Logo size={30} />
+          <Logo size={30} src={logoUrl} alt={logoAlt} />
           <div className="flex flex-col leading-none">
             <span className="font-display text-base font-bold tracking-tight">روز</span>
             <span className="text-[9px] text-sidebar-foreground/60 tracking-[0.2em] uppercase">rose HR</span>

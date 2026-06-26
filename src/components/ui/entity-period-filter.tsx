@@ -4,6 +4,7 @@ import * as React from 'react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker, type DateRangeValue } from '@/components/ui/DateRangePicker';
+import { normalizePeriodRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { cn } from '@/shared/utils';
 
 export type PeriodRange = DateRangeValue;
@@ -63,6 +64,12 @@ export function EntityPeriodFilter({
   const [open, setOpen] = React.useState(false);
   const label = formatPeriodLabel(value.from, value.to);
 
+  const handleApply = React.useCallback((range: PeriodRange) => {
+    const normalized = normalizePeriodRange(range);
+    if (!normalized) return;
+    onChange(normalized);
+  }, [onChange]);
+
   return (
     <div className={cn('shrink-0', className)}>
       <Button
@@ -87,7 +94,7 @@ export function EntityPeriodFilter({
         open={open}
         onOpenChange={setOpen}
         value={value}
-        onApply={(range) => onChange(range)}
+        onApply={handleApply}
       />
     </div>
   );

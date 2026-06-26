@@ -18,6 +18,7 @@ import {
   currentYearMonth,
   monthDateBounds,
 } from '@/features/hr/attendance/day-summaries/utils/month-date-range';
+import { isPeriodFilterActive, normalizePeriodRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { Button } from '@/components/ui/button';
 import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
 import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
@@ -72,10 +73,26 @@ export function useDaySummariesDirectoryModel() {
 
   const empPickerList = React.useMemo(() => allEmployees, [allEmployees]);
 
-  const onPeriodChange = React.useCallback(({ from: nextFrom, to: nextTo }: { from: string; to: string }) => {
-    setFrom(nextFrom);
-    setTo(nextTo);
+  const defaultPeriod = React.useMemo(() => {
+    const ym = currentYearMonth();
+    return monthDateBounds(ym.year, ym.month);
   }, []);
+
+  const onPeriodChange = React.useCallback((range: { from: string; to: string }) => {
+    const normalized = normalizePeriodRange(range);
+    if (!normalized) return;
+    setFrom(normalized.from);
+    setTo(normalized.to);
+  }, []);
+
+  const onPeriodFilterClear = React.useCallback(() => {
+    const ym = currentYearMonth();
+    const bounds = monthDateBounds(ym.year, ym.month);
+    setFrom(bounds.from);
+    setTo(bounds.to);
+  }, []);
+
+  const periodFilterActive = isPeriodFilterActive({ from, to }, defaultPeriod);
 
   const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
 
@@ -180,10 +197,16 @@ export function useDaySummariesDirectoryModel() {
     },
   ], [filters.isManualOverride, filters.status]);
 
+  const activeFilterCount =
+    (periodFilterActive ? 1 : 0)
+    + (selectedEmpIds.size > 0 ? 1 : 0)
+    + (filters.status !== 'all' ? 1 : 0)
+    + (filters.isManualOverride !== 'all' ? 1 : 0);
+
   usePageHeaderActions(
     () => (
       <div className="flex items-center gap-2">
-        <FilterToggleButton />
+        <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button
           type="button"
           variant="outline"
@@ -196,7 +219,7 @@ export function useDaySummariesDirectoryModel() {
         </Button>
       </div>
     ),
-    [],
+    [activeFilterCount],
   );
 
   useEntityFilterSlot(
@@ -205,6 +228,8 @@ export function useDaySummariesDirectoryModel() {
         showDateSection={false}
         showStatusSection={false}
         leadingFilters={periodFilter}
+        periodFilterActive={periodFilterActive}
+        onPeriodFilterClear={onPeriodFilterClear}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -215,12 +240,14 @@ export function useDaySummariesDirectoryModel() {
     [
       from,
       to,
+      periodFilterActive,
       filters.status,
       filters.isManualOverride,
       selectedEmpKey,
       empPickerList,
       inlineSelects,
       onPeriodChange,
+      onPeriodFilterClear,
     ],
   );
 

@@ -36,7 +36,11 @@ import {
   EntityFilterToolbar,
   type EntityFilterToolbarHandle,
 } from '@/components/ui/entity-filter-toolbar';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import {
+  DEFAULT_DATE_FILTER_META,
+  defaultDateFilterBounds,
+  type DateFilterTab,
+} from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,10 +108,16 @@ export function AppealsClient() {
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
+    ...DEFAULT_DATE_FILTER_META,
+  }));
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
-  const onPeriodChange = React.useCallback(({ from, to }: { from: string; to: string }) => {
-    setDateBounds({ from, to });
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
+    setDateBounds(b);
+  }, []);
+  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
+    setDateMeta(meta);
   }, []);
 
   const empPickerList = React.useMemo(
@@ -151,12 +161,8 @@ export function AppealsClient() {
     return counts;
   }, [sourceAppeals]);
 
-  const dateRangeActive = Boolean(dateBounds.from || dateBounds.to);
+  const dateRangeActive = dateMeta.hasRestriction;
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (dateRangeActive ? 1 : 0);
-
-  const periodFilter = (
-    <EntityPeriodFilter value={dateBounds} onChange={onPeriodChange} triggerClassName="w-[11rem] max-w-[14rem]" />
-  );
 
   const appealsPdfRows = React.useMemo(
     () => listFiltered.map((a) => [a.caseNumber, a.employeeNameAr, a.date, APPEAL_CHANNEL_LABELS[a.channel], APPEAL_STATUS_LABELS[a.status], a.grounds]),
@@ -212,14 +218,6 @@ export function AppealsClient() {
     [activeFilterCount, handleExportAppealsExcel, appealsPdfRows.length],
   );
 
-  const appealsFilterSummary = React.useMemo(() => {
-    const parts: string[] = [];
-    parts.push(selectedEmpIds.size === 0 ? 'الموظفون: الكل' : `الموظفون: ${selectedEmpIds.size} محدد`);
-    parts.push(`الحالة: ${statusFilter === 'all' ? 'الكل' : APPEAL_STATUS_LABELS[statusFilter]}`);
-    parts.push(`التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}`);
-    return parts.join(' · ');
-  }, [selectedEmpIds.size, statusFilter, dateBounds.from, dateBounds.to]);
-
   const printable = React.useMemo(
     () =>
       appealsPdfRows.length === 0 ? null : (
@@ -227,13 +225,12 @@ export function AppealsClient() {
           companyNameAr={companyNameAr}
           companyNameEn={companyNameEn}
           titleAr="سجل التظلمات"
-          filterSummary={appealsFilterSummary}
           headers={['رقم القضية', 'الموظف', 'التاريخ', 'القناة', 'الحالة', 'أسباب التظلم']}
           rows={appealsPdfRows}
           landscape
         />
       ),
-    [appealsPdfRows, appealsFilterSummary],
+    [appealsPdfRows, companyNameAr, companyNameEn],
   );
 
   const set = (patch: Partial<DraftForm>) => setDraft(d => ({ ...d, ...patch }));
@@ -469,8 +466,6 @@ export function AppealsClient() {
     () => (
       <EntityFilterToolbar
         ref={filterToolbarRef}
-        showDateSection={false}
-        leadingFilters={periodFilter}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -479,7 +474,8 @@ export function AppealsClient() {
         statusOrder={APPEAL_STATUS_FILTER_ORDER}
         statusLabels={APPEAL_STATUS_LABELS as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        onDateBoundsChange={() => {}}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
         dataView={{
           value: viewMode,
           onChange: (v) => setViewMode(v as DisciplineViewMode),
@@ -490,7 +486,7 @@ export function AppealsClient() {
         }}
       />
     ),
-    [empPickerList, selectedEmpIds, statusFilter, statusCounts, viewMode, periodFilter],
+    [empPickerList, selectedEmpIds, statusFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
   );
 
   if (loading) {

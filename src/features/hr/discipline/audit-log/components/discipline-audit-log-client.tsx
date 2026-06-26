@@ -29,7 +29,11 @@ import {
   type EntityFilterToolbarHandle,
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import {
+  DEFAULT_DATE_FILTER_META,
+  defaultDateFilterBounds,
+  type DateFilterTab,
+} from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -128,10 +132,16 @@ export function DisciplineAuditLogClient() {
   const [selectedActorIds, setSelectedActorIds] = React.useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('list');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
+  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
+    ...DEFAULT_DATE_FILTER_META,
+  }));
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
-  const onPeriodChange = React.useCallback(({ from, to }: { from: string; to: string }) => {
-    setDateBounds({ from, to });
+  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
+    setDateBounds(b);
+  }, []);
+  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
+    setDateMeta(meta);
   }, []);
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [expandedSnapshots, setExpandedSnapshots] = React.useState<Set<string>>(() => new Set());
@@ -165,16 +175,12 @@ export function DisciplineAuditLogClient() {
     return counts;
   }, [dateFilteredItems]);
 
-  const dateRangeActive = Boolean(dateBounds.from || dateBounds.to);
+  const dateRangeActive = dateMeta.hasRestriction;
   const activeFilterCount =
     (selectedActorIds.size > 0 ? 1 : 0)
     + (statusFilter !== 'all' ? 1 : 0)
     + (catFilter !== 'all' ? 1 : 0)
     + (dateRangeActive ? 1 : 0);
-
-  const periodFilter = (
-    <EntityPeriodFilter value={dateBounds} onChange={onPeriodChange} triggerClassName="w-[11rem] max-w-[14rem]" />
-  );
 
   const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
     {
@@ -210,11 +216,10 @@ export function DisciplineAuditLogClient() {
         companyNameAr={companyNameAr}
         companyNameEn={companyNameEn}
         titleAr="سجل عمليات الانضباط الوظيفي"
-        filterSummary={`الفئة: ${catFilter === 'all' ? 'الكل' : AUDIT_CATEGORY_LABELS_AR[catFilter]} · المُعدّلون: ${selectedActorIds.size === 0 ? 'الكل' : `${selectedActorIds.size} محدد`} · نوع العملية: ${statusFilter === 'all' ? 'الكل' : AUDIT_ACTION_LABELS_AR[statusFilter]} · التاريخ: ${dateBounds.from || dateBounds.to ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}` : 'كل الفترات'}${qRaw.trim() ? ` · بحث: ${qRaw.trim()}` : ''}`}
         rows={pdfRows}
       />
     ),
-    [pdfRows, catFilter, selectedActorIds.size, statusFilter, dateBounds.from, dateBounds.to, qRaw, companyNameAr, companyNameEn],
+    [pdfRows, companyNameAr, companyNameEn],
   );
 
   usePageHeaderActions(
@@ -251,8 +256,6 @@ export function DisciplineAuditLogClient() {
     () => (
       <EntityFilterToolbar
         ref={filterToolbarRef}
-        showDateSection={false}
-        leadingFilters={periodFilter}
         inlineSelects={inlineSelects}
         empPickerEmployees={actorPickerList}
         selectedEmpIds={selectedActorIds}
@@ -262,7 +265,8 @@ export function DisciplineAuditLogClient() {
         statusOrder={AUDIT_ACTION_FILTER_ORDER}
         statusLabels={AUDIT_ACTION_LABELS_AR as unknown as Record<string, string>}
         statusCounts={statusCounts}
-        onDateBoundsChange={() => {}}
+        onDateBoundsChange={onDateBoundsChange}
+        onDateFilterMetaChange={onDateFilterMetaChange}
         dataView={{
           value: viewMode,
           onChange: (v) => setViewMode(v as DisciplineViewMode),
@@ -273,7 +277,7 @@ export function DisciplineAuditLogClient() {
         }}
       />
     ),
-    [actorPickerList, selectedActorIds, statusFilter, statusCounts, viewMode, periodFilter, inlineSelects],
+    [actorPickerList, selectedActorIds, statusFilter, statusCounts, viewMode, inlineSelects, onDateBoundsChange, onDateFilterMetaChange],
   );
 
   const columns = React.useMemo((): ColumnDef<AuditLogEntry>[] => [

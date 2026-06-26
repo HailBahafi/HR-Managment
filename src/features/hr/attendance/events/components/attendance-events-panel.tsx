@@ -3,7 +3,7 @@
 import * as React from 'react';
 import {
   LogIn, LogOut, Coffee, AlertTriangle, Plus, Loader2,
-  X, MapPin, Clock, Smartphone, Monitor, Fingerprint, Bot, Globe, Pencil,
+  MapPin, Clock, Smartphone, Monitor, Fingerprint, Bot, Globe, Pencil, Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/utils';
@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { useAttendanceEventsModel } from '@/features/hr/attendance/events/hooks/useAttendanceEventsModel';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { attendanceEventsApi, type AttendanceEventResponseDto, type AttendanceEventType } from '@/features/hr/attendance/lib/api/attendance-events';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -45,62 +46,9 @@ function fmtTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
-function fmtDate(iso: string) {
-  return iso.slice(0, 10);
-}
 function nowTimeLocal() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-// ── void dialog ────────────────────────────────────────────────────────────────
-
-function VoidDialog({
-  event, onClose, onVoid,
-}: { event: AttendanceEventResponseDto | null; onClose: () => void; onVoid: (id: string, reason: string) => Promise<void> }) {
-  const [reason, setReason] = React.useState('');
-  const [saving, setSaving] = React.useState(false);
-  React.useEffect(() => { if (event) setReason(''); }, [event]);
-
-  const handleConfirm = async () => {
-    if (!event) return;
-    setSaving(true);
-    try { await onVoid(event.id, reason.trim() || 'تصحيح يدوي'); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm border-border" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-right text-base">
-            <AlertTriangle className="h-4 w-4 text-warning" /> إلغاء الحدث
-          </DialogTitle>
-        </DialogHeader>
-        {event && (
-          <div className="space-y-4 py-1">
-            <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm space-y-1">
-              <p className="font-medium">{EVENT_TYPE_META[event.eventType]?.label}</p>
-              <p className="font-mono text-xs text-muted-foreground" dir="ltr">{fmtDate(event.workDate)} · {fmtTime(event.occurredAt)}</p>
-              <p className="text-xs text-muted-foreground">{event.employeeNameAr}</p>
-            </div>
-            <p className="text-xs text-muted-foreground">الحدث لن يُحذف — سيُعلَّم كملغى ويظل في السجل للمراجعة.</p>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">سبب الإلغاء</Label>
-              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="اختياري" className="min-h-[56px] resize-none text-sm" />
-            </div>
-          </div>
-        )}
-        <DialogFooter>
-          <Button variant="destructive" onClick={handleConfirm} disabled={saving} className="gap-2">
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-            تأكيد الإلغاء
-          </Button>
-          <Button variant="outline" onClick={onClose}>تراجع</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 // ── create dialog ──────────────────────────────────────────────────────────────
@@ -226,87 +174,97 @@ function CreateEventDialog({
   );
 }
 
-// ── event row ──────────────────────────────────────────────────────────────────
-
-function EventRow({
-  event, onVoid, onDetail,
-}: { event: AttendanceEventResponseDto; onVoid: (e: AttendanceEventResponseDto) => void; onDetail: (e: AttendanceEventResponseDto) => void }) {
-  const meta = EVENT_TYPE_META[event.eventType];
-  const Icon = meta.icon;
-  const srcMeta = SOURCE_META[event.source ?? ''] ?? { label: event.source ?? '—', icon: Clock };
-  const SrcIcon = srcMeta.icon;
-
-  return (
-    <div
-      className={cn(
-        'group flex items-center gap-3 border-b border-border/50 px-4 py-3 transition-colors last:border-0 hover:bg-muted/20',
-        event.isVoided && 'opacity-50',
-      )}
-    >
-      {/* Event type badge */}
-      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs', meta.color)}>
-        <Icon className="h-3.5 w-3.5" />
-      </div>
-
-      {/* Employee + event */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-        <p className="truncate text-sm font-semibold">{event.employeeNameAr}</p>
+function useEventColumns(onDetail: (e: AttendanceEventResponseDto) => void) {
+  return React.useMemo((): ColumnDef<AttendanceEventResponseDto>[] => [
+    {
+      key: 'employee',
+      title: 'الموظف',
+      render: (event) => (
+        <div className={cn('flex items-center gap-2', event.isVoided && 'opacity-60')}>
+          <span className="font-medium">{event.employeeNameAr}</span>
           {event.isVoided && <Badge variant="secondary" className="shrink-0 text-[9px]">ملغى</Badge>}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-          <span className={cn('inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-medium', meta.color)}>
-            <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} />
+      ),
+    },
+    {
+      key: 'type',
+      title: 'نوع الحدث',
+      render: (event) => {
+        const meta = EVENT_TYPE_META[event.eventType];
+        const Icon = meta.icon;
+        return (
+          <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium', meta.color)}>
+            <Icon className="h-3 w-3" />
             {meta.label}
           </span>
-          <span className="flex items-center gap-1" dir="ltr">
-            <Clock className="h-3 w-3" />
-            {fmtTime(event.occurredAt)}
-          </span>
-          {event.checkInPointNameAr && (
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {event.checkInPointNameAr}
-            </span>
-          )}
-          <span className="flex items-center gap-1">
+        );
+      },
+    },
+    {
+      key: 'time',
+      title: 'الوقت',
+      className: 'font-mono text-xs tabular-nums whitespace-nowrap',
+      render: (event) => <span dir="ltr">{fmtTime(event.occurredAt)}</span>,
+    },
+    {
+      key: 'source',
+      title: 'المصدر',
+      hideOnMobile: true,
+      className: 'text-xs text-muted-foreground',
+      render: (event) => {
+        const srcMeta = SOURCE_META[event.source ?? ''] ?? { label: event.source ?? '—', icon: Clock };
+        const SrcIcon = srcMeta.icon;
+        return (
+          <span className="inline-flex items-center gap-1">
             <SrcIcon className="h-3 w-3" />
             {srcMeta.label}
           </span>
-        </div>
-      </div>
-
-      {/* Date */}
-      <div className="shrink-0 text-right">
-        <p className="font-mono text-xs tabular-nums text-muted-foreground" dir="ltr">{fmtDate(event.workDate)}</p>
-        {event.withinRadius !== null && (
-          <span className={cn('text-[10px]', event.withinRadius ? 'text-success' : 'text-destructive')}>
-            {event.withinRadius ? '✓ داخل النطاق' : '✗ خارج النطاق'}
-          </span>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        );
+      },
+    },
+    {
+      key: 'checkpoint',
+      title: 'نقطة التسجيل',
+      hideOnMobile: true,
+      className: 'text-xs text-muted-foreground',
+      render: (event) => event.checkInPointNameAr ? (
+        <span className="inline-flex items-center gap-1">
+          <MapPin className="h-3 w-3 shrink-0" />
+          {event.checkInPointNameAr}
+        </span>
+      ) : '—',
+    },
+    {
+      key: 'radius',
+      title: 'النطاق',
+      hideOnMobile: true,
+      className: 'text-xs',
+      render: (event) => event.withinRadius === null ? '—' : (
+        <span className={event.withinRadius ? 'text-success' : 'text-destructive'}>
+          {event.withinRadius ? '✓ داخل النطاق' : '✗ خارج النطاق'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      headerClassName: 'w-16',
+      render: (event) => (
         <Button
-          type="button" variant="ghost" size="sm"
-          className="h-7 px-2 text-xs"
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={() => onDetail(event)}
+          title="تفاصيل"
         >
-          تفاصيل
+          <Eye className="h-3.5 w-3.5" />
+          <span className="sr-only">تفاصيل</span>
         </Button>
-        {!event.isVoided && (
-          <Button
-            type="button" variant="ghost" size="sm"
-            className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => onVoid(event)}
-          >
-            إلغاء
-          </Button>
-        )}
-      </div>
-    </div>
-  );
+      ),
+    },
+  ], [onDetail]);
 }
 
 // ── detail dialog ──────────────────────────────────────────────────────────────
@@ -359,6 +317,10 @@ function EventDetailDialog({
 
 export function AttendanceEventsPanel() {
   const m = useAttendanceEventsModel();
+  const openDetail = React.useCallback((event: AttendanceEventResponseDto) => {
+    m.setDetailTarget(event);
+  }, [m.setDetailTarget]);
+  const columns = useEventColumns(openDetail);
 
   const groupEvents = React.useCallback((events: AttendanceEventResponseDto[]) => {
     const map = new Map<string, AttendanceEventResponseDto[]>();
@@ -395,34 +357,39 @@ export function AttendanceEventsPanel() {
           {(pageItems) => (
             <div className="space-y-4">
               {groupEvents(pageItems).map(([date, dayEvents]) => (
-          <div key={date} className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
-            {/* Day header */}
-            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2.5">
-              <div className="flex items-center gap-2">
-        <span className="font-mono text-sm font-semibold" dir="ltr">{date}</span>
-                <Badge variant="subtle" className="number-ar text-[10px]">{dayEvents.length} حدث</Badge>
-              </div>
-              <div className="flex gap-2 text-[11px] text-muted-foreground">
-                {(Object.keys(EVENT_TYPE_META) as AttendanceEventType[]).map((t) => {
-                  const count = dayEvents.filter((e) => e.eventType === t && !e.isVoided).length;
-                  if (count === 0) return null;
-                  const meta = EVENT_TYPE_META[t];
-                  return (
-                    <span key={t} className={cn('flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-medium', meta.color)}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} />
-                      {meta.label} {count}
-                    </span>
-                  );
-                })}
-              </div>
+                <div key={date} className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+                  <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-semibold" dir="ltr">{date}</span>
+                      <Badge variant="subtle" className="number-ar text-[10px]">{dayEvents.length} حدث</Badge>
+                    </div>
+                    <div className="flex gap-2 text-[11px] text-muted-foreground">
+                      {(Object.keys(EVENT_TYPE_META) as AttendanceEventType[]).map((t) => {
+                        const count = dayEvents.filter((e) => e.eventType === t && !e.isVoided).length;
+                        if (count === 0) return null;
+                        const meta = EVENT_TYPE_META[t];
+                        return (
+                          <span key={t} className={cn('flex items-center gap-1 rounded-full border px-1.5 py-px text-[9px] font-medium', meta.color)}>
+                            <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} />
+                            {meta.label} {count}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <DataTable
+                    variant="directory"
+                    alwaysShowTable
+                    tableClassName="min-w-[720px]"
+                    columns={columns}
+                    data={dayEvents}
+                    keyExtractor={(e) => e.id}
+                    className="rounded-none border-0 shadow-none"
+                    onRowClick={openDetail}
+                  />
+                </div>
+              ))}
             </div>
-            {/* Events */}
-            {dayEvents.map((e) => (
-              <EventRow key={e.id} event={e} onVoid={m.setVoidTarget} onDetail={m.setDetailTarget} />
-            ))}
-          </div>
-            ))}
-          </div>
           )}
         </DirectoryPagedViews>
       )}
@@ -436,8 +403,6 @@ export function AttendanceEventsPanel() {
         workDate={m.from}
         onCreate={m.handleCreate}
       />
-
-      <VoidDialog event={m.voidTarget} onClose={() => m.setVoidTarget(null)} onVoid={m.handleVoid} />
 
       <EventDetailDialog event={m.detailTarget} onClose={() => m.setDetailTarget(null)} />
     </div>
