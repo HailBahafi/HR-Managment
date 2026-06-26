@@ -80,8 +80,6 @@ export type PushToPayrollDto = {
   employeeIds?: string[];
   replaceExisting?: boolean;
   applyOvertime?: boolean;
-  applyAbsence?: boolean;
-  applyLateness?: boolean;
   absenceDailyRateOverride?: number;
   lateMinuteRateOverride?: number;
   overtimeMultiplier?: number;
