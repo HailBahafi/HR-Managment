@@ -1,3 +1,4 @@
+import type { PushToPayrollDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import type { HRPayrollPeriodRecord, HRPayrollPeriodIncludeFlags, HRPayrollMonthlyInput } from './payroll-periods-store';
 import type { HRContractRecord } from '@/features/hr/contracts/lib/contracts-store';
 import type { HRAllowanceTypeRecord } from '@/features/hr/contracts/lib/allowance-types-store';
@@ -206,11 +207,14 @@ export const COLUMN_TO_PERIOD_INCLUDE: Record<
   colDedAdmin: 'includeManualInputs',
 };
 
-/** Controls POST /attendance/day-summaries/push-to-payroll and table column visibility for attendance-sourced fields. */
+/** UI options for push-from-attendance dialog. Maps to whitelisted PushToPayrollDto fields only. */
 export type CompensationPushOptions = {
   replaceExisting: boolean;
+  /** → applyOvertime in API */
   applyOvertime: boolean;
+  /** UI: show absence columns + allow absenceDailyRateOverride in API (deduction is automatic for absent days). */
   applyAbsence: boolean;
+  /** UI: show lateness columns + allow lateMinuteRateOverride in API (deduction is automatic for late days). */
   applyLateness: boolean;
   absenceDailyRateOverride: string;
   lateMinuteRateOverride: string;
@@ -260,6 +264,35 @@ export function pushOptionsToColumnVisibility(
     colDedPenalties: true,
     colDedAdvances: true,
     colDedAdmin: true,
+  };
+}
+
+/** Maps dialog options → POST /attendance/day-summaries/push-to-payroll (whitelisted DTO fields only). */
+export function buildAttendancePushToPayrollPayload(
+  opts: CompensationPushOptions,
+  ctx: {
+    payrollPeriodId: string;
+    employeeIds?: string[];
+    createdBy?: string;
+  },
+): PushToPayrollDto {
+  const absenceOverride = opts.applyAbsence
+    ? parseOptionalPositiveRate(opts.absenceDailyRateOverride)
+    : undefined;
+  const lateOverride = opts.applyLateness
+    ? parseOptionalPositiveRate(opts.lateMinuteRateOverride)
+    : undefined;
+  const overtimeMultiplier = parseOptionalPositiveRate(opts.overtimeMultiplier) ?? 1.5;
+
+  return {
+    payrollPeriodId: ctx.payrollPeriodId,
+    employeeIds: ctx.employeeIds,
+    replaceExisting: opts.replaceExisting,
+    applyOvertime: opts.applyOvertime,
+    ...(absenceOverride !== undefined ? { absenceDailyRateOverride: absenceOverride } : {}),
+    ...(lateOverride !== undefined ? { lateMinuteRateOverride: lateOverride } : {}),
+    overtimeMultiplier,
+    createdBy: ctx.createdBy ?? null,
   };
 }
 

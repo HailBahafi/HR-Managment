@@ -21,7 +21,7 @@ import {
 import {
   formatLatinNumber,
   mapEmployeesPayrollSummaryToPreviews,
-  parseOptionalPositiveRate,
+  buildAttendancePushToPayrollPayload,
   resolvePayrollSummaryFooterTotals,
   type CompensationColumnVisibility,
   type CompensationAdvancesPushOptions,
@@ -443,25 +443,17 @@ export function CompensationReportPanel({
       ? employeeIdsFilter
       : periodEmployeeIds;
 
-    const absenceOverride = parseOptionalPositiveRate(pushOptions.absenceDailyRateOverride);
-    const lateOverride = parseOptionalPositiveRate(pushOptions.lateMinuteRateOverride);
-    const overtimeMultiplier = parseOptionalPositiveRate(pushOptions.overtimeMultiplier) ?? 1.5;
     const createdBy = useAuthStore.getState().user?.email ?? undefined;
 
     setPushing(true);
     try {
-      const result = await attendanceDaySummariesApi.pushToPayroll({
-        payrollPeriodId: period.id,
-        employeeIds,
-        replaceExisting: pushOptions.replaceExisting,
-        applyOvertime: pushOptions.applyOvertime,
-        applyAbsence: pushOptions.applyAbsence,
-        applyLateness: pushOptions.applyLateness,
-        ...(absenceOverride !== undefined ? { absenceDailyRateOverride: absenceOverride } : {}),
-        ...(lateOverride !== undefined ? { lateMinuteRateOverride: lateOverride } : {}),
-        overtimeMultiplier,
-        createdBy,
-      });
+      const result = await attendanceDaySummariesApi.pushToPayroll(
+        buildAttendancePushToPayrollPayload(pushOptions, {
+          payrollPeriodId: period.id,
+          employeeIds,
+          createdBy,
+        }),
+      );
 
       invalidatePayrollSummary();
       setPushDialogOpen(false);
