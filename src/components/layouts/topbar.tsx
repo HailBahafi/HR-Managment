@@ -380,10 +380,10 @@ export function Topbar() {
           <Logo size={28} src={logoUrl} alt={logoAlt} />
         </Link>
 
-        <div className="mx-0.5 hidden h-5 w-px bg-border/70 lg:block" />
+        <div className="mx-0.5 hidden h-5 w-px bg-border/70 xl:block" />
 
         {/* Desktop nav */}
-        <nav className="hidden flex-1 items-center gap-0.5 lg:flex" aria-label="التنقل الرئيسي">
+        <nav className="hidden flex-1 items-center gap-0.5 xl:flex" aria-label="التنقل الرئيسي">
           {navConfig.map(item => {
             const active  = parentIsActive(pathname, item);
             const isOpen  = activeMenu === item.key;
@@ -436,7 +436,7 @@ export function Topbar() {
           })}
         </nav>
 
-        <div className="flex-1 lg:hidden" />
+        <div className="flex-1 xl:hidden" />
 
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
@@ -460,12 +460,6 @@ export function Topbar() {
                   {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
                   <AvatarFallback>{avatarFallback}</AvatarFallback>
                 </Avatar>
-                <div className="hidden flex-col text-right leading-tight md:flex">
-                  <span className="text-[12px] font-semibold">{displayName}</span>
-                  {subtitle ? (
-                    <span className="text-[10px] text-muted-foreground">{subtitle}</span>
-                  ) : null}
-                </div>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-72">
@@ -532,7 +526,7 @@ export function Topbar() {
           </DropdownMenu>
 
           {/* Mobile hamburger */}
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl lg:hidden" onClick={toggle} aria-label="القائمة">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl xl:hidden" onClick={toggle} aria-label="القائمة">
             <Menu className="h-4 w-4" />
           </Button>
         </div>

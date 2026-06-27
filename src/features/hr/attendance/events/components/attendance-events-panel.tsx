@@ -11,6 +11,7 @@ import { STATUS_PILL, statusDotClass } from '@/shared/status-pill-classes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import ModernTimePicker from '@/components/ui/modern-time-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -120,7 +121,7 @@ function CreateEventDialog({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">الوقت <span className="text-destructive">*</span></Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10 font-mono" dir="ltr" />
+              <ModernTimePicker value={time} onChange={setTime} placeholder="اختر الوقت" />
             </div>
           </div>
           <div className="space-y-1.5">

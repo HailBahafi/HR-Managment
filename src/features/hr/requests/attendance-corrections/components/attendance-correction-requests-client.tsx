@@ -5,6 +5,7 @@ import { Ban, CheckCircle2, Plus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ModernTimePicker from '@/components/ui/modern-time-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Label } from '@/components/ui/label';
@@ -554,11 +555,11 @@ export function AttendanceCorrectionRequestsClient() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">وقت الحضور الجديد</Label>
-                  <Input type="time" value={formCorrIn} onChange={(e) => setFormCorrIn(e.target.value)} step={60} dir="ltr" />
+                  <ModernTimePicker value={formCorrIn} onChange={setFormCorrIn} placeholder="اختر الوقت" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">وقت الانصراف الجديد  </Label>
-                  <Input type="time" value={formCorrOut} onChange={(e) => setFormCorrOut(e.target.value)} step={60} dir="ltr" />
+                  <ModernTimePicker value={formCorrOut} onChange={setFormCorrOut} placeholder="اختر الوقت" />
                 </div>
               </div>
               <FormField label="سبب الطلب (اختياري)">

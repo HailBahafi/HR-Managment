@@ -159,8 +159,7 @@ export function ContractArticlesClient() {
         </Button>
       </div>
     ),
-    [archiveScope, activeFilterCount],
-    [activeFilterCount, openCreate],
+    [archiveScope, activeFilterCount, openCreate],
   );
 
   useEntityFilterSlot(

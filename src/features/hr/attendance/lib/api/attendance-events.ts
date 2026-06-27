@@ -162,6 +162,32 @@ export type CreateAttendanceEventDto = {
   recordedBy?: string | null;
 };
 
+export type NextEventTypeLastPunch = {
+  id: string;
+  eventType: AttendanceEventType;
+  occurredAt: string;
+  workDate: string;
+};
+
+export type NextEventTypeResponseDto = {
+  employeeId: string;
+  employeeNameAr: string;
+  nextEventType: AttendanceEventType;
+  isCheckedIn: boolean;
+  lastPunch: NextEventTypeLastPunch | null;
+  message: string;
+  attendancePreparationClosed: boolean;
+  selfCheckInAllowed: boolean;
+  timezoneOffsetMinutes?: number;
+};
+
+export type NextEventTypeQuery = {
+  employeeId: string;
+  companyId?: string;
+  workDate?: string;
+  timezoneOffsetMinutes?: number;
+};
+
 export const attendanceEventsApi = {
   async getAll(query?: AttendanceEventListQuery) {
     await recomputeTodayDaySummaries(query?.companyId);
@@ -172,6 +198,9 @@ export const attendanceEventsApi = {
   },
   getDailyBreakdown(params: { employeeId: string; workDate: string; companyId?: string; timezoneOffsetMinutes?: number }) {
     return apiRequest<DailyBreakdownResponseDto>('/attendance/events/daily-breakdown', { query: params });
+  },
+  getNextEventType(params: NextEventTypeQuery) {
+    return apiRequest<NextEventTypeResponseDto>('/attendance/events/next-event-type', { query: params });
   },
   async create(payload: CreateAttendanceEventDto) {
     const result = await apiRequest<AttendanceEventResponseDto>('/attendance/events', { method: 'POST', body: payload });
