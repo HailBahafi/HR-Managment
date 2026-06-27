@@ -23,21 +23,34 @@ import {
 } from '@/features/hr/attendance/day-summaries/constants/day-summary-labels';
 import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summaries/hooks/useDaySummariesDirectoryModel';
 import { SummaryMinutesCell } from '@/features/hr/attendance/day-summaries/components/summary-minutes-cell';
+import { InsidePeriodMinutesCell, TotalWorkedMinutesCell } from '@/features/hr/attendance/day-summaries/components/inside-period-minutes-cell';
 import {
-  computeActualPeriodMinutes,
   computeExpectedMinutes,
+  computeInsidePeriodMinutes,
   computePunchSpanMinutes,
   computeTotalWorkedMinutes,
+  canComputePeriodOverlap,
 } from '@/features/hr/attendance/day-summaries/utils/day-summary-metrics';
 import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { cn } from '@/shared/utils';
 
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+function DetailRow({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+}) {
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-2 border-b border-border/40 py-2 text-sm last:border-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className="min-w-0 break-words">{value ?? '—'}</span>
+      <span className="min-w-0 break-words">
+        {value ?? '—'}
+        {hint ? <span className="mt-0.5 block text-[11px] text-muted-foreground">{hint}</span> : null}
+      </span>
     </div>
   );
 }
@@ -85,19 +98,25 @@ function DaySummaryDetailDialog({
             }
           />
           <DetailRow
-            label="العمل الفعلي (داخل الفترات)"
+            label="داخل الفترات"
             value={
-              computeActualPeriodMinutes(row) != null
-                ? minutesToHHMM(computeActualPeriodMinutes(row)!)
+              computeInsidePeriodMinutes(row) != null
+                ? minutesToHHMM(computeInsidePeriodMinutes(row)!)
                 : '—'
+            }
+            hint={
+              canComputePeriodOverlap(row)
+                ? 'تقاطع البصمة مع بداية/نهاية الفترة المتوقعة'
+                : 'تقريبي: إجمالي − إضافي'
             }
           />
           <DetailRow label="تأخير" value={minutesToHHMM(row.lateMinutes)} />
           <DetailRow label="انصراف مبكر" value={minutesToHHMM(row.earlyLeaveMinutes)} />
           <DetailRow label="إضافي" value={minutesToHHMM(row.overtimeMinutes)} />
           <DetailRow
-            label="مدة العمل (إجمالي)"
+            label="مدة العمل (فعلي)"
             value={minutesToHHMM(computeTotalWorkedMinutes(row))}
+            hint="إجمالي مدة الحضور المحسوبة لليوم"
           />
           <DetailRow label="تعديل يدوي" value={row.isManualOverride ? 'نعم' : 'لا'} />
           <DetailRow label="نهائي" value={row.isFinalized ? 'نعم' : 'لا'} />
@@ -159,9 +178,7 @@ export function DaySummariesPage() {
     {
       key: 'actualPeriod',
       title: 'داخل الفترات',
-      render: (row) => (
-        <SummaryMinutesCell minutes={computeActualPeriodMinutes(row)} />
-      ),
+      render: (row) => <InsidePeriodMinutesCell row={row} />,
     },
     {
       key: 'late',
@@ -187,10 +204,8 @@ export function DaySummariesPage() {
     },
     {
       key: 'workedTotal',
-      title: 'مدة العمل (إجمالي)',
-      render: (row) => (
-        <SummaryMinutesCell minutes={computeTotalWorkedMinutes(row)} />
-      ),
+      title: 'فعلي',
+      render: (row) => <TotalWorkedMinutesCell row={row} />,
     },
     {
       key: 'manual',
@@ -204,7 +219,7 @@ export function DaySummariesPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="كشف الحضور"
-        descriptionAr="داخل الفترات = الإجمالي − إضافي. الإجمالي يشمل العمل داخل الفترة والإضافي."
+        descriptionAr="داخل الفترات = وقت البصمة داخل نطاق الفترة المتوقعة. فعلي = إجمالي اليوم."
         iconName="CalendarRange"
       />
 
