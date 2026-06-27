@@ -26,6 +26,7 @@ import { SummaryMinutesCell } from '@/features/hr/attendance/day-summaries/compo
 import {
   computeActualPeriodMinutes,
   computeExpectedMinutes,
+  computePunchSpanMinutes,
   computeTotalWorkedMinutes,
 } from '@/features/hr/attendance/day-summaries/utils/day-summary-metrics';
 import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
@@ -68,6 +69,14 @@ function DaySummaryDetailDialog({
           <DetailRow label="تسجيل حضور" value={<TableDateCell value={row.actualCheckInAt} mode="datetime" />} />
           <DetailRow label="تسجيل انصراف" value={<TableDateCell value={row.actualCheckOutAt} mode="datetime" />} />
           <DetailRow
+            label="مدة الحضور (بصمة)"
+            value={
+              computePunchSpanMinutes(row) != null
+                ? minutesToHHMM(computePunchSpanMinutes(row)!)
+                : '—'
+            }
+          />
+          <DetailRow
             label="متوقع"
             value={
               computeExpectedMinutes(row) != null
@@ -76,7 +85,7 @@ function DaySummaryDetailDialog({
             }
           />
           <DetailRow
-            label="العمل الفعلي"
+            label="العمل الفعلي (داخل الفترات)"
             value={
               computeActualPeriodMinutes(row) != null
                 ? minutesToHHMM(computeActualPeriodMinutes(row)!)
@@ -149,7 +158,7 @@ export function DaySummariesPage() {
     },
     {
       key: 'actualPeriod',
-      title: 'العمل الفعلي',
+      title: 'داخل الفترات',
       render: (row) => (
         <SummaryMinutesCell minutes={computeActualPeriodMinutes(row)} />
       ),
@@ -195,7 +204,7 @@ export function DaySummariesPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="كشف الحضور"
-        descriptionAr="العمل الفعلي (الفارق بين الحضور والانصراف)، ثم إحصائيات التسوية، ثم مدة العمل الإجمالية."
+        descriptionAr="داخل الفترات = الإجمالي − إضافي. الإجمالي يشمل العمل داخل الفترة والإضافي."
         iconName="CalendarRange"
       />
 

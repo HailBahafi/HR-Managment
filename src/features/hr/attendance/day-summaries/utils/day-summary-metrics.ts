@@ -12,22 +12,21 @@ export function isoDurationMinutes(
   return Math.round((endMs - startMs) / 60000);
 }
 
+/** Raw punch span — الفارق بين أول حضور وآخر انصراف (يشمل ما خارج الفترة). */
+export function computePunchSpanMinutes(row: DaySummaryResponseDto): number | null {
+  return isoDurationMinutes(row.actualCheckInAt, row.actualCheckOutAt);
+}
+
 /**
- * Actual presence span from punch times — الدوام الفعلي خلال الفترة (الفارق بين الحضور والانصراف).
+ * Work credited inside scheduled shift period(s) — الدوام الفعلي داخل الفترات.
+ * من الحقول المحسوبة: مدة العمل (إجمالي) − إضافي
  */
 export function computeActualPeriodMinutes(row: DaySummaryResponseDto): number | null {
-  const fromPunches = isoDurationMinutes(row.actualCheckInAt, row.actualCheckOutAt);
-  if (fromPunches != null) return fromPunches;
+  const total = row.workedMinutes;
+  if (total <= 0) return null;
 
-  if (row.workedMinutes > 0 && row.overtimeMinutes <= 0) {
-    return row.workedMinutes;
-  }
-
-  if (row.workedMinutes > row.overtimeMinutes) {
-    return row.workedMinutes - row.overtimeMinutes;
-  }
-
-  return row.workedMinutes > 0 ? row.workedMinutes : null;
+  const insidePeriod = Math.max(0, total - row.overtimeMinutes);
+  return insidePeriod > 0 ? insidePeriod : null;
 }
 
 /** Scheduled shift span from expected start/end (متوقع). */
