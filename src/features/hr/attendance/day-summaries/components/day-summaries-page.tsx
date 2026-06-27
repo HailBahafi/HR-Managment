@@ -22,6 +22,7 @@ import {
   DAY_SUMMARY_STATUS_LABELS,
 } from '@/features/hr/attendance/day-summaries/constants/day-summary-labels';
 import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summaries/hooks/useDaySummariesDirectoryModel';
+import { SummaryMinutesCell } from '@/features/hr/attendance/day-summaries/components/summary-minutes-cell';
 import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { cn } from '@/shared/utils';
@@ -125,13 +126,29 @@ export function DaySummariesPage() {
     {
       key: 'late',
       title: 'تأخير',
+      render: (row) => (
+        <SummaryMinutesCell minutes={row.lateMinutes} emptyWhenZero tone="warn" />
+      ),
+    },
+    {
+      key: 'earlyLeave',
+      title: 'انصراف مبكر',
       hideOnMobile: true,
-      render: (row) => minutesToHHMM(row.lateMinutes),
+      render: (row) => (
+        <SummaryMinutesCell minutes={row.earlyLeaveMinutes} emptyWhenZero tone="warn" />
+      ),
     },
     {
       key: 'worked',
-      title: 'عمل',
-      render: (row) => minutesToHHMM(row.workedMinutes),
+      title: 'مدة العمل',
+      render: (row) => <SummaryMinutesCell minutes={row.workedMinutes} />,
+    },
+    {
+      key: 'overtime',
+      title: 'إضافي',
+      render: (row) => (
+        <SummaryMinutesCell minutes={row.overtimeMinutes} tone="success" />
+      ),
     },
     {
       key: 'manual',
@@ -144,8 +161,8 @@ export function DaySummariesPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
-        titleAr="ملخص الحضور اليومي"
-        descriptionAr="سجلات الحضور المحسوبة لكل موظف — إعادة الحساب من الأحداث والورديات."
+        titleAr="كشف الحضور"
+        descriptionAr="سجلات الحضور المحسوبة لكل موظف — التأخير، مدة العمل، والإضافي."
         iconName="CalendarRange"
       />
 
