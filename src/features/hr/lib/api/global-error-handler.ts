@@ -55,7 +55,8 @@ export function handleApiError(error: unknown, context?: string): ApiErrorHandle
     : (envelope?.message?.trim() || error.message);
 
   if (status === 401 && typeof window !== 'undefined') {
-    window.location.href = '/login';
+    const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.replace(`/login?returnTo=${returnTo}`);
   } else {
     toast.error(displayMessage);
   }

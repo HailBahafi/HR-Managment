@@ -13,6 +13,7 @@ import {
   duplicateAdvanceNumberMessage,
   isDuplicateAdvanceNumberError,
 } from './employee-advance-errors';
+import { ApiError } from '@/features/hr/lib/api/client';
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
 import { normalizeRequestApproverStates } from '@/features/hr/requests/lib/request-approver-states';
 
@@ -108,7 +109,7 @@ function toBackendRepaymentMode(m: HREmployeeAdvanceRepaymentMode): RepaymentMod
 type State = {
   items: HREmployeeAdvance[];
   isLoading: boolean;
-  error: string | null;
+  error: { message: string; status: number } | null;
   fetch: (params?: { employeeId?: string; status?: HREmployeeAdvanceStatus; advanceDateFrom?: string; advanceDateTo?: string }) => Promise<void>;
   add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status' | 'approverStates' | 'rejectedAt' | 'decisionNotes'>) => Promise<HREmployeeAdvance>;
   update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt'>>) => Promise<boolean>;
@@ -138,7 +139,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
       });
       set({ items: result.items.map(mapApi), isLoading: false });
     } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
+      set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false });
       throw e;
     }
   },

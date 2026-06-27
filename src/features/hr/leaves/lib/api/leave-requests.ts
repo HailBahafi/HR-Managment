@@ -90,9 +90,9 @@ function mapLeaveRequestRow(row: ApiLeaveRequestRow): LeaveRequestResponseDto {
   };
 }
 
-async function mapLeaveRequestPage(
+function mapLeaveRequestPage(
   result: PaginatedResult<ApiLeaveRequestRow>,
-): Promise<PaginatedResult<LeaveRequestResponseDto>> {
+): PaginatedResult<LeaveRequestResponseDto> {
   return {
     items: result.items.map(mapLeaveRequestRow),
     pagination: result.pagination,

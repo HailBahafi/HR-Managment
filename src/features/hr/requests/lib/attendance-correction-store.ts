@@ -5,6 +5,7 @@ import {
   type CorrectionDecisionDto,
   type CorrectionRequestStatus,
 } from './api/correction-requests';
+import { ApiError } from '@/features/hr/lib/api/client';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import type { RequestApproverStatesSnapshot } from './api/request-approver-states-types';
@@ -143,7 +144,7 @@ export function mapCorrectionRequest(r: ApiCorrectionRequest): AttendanceCorrect
 interface State {
   items: AttendanceCorrectionRequest[];
   isLoading: boolean;
-  error: string | null;
+  error: { message: string; status: number } | null;
   fetch: (params?: { employeeId?: string; status?: string; workDateFrom?: string; workDateTo?: string }) => Promise<void>;
   submit: (input: {
     employeeId: string;
@@ -171,7 +172,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
       const result = await correctionRequestsApi.list({ companyId, limit: 200, ...params });
       set({ items: result.items.map(mapCorrectionRequest), isLoading: false });
     } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
+      set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false });
     }
   },
 

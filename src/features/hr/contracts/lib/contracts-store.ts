@@ -9,6 +9,7 @@ import type {
   WorkArrangement,
 } from '@/features/hr/contracts/contract-templates/types/contract-template';
 import { employeeContractsApi, type ApiEmployeeContract } from './contracts-api';
+import { ApiError } from '@/features/hr/lib/api/client';
 import { fetchAllEmployeeContracts } from './fetch-all-employee-contracts';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
@@ -108,7 +109,7 @@ interface HRContractsState {
   contracts: HRContractRecord[];
   loadedCompanyId: string | null;
   isLoading: boolean;
-  error: string | null;
+  error: { message: string; status: number } | null;
   fetch: (params?: { employeeId?: string }) => Promise<void>;
   add: (data: HRContractDraft) => Promise<{ id: string; contractNumber: string }>;
   update: (id: string, patch: Partial<HRContractDraft>) => Promise<ActivateResult>;
@@ -150,7 +151,7 @@ export const useHRContractsStore = create<HRContractsState>()((set, get) => ({
           isLoading: false,
         });
       } catch (e) {
-        set({ error: (e as Error).message, isLoading: false });
+        set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false });
       }
     };
 

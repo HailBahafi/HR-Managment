@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Sans_Arabic, Rubik } from 'next/font/google';
+import Script from 'next/script';
 import './globals.css';
 import { Providers } from '@/components/layouts/providers';
 import { THEME_STORAGE_KEY } from '@/shared/constants/theme';
@@ -31,7 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <script
+        <Script
+          id="theme-boot"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `${THEME_MODE_BOOT_SCRIPT}${COMPANY_THEME_BOOT_SCRIPT}`,
           }}

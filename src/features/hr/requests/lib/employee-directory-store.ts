@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { employeesApi, type EmployeeResponseDto } from './api/employees';
+import { ApiError } from '@/features/hr/lib/api/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ interface DirectoryState {
   employees: HREmployeeDirectoryRow[];
   loadedCompanyId: string | null;
   isLoading: boolean;
-  error: string | null;
+  error: { message: string; status: number } | null;
   fetch: () => Promise<void>;
   addEmployee: (draft: Omit<HREmployeeDirectoryRow, 'id'>) => string; // local-only (optimistic)
   updateEmployee: (id: string, patch: Partial<Omit<HREmployeeDirectoryRow, 'id'>>) => void; // local-only
@@ -95,7 +96,7 @@ export const useHREmployeeDirectoryStore = create<DirectoryState>()((set, get) =
         isLoading: false,
       });
     } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
+      set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false });
     }
   },
 

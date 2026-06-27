@@ -382,7 +382,7 @@ export default function ModernTimePicker({
                 <motion.div
                     ref={dropdownRef}
                     id={dropdownId}
-                    role="dialog"
+                    role="listbox"
                     aria-label={placeholder}
                     initial={{ opacity: 0, scaleY: 0 }}
                     animate={{ opacity: 1, scaleY: 1 }}
