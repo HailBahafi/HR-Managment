@@ -115,6 +115,10 @@ export type PushToPayrollResult = {
   employeesProcessed: number;
 };
 
+export type SettleDaySummaryDto = {
+  notes?: string | null;
+};
+
 export const attendanceDaySummariesApi = {
   getAll(query?: DaySummaryListQuery) {
     return apiRequest<PaginatedResult<DaySummaryResponseDto>>('/attendance/day-summaries', { query });
@@ -141,6 +145,12 @@ export const attendanceDaySummariesApi = {
     return apiRequest<PushToPayrollResult>('/attendance/day-summaries/push-to-payroll', {
       method: 'POST',
       body: payload,
+    });
+  },
+  settle(id: string, payload?: SettleDaySummaryDto) {
+    return apiRequest<DaySummaryResponseDto>(`/attendance/day-summaries/${id}/settle`, {
+      method: 'POST',
+      body: payload ?? {},
     });
   },
 };

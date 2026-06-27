@@ -25,6 +25,14 @@ import {
   DaySummaryMetricCell,
   InsidePeriodDisplayCell,
 } from '@/features/hr/attendance/day-summaries/components/day-summary-metric-cell';
+import { DaySummaryShortageCell } from '@/features/hr/attendance/day-summaries/components/day-summary-shortage-cell';
+import { DaySummarySettleConfirmDialog } from '@/features/hr/attendance/day-summaries/components/day-summary-settle-confirm-dialog';
+import {
+  buildSettleDaySummaryPayload,
+} from '@/features/hr/attendance/day-summaries/utils/day-summary-settle';
+import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { toast } from 'sonner';
 import {
   formatDaySummaryMetric,
   formatInsidePeriod,
@@ -113,6 +121,24 @@ export function DaySummariesPage() {
   const companyId = useDefaultCompanyId() ?? '';
   const model = useDaySummariesDirectoryModel();
   const [detailRow, setDetailRow] = React.useState<DaySummaryResponseDto | null>(null);
+  const [settleRow, setSettleRow] = React.useState<DaySummaryResponseDto | null>(null);
+  const [settling, setSettling] = React.useState(false);
+
+  const handleSettleConfirm = React.useCallback(async () => {
+    if (!settleRow) return;
+    setSettling(true);
+    try {
+      await attendanceDaySummariesApi.settle(settleRow.id, buildSettleDaySummaryPayload(settleRow));
+      toast.success('تمت تسوية الحضور من الإضافي');
+      setSettleRow(null);
+      await model.reload();
+    } catch (err) {
+      const { displayMessage } = handleApiError(err, 'day-summaries.settle');
+      toast.error(displayMessage);
+    } finally {
+      setSettling(false);
+    }
+  }, [model, settleRow]);
 
   const columns = React.useMemo((): ColumnDef<DaySummaryResponseDto>[] => [
     {
@@ -195,9 +221,8 @@ export function DaySummariesPage() {
     {
       key: 'shortage',
       title: 'نقص',
-      hideOnMobile: true,
       render: (row) => (
-        <DaySummaryMetricCell row={row} metric="shortage" emptyWhenZero tone="danger" />
+        <DaySummaryShortageCell row={row} onRequestSettle={setSettleRow} />
       ),
     },
     {
@@ -206,7 +231,7 @@ export function DaySummariesPage() {
       hideOnMobile: true,
       render: (row) => (row.isManualOverride ? 'نعم' : '—'),
     },
-  ], []);
+  ], [setSettleRow]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -250,6 +275,14 @@ export function DaySummariesPage() {
         row={detailRow}
         open={detailRow != null}
         onOpenChange={(v) => { if (!v) setDetailRow(null); }}
+      />
+
+      <DaySummarySettleConfirmDialog
+        row={settleRow}
+        open={settleRow != null}
+        onOpenChange={(v) => { if (!v) setSettleRow(null); }}
+        onConfirm={handleSettleConfirm}
+        submitting={settling}
       />
 
       {companyId ? (
