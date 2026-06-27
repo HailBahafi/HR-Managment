@@ -23,6 +23,11 @@ import {
 } from '@/features/hr/attendance/day-summaries/constants/day-summary-labels';
 import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summaries/hooks/useDaySummariesDirectoryModel';
 import { SummaryMinutesCell } from '@/features/hr/attendance/day-summaries/components/summary-minutes-cell';
+import {
+  computeActualPeriodMinutes,
+  computeExpectedMinutes,
+  computeTotalWorkedMinutes,
+} from '@/features/hr/attendance/day-summaries/utils/day-summary-metrics';
 import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { cn } from '@/shared/utils';
@@ -62,10 +67,29 @@ function DaySummaryDetailDialog({
           <DetailRow label="نهاية متوقعة" value={<TableDateCell value={row.expectedEndAt} mode="datetime" />} />
           <DetailRow label="تسجيل حضور" value={<TableDateCell value={row.actualCheckInAt} mode="datetime" />} />
           <DetailRow label="تسجيل انصراف" value={<TableDateCell value={row.actualCheckOutAt} mode="datetime" />} />
-          <DetailRow label="دقائق التأخير" value={minutesToHHMM(row.lateMinutes)} />
+          <DetailRow
+            label="متوقع"
+            value={
+              computeExpectedMinutes(row) != null
+                ? minutesToHHMM(computeExpectedMinutes(row)!)
+                : '—'
+            }
+          />
+          <DetailRow
+            label="العمل الفعلي"
+            value={
+              computeActualPeriodMinutes(row) != null
+                ? minutesToHHMM(computeActualPeriodMinutes(row)!)
+                : '—'
+            }
+          />
+          <DetailRow label="تأخير" value={minutesToHHMM(row.lateMinutes)} />
           <DetailRow label="انصراف مبكر" value={minutesToHHMM(row.earlyLeaveMinutes)} />
-          <DetailRow label="ساعات العمل" value={minutesToHHMM(row.workedMinutes)} />
           <DetailRow label="إضافي" value={minutesToHHMM(row.overtimeMinutes)} />
+          <DetailRow
+            label="مدة العمل (إجمالي)"
+            value={minutesToHHMM(computeTotalWorkedMinutes(row))}
+          />
           <DetailRow label="تعديل يدوي" value={row.isManualOverride ? 'نعم' : 'لا'} />
           <DetailRow label="نهائي" value={row.isFinalized ? 'نعم' : 'لا'} />
           <DetailRow label="ملاحظات" value={row.notes} />
@@ -124,6 +148,13 @@ export function DaySummariesPage() {
       render: (row) => <TableDateCell value={row.actualCheckOutAt} mode="datetime" />,
     },
     {
+      key: 'actualPeriod',
+      title: 'العمل الفعلي',
+      render: (row) => (
+        <SummaryMinutesCell minutes={computeActualPeriodMinutes(row)} />
+      ),
+    },
+    {
       key: 'late',
       title: 'تأخير',
       render: (row) => (
@@ -139,15 +170,17 @@ export function DaySummariesPage() {
       ),
     },
     {
-      key: 'worked',
-      title: 'مدة العمل',
-      render: (row) => <SummaryMinutesCell minutes={row.workedMinutes} />,
-    },
-    {
       key: 'overtime',
       title: 'إضافي',
       render: (row) => (
-        <SummaryMinutesCell minutes={row.overtimeMinutes} tone="success" />
+        <SummaryMinutesCell minutes={row.overtimeMinutes} emptyWhenZero tone="success" />
+      ),
+    },
+    {
+      key: 'workedTotal',
+      title: 'مدة العمل (إجمالي)',
+      render: (row) => (
+        <SummaryMinutesCell minutes={computeTotalWorkedMinutes(row)} />
       ),
     },
     {
@@ -162,7 +195,7 @@ export function DaySummariesPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="كشف الحضور"
-        descriptionAr="سجلات الحضور المحسوبة لكل موظف — التأخير، مدة العمل، والإضافي."
+        descriptionAr="العمل الفعلي (الفارق بين الحضور والانصراف)، ثم إحصائيات التسوية، ثم مدة العمل الإجمالية."
         iconName="CalendarRange"
       />
 

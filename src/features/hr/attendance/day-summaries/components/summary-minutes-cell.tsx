@@ -4,7 +4,7 @@ import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attend
 import { cn } from '@/shared/utils';
 
 type SummaryMinutesCellProps = {
-  minutes: number;
+  minutes: number | null;
   /** When true, zero shows an em dash instead of 00:00. */
   emptyWhenZero?: boolean;
   tone?: 'default' | 'warn' | 'success';
@@ -15,6 +15,10 @@ export function SummaryMinutesCell({
   emptyWhenZero,
   tone = 'default',
 }: SummaryMinutesCellProps) {
+  if (minutes == null) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
   if (emptyWhenZero && minutes <= 0) {
     return <span className="text-muted-foreground">—</span>;
   }
