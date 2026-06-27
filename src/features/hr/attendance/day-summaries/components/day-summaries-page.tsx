@@ -14,7 +14,6 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { TableDateCell } from '@/components/ui/table-cells';
 import { EmptyState } from '@/features/hr/requests/components/shared-ui';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import {
@@ -22,15 +21,15 @@ import {
   DAY_SUMMARY_STATUS_LABELS,
 } from '@/features/hr/attendance/day-summaries/constants/day-summary-labels';
 import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summaries/hooks/useDaySummariesDirectoryModel';
-import { SummaryMinutesCell } from '@/features/hr/attendance/day-summaries/components/summary-minutes-cell';
-import { InsidePeriodMinutesCell, TotalWorkedMinutesCell } from '@/features/hr/attendance/day-summaries/components/inside-period-minutes-cell';
 import {
-  computeExpectedMinutes,
-  computeInsidePeriodMinutes,
-  computePunchSpanMinutes,
-  computeTotalWorkedMinutes,
-  canComputePeriodOverlap,
-} from '@/features/hr/attendance/day-summaries/utils/day-summary-metrics';
+  DaySummaryMetricCell,
+  InsidePeriodDisplayCell,
+} from '@/features/hr/attendance/day-summaries/components/day-summary-metric-cell';
+import {
+  formatDaySummaryMetric,
+  formatInsidePeriod,
+} from '@/features/hr/attendance/day-summaries/utils/day-summary-display';
+import { computePunchSpanMinutes } from '@/features/hr/attendance/day-summaries/utils/day-summary-metrics';
 import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { cn } from '@/shared/utils';
@@ -89,41 +88,21 @@ function DaySummaryDetailDialog({
                 : '—'
             }
           />
-          <DetailRow
-            label="متوقع"
-            value={
-              computeExpectedMinutes(row) != null
-                ? minutesToHHMM(computeExpectedMinutes(row)!)
-                : '—'
-            }
-          />
+          <DetailRow label="متوقع" value={formatDaySummaryMetric(row, 'expected') ?? '—'} />
           <DetailRow
             label="داخل الفترات"
-            value={
-              computeInsidePeriodMinutes(row) != null
-                ? minutesToHHMM(computeInsidePeriodMinutes(row)!)
-                : '—'
-            }
-            hint={
-              canComputePeriodOverlap(row)
-                ? 'تقاطع البصمة مع بداية/نهاية الفترة المتوقعة'
-                : 'تقريبي: إجمالي − إضافي'
-            }
+            value={formatInsidePeriod(row) ?? '—'}
+            hint="تقاطع البصمة مع بداية/نهاية الفترة المتوقعة"
           />
-          <DetailRow label="تأخير" value={minutesToHHMM(row.lateMinutes)} />
-          <DetailRow label="انصراف مبكر" value={minutesToHHMM(row.earlyLeaveMinutes)} />
-          <DetailRow label="إضافي" value={minutesToHHMM(row.overtimeMinutes)} />
-          <DetailRow
-            label="مدة العمل (فعلي)"
-            value={minutesToHHMM(computeTotalWorkedMinutes(row))}
-            hint="إجمالي مدة الحضور المحسوبة لليوم"
-          />
+          <DetailRow label="فعلي" value={formatDaySummaryMetric(row, 'total') ?? '—'} />
+          <DetailRow label="تأخير" value={formatDaySummaryMetric(row, 'late') ?? '00:00'} />
+          <DetailRow label="انصراف مبكر" value={formatDaySummaryMetric(row, 'earlyLeave') ?? '00:00'} />
+          <DetailRow label="إضافي" value={formatDaySummaryMetric(row, 'overtime') ?? '00:00'} />
+          <DetailRow label="نقص" value={formatDaySummaryMetric(row, 'shortage') ?? '00:00'} />
           <DetailRow label="تعديل يدوي" value={row.isManualOverride ? 'نعم' : 'لا'} />
           <DetailRow label="نهائي" value={row.isFinalized ? 'نعم' : 'لا'} />
           <DetailRow label="ملاحظات" value={row.notes} />
           <DetailRow label="آخر حساب" value={<TableDateCell value={row.computedAt} mode="datetime" />} />
-          <DetailRow label="أُنشئ" value={<TableDateCell value={row.createdAt} mode="datetime" />} />
-          <DetailRow label="آخر تحديث" value={<TableDateCell value={row.updatedAt} mode="datetime" />} />
         </div>
       </DialogContent>
     </Dialog>
@@ -176,15 +155,26 @@ export function DaySummariesPage() {
       render: (row) => <TableDateCell value={row.actualCheckOutAt} mode="datetime" />,
     },
     {
-      key: 'actualPeriod',
+      key: 'expected',
+      title: 'متوقع',
+      hideOnMobile: true,
+      render: (row) => <DaySummaryMetricCell row={row} metric="expected" />,
+    },
+    {
+      key: 'insidePeriod',
       title: 'داخل الفترات',
-      render: (row) => <InsidePeriodMinutesCell row={row} />,
+      render: (row) => <InsidePeriodDisplayCell row={row} />,
+    },
+    {
+      key: 'total',
+      title: 'فعلي',
+      render: (row) => <DaySummaryMetricCell row={row} metric="total" />,
     },
     {
       key: 'late',
       title: 'تأخير',
       render: (row) => (
-        <SummaryMinutesCell minutes={row.lateMinutes} emptyWhenZero tone="warn" />
+        <DaySummaryMetricCell row={row} metric="late" emptyWhenZero tone="warn" />
       ),
     },
     {
@@ -192,20 +182,23 @@ export function DaySummariesPage() {
       title: 'انصراف مبكر',
       hideOnMobile: true,
       render: (row) => (
-        <SummaryMinutesCell minutes={row.earlyLeaveMinutes} emptyWhenZero tone="warn" />
+        <DaySummaryMetricCell row={row} metric="earlyLeave" emptyWhenZero tone="warn" />
       ),
     },
     {
       key: 'overtime',
       title: 'إضافي',
       render: (row) => (
-        <SummaryMinutesCell minutes={row.overtimeMinutes} emptyWhenZero tone="success" />
+        <DaySummaryMetricCell row={row} metric="overtime" emptyWhenZero tone="success" />
       ),
     },
     {
-      key: 'workedTotal',
-      title: 'فعلي',
-      render: (row) => <TotalWorkedMinutesCell row={row} />,
+      key: 'shortage',
+      title: 'نقص',
+      hideOnMobile: true,
+      render: (row) => (
+        <DaySummaryMetricCell row={row} metric="shortage" emptyWhenZero tone="danger" />
+      ),
     },
     {
       key: 'manual',
@@ -219,7 +212,7 @@ export function DaySummariesPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="كشف الحضور"
-        descriptionAr="داخل الفترات = وقت البصمة داخل نطاق الفترة المتوقعة. فعلي = إجمالي اليوم."
+        descriptionAr="متوقع وداخل الفترات والفعلي للتسوية — مع تأخير، انصراف مبكر، إضافي، ونقص من الخادم."
         iconName="CalendarRange"
       />
 
@@ -227,7 +220,7 @@ export function DaySummariesPage() {
         <EmptyState
           icon={CalendarRange}
           title="لا توجد ملخصات"
-          description="غيّر نطاق التاريخ أو نفّذ «تحديث البيانات» لإعادة الحساب من الأحداث."
+          description="غيّر نطاق التاريخ أو نفّظ «تحديث البيانات» لإعادة الحساب من الأحداث."
         />
       ) : (
         <PagedListViewport>
