@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, ActiveBadge, MinimalDropdown,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { useViolationTypesDirectoryModel } from '@/features/hr/discipline/violation-types/hooks/useViolationTypesDirectoryModel';
 import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';

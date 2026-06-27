@@ -13,7 +13,7 @@ import {
   DirectoryGridCardHeader,
   DirectoryGridCardTitle,
 } from '@/components/ui/directory-grid-card';
-import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { EmptyState } from '@/components/ui/shared-dialogs';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import type { JobTitlesDirectoryModel } from '@/features/hr/organization/job-titles/hooks/useJobTitlesDirectoryModel';
 import type { JobTitleTemplateRecord } from '@/features/hr/organization/job-titles/services/job-titles.service';

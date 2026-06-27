@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { useDisciplineApprovalTemplatesModel } from '../hooks/useDisciplineApprovalTemplatesModel';
 import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/discipline/components/discipline-paginated-list';

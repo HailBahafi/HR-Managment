@@ -24,7 +24,7 @@ const PopoverContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
       className={cn(
-        'z-[60] rounded-lg border border-border bg-popover p-0 text-popover-foreground shadow-elevated outline-none',
+        'z-[200] rounded-lg border border-border bg-popover p-0 text-popover-foreground shadow-elevated outline-none',
         'radix-fade-zoom',
         className,
       )}

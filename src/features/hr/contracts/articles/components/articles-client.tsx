@@ -17,13 +17,13 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, ActiveBadge,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { contractArticlesApi } from '@/features/hr/contracts/lib/contracts-api';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
-  useHRContractArticlesStore, normalizeArticleBody,
+  normalizeArticleBody,
   type HRContractArticle,
 } from '@/features/hr/contracts/lib/contract-articles-store';
 import {
@@ -50,7 +50,6 @@ function makeArticleCode() {
 }
 
 export function ContractArticlesClient() {
-  const { add, update, remove } = useHRContractArticlesStore();
   const companyId = useDefaultCompanyId() ?? '';
 
   const [archiveScope, setArchiveScope] = React.useState<OrganizationArchiveScope>(
@@ -135,9 +134,22 @@ export function ContractArticlesClient() {
     try {
       const payload = { ...form, code: editId ? form.code : makeArticleCode() };
       if (editId) {
-        await update(editId, payload);
+        await contractArticlesApi.update(editId, {
+          code: payload.code.trim(),
+          titleAr: payload.title.trim(),
+          bodyAr: normalizeArticleBody(payload.body),
+          isBasic: payload.isBasic,
+          isActive: payload.isActive,
+        });
       } else {
-        await add(payload);
+        await contractArticlesApi.create({
+          companyId,
+          code: payload.code,
+          titleAr: payload.title.trim(),
+          bodyAr: normalizeArticleBody(payload.body),
+          isBasic: payload.isBasic,
+          isActive: payload.isActive,
+        });
       }
       setDrawerOpen(false);
       await reloadArticles();
@@ -386,7 +398,7 @@ export function ContractArticlesClient() {
         variant="destructive"
         onConfirm={async () => {
           if (confirmId) {
-            await remove(confirmId);
+            await contractArticlesApi.delete(confirmId);
             setConfirmId(null);
             await reloadArticles();
           }

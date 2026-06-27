@@ -7,7 +7,7 @@ import {
   FormField,
   ConfirmationModal,
   EmptyState,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { useCompaniesDirectoryModel } from '@/features/hr/organization/companies/hooks/useCompaniesDirectoryModel';
 import { CompaniesListViews } from '@/features/hr/organization/companies/components/companies-list-views';
 import { CompanyDetailDialog } from '@/features/hr/organization/companies/dialogs/company-detail-dialog';

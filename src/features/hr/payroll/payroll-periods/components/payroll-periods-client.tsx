@@ -20,7 +20,7 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import {
   useHRPayrollPeriodsStore,
   PERIOD_STATUS_LABELS, PERIOD_STATUS_COLORS, PERIOD_STATUS_ORDER,

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { AR_STATUS } from '@/shared/i18n/ar';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
@@ -35,6 +36,7 @@ export type HREmployeeAdvance = {
   currency: string;
   advanceDate: string;
   note: string;
+  reasonAr: string;
   status: HREmployeeAdvanceStatus;
   advanceKind: HREmployeeAdvanceKind;
   repaymentMode: HREmployeeAdvanceRepaymentMode;
@@ -71,6 +73,8 @@ function mapRepaymentMode(m: RepaymentModeDto | null): HREmployeeAdvanceRepaymen
 }
 
 function mapApi(r: EmployeeAdvanceResponseDto): HREmployeeAdvance {
+  const note = (r.note ?? '').trim();
+  const reasonAr = (r.reasonAr ?? r.note ?? '').trim();
   return {
     id: r.id,
     advanceNumber: r.advanceNumber,
@@ -79,7 +83,8 @@ function mapApi(r: EmployeeAdvanceResponseDto): HREmployeeAdvance {
     amount: parseFloat(r.amount) || 0,
     currency: r.currency,
     advanceDate: r.advanceDate,
-    note: r.note ?? '',
+    note,
+    reasonAr,
     status: r.status,
     advanceKind: mapKind(r.advanceKind),
     repaymentMode: mapRepaymentMode(r.repaymentMode),
@@ -111,8 +116,8 @@ type State = {
   isLoading: boolean;
   error: { message: string; status: number } | null;
   fetch: (params?: { employeeId?: string; status?: HREmployeeAdvanceStatus; advanceDateFrom?: string; advanceDateTo?: string }) => Promise<void>;
-  add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status' | 'approverStates' | 'rejectedAt' | 'decisionNotes'>) => Promise<HREmployeeAdvance>;
-  update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt'>>) => Promise<boolean>;
+  add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status' | 'approverStates' | 'rejectedAt' | 'decisionNotes' | 'reasonAr'>) => Promise<HREmployeeAdvance>;
+  update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'reasonAr'>>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   submitForApproval: (id: string) => Promise<void>;
   approve: (id: string, payload: EmployeeAdvanceDecisionDto) => Promise<void>;
@@ -219,14 +224,14 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
 }));
 
 export const ADVANCE_STATUS_LABELS: Record<HREmployeeAdvanceStatus, string> = {
-  draft: 'مسودة',
-  pending_approval: 'قيد الموافقة',
-  approved: 'معتمد',
-  rejected: 'مرفوض',
+  draft: AR_STATUS.draft,
+  pending_approval: AR_STATUS.pendingApproval,
+  approved: AR_STATUS.approvedFormal,
+  rejected: AR_STATUS.rejected,
   disbursed: 'مصروف',
   repaying: 'قيد السداد',
   fully_repaid: 'مُسدَّدة',
-  cancelled: 'ملغاة',
+  cancelled: AR_STATUS.cancelled,
 };
 
 export const ADVANCE_STATUS_FILTER_ORDER: HREmployeeAdvanceStatus[] = [
@@ -251,3 +256,9 @@ export const REPAYMENT_MODE_LABELS: Record<HREmployeeAdvanceRepaymentMode, strin
   by_months: 'عدد أشهر محدد',
   by_monthly_amount: 'مبلغ شهري محدد',
 };
+
+export function advanceReasonText(
+  x: Pick<HREmployeeAdvance, 'reasonAr' | 'note'>,
+): string {
+  return (x.reasonAr || x.note || '').trim();
+}

@@ -48,11 +48,7 @@ const BREAKDOWN_STATUS: Record<string, { label: string; color: string; dot: stri
   present: STATUS.present,
   late: STATUS.late,
   absent: STATUS.absent,
-  partial: {
-    label: 'حضور جزئي',
-    color: 'bg-warning/10 text-warning border-warning/30',
-    dot: 'bg-warning',
-  },
+  partial: STATUS.partial,
   early_leave: STATUS.early_leave,
   rest_day: STATUS.rest_day,
   unscheduled: STATUS.unscheduled,

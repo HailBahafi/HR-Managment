@@ -54,7 +54,7 @@ function clampDropdownLeft(left: number, dropdownWidth: number): number {
 }
 
 function resolvePortalContainer(
-    trigger: HTMLElement | null,
+    _trigger: HTMLElement | null,
     explicit?: HTMLElement | DocumentFragment | null,
 ): { container: HTMLElement | DocumentFragment; mode: 'fixed' | 'absolute'; anchor: HTMLElement | null } {
     if (explicit) {
@@ -65,11 +65,7 @@ function resolvePortalContainer(
         };
     }
 
-    const dialog = trigger?.closest('[role=dialog]') as HTMLElement | null;
-    if (dialog) {
-        return { container: dialog, mode: 'absolute', anchor: dialog };
-    }
-
+    // Default to body so time dropdowns are not clipped by dialog overflow.
     return { container: document.body, mode: 'fixed', anchor: null };
 }
 
@@ -390,7 +386,7 @@ export default function ModernTimePicker({
                     transition={{ duration: 0.2, ease: 'easeOut' }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
-                    className="z-[60] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-elevated sm:p-4"
+                    className="z-[200] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-elevated sm:p-4"
                     style={{
                         position: positionMode,
                         top: position.top,

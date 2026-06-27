@@ -46,8 +46,8 @@ export interface DatePickerInputProps {
   className?: string;
   id?: string;
   /**
-   * When used inside a Radix Dialog, pass the dialog content element so the calendar
-   * portals there; otherwise outside clicks close the dialog before a day is selected.
+   * Optional portal container for the popover (defaults to document body).
+   * Only pass a dialog element when you need wheel-scroll inside react-remove-scroll.
    */
   popoverContainer?: HTMLElement | DocumentFragment | null;
 }

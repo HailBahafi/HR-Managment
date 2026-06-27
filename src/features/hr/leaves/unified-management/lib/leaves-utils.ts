@@ -1,5 +1,6 @@
 import type { UnifiedLeaveRecord, LeaveApprovalStep } from '@/features/hr/leaves/unified-management/types';
 import { canEmployeeActOnRequestApproval } from '@/features/hr/requests/lib/request-approver-states';
+import { AR_LEAVE_STATUS_LABELS } from '@/shared/i18n/ar';
 
 export function defaultPendingApprovalChain(): LeaveApprovalStep[] {
   return [
@@ -57,6 +58,4 @@ export const LEAVE_TYPE_LABELS: Record<string, string> = {
   annual: 'سنوية', sick: 'مرضية', unpaid: 'بدون راتب', maternity: 'أمومة', emergency: 'طارئة',
 };
 
-export const STATUS_LABELS: Record<string, string> = {
-  pending: 'قيد الانتظار', approved: 'موافق عليه', rejected: 'مرفوض', cancelled: 'ملغاة',
-};
+export const STATUS_LABELS: Record<string, string> = AR_LEAVE_STATUS_LABELS;

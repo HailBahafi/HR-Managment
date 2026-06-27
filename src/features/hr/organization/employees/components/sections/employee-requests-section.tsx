@@ -10,13 +10,9 @@ import { EmployeeProfilePagedList } from '@/features/hr/organization/employees/c
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import type { RequestStatusFilter } from '@/features/hr/organization/employees/hooks/useEmployeeProfileRequests';
 import { FilterSelect } from '@/components/ui/select-with-clear';
+import { AR_LEAVE_STATUS_LABELS } from '@/shared/i18n/ar';
 
-const STATUS_LABELS: Record<Exclude<RequestStatusFilter, 'all'>, string> = {
-  pending: 'قيد الانتظار',
-  approved: 'موافق عليه',
-  rejected: 'مرفوض',
-  cancelled: 'ملغاة',
-};
+const STATUS_LABELS: Record<Exclude<RequestStatusFilter, 'all'>, string> = AR_LEAVE_STATUS_LABELS;
 
 const REQUEST_STATUS_OPTIONS = [
   { value: 'all', label: 'كل الحالات' },

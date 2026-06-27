@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/shared/utils';
+import { AR_STATUS } from '@/shared/i18n/ar';
 import { Check, X, Clock, Eye, Pause, AlertCircle, ShieldCheck } from 'lucide-react';
 
 type StatusBadgeProps = {
@@ -14,10 +15,10 @@ export function StatusBadge({ status, labelOverride, className }: StatusBadgePro
     active: { label: 'نشط', variant: 'success', icon: Check },
     suspended: { label: 'موقوف', variant: 'warning', icon: Pause },
     ended: { label: 'منتهي', variant: 'subtle', icon: X },
-    pending: { label: 'قيد الانتظار', variant: 'warning', icon: Clock },
-    approved: { label: 'موافق عليه', variant: 'success', icon: Check },
-    rejected: { label: 'مرفوض', variant: 'destructive', icon: X },
-    'in-review': { label: 'قيد المراجعة', variant: 'gold', icon: Eye },
+    pending: { label: AR_STATUS.pending, variant: 'warning', icon: Clock },
+    approved: { label: AR_STATUS.approved, variant: 'success', icon: Check },
+    rejected: { label: AR_STATUS.rejected, variant: 'destructive', icon: X },
+    'in-review': { label: AR_STATUS.inReview, variant: 'gold', icon: Eye },
     present: { label: 'حاضر', variant: 'success', icon: Check },
     absent: { label: 'غائب', variant: 'destructive', icon: X },
     late: { label: 'متأخر', variant: 'warning', icon: Clock },

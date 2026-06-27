@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/layouts/logo';
@@ -16,6 +17,13 @@ import {
 } from '@/features/auth/hooks/use-default-company-branding';
 import { authApi } from '@/features/auth/lib/api/auth';
 import { setAccessTokenCookie } from '@/features/auth/lib/auth-cookie';
+import {
+  buildLoginFormDefaults,
+  loadBrowserSavedCredentials,
+  loadRememberedLoginEmail,
+  persistRememberedLoginEmail,
+  storeBrowserCredentials,
+} from '@/features/auth/lib/login-remember';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { publicConfig } from '@/shared/config';
@@ -29,7 +37,12 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 function resolvePostLoginPath(returnTo: string | null): string {
-  if (!returnTo || !returnTo.startsWith('/') || returnTo.startsWith('//')) {
+  if (
+    !returnTo ||
+    !returnTo.startsWith('/') ||
+    returnTo.startsWith('//') ||
+    returnTo.startsWith('/login')
+  ) {
     return '/hr/dashboard';
   }
   return returnTo;
@@ -44,26 +57,41 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [hydrated, setHydrated] = React.useState(false);
+  const [rememberEmail, setRememberEmail] = React.useState(false);
 
   React.useEffect(() => {
     setHydrated(true);
+    setRememberEmail(!!loadRememberedLoginEmail());
   }, []);
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues:
-      process.env.NODE_ENV === 'development'
-        ? { email: 'admin@test.com', password: 'Admin123!' }
-        : { email: '', password: '' },
+    defaultValues: buildLoginFormDefaults(),
   });
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const saved = await loadBrowserSavedCredentials();
+      if (cancelled || !saved) return;
+      setValue('email', saved.email, { shouldDirty: false });
+      setValue('password', saved.password, { shouldDirty: false });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setValue]);
 
   const appTitle = publicConfig.appName.trim() || 'نظام الموارد البشرية';
   const { logoUrl, logoAlt, companyNameAr } = useLoginPageBranding();
-  const welcomeTitle = companyNameAr || appTitle;
+  const welcomeTitle = hydrated ? (companyNameAr || appTitle) : appTitle;
 
   const onSubmit = async (values: FormValues) => {
     if (!publicConfig.apiUrl) {
@@ -80,6 +108,7 @@ export function LoginPage() {
 
       if (!result.access_token?.trim() || !result.user?.id) {
         toast.error('استجابة تسجيل الدخول غير مكتملة');
+        setLoading(false);
         return;
       }
 
@@ -88,10 +117,17 @@ export function LoginPage() {
       persistLoginBranding(result.accessProfile);
       setAccessTokenCookie(result.access_token);
 
+      const email = values.email.trim().toLowerCase();
+      persistRememberedLoginEmail(email, rememberEmail);
+      await storeBrowserCredentials(email, values.password);
+
       const destination = resolvePostLoginPath(getReturnToFromLocation());
       window.location.assign(destination);
     } catch (err) {
-      handleApiError(err, 'auth.login');
+      const { status } = handleApiError(err, 'auth.login', { suppressRedirect: true });
+      if (status === 401) {
+        toast.error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      }
     } finally {
       setLoading(false);
     }
@@ -134,6 +170,7 @@ export function LoginPage() {
                 void handleSubmit(onSubmit)(event);
               }}
               className="mt-8 space-y-5"
+              autoComplete="on"
             >
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-foreground">
@@ -147,7 +184,7 @@ export function LoginPage() {
                     placeholder="your@email.com"
                     className="h-12 rounded-full border-border bg-background pe-4 ps-11 text-base shadow-soft"
                     dir="ltr"
-                    autoComplete="email"
+                    autoComplete="username"
                     {...register('email')}
                   />
                 </div>
@@ -180,6 +217,14 @@ export function LoginPage() {
                 </div>
                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               </div>
+
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={rememberEmail}
+                  onCheckedChange={(checked) => setRememberEmail(checked === true)}
+                />
+                <span>تذكرني على هذا الجهاز</span>
+              </label>
 
               <Button
                 type="submit"

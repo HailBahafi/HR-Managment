@@ -182,6 +182,7 @@ export function useAtsApplicantsListModel() {
         statusOrder={ATS_APPLICANT_STAGE_ORDER}
         statusLabels={ATS_APPLICANT_STAGE_LABELS}
         statusCounts={stageCounts}
+        defaultDateFilterTab="all"
         onDateBoundsChange={setDateBounds}
       />
     ),

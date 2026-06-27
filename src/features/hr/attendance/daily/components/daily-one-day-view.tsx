@@ -188,6 +188,7 @@ const REGISTER_SUCCESS_MSG: Record<RegisterableEventType, string> = {
 // Status → timeline fill class (using Tailwind design-token colors)
 const STATUS_BAR_CLASS: Record<string, string> = {
   present:     'bg-success/20 border-success/40',
+  partial:     'bg-warning/20 border-warning/40',
   late:        'bg-warning/20 border-warning/40',
   absent:      'bg-destructive/15 border-destructive/30',
   early_leave: 'bg-warning/20 border-warning/40',
@@ -492,10 +493,12 @@ function EmployeeMobileCard({
   return (
     <>
       <div className="border-b border-border/50 last:border-0 lg:hidden">
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           onClick={openDetail}
-          className="flex w-full flex-col gap-3 px-4 py-3.5 text-right transition-colors hover:bg-muted/20 active:bg-muted/30"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(); } }}
+          className="flex w-full flex-col gap-3 px-4 py-3.5 text-right transition-colors hover:bg-muted/20 active:bg-muted/30 cursor-pointer"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -549,7 +552,7 @@ function EmployeeMobileCard({
             ) : null}
             <span className="text-primary/80">انقر لعرض التفاصيل</span>
           </div>
-        </button>
+        </div>
       </div>
 
       <RegisterEventComboDialog

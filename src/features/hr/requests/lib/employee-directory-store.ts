@@ -1,34 +1,17 @@
+export type { HREmployeeStatus, HREmployeeHierarchyRole, HREmployeeDirectoryRow, HREmployeeDirectoryEntry } from '@/features/hr/requests/types/employee-directory';
+
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { employeesApi, type EmployeeResponseDto } from './api/employees';
 import { ApiError } from '@/features/hr/lib/api/client';
+import type { HREmployeeDirectoryRow, HREmployeeStatus } from '@/features/hr/requests/types/employee-directory';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type HREmployeeStatus = 'active' | 'probation' | 'suspended';
-export type HREmployeeHierarchyRole = 'ceo' | 'executive' | 'gm' | 'dept_head' | 'supervisor' | 'staff';
 
-export interface HREmployeeDirectoryRow {
-  id: string;
-  bridgeId: string;
-  nameAr: string;
-  nameEn: string;
-  nationalId: string;
-  departmentId: string;
-  jobTitleAr: string;
-  jobTitleEn: string;
-  hireDate: string;
-  status: HREmployeeStatus;
-  email?: string;
-  mobile?: string;
-  notes?: string;
-  reportsToId: string | null;
-  hierarchyRole: HREmployeeHierarchyRole;
-}
 
 // kept for backward compatibility with existing imports
-export type HREmployeeDirectoryEntry = HREmployeeDirectoryRow;
 
 // ─── Mapper ───────────────────────────────────────────────────────────────────
 

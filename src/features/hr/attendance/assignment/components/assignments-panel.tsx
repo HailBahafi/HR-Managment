@@ -16,7 +16,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
-import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
+import { ConfirmationModal } from '@/components/ui/shared-dialogs';
 import { useAssignmentsPanelModel } from '@/features/hr/attendance/assignment/hooks/useAssignmentsPanelModel';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';

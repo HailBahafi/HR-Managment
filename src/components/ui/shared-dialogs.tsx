@@ -257,7 +257,7 @@ const DRAWER_SIZE = {
 export function HRSettingsFormDrawer({ open, onOpenChange, title, description, size = 'lg', onSave, saveLabel = 'حفظ', saveDisabled, children, error, contentRef, footerExtra }: DrawerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent ref={contentRef} className={cn('flex max-h-[95vh] w-full flex-col overflow-hidden border-border p-0', DRAWER_SIZE[size])}>
+      <DialogContent ref={contentRef} className={cn('flex max-h-[95vh] w-full flex-col overflow-visible border-border p-0', DRAWER_SIZE[size])}>
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">{title}</DialogTitle>
@@ -266,7 +266,7 @@ export function HRSettingsFormDrawer({ open, onOpenChange, title, description, s
             </DialogDescription>
           </DialogHeader>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5 space-y-5">
           {children}
           {error && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">

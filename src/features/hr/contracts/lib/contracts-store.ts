@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
+import { AR_STATUS } from '@/shared/i18n/ar';
 import {
   TEMPLATE_CONTRACT_NATURE_LABELS,
   TEMPLATE_WORK_ARRANGEMENT_LABELS,
@@ -349,13 +350,13 @@ export function workArrangementLabel(value: string): string {
 }
 
 export const CONTRACT_STATUS_LABELS: Record<HRContractLifecycleStatus, string> = {
-  draft: 'مسودة',
+  draft: AR_STATUS.draft,
   pending_signature: 'بانتظار الموافقة',
   active: 'نشط',
   expired: 'منتهي',
   terminated: 'مُنهى مبكراً',
   superseded: 'مستبدل',
-  cancelled: 'ملغى',
+  cancelled: AR_STATUS.cancelledShort,
 };
 
 export const CONTRACT_STATUS_COLORS: Record<HRContractLifecycleStatus, string> = {

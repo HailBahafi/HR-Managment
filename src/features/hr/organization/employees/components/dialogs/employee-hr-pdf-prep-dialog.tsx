@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { MinimalDropdown } from '@/features/hr/requests/components/shared-ui';
+import { MinimalDropdown } from '@/components/ui/shared-dialogs';
 import { REASON_LABELS, type CashReceiptReason } from '@/features/hr/payroll/reports/components/pdf-cash-receipt-print-html';
 
 type Props = {

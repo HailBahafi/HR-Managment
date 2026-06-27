@@ -16,7 +16,7 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import {
   ConfirmationModal, FormField,
   EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { useApprovalAssignmentModel } from '@/features/hr/requests/approval-assignment/hooks/useApprovalAssignmentModel';
 import type { RequestApprovalMode } from '@/features/hr/requests/approval-assignment/hooks/useApprovalAssignmentModel';

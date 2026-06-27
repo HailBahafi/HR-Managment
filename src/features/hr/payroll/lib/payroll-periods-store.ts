@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
+import { AR_STATUS } from '@/shared/i18n/ar';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { payrollPeriodsApi, type PayrollPeriodResponseDto } from './api/payroll-periods';
@@ -631,11 +632,11 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
 }));
 
 export const PERIOD_STATUS_LABELS: Record<HRPayrollPeriodStatus, string> = {
-  draft: 'مسودة',
+  draft: AR_STATUS.draft,
   open: 'مفتوحة',
   locked: 'مقفلة',
   closed: 'مغلقة',
-  cancelled: 'ملغاة',
+  cancelled: AR_STATUS.cancelled,
 };
 
 export const PERIOD_STATUS_COLORS: Record<HRPayrollPeriodStatus, string> = {

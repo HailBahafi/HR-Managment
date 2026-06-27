@@ -14,7 +14,7 @@ import { QRCodeDialog } from '@/features/hr/recruitment/shared/qr-code-dialog';
 import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
 import { recruitmentJobRoutes } from '@/features/hr/recruitment/lib/recruitment-routes';
 import { JOB_TYPE_AR } from '@/features/hr/recruitment/ats/constants/ats-jobs-list';
-import { ConfirmationModal, EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { ConfirmationModal, EmptyState } from '@/components/ui/shared-dialogs';
 import type { AtsJobsListModel } from '@/features/hr/recruitment/ats/hooks/useAtsJobsListModel';
 
 type Props = { model: AtsJobsListModel };
