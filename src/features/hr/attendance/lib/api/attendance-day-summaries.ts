@@ -1,135 +1,33 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import type {
+  AttendanceDayStatus,
+  DaySummaryDailyTotals,
+  DaySummaryListQuery,
+  DaySummaryResponseDto,
+  PushToPayrollDto,
+  PushToPayrollResult,
+  RecomputeDto,
+  RecomputeResult,
+  UpdateDaySummaryDto,
+} from '@/features/hr/attendance/types/api/attendance-day-summaries';
 
-export type AttendanceDayStatus =
-  | 'present'
-  | 'late'
-  | 'absent'
-  | 'rest_day'
-  | 'unscheduled'
-  | 'holiday'
-  | 'on_leave';
-
-export type DaySummaryDailyTotals = {
-  minutes: {
-    expected: number;
-    total: number;
-    late: number;
-    earlyLeave: number;
-    overtime: number;
-    shortage: number;
-  };
-  display: {
-    expected: string;
-    total: string;
-    late: string;
-    earlyLeave: string;
-    overtime: string;
-    shortage: string;
-  };
-};
-
-export type DaySummaryResponseDto = {
-  id: string;
-  companyId: string;
-  employeeId: string;
-  employeeNameAr: string;
-  workDate: string;
-  status: AttendanceDayStatus;
-  shiftAssignmentId: string | null;
-  expectedStartAt: string | null;
-  expectedEndAt: string | null;
-  actualCheckInAt: string | null;
-  actualCheckOutAt: string | null;
-  correctedTimes?: unknown | null;
-  lateMinutes: number;
-  earlyLeaveMinutes: number;
-  workedMinutes: number;
-  overtimeMinutes: number;
-  expectedMinutes?: number;
-  shortageMinutes?: number;
-  dailyTotals?: DaySummaryDailyTotals | null;
-  isManualOverride: boolean;
-  isFinalized: boolean;
-  notes: string | null;
-  computedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string | null;
-  updatedBy: string | null;
-};
-
-export type DaySummaryListQuery = {
-  page?: number;
-  limit?: number;
-  companyId?: string;
-  employeeId?: string;
-  status?: AttendanceDayStatus;
-  from?: string;
-  to?: string;
-  isManualOverride?: boolean;
-};
-
-export type UpdateDaySummaryDto = {
-  status?: AttendanceDayStatus;
-  lateMinutes?: number;
-  earlyLeaveMinutes?: number;
-  workedMinutes?: number;
-  overtimeMinutes?: number;
-  isFinalized?: boolean;
-  notes?: string | null;
-  updatedBy?: string | null;
-};
-
-export type RecomputeDto = {
-  companyId: string;
-  from: string;
-  to: string;
-  employeeIds?: string[];
-  timezoneOffsetMinutes?: number;
-  overwriteManualOverrides?: boolean;
-  computedBy?: string | null;
-};
-
-export type RecomputeResult = {
-  created: number;
-  updated: number;
-  skipped: number;
-  totalDays: number;
-  employees: number;
-};
-
-export type PushToPayrollDto = {
-  payrollPeriodId: string;
-  employeeIds?: string[];
-  replaceExisting?: boolean;
-  applyOvertime?: boolean;
-  absenceDailyRateOverride?: number;
-  lateMinuteRateOverride?: number;
-  overtimeMultiplier?: number;
-  createdBy?: string | null;
-};
-
-export type PushToPayrollResult = {
-  inputsCreated: number;
-  inputsDeleted: number;
-  employeesProcessed: number;
-};
+export type {
+  AttendanceDayStatus,
+  DaySummaryDailyTotals,
+  DaySummaryListQuery,
+  DaySummaryResponseDto,
+  PushToPayrollDto,
+  PushToPayrollResult,
+  RecomputeDto,
+  RecomputeResult,
+  UpdateDaySummaryDto,
+} from '@/features/hr/attendance/types/api/attendance-day-summaries';
 
 export type SettleDaySummaryDto = {
   /** Minutes to transfer from overtime to actual (capped so actual ≤ expected). */
   minutes?: number;
   notes?: string | null;
 };
-import type { AttendanceDayStatus, DaySummaryResponseDto, DaySummaryListQuery, UpdateDaySummaryDto, RecomputeDto, RecomputeResult, PushToPayrollDto, PushToPayrollResult } from '@/features/hr/attendance/types/api/attendance-day-summaries';
-export type { AttendanceDayStatus, DaySummaryResponseDto, DaySummaryListQuery, UpdateDaySummaryDto, RecomputeDto, RecomputeResult, PushToPayrollDto, PushToPayrollResult } from '@/features/hr/attendance/types/api/attendance-day-summaries';
-
-
-
-
-
-
-
-
 
 export const attendanceDaySummariesApi = {
   getAll(query?: DaySummaryListQuery) {
@@ -166,4 +64,3 @@ export const attendanceDaySummariesApi = {
     });
   },
 };
-

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback, useId, type ChangeEvent } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useCallback, useId, type ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, ChevronUp, ChevronDown, X } from 'lucide-react';
@@ -54,7 +54,7 @@ function clampDropdownLeft(left: number, dropdownWidth: number): number {
 }
 
 function resolvePortalContainer(
-    _trigger: HTMLElement | null,
+    trigger: HTMLElement | null,
     explicit?: HTMLElement | DocumentFragment | null,
 ): { container: HTMLElement | DocumentFragment; mode: 'fixed' | 'absolute'; anchor: HTMLElement | null } {
     if (explicit) {
@@ -65,7 +65,16 @@ function resolvePortalContainer(
         };
     }
 
-    // Default to body so time dropdowns are not clipped by dialog overflow.
+    // Inside a Radix dialog: portal into the dialog shell so clicks are not blocked by the modal layer.
+    const dialogContent = trigger?.closest('[role="dialog"]');
+    if (dialogContent instanceof HTMLElement) {
+        return {
+            container: dialogContent,
+            mode: 'absolute',
+            anchor: dialogContent,
+        };
+    }
+
     return { container: document.body, mode: 'fixed', anchor: null };
 }
 
@@ -91,6 +100,10 @@ function computeDropdownPosition(
         left: clampDropdownLeft(centeredLeft, dropdownWidth),
     };
 }
+
+const stopPickerEvent = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+};
 
 function TimeDigitPicker({ value, max, label, onIncrement, onDecrement, onChange }: TimeDigitPickerProps) {
     const [isEditing, setIsEditing] = useState(false);
@@ -171,7 +184,15 @@ function TimeDigitPicker({ value, max, label, onIncrement, onDecrement, onChange
 
     return (
         <div className="flex flex-col items-center">
-            <button type="button" onClick={onIncrement} className={cn(stepBtnClass, 'mb-0.5 sm:mb-1')}>
+            <button
+                type="button"
+                onPointerDown={stopPickerEvent}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onIncrement();
+                }}
+                className={cn(stepBtnClass, 'mb-0.5 sm:mb-1')}
+            >
                 <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </button>
 
@@ -180,6 +201,7 @@ function TimeDigitPicker({ value, max, label, onIncrement, onDecrement, onChange
                     ref={wheelRef}
                     className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border-2 border-border bg-card text-foreground shadow-sm transition-transform duration-200 hover:scale-105 sm:h-12 sm:w-12 sm:rounded-xl md:h-14 md:w-14"
                     onClick={handleClick}
+                    onPointerDown={stopPickerEvent}
                     title="انقر للكتابة، استخدم عجلة الماوس للتغيير"
                 >
                     {isEditing ? (
@@ -204,7 +226,15 @@ function TimeDigitPicker({ value, max, label, onIncrement, onDecrement, onChange
                 </div>
             </div>
 
-            <button type="button" onClick={onDecrement} className={cn(stepBtnClass, 'mt-2 sm:mt-3')}>
+            <button
+                type="button"
+                onPointerDown={stopPickerEvent}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onDecrement();
+                }}
+                className={cn(stepBtnClass, 'mt-2 sm:mt-3')}
+            >
                 <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </button>
         </div>
@@ -270,12 +300,20 @@ export default function ModernTimePicker({
         setPosition(computeDropdownPosition(trigger, resolved.mode, resolved.anchor, width));
     }, [portalContainerProp]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!isOpen) return;
         updatePosition();
+    }, [isOpen, updatePosition]);
+
+    useEffect(() => {
+        if (!isOpen) return;
 
         window.addEventListener('resize', updatePosition);
-        return () => window.removeEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
     }, [isOpen, updatePosition]);
 
     useEffect(() => {
@@ -384,9 +422,9 @@ export default function ModernTimePicker({
                     animate={{ opacity: 1, scaleY: 1 }}
                     exit={{ opacity: 0, scaleY: 0 }}
                     transition={{ duration: 0.2, ease: 'easeOut' }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    className="z-[200] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-elevated sm:p-4"
+                    onMouseDown={stopPickerEvent}
+                    onPointerDown={stopPickerEvent}
+                    className="pointer-events-auto z-[200] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-elevated sm:p-4"
                     style={{
                         position: positionMode,
                         top: position.top,
@@ -399,7 +437,11 @@ export default function ModernTimePicker({
                         <div className="flex flex-col items-center">
                             <button
                                 type="button"
-                                onClick={() => handlePeriodChange(period === 'AM' ? 'PM' : 'AM')}
+                                onPointerDown={stopPickerEvent}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePeriodChange(period === 'AM' ? 'PM' : 'AM');
+                                }}
                                 className={cn(stepBtnClass, 'mb-0.5 sm:mb-1')}
                             >
                                 <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -413,7 +455,11 @@ export default function ModernTimePicker({
 
                             <button
                                 type="button"
-                                onClick={() => handlePeriodChange(period === 'AM' ? 'PM' : 'AM')}
+                                onPointerDown={stopPickerEvent}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePeriodChange(period === 'AM' ? 'PM' : 'AM');
+                                }}
                                 className={cn(stepBtnClass, 'mt-0.5 sm:mt-1')}
                             >
                                 <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -448,7 +494,11 @@ export default function ModernTimePicker({
 
                     <button
                         type="button"
-                        onClick={() => setIsOpen(false)}
+                        onPointerDown={stopPickerEvent}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsOpen(false);
+                        }}
                         className="mt-2.5 w-full rounded-md bg-primary py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:mt-3 sm:py-2"
                     >
                         تم

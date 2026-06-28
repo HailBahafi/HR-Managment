@@ -13,14 +13,13 @@ import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { TableDateCell } from '@/components/ui/table-cells';
-import { EmptyState } from '@/features/hr/requests/components/shared-ui';
 import { EmptyState } from '@/components/ui/shared-dialogs';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
-import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
+import type { DaySummaryResponseDto } from '@/features/hr/attendance/types/api/attendance-day-summaries';
 import {
-  DAY_SUMMARY_STATUS_BADGE,
-  DAY_SUMMARY_STATUS_LABELS,
+  daySummaryStatusBadgeClass,
+  daySummaryStatusLabel,
 } from '@/features/hr/attendance/day-summaries/constants/day-summary-labels';
 import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summaries/hooks/useDaySummariesDirectoryModel';
 import { DaySummaryMetricCell } from '@/features/hr/attendance/day-summaries/components/day-summary-metric-cell';
@@ -61,7 +60,7 @@ function DaySummaryDetailDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   if (!row) return null;
-  const statusLabel = DAY_SUMMARY_STATUS_LABELS[row.status] ?? row.status;
+  const statusLabel = daySummaryStatusLabel(row.status);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -144,10 +143,10 @@ export function DaySummariesPage() {
           variant="outline"
           className={cn(
             'text-[10px] font-normal',
-            DAY_SUMMARY_STATUS_BADGE[row.status] ?? '',
+            daySummaryStatusBadgeClass(row.status),
           )}
         >
-          {DAY_SUMMARY_STATUS_LABELS[row.status] ?? row.status}
+          {daySummaryStatusLabel(row.status)}
         </Badge>
       ),
     },

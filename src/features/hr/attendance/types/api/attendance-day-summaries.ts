@@ -8,6 +8,25 @@ export type AttendanceDayStatus =
   | 'holiday'
   | 'on_leave';
 
+export type DaySummaryDailyTotals = {
+  minutes: {
+    expected: number;
+    total: number;
+    late: number;
+    earlyLeave: number;
+    overtime: number;
+    shortage: number;
+  };
+  display: {
+    expected: string;
+    total: string;
+    late: string;
+    earlyLeave: string;
+    overtime: string;
+    shortage: string;
+  };
+};
+
 export type DaySummaryResponseDto = {
   id: string;
   companyId: string;
@@ -20,10 +39,14 @@ export type DaySummaryResponseDto = {
   expectedEndAt: string | null;
   actualCheckInAt: string | null;
   actualCheckOutAt: string | null;
+  correctedTimes?: unknown | null;
   lateMinutes: number;
   earlyLeaveMinutes: number;
   workedMinutes: number;
   overtimeMinutes: number;
+  expectedMinutes?: number;
+  shortageMinutes?: number;
+  dailyTotals?: DaySummaryDailyTotals | null;
   isManualOverride: boolean;
   isFinalized: boolean;
   notes: string | null;
