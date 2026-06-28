@@ -3,7 +3,6 @@
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import {
   formatDaySummaryMetric,
-  formatInsidePeriod,
   getDaySummaryMetricMinutes,
   type DaySummaryDailyMetricKey,
 } from '@/features/hr/attendance/day-summaries/utils/day-summary-display';
@@ -48,12 +47,4 @@ export function DaySummaryMetricCell({
       {formatted}
     </span>
   );
-}
-
-export function InsidePeriodDisplayCell({ row }: { row: DaySummaryResponseDto }) {
-  const text = formatInsidePeriod(row);
-  if (!text) {
-    return <span className="text-muted-foreground">—</span>;
-  }
-  return <span className="tabular-nums font-mono text-sm">{text}</span>;
 }

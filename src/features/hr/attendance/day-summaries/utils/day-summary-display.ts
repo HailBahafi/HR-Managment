@@ -1,20 +1,18 @@
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
-import { computeInsidePeriodMinutes } from '@/features/hr/attendance/day-summaries/utils/day-summary-metrics';
 
 export type DaySummaryDailyMetricKey =
   | 'expected'
   | 'total'
   | 'late'
   | 'earlyLeave'
-  | 'overtime'
-  | 'shortage';
+  | 'overtime';
 
 const MINUTES_FIELD: Record<
   DaySummaryDailyMetricKey,
   keyof Pick<
     DaySummaryResponseDto,
-    'expectedMinutes' | 'workedMinutes' | 'lateMinutes' | 'earlyLeaveMinutes' | 'overtimeMinutes' | 'shortageMinutes'
+    'expectedMinutes' | 'workedMinutes' | 'lateMinutes' | 'earlyLeaveMinutes' | 'overtimeMinutes'
   >
 > = {
   expected: 'expectedMinutes',
@@ -22,7 +20,6 @@ const MINUTES_FIELD: Record<
   late: 'lateMinutes',
   earlyLeave: 'earlyLeaveMinutes',
   overtime: 'overtimeMinutes',
-  shortage: 'shortageMinutes',
 };
 
 /** Minutes for a daily total metric — prefers API `dailyTotals.minutes`, then top-level fields. */
@@ -50,15 +47,5 @@ export function formatDaySummaryMetric(
 
   const minutes = getDaySummaryMetricMinutes(row, key);
   if (minutes <= 0) return null;
-  return minutesToHHMM(minutes);
-}
-
-export function getInsidePeriodMinutes(row: DaySummaryResponseDto): number | null {
-  return computeInsidePeriodMinutes(row);
-}
-
-export function formatInsidePeriod(row: DaySummaryResponseDto): string | null {
-  const minutes = getInsidePeriodMinutes(row);
-  if (minutes == null || minutes <= 0) return null;
   return minutesToHHMM(minutes);
 }

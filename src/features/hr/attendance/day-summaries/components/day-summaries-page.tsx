@@ -21,22 +21,14 @@ import {
   DAY_SUMMARY_STATUS_LABELS,
 } from '@/features/hr/attendance/day-summaries/constants/day-summary-labels';
 import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summaries/hooks/useDaySummariesDirectoryModel';
-import {
-  DaySummaryMetricCell,
-  InsidePeriodDisplayCell,
-} from '@/features/hr/attendance/day-summaries/components/day-summary-metric-cell';
-import { DaySummaryShortageCell } from '@/features/hr/attendance/day-summaries/components/day-summary-shortage-cell';
+import { DaySummaryMetricCell } from '@/features/hr/attendance/day-summaries/components/day-summary-metric-cell';
+import { DaySummarySettleButton } from '@/features/hr/attendance/day-summaries/components/day-summary-settle-button';
 import { DaySummarySettleConfirmDialog } from '@/features/hr/attendance/day-summaries/components/day-summary-settle-confirm-dialog';
-import {
-  buildSettleDaySummaryPayload,
-} from '@/features/hr/attendance/day-summaries/utils/day-summary-settle';
+import { buildSettleDaySummaryPayload } from '@/features/hr/attendance/day-summaries/utils/day-summary-settle';
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { toast } from 'sonner';
-import {
-  formatDaySummaryMetric,
-  formatInsidePeriod,
-} from '@/features/hr/attendance/day-summaries/utils/day-summary-display';
+import { formatDaySummaryMetric } from '@/features/hr/attendance/day-summaries/utils/day-summary-display';
 import { computePunchSpanMinutes } from '@/features/hr/attendance/day-summaries/utils/day-summary-metrics';
 import { RecomputeDaySummariesDialog } from '@/features/hr/attendance/daily/dialogs/recompute-day-summaries-dialog';
 import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
@@ -45,19 +37,14 @@ import { cn } from '@/shared/utils';
 function DetailRow({
   label,
   value,
-  hint,
 }: {
   label: string;
   value: React.ReactNode;
-  hint?: string;
 }) {
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-2 border-b border-border/40 py-2 text-sm last:border-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className="min-w-0 break-words">
-        {value ?? '—'}
-        {hint ? <span className="mt-0.5 block text-[11px] text-muted-foreground">{hint}</span> : null}
-      </span>
+      <span className="min-w-0 break-words">{value ?? '—'}</span>
     </div>
   );
 }
@@ -97,16 +84,10 @@ function DaySummaryDetailDialog({
             }
           />
           <DetailRow label="متوقع" value={formatDaySummaryMetric(row, 'expected') ?? '—'} />
-          <DetailRow
-            label="داخل الفترات"
-            value={formatInsidePeriod(row) ?? '—'}
-            hint="تقاطع البصمة مع بداية/نهاية الفترة المتوقعة"
-          />
           <DetailRow label="فعلي" value={formatDaySummaryMetric(row, 'total') ?? '—'} />
           <DetailRow label="تأخير" value={formatDaySummaryMetric(row, 'late') ?? '00:00'} />
           <DetailRow label="انصراف مبكر" value={formatDaySummaryMetric(row, 'earlyLeave') ?? '00:00'} />
           <DetailRow label="إضافي" value={formatDaySummaryMetric(row, 'overtime') ?? '00:00'} />
-          <DetailRow label="نقص" value={formatDaySummaryMetric(row, 'shortage') ?? '00:00'} />
           <DetailRow label="تعديل يدوي" value={row.isManualOverride ? 'نعم' : 'لا'} />
           <DetailRow label="نهائي" value={row.isFinalized ? 'نعم' : 'لا'} />
           <DetailRow label="ملاحظات" value={row.notes} />
@@ -187,11 +168,6 @@ export function DaySummariesPage() {
       render: (row) => <DaySummaryMetricCell row={row} metric="expected" />,
     },
     {
-      key: 'insidePeriod',
-      title: 'داخل الفترات',
-      render: (row) => <InsidePeriodDisplayCell row={row} />,
-    },
-    {
       key: 'total',
       title: 'فعلي',
       render: (row) => <DaySummaryMetricCell row={row} metric="total" />,
@@ -219,17 +195,20 @@ export function DaySummariesPage() {
       ),
     },
     {
-      key: 'shortage',
-      title: 'نقص',
-      render: (row) => (
-        <DaySummaryShortageCell row={row} onRequestSettle={setSettleRow} />
-      ),
-    },
-    {
       key: 'manual',
       title: 'يدوي',
       hideOnMobile: true,
       render: (row) => (row.isManualOverride ? 'نعم' : '—'),
+    },
+    {
+      key: 'settle',
+      title: 'تسوية',
+      isActions: true,
+      headerClassName: 'text-center',
+      className: 'text-center',
+      render: (row) => (
+        <DaySummarySettleButton row={row} onRequestSettle={setSettleRow} />
+      ),
     },
   ], [setSettleRow]);
 
@@ -237,7 +216,7 @@ export function DaySummariesPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="كشف الحضور"
-        descriptionAr="متوقع وداخل الفترات والفعلي للتسوية — مع تأخير، انصراف مبكر، إضافي، ونقص من الخادم."
+        descriptionAr="متوقع والفعلي مع تأخير، انصراف مبكر، وإضافي من الخادم."
         iconName="CalendarRange"
       />
 

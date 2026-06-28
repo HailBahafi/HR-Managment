@@ -4,14 +4,72 @@ import type {
 } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { getDaySummaryMetricMinutes } from '@/features/hr/attendance/day-summaries/utils/day-summary-display';
 
-/** Both shortage and overtime must be positive to settle one against the other. */
+export type DaySummarySettlePlan = {
+  expectedMinutes: number;
+  totalMinutes: number;
+  overtimeMinutes: number;
+  shortageMinutes: number;
+  transferMinutes: number;
+  after: {
+    totalMinutes: number;
+    overtimeMinutes: number;
+    shortageMinutes: number;
+  };
+};
+
+export function getDaySummaryShortageMinutes(row: DaySummaryResponseDto): number {
+  const fromTotals = row.dailyTotals?.minutes?.shortage;
+  if (typeof fromTotals === 'number' && Number.isFinite(fromTotals)) {
+    return fromTotals;
+  }
+  if (typeof row.shortageMinutes === 'number' && Number.isFinite(row.shortageMinutes)) {
+    return row.shortageMinutes;
+  }
+  const expected = getDaySummaryMetricMinutes(row, 'expected');
+  const total = getDaySummaryMetricMinutes(row, 'total');
+  return Math.max(0, expected - total);
+}
+
+/** Transfer from overtime to actual until actual reaches expected (partial if overtime is insufficient). */
+export function computeDaySummarySettlePlan(row: DaySummaryResponseDto): DaySummarySettlePlan {
+  const expectedMinutes = getDaySummaryMetricMinutes(row, 'expected');
+  const totalMinutes = getDaySummaryMetricMinutes(row, 'total');
+  const overtimeMinutes = getDaySummaryMetricMinutes(row, 'overtime');
+  const shortageMinutes = getDaySummaryShortageMinutes(row);
+
+  const gapToExpected = Math.max(0, expectedMinutes - totalMinutes);
+  const transferMinutes = Math.min(overtimeMinutes, gapToExpected);
+  const afterTotal = totalMinutes + transferMinutes;
+
+  return {
+    expectedMinutes,
+    totalMinutes,
+    overtimeMinutes,
+    shortageMinutes,
+    transferMinutes,
+    after: {
+      totalMinutes: afterTotal,
+      overtimeMinutes: overtimeMinutes - transferMinutes,
+      shortageMinutes: Math.max(0, expectedMinutes - afterTotal),
+    },
+  };
+}
+
 export function canSettleDaySummary(row: DaySummaryResponseDto): boolean {
-  const shortage = getDaySummaryMetricMinutes(row, 'shortage');
-  const overtime = getDaySummaryMetricMinutes(row, 'overtime');
-  return shortage > 0 && overtime > 0;
+  const plan = computeDaySummarySettlePlan(row);
+  return (
+    plan.transferMinutes > 0 &&
+    plan.totalMinutes < plan.expectedMinutes &&
+    plan.overtimeMinutes > 0
+  );
 }
 
 export function buildSettleDaySummaryPayload(row: DaySummaryResponseDto): SettleDaySummaryDto {
+  const plan = computeDaySummarySettlePlan(row);
   const notes = row.notes?.trim();
-  return notes ? { notes } : {};
+
+  return {
+    minutes: plan.transferMinutes,
+    ...(notes ? { notes } : {}),
+  };
 }

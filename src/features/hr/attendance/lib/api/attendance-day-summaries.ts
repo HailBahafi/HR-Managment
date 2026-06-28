@@ -116,6 +116,8 @@ export type PushToPayrollResult = {
 };
 
 export type SettleDaySummaryDto = {
+  /** Minutes to transfer from overtime to actual (capped so actual ≤ expected). */
+  minutes?: number;
   notes?: string | null;
 };
 

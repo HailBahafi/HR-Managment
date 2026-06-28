@@ -13,7 +13,8 @@ import {
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
-import { formatDaySummaryMetric } from '@/features/hr/attendance/day-summaries/utils/day-summary-display';
+import { computeDaySummarySettlePlan } from '@/features/hr/attendance/day-summaries/utils/day-summary-settle';
+import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { TableDateCell } from '@/components/ui/table-cells';
 
 type DaySummarySettleConfirmDialogProps = {
@@ -24,6 +25,36 @@ type DaySummarySettleConfirmDialogProps = {
   submitting?: boolean;
 };
 
+function MetricPreview({
+  label,
+  before,
+  after,
+  tone,
+}: {
+  label: string;
+  before: number;
+  after: number;
+  tone?: 'default' | 'success' | 'destructive';
+}) {
+  const toneClass =
+    tone === 'success'
+      ? 'text-success'
+      : tone === 'destructive'
+        ? 'text-destructive'
+        : 'text-foreground';
+
+  return (
+    <div className="rounded-lg border border-border/50 bg-background/80 px-3 py-2 text-center">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 font-mono text-sm font-semibold tabular-nums ${toneClass}`}>
+        {minutesToHHMM(before)}
+        <span className="mx-1 text-muted-foreground">→</span>
+        {minutesToHHMM(after)}
+      </p>
+    </div>
+  );
+}
+
 export function DaySummarySettleConfirmDialog({
   row,
   open,
@@ -33,9 +64,9 @@ export function DaySummarySettleConfirmDialog({
 }: DaySummarySettleConfirmDialogProps) {
   if (!row) return null;
 
-  const shortage = formatDaySummaryMetric(row, 'shortage') ?? '00:00';
-  const overtime = formatDaySummaryMetric(row, 'overtime') ?? '00:00';
+  const plan = computeDaySummarySettlePlan(row);
   const notes = row.notes?.trim();
+  const isPartial = plan.after.shortageMinutes > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,7 +75,10 @@ export function DaySummarySettleConfirmDialog({
           <DialogHeader className="space-y-2 text-right">
             <DialogTitle className="font-display text-base">تسوية الحضور</DialogTitle>
             <DialogDescription className="text-xs leading-relaxed">
-              هل تريد تسوية الحضور من الإضافي؟
+              هل تريد تسوية الحضور من الإضافي؟ سيتم خصم{' '}
+              <span className="font-semibold text-foreground">{minutesToHHMM(plan.transferMinutes)}</span>{' '}
+              من الإضافي وإضافتها إلى الفعلي دون تجاوز المتوقع (
+              {minutesToHHMM(plan.expectedMinutes)}).
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -57,17 +91,46 @@ export function DaySummarySettleConfirmDialog({
             </p>
           </div>
 
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
-            <div className="text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-destructive">نقص</p>
-              <p className="mt-1 font-mono text-lg font-bold tabular-nums text-destructive">{shortage}</p>
-            </div>
-            <ArrowLeftRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-            <div className="text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-success">إضافي</p>
-              <p className="mt-1 font-mono text-lg font-bold tabular-nums text-success">{overtime}</p>
-            </div>
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <ArrowLeftRight className="h-4 w-4 shrink-0 text-primary" />
+            <span className="text-sm">
+              تحويل{' '}
+              <span className="font-mono font-semibold tabular-nums text-primary">
+                {minutesToHHMM(plan.transferMinutes)}
+              </span>{' '}
+              من الإضافي إلى الفعلي
+            </span>
           </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <MetricPreview label="فعلي" before={plan.totalMinutes} after={plan.after.totalMinutes} />
+            <MetricPreview
+              label="إضافي"
+              before={plan.overtimeMinutes}
+              after={plan.after.overtimeMinutes}
+              tone="success"
+            />
+            <MetricPreview
+              label="نقص"
+              before={plan.shortageMinutes}
+              after={plan.after.shortageMinutes}
+              tone="destructive"
+            />
+          </div>
+
+          {isPartial ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              الإضافي المتاح أقل من النقص — ستُسوّى جزئياً ويبقى نقص{' '}
+              <span className="font-mono font-medium text-destructive">
+                {minutesToHHMM(plan.after.shortageMinutes)}
+              </span>
+              .
+            </p>
+          ) : (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              بعد التسوية يصبح الفعلي مساوياً للمتوقع.
+            </p>
+          )}
 
           {notes ? (
             <div className="rounded-lg border border-border/50 bg-muted/10 px-3 py-2 text-xs">
@@ -87,7 +150,7 @@ export function DaySummarySettleConfirmDialog({
             إلغاء
           </Button>
           <Button type="button" disabled={submitting} onClick={() => void onConfirm()}>
-            {submitting ? 'جاري التسوية…' : 'تسوية من الإضافي'}
+            {submitting ? 'جاري التسوية…' : 'تأكيد التسوية'}
           </Button>
         </DialogFooter>
       </DialogContent>
