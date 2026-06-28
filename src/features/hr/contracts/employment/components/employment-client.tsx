@@ -15,7 +15,7 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import {
   EmptyState,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { employeeContractsApi } from '@/features/hr/contracts/lib/contracts-api';
@@ -35,8 +35,8 @@ import {
 import { useHRContractTemplatesStore } from '@/features/hr/contracts/lib/contract-templates-store';
 import { contractTemplatesApi } from '@/features/hr/contracts/contract-templates/lib/api/contract-templates';
 import { applyContractTemplateToForm, computeTemplateEndDate } from '@/features/hr/contracts/employment/utils/apply-contract-template';
-import { useHRAllowanceTypesStore } from '@/features/hr/contracts/lib/allowance-types-store';
-import { useHRContractArticlesStore } from '@/features/hr/contracts/lib/contract-articles-store';
+import { useAllowanceTypes } from '@/features/hr/contracts/lib/hooks/use-allowance-types';
+import { useContractArticles } from '@/features/hr/contracts/lib/hooks/use-contract-articles';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { cn, formatNumber } from '@/shared/utils';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
@@ -94,8 +94,8 @@ export function EmploymentContractsClient() {
   const companyId = useDefaultCompanyId();
   const { add, update, activate, employeeAccept, terminate, archive, createAmendmentDraft } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
-  const { items: allowanceTypes, fetch: fetchAllowanceTypes } = useHRAllowanceTypesStore();
-  const { articles, fetch: fetchArticles } = useHRContractArticlesStore();
+  const { data: allowanceTypes = [] } = useAllowanceTypes();
+  const { data: articles = [] } = useContractArticles();
   const {
     employees: allEmployees,
     fetch: fetchEmployees,
@@ -124,15 +124,9 @@ export function EmploymentContractsClient() {
 
   const ensureFormCatalogLoaded = React.useCallback(async () => {
     if (!companyId) return;
-    const tasks: Promise<void>[] = [];
     const tpl = useHRContractTemplatesStore.getState();
-    const art = useHRContractArticlesStore.getState();
-    const allow = useHRAllowanceTypesStore.getState();
-    if (tpl.templates.length === 0 && !tpl.isLoading) tasks.push(fetchTemplates());
-    if (art.loadedCompanyId !== companyId && !art.isLoading) tasks.push(fetchArticles());
-    if (allow.items.length === 0 && !allow.isLoading) tasks.push(fetchAllowanceTypes());
-    await Promise.all(tasks);
-  }, [companyId, fetchTemplates, fetchArticles, fetchAllowanceTypes]);
+    if (tpl.templates.length === 0 && !tpl.isLoading) await fetchTemplates();
+  }, [companyId, fetchTemplates]);
 
   const essentialArticleIds = React.useMemo(
     () => articles.filter(a => a.isActive && a.isBasic).map(a => a.id),
@@ -290,8 +284,8 @@ export function EmploymentContractsClient() {
   const openEmploymentContractPdf = React.useCallback(async (source?: FormValues, employeeNameOverride?: string) => {
     await ensureFormCatalogLoaded();
     ensureFormEmployeesLoaded();
-    const latestArticles = useHRContractArticlesStore.getState().articles;
-    const latestAllowanceTypes = useHRAllowanceTypesStore.getState().items;
+    const latestArticles = articles;
+    const latestAllowanceTypes = allowanceTypes;
     const values = source ?? form;
     if (!values.employeeId.trim()) {
       toast.error('اختر الموظف أولاً');
@@ -349,6 +343,8 @@ export function EmploymentContractsClient() {
     setContractPdfOpen(true);
   }, [
     form,
+    articles,
+    allowanceTypes,
     companyId,
     ensureFormCatalogLoaded,
     ensureFormEmployeesLoaded,

@@ -1,3 +1,5 @@
+export type { AttendanceCorrectionPeriod, AttendanceCorrectionRequest } from '@/features/hr/requests/types/attendance-correction';
+
 import { create } from 'zustand';
 import {
   correctionRequestsApi,
@@ -5,46 +7,18 @@ import {
   type CorrectionDecisionDto,
   type CorrectionRequestStatus,
 } from './api/correction-requests';
+import { ApiError } from '@/features/hr/lib/api/client';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import type { RequestApproverStatesSnapshot } from './api/request-approver-states-types';
 import { normalizeRequestApproverStates } from './request-approver-states';
+import type {
+  AttendanceCorrectionPeriod,
+  AttendanceCorrectionRequest,
+} from '@/features/hr/requests/types/attendance-correction';
+import { correctionRequestStatusLabelAr } from '@/shared/i18n/ar';
 
-export type AttendanceCorrectionPeriod = {
-  periodId: string;
-  checkInAt: string | null;
-  checkOutAt: string | null;
-};
 
-export type AttendanceCorrectionRequest = {
-  id: string;
-  employeeId: string;
-  employeeNameAr: string;
-  /** Department display name returned by the backend (not an ID). */
-  departmentNameAr: string;
-  /** kept for UI compat — derived from requestTypeNameAr */
-  requestTypeId: string;
-  requestTypeNameAr: string;
-  subtypeSlug: string | null;
-  subtypeNameAr: string | null;
-  attendanceDaySummaryId: string | null;
-  workDate: string;
-  previousCheckIn: string;
-  previousCheckOut: string;
-  correctedCheckIn: string;
-  correctedCheckOut: string;
-  correctedPeriods: AttendanceCorrectionPeriod[];
-  previousStatusAr: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  reasonAr: string;
-  decisionNotesAr: string;
-  submittedAt: string;
-  cancelledAt: string | null;
-  createdAt: string;
-  decidedAt: string | null;
-  decidedByEmployeeId: string | null;
-  approverStates: RequestApproverStatesSnapshot | null;
-};
 
 function isoToTime(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -143,7 +117,7 @@ export function mapCorrectionRequest(r: ApiCorrectionRequest): AttendanceCorrect
 interface State {
   items: AttendanceCorrectionRequest[];
   isLoading: boolean;
-  error: string | null;
+  error: { message: string; status: number } | null;
   fetch: (params?: { employeeId?: string; status?: string; workDateFrom?: string; workDateTo?: string }) => Promise<void>;
   submit: (input: {
     employeeId: string;
@@ -171,7 +145,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
       const result = await correctionRequestsApi.list({ companyId, limit: 200, ...params });
       set({ items: result.items.map(mapCorrectionRequest), isLoading: false });
     } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
+      set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false });
     }
   },
 
@@ -217,8 +191,5 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
 }));
 
 export function attendanceCorrectionStatusLabelAr(s: AttendanceCorrectionRequest['status']): string {
-  if (s === 'pending') return 'قيد الموافقة';
-  if (s === 'approved') return 'معتمد';
-  if (s === 'cancelled') return 'ملغى';
-  return 'مرفوض';
+  return correctionRequestStatusLabelAr(s);
 }

@@ -14,7 +14,7 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
-import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { EmptyState } from '@/components/ui/shared-dialogs';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import type { MonthlyInputResponseDto } from '@/features/hr/payroll/lib/api/monthly-inputs';
 import {

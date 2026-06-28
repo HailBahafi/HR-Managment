@@ -1,33 +1,17 @@
+export type { HREmployeeStatus, HREmployeeHierarchyRole, HREmployeeDirectoryRow, HREmployeeDirectoryEntry } from '@/features/hr/requests/types/employee-directory';
+
 import { create } from 'zustand';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { employeesApi, type EmployeeResponseDto } from './api/employees';
+import { ApiError } from '@/features/hr/lib/api/client';
+import type { HREmployeeDirectoryRow, HREmployeeStatus } from '@/features/hr/requests/types/employee-directory';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type HREmployeeStatus = 'active' | 'probation' | 'suspended';
-export type HREmployeeHierarchyRole = 'ceo' | 'executive' | 'gm' | 'dept_head' | 'supervisor' | 'staff';
 
-export interface HREmployeeDirectoryRow {
-  id: string;
-  bridgeId: string;
-  nameAr: string;
-  nameEn: string;
-  nationalId: string;
-  departmentId: string;
-  jobTitleAr: string;
-  jobTitleEn: string;
-  hireDate: string;
-  status: HREmployeeStatus;
-  email?: string;
-  mobile?: string;
-  notes?: string;
-  reportsToId: string | null;
-  hierarchyRole: HREmployeeHierarchyRole;
-}
 
 // kept for backward compatibility with existing imports
-export type HREmployeeDirectoryEntry = HREmployeeDirectoryRow;
 
 // ─── Mapper ───────────────────────────────────────────────────────────────────
 
@@ -61,7 +45,7 @@ interface DirectoryState {
   employees: HREmployeeDirectoryRow[];
   loadedCompanyId: string | null;
   isLoading: boolean;
-  error: string | null;
+  error: { message: string; status: number } | null;
   fetch: () => Promise<void>;
   addEmployee: (draft: Omit<HREmployeeDirectoryRow, 'id'>) => string; // local-only (optimistic)
   updateEmployee: (id: string, patch: Partial<Omit<HREmployeeDirectoryRow, 'id'>>) => void; // local-only
@@ -95,7 +79,7 @@ export const useHREmployeeDirectoryStore = create<DirectoryState>()((set, get) =
         isLoading: false,
       });
     } catch (e) {
-      set({ error: (e as Error).message, isLoading: false });
+      set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false });
     }
   },
 

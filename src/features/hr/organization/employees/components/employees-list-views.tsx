@@ -18,8 +18,8 @@ import {
 } from '@/components/ui/directory-grid-card';
 import { NewEmployeeDrawer } from '@/features/hr/organization/employees/components/new-employee-drawer';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
-import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
-import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { ConfirmationModal } from '@/components/ui/shared-dialogs';
+import { EmptyState } from '@/components/ui/shared-dialogs';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { formatCurrency, getInitials } from '@/shared/utils';
 import type { EmployeesListModel } from '@/features/hr/organization/employees/hooks/useEmployeesListModel';

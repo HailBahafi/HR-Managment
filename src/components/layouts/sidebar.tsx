@@ -359,13 +359,13 @@ export function Sidebar() {
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm xl:hidden"
         onClick={close}
         aria-hidden
       />
       <aside
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex w-[min(100vw-2rem,18rem)] max-w-[85vw] flex-col shadow-luxe lg:hidden',
+          'fixed inset-y-0 right-0 z-50 flex w-[min(100vw-2rem,18rem)] max-w-[85vw] flex-col shadow-luxe xl:hidden',
         )}
         role="dialog"
         aria-modal="true"

@@ -8,7 +8,7 @@ import {
   ConfirmationModal,
   EmptyState,
   SearchableDropdown,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { useBranchesDirectoryModel } from '@/features/hr/organization/branches/hooks/useBranchesDirectoryModel';
 import { BranchesListViews } from '@/features/hr/organization/branches/components/branches-list-views';
 import { BranchDetailDialog } from '@/features/hr/organization/branches/dialogs/branch-detail-dialog';

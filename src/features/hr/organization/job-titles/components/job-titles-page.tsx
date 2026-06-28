@@ -3,7 +3,7 @@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState } from '@/components/ui/shared-dialogs';
 import { useJobTitlesDirectoryModel } from '@/features/hr/organization/job-titles/hooks/useJobTitlesDirectoryModel';
 import { JobTitlesListViews } from '@/features/hr/organization/job-titles/components/job-titles-list-views';
 import { JobTitleTemplateDetailDialog } from '@/features/hr/organization/job-titles/dialogs/job-title-template-detail-dialog';

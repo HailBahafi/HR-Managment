@@ -5,7 +5,7 @@ import { CalendarDays, Clock, Pencil, Trash2, Users } from 'lucide-react';
 import { shiftColorStyle } from '@/shared/shift-color';
 import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
-import { ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
+import { ConfirmationModal } from '@/components/ui/shared-dialogs';
 
 type BatchRow = {
   id: string;

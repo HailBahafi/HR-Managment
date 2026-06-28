@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { SelectItem } from '@/components/ui/select';
-import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { SelectWithClear } from '@/components/ui/select-with-clear';
 import { cn } from '@/shared/utils';
 import {

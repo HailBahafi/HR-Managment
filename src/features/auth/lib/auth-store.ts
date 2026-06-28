@@ -73,7 +73,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'rose-hr-auth',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       // Only persist the data fields, not the action functions
       partialize: (state) => ({
         user: state.user,

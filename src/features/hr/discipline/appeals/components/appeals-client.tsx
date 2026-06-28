@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -36,11 +36,7 @@ import {
   EntityFilterToolbar,
   type EntityFilterToolbarHandle,
 } from '@/components/ui/entity-filter-toolbar';
-import {
-  DEFAULT_DATE_FILTER_META,
-  defaultDateFilterBounds,
-  type DateFilterTab,
-} from '@/features/hr/discipline/lib/discipline-date-filter';
+import { useDisciplineDateFilterState } from '@/features/hr/discipline/lib/use-discipline-date-filter-state';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/shared/utils';
+import { APPEAL_STATUS_PILL } from '@/shared/status-pill-classes';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { GenericRegisterPrintHtml } from '@/components/pdf/print/generic-register-print-html';
@@ -59,13 +56,7 @@ import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/d
 
 const CHANNEL_OPTIONS = (Object.entries(APPEAL_CHANNEL_LABELS) as [HRAppealChannel, string][]).map(([v, l]) => ({ value: v, label: l }));
 
-const STATUS_COLORS: Record<HRAppealStatus, string> = {
-  pending: 'text-primary border-primary/25 bg-primary/5 dark:border-primary/40 dark:bg-primary/15',
-  under_review: 'text-warning border-warning/30 bg-warning/10 dark:border-warning/40 dark:bg-warning/10',
-  accepted: 'text-success border-success/30 bg-success/10 dark:border-success/40 dark:bg-success/10',
-  rejected: 'text-destructive border-destructive/30 bg-destructive/10 dark:border-destructive/40 dark:bg-destructive/10',
-  withdrawn: 'text-muted-foreground border-border bg-muted/30',
-};
+const STATUS_COLORS: Record<HRAppealStatus, string> = APPEAL_STATUS_PILL;
 
 const APPEAL_STATUS_TONE: Record<HRAppealStatus, WorkflowStatusTone> = {
   pending: 'pending',
@@ -108,17 +99,8 @@ export function AppealsClient() {
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
-  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
-    ...DEFAULT_DATE_FILTER_META,
-  }));
+  const { dateBounds, dateMeta, setDateBounds, onDateBoundsChange, onDateFilterMetaChange } = useDisciplineDateFilterState();
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
-  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
-    setDateBounds(b);
-  }, []);
-  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
-    setDateMeta(meta);
-  }, []);
 
   const empPickerList = React.useMemo(
     () => employees.map((e) => ({ id: e.id, name: e.nameAr })),

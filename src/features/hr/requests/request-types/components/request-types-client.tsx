@@ -21,7 +21,7 @@ import {
 import {
   ConfirmationModal,
   ActiveBadge,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
 import type { HRRequestTypeEntity, HRRequestTypeCategory } from '@/features/hr/requests/lib/types';
 import {

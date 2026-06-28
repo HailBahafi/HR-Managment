@@ -12,7 +12,7 @@ import {
   HRSettingsFormDrawer,
   FormField,
   EmptyState,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { cn } from '@/shared/utils';
 import { useDepartmentsDirectoryModel } from '@/features/hr/organization/departments/hooks/useDepartmentsDirectoryModel';
 import { DepartmentsListGrid } from '@/features/hr/organization/departments/components/departments-list-grid';

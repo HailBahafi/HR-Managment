@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Plus, Banknote, Download, CheckCircle2, XCircle, Send, CalendarDays, X } from 'lucide-react';
-import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { toast } from 'sonner';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -28,7 +28,7 @@ import {
 import { RequestApproverStatesPanel } from '@/features/hr/requests/components/request-approver-states-panel';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown, MinimalDropdown,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { duplicateAdvanceNumberMessage, isDuplicateAdvanceNumberError } from '@/features/hr/contracts/lib/employee-advance-errors';
 import {
@@ -39,6 +39,7 @@ import {
   REPAYMENT_MODE_LABELS,
   EDITABLE_ADVANCE_STATUSES,
   DELETABLE_ADVANCE_STATUSES,
+  advanceReasonText,
   type HREmployeeAdvance,
   type HREmployeeAdvanceKind,
   type HREmployeeAdvanceRepaymentMode,
@@ -47,6 +48,18 @@ import {
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { cn, formatNumber } from '@/shared/utils';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
+import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+  EntityActionCardMetric,
+  EntityActionCardMetricsRow,
+  type WorkflowStatusTone,
+} from '@/components/ui/entity-action-card';
+import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
+
+type ViewMode = 'cards' | 'list';
 
 type StatusFilter = 'all' | HREmployeeAdvanceStatus;
 
@@ -59,6 +72,17 @@ const STATUS_COLORS: Record<HREmployeeAdvanceStatus, string> = {
   repaying: STATUS_PILL.warning,
   fully_repaid: STATUS_PILL.approved,
   cancelled: STATUS_PILL.cancelled,
+};
+
+const ADVANCE_STATUS_TONE: Record<HREmployeeAdvanceStatus, WorkflowStatusTone> = {
+  draft: 'muted',
+  pending_approval: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  disbursed: 'info',
+  repaying: 'warning',
+  fully_repaid: 'success',
+  cancelled: 'muted',
 };
 
 type DraftForm = {
@@ -148,6 +172,7 @@ export function EmployeeAdvancesClient() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
   const [detailAdvance, setDetailAdvance] = React.useState<HREmployeeAdvance | null>(null);
+  const [viewMode, setViewMode] = React.useState<ViewMode>('cards');
 
   const fetchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -362,7 +387,7 @@ export function EmployeeAdvancesClient() {
   };
 
   const downloadCsv = () => {
-    const rows = [['رقم السلفة', 'الموظف', 'المبلغ', 'العملة', 'نوع السلفة', 'آلية القسط', 'عدد الأشهر', 'القسط الشهري', 'التاريخ', 'الحالة', 'ملاحظة']];
+    const rows = [['رقم السلفة', 'الموظف', 'المبلغ', 'العملة', 'نوع السلفة', 'آلية القسط', 'عدد الأشهر', 'القسط الشهري', 'التاريخ', 'الحالة', 'السبب']];
     filtered.forEach(x => rows.push([
       x.advanceNumber,
       x.employeeNameAr,
@@ -374,7 +399,7 @@ export function EmployeeAdvancesClient() {
       x.monthlyInstallmentAmount != null ? String(x.monthlyInstallmentAmount) : '',
       x.advanceDate,
       ADVANCE_STATUS_LABELS[x.status],
-      x.note,
+      advanceReasonText(x),
     ]));
     const csv = rows.map(r => r.join(',')).join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
@@ -384,6 +409,111 @@ export function EmployeeAdvancesClient() {
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
+
+  const columns = React.useMemo((): ColumnDef<HREmployeeAdvance>[] => [
+    {
+      key: 'employee',
+      title: 'الموظف',
+      render: (x) => (
+        <div className="min-w-0">
+          <p className="font-medium truncate">{x.employeeNameAr}</p>
+          <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">{x.advanceNumber}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'advanceDate',
+      title: 'التاريخ',
+      render: (x) => <TableDateCell value={x.advanceDate} />,
+    },
+    {
+      key: 'amount',
+      title: 'المبلغ',
+      render: (x) => (
+        <span className="tabular-nums font-medium">{formatNumber(x.amount)} {x.currency}</span>
+      ),
+    },
+    {
+      key: 'kind',
+      title: 'النوع',
+      hideOnMobile: true,
+      render: (x) => ADVANCE_KIND_LABELS[x.advanceKind],
+    },
+    {
+      key: 'reasonAr',
+      title: 'السبب',
+      render: (x) => (
+        <span className="text-xs text-muted-foreground max-w-[220px] truncate block">
+          {advanceReasonText(x) || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      title: 'الحالة',
+      render: (x) => (
+        <Badge variant="outline" className={cn('text-[10px]', STATUS_COLORS[x.status])}>
+          {ADVANCE_STATUS_LABELS[x.status]}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      title: 'إجراءات',
+      isActions: true,
+      render: (x) => {
+        const loading = actionLoadingId === x.id;
+        const canSubmit = x.status === 'draft' || x.status === 'rejected';
+        const showApproval = canShowApprovalActions(x);
+        const menuItems = [
+          ...(canOpenAdvanceDetail(x.status) ? [{
+            label: 'التفاصيل',
+            onClick: () => openAdvanceDetail(x),
+          }] : []),
+          ...(isEditable(x.status) && x.status !== 'pending_approval' ? [{
+            label: 'تعديل',
+            onClick: () => openEdit(x.id),
+          }] : []),
+          ...(canSubmit ? [{
+            label: 'إرسال للموافقة',
+            onClick: () => void runAction(x.id, () => submitForApproval(x.id), 'تم إرسال السلفة للموافقة.'),
+          }] : []),
+          ...(isDeletable(x.status) ? [{
+            label: 'حذف',
+            onClick: () => setConfirmId(x.id),
+            separator: true as const,
+          }] : []),
+        ];
+        return (
+          <TableRowActions
+            primaryActions={showApproval ? [
+              {
+                label: 'موافقة',
+                variant: 'success',
+                icon: <CheckCircle2 className="h-3.5 w-3.5" />,
+                onClick: () => void handleApproveAdvance(x),
+                disabled: loading,
+              },
+              {
+                label: 'رفض',
+                variant: 'destructive',
+                icon: <XCircle className="h-3.5 w-3.5" />,
+                onClick: () => void handleRejectAdvance(x),
+                disabled: loading,
+              },
+            ] : undefined}
+            menuItems={menuItems}
+          />
+        );
+      },
+    },
+  ], [
+    actionLoadingId,
+    canShowApprovalActions,
+    handleApproveAdvance,
+    handleRejectAdvance,
+    submitForApproval,
+  ]);
 
   const statusFilterLabels = React.useMemo(
     () => Object.fromEntries(
@@ -459,6 +589,14 @@ export function EmployeeAdvancesClient() {
             </Button>
           ) : undefined
         }
+        dataView={{
+          value: viewMode,
+          onChange: (v) => setViewMode(v as ViewMode),
+          options: [
+            { value: 'cards', label: 'بطاقات', icon: 'layout-grid' },
+            { value: 'list', label: 'جدول', icon: 'list' },
+          ],
+        }}
       />
     ),
     [
@@ -471,6 +609,7 @@ export function EmployeeAdvancesClient() {
       filtered.length,
       empPickerList,
       statusFilterLabels,
+      viewMode,
     ],
   );
 
@@ -487,113 +626,117 @@ export function EmployeeAdvancesClient() {
 
       {filtered.length === 0 ? (
         <EmptyState icon={Banknote} title="لا توجد سلف" description="أضف سلفة جديدة لموظف للبدء." />
+      ) : viewMode === 'list' ? (
+        <DataTable
+          variant="directory"
+          alwaysShowTable
+          tableClassName="min-w-[960px]"
+          columns={columns}
+          data={filtered}
+          keyExtractor={(x) => x.id}
+          emptyText="لا توجد سلف"
+          onRowClick={(x) => {
+            if (canOpenAdvanceDetail(x.status)) openAdvanceDetail(x);
+            else if (isEditable(x.status) && x.status !== 'pending_approval') openEdit(x.id);
+          }}
+        />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map(x => {
+        <EntityActionCardGrid>
+          {filtered.map((x) => {
             const loading = actionLoadingId === x.id;
             const canSubmit = x.status === 'draft' || x.status === 'rejected';
             const openDetail = canOpenAdvanceDetail(x.status);
             const openEditOnClick = isEditable(x.status) && x.status !== 'pending_approval';
 
             return (
-              <div
+              <EntityActionCard
                 key={x.id}
-                className={cn(
-                  'rounded-lg border border-border bg-card p-3 shadow-soft space-y-2 flex flex-col',
-                  (openDetail || openEditOnClick) && 'cursor-pointer',
-                )}
+                reference={x.advanceNumber}
+                title={x.employeeNameAr}
                 onClick={() => {
                   if (openDetail) openAdvanceDetail(x);
                   else if (openEditOnClick) openEdit(x.id);
                 }}
+                status={{
+                  label: ADVANCE_STATUS_LABELS[x.status],
+                  tone: ADVANCE_STATUS_TONE[x.status],
+                }}
+                chips={
+                  <>
+                    <EntityActionCardChip className="font-mono tabular-nums">
+                      <span className="inline-flex items-center gap-1" dir="ltr">
+                        <CalendarDays className="h-3 w-3 shrink-0" />
+                        {x.advanceDate}
+                      </span>
+                    </EntityActionCardChip>
+                    <EntityActionCardChip>{ADVANCE_KIND_LABELS[x.advanceKind]}</EntityActionCardChip>
+                  </>
+                }
+                metrics={
+                  <EntityActionCardMetricsRow>
+                    <EntityActionCardMetric
+                      label="المبلغ"
+                      value={`${formatNumber(x.amount)} ${x.currency}`}
+                      dir="ltr"
+                    />
+                    <EntityActionCardMetric label="القسط" value={repaymentLine(x)} />
+                  </EntityActionCardMetricsRow>
+                }
+                description={advanceReasonText(x)}
+                workflow={
+                  canShowApprovalActions(x)
+                    ? {
+                        showApproveReject: true,
+                        onApprove: () => void handleApproveAdvance(x),
+                        onReject: () => void handleRejectAdvance(x),
+                      }
+                    : undefined
+                }
+                footerNote={
+                  x.approvedAt ? (
+                    <p className="text-[10px] text-muted-foreground">
+                      تاريخ الاعتماد: {x.approvedAt.slice(0, 10)}
+                    </p>
+                  ) : undefined
+                }
+                extraFooter={
+                  canSubmit || (isEditable(x.status) && x.status !== 'pending_approval') || isDeletable(x.status) ? (
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      {canSubmit ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-primary"
+                          disabled={loading}
+                          onClick={() => void runAction(x.id, () => submitForApproval(x.id), 'تم إرسال السلفة للموافقة.')}
+                        >
+                          <Send className="h-3 w-3 me-1" />
+                          إرسال للموافقة
+                        </Button>
+                      ) : null}
+                      {isEditable(x.status) && x.status !== 'pending_approval' ? (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={loading} onClick={() => openEdit(x.id)}>
+                          تعديل
+                        </Button>
+                      ) : null}
+                      {isDeletable(x.status) ? (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" disabled={loading} onClick={() => setConfirmId(x.id)}>
+                          حذف
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : undefined
+                }
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-semibold truncate">{x.employeeNameAr}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground mt-0.5" dir="ltr">{x.advanceNumber}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground">{x.advanceDate}</p>
-                  </div>
-                  <Badge variant="outline" className={cn('shrink-0 text-[10px]', STATUS_COLORS[x.status])}>
-                    {ADVANCE_STATUS_LABELS[x.status]}
-                  </Badge>
-                </div>
-                {canShowApprovalActions(x) && (
-                  <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 flex-1 text-xs text-success border-success/30 hover:bg-success/10"
-                      disabled={loading}
-                      onClick={() => void handleApproveAdvance(x)}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5 me-1" />
-                      موافقة
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 flex-1 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-                      disabled={loading}
-                      onClick={() => void handleRejectAdvance(x)}
-                    >
-                      <XCircle className="h-3.5 w-3.5 me-1" />
-                      رفض
-                    </Button>
-                  </div>
-                )}
-                <div className="flex flex-wrap gap-1">
-                  <Badge variant="secondary" className="text-[10px] font-normal">
-                    {ADVANCE_KIND_LABELS[x.advanceKind]}
-                  </Badge>
-                </div>
-                <div className="rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-center">
-                  <p className="text-base font-bold tabular-nums text-foreground">
-                    {formatNumber(x.amount)}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">{x.currency}</p>
-                  <p className="text-[10px] leading-snug text-muted-foreground">{repaymentLine(x)}</p>
-                </div>
-                {x.note && (
-                  <p className="text-[11px] text-muted-foreground  ">{x.note}</p>
-                )}
-                {x.approvedAt && (
-                  <p className="text-[10px] text-muted-foreground">
-                    تاريخ الاعتماد: {x.approvedAt.slice(0, 10)}
-                  </p>
-                )}
                 <RequestApproverStatesPanel
                   states={x.approverStates}
                   compact
                   className="border-0 bg-transparent p-0"
                 />
-                <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-2" onClick={e => e.stopPropagation()}>
-                  {canSubmit && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs text-primary"
-                      disabled={loading}
-                      onClick={() => void runAction(x.id, () => submitForApproval(x.id), 'تم إرسال السلفة للموافقة.')}
-                    >
-                      <Send className="h-3 w-3 me-1" />
-                      إرسال للموافقة
-                    </Button>
-                  )}
-                  {isEditable(x.status) && x.status !== 'pending_approval' && (
-                    <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={loading} onClick={() => openEdit(x.id)}>
-                      تعديل
-                    </Button>
-                  )}
-                  {isDeletable(x.status) && (
-                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" disabled={loading} onClick={() => setConfirmId(x.id)}>
-                      حذف
-                    </Button>
-                  )}
-                </div>
-              </div>
+              </EntityActionCard>
             );
           })}
-        </div>
+        </EntityActionCardGrid>
       )}
 
       <HRSettingsFormDrawer
@@ -731,10 +874,10 @@ export function EmployeeAdvancesClient() {
                   <p className="text-xs text-muted-foreground">آلية السداد</p>
                   <p className="text-sm">{repaymentLine(detailAdvance)}</p>
                 </div>
-                {detailAdvance.note ? (
+                {advanceReasonText(detailAdvance) ? (
                   <div className="sm:col-span-2">
-                    <p className="text-xs text-muted-foreground">ملاحظة</p>
-                    <p className="text-sm">{detailAdvance.note}</p>
+                    <p className="text-xs text-muted-foreground">السبب</p>
+                    <p className="text-sm">{advanceReasonText(detailAdvance)}</p>
                   </div>
                 ) : null}
                 {detailAdvance.decisionNotes ? (

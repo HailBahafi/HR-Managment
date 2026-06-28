@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Pencil, Trash2, ChevronRight, Building2, Network } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ActiveBadge } from '@/features/hr/requests/components/shared-ui';
+import { ActiveBadge } from '@/components/ui/shared-dialogs';
 import type { HRDepartmentEntity } from '@/features/hr/requests/lib/types';
 import {
   DirectoryGrid,

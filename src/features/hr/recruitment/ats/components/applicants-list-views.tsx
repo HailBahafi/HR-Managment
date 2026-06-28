@@ -9,7 +9,7 @@ import { ATS_STAGE_BADGE, ATS_STAGE_TABS, scoreBarTone } from '@/features/hr/rec
 import { DisplayDate } from '@/components/ui/table-cells';
 import { RecruitmentJobNav } from '@/features/hr/recruitment/ats/components/recruitment-job-nav';
 import { AtsApplicantDetailDialog } from '@/features/hr/recruitment/ats/components/ats-applicant-detail-dialog';
-import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { EmptyState } from '@/components/ui/shared-dialogs';
 import type { AtsApplicantsListModel } from '@/features/hr/recruitment/ats/hooks/useAtsApplicantsListModel';
 
 type Props = { model: AtsApplicantsListModel };

@@ -40,7 +40,7 @@ export function PageHeaderActionsProvider({ children }: { children: React.ReactN
     reRenderSlotRef,
   }).current;
 
-  const [filterPanelOpen, setFilterPanelOpen] = React.useState(true);
+  const [filterPanelOpen, setFilterPanelOpen] = React.useState(false);
 
   const settersRef = React.useRef<PageHeaderActionsSetters>({ setFilterPanelOpen });
   settersRef.current.setFilterPanelOpen = setFilterPanelOpen;
@@ -113,9 +113,8 @@ export function usePageHeaderActions(
   renderRef.current = render;
 
   const publish = React.useCallback(() => {
-    settersRef.current.setFilterPanelOpen(true);
     reRenderSlotRef.current?.();
-  }, [reRenderSlotRef, settersRef]);
+  }, [reRenderSlotRef]);
 
   const depsKey = serializeHeaderActionDeps(deps);
 

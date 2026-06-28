@@ -3,6 +3,7 @@ import { STATUS_PILL } from '@/shared/status-pill-classes';
 
 export const DAY_SUMMARY_STATUS_LABELS: Record<AttendanceDayStatus, string> = {
   present: 'حاضر',
+  partial: 'حضور جزئي',
   late: 'متأخر',
   absent: 'غائب',
   rest_day: 'يوم راحة',
@@ -13,6 +14,7 @@ export const DAY_SUMMARY_STATUS_LABELS: Record<AttendanceDayStatus, string> = {
 
 export const DAY_SUMMARY_STATUS_ORDER: AttendanceDayStatus[] = [
   'present',
+  'partial',
   'late',
   'absent',
   'on_leave',
@@ -23,6 +25,7 @@ export const DAY_SUMMARY_STATUS_ORDER: AttendanceDayStatus[] = [
 
 export const DAY_SUMMARY_STATUS_BADGE: Record<AttendanceDayStatus, string> = {
   present: STATUS_PILL.approved,
+  partial: STATUS_PILL.warning,
   late: STATUS_PILL.warning,
   absent: STATUS_PILL.rejected,
   rest_day: STATUS_PILL.muted,

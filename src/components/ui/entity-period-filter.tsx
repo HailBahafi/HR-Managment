@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DateRangePicker, type DateRangeValue } from '@/components/ui/DateRangePicker';
+import { DateRangePicker, type DateRangeValue } from '@/components/ui/date-range-picker';
 import { normalizePeriodRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { cn, formatDisplayDate } from '@/shared/utils';
 

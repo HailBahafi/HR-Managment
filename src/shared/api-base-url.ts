@@ -15,7 +15,15 @@ export function resolveApiBaseUrl(configuredUrl = publicConfig.apiUrl): string {
   try {
     const apiHost = new URL(configuredUrl, window.location.origin).hostname;
     const isLocalApi = apiHost === 'localhost' || apiHost === '127.0.0.1' || apiHost === '::1';
-    return isLocalApi ? '/api-backend' : configuredUrl;
+    if (isLocalApi) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(
+          `[api-base-url] NEXT_PUBLIC_API_URL points to a localhost address (${configuredUrl}) but the page is served from ${currentHost}. Falling back to /api-backend. If API calls are failing, check your next.config.js rewrites.`,
+        );
+      }
+      return '/api-backend';
+    }
+    return configuredUrl;
   } catch {
     return configuredUrl;
   }

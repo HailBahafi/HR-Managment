@@ -52,6 +52,7 @@ import {
 import { RequestApproverStatesPanel } from '@/features/hr/requests/components/request-approver-states-panel';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { cn } from '@/shared/utils';
+import { AR_LEAVE_STATUS_LABELS } from '@/shared/i18n/ar';
 import { toast } from 'sonner';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
@@ -76,12 +77,7 @@ const TYPE_STYLE: Record<UnifiedLeaveType, { color: string; dot: string }> = {
   emergency: { color: 'bg-destructive/10 text-destructive border-destructive/30', dot: 'bg-destructive' },
 };
 
-const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
-  pending: 'قيد الانتظار',
-  approved: 'موافق عليه',
-  rejected: 'مرفوض',
-  cancelled: 'ملغاة',
-};
+const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = AR_LEAVE_STATUS_LABELS;
 
 const LEAVE_STATUS_TONE: Record<LeaveStatus, WorkflowStatusTone> = {
   pending: 'pending',
@@ -261,12 +257,7 @@ function leaveOverlapsYmdRange(leave: UnifiedLeaveRecord, from: string, to: stri
 
 const LEAVE_STATUS_TOOLBAR_ORDER: LeaveStatus[] = ['pending', 'approved', 'rejected', 'cancelled'];
 
-const LEAVE_STATUS_LABELS_FOR_TOOLBAR: Record<string, string> = {
-  pending: LEAVE_STATUS_LABELS.pending,
-  approved: LEAVE_STATUS_LABELS.approved,
-  rejected: LEAVE_STATUS_LABELS.rejected,
-  cancelled: LEAVE_STATUS_LABELS.cancelled,
-};
+const LEAVE_STATUS_LABELS_FOR_TOOLBAR: Record<string, string> = AR_LEAVE_STATUS_LABELS;
 
 // ─── Main component ───────────────────────────────────────────────────────────
 

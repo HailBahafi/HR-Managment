@@ -13,7 +13,7 @@ import {
   HRSettingsFormDrawer,
   FormField,
   ConfirmationModal,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import {
   useContactsDirectoryModel,
   USER_TYPE_OPTIONS,

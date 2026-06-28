@@ -30,7 +30,7 @@ import {
   FormField,
   HRSettingsFormDrawer,
   MinimalDropdown,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
@@ -263,7 +263,7 @@ export function NotificationsAdminClient() {
         <div className="space-y-1">
           <span className="font-medium">{n.titleAr}</span>
           {n.bodyAr ? (
-            <p className="  text-xs text-muted-foreground">{n.bodyAr}</p>
+            <p className="  text-xs text-muted-foreground max-w-[15rem]">{n.bodyAr}</p>
           ) : null}
         </div>
       ),

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell, TableRowActions, TableRowDetailDialog } from '@/components/ui/table-cells';
-import { FormField, EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { FormField, EmptyState } from '@/components/ui/shared-dialogs';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
   dialogFormFooterClass,
@@ -20,22 +20,20 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
 import { cn, toWesternDigits } from '@/shared/utils';
+import { STATUS_PILL } from '@/shared/status-pill-classes';
+import { AR_LEAVE_BALANCE_CREDIT_STATUS_LABELS } from '@/shared/i18n/ar';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { useLeaveBalanceCreditModel } from '@/features/hr/leaves/balance-credit/hooks/useLeaveBalanceCreditModel';
 import type { LeaveBalanceCreditRequest } from '@/features/hr/leaves/balance-credit/types';
 
 const CREDIT_STATUS_ORDER: readonly string[] = ['pending', 'approved', 'rejected'];
 
-const CREDIT_STATUS_LABELS: Record<string, string> = {
-  pending: 'في الانتظار',
-  approved: 'تمت الموافقة',
-  rejected: 'مرفوض',
-};
+const CREDIT_STATUS_LABELS: Record<string, string> = AR_LEAVE_BALANCE_CREDIT_STATUS_LABELS;
 
 function statusBadgeClass(status: LeaveBalanceCreditRequest['status']) {
-  if (status === 'pending') return 'bg-gold/15 text-gold border-gold/30';
-  if (status === 'approved') return 'bg-success/10 text-success border-success/30';
-  return 'bg-muted text-muted-foreground border-border';
+  if (status === 'pending') return STATUS_PILL.pending;
+  if (status === 'approved') return STATUS_PILL.approved;
+  return STATUS_PILL.rejected;
 }
 
 function statusLabelAr(status: LeaveBalanceCreditRequest['status']) {

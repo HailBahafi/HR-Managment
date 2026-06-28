@@ -12,14 +12,19 @@ export type LogoProps = {
 };
 
 export function Logo({ className, size = 40, src, alt = 'Rose HR' }: LogoProps) {
+  const [mounted, setMounted] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     setFailed(false);
   }, [src]);
 
   const resolvedSrc = src?.trim() || null;
-  if (!resolvedSrc || failed) return null;
+  if (!mounted || !resolvedSrc || failed) return null;
 
   return (
     <span

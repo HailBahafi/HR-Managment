@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Ban, CheckCircle2, Plus, XCircle } from 'lucide-react';
+import { Ban, CalendarDays, CheckCircle2, Plus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ModernTimePicker from '@/components/ui/modern-time-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import {
+  EntityActionCard,
+  EntityActionCardChip,
+  EntityActionCardGrid,
+  type WorkflowStatusTone,
+} from '@/components/ui/entity-action-card';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { correctionRequestsApi } from '@/features/hr/requests/lib/api/correction-requests';
@@ -27,7 +34,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
-import { FormField, EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { FormField, EmptyState } from '@/components/ui/shared-dialogs';
 import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -53,11 +60,18 @@ import {
 import type { AttendanceCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
 import { cn } from '@/shared/utils';
 
+import { AR_CORRECTION_REQUEST_STATUS_LABELS } from '@/shared/i18n/ar';
+
+type ViewMode = 'cards' | 'list';
+
 const STATUS_ORDER: readonly string[] = ['pending', 'approved', 'rejected'];
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'قيد الموافقة',
-  approved: 'معتمد',
-  rejected: 'مرفوض',
+const STATUS_LABELS: Record<string, string> = AR_CORRECTION_REQUEST_STATUS_LABELS;
+
+const CORRECTION_STATUS_TONE: Record<AttendanceCorrectionRequest['status'], WorkflowStatusTone> = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  cancelled: 'muted',
 };
 
 function statusBadgeClass(s: AttendanceCorrectionRequest['status']) {
@@ -105,6 +119,7 @@ export function AttendanceCorrectionRequestsClient() {
   const [formCorrOut, setFormCorrOut] = React.useState('');
   const [formReason, setFormReason] = React.useState('');
   const [detailRow, setDetailRow] = React.useState<AttendanceCorrectionRequest | null>(null);
+  const [viewMode, setViewMode] = React.useState<ViewMode>('cards');
 
   const deptOptions = React.useMemo(
     () => [{ value: 'all', label: 'جميع الأقسام' }, ...departments.filter((d) => d.isActive).map((d) => ({ value: d.id, label: d.nameAr }))],
@@ -328,6 +343,14 @@ export function AttendanceCorrectionRequestsClient() {
         statusLabels={STATUS_LABELS}
         statusCounts={statusCounts}
         onDateBoundsChange={setDateBounds}
+        dataView={{
+          value: viewMode,
+          onChange: (v) => setViewMode(v as ViewMode),
+          options: [
+            { value: 'cards', label: 'بطاقات', icon: 'layout-grid' },
+            { value: 'list', label: 'جدول', icon: 'list' },
+          ],
+        }}
       />
     ),
     [
@@ -342,7 +365,7 @@ export function AttendanceCorrectionRequestsClient() {
       statusCounts.rejected,
       deptOptions,
       empPickerList,
-      openNew,
+      viewMode,
     ],
   );
 
@@ -472,43 +495,84 @@ export function AttendanceCorrectionRequestsClient() {
             loading={listLoading}
           >
             {(pageItems) => (
-          <DataTable
-            columns={columns}
-            data={pageItems}
-            keyExtractor={(r) => r.id}
-            emptyText="لا توجد طلبات"
-            onRowClick={(r) => setDetailRow(r)}
-            mobileCard={(r) => (
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between gap-2">
-                  <span className="font-medium">{r.employeeNameAr}</span>
-                  <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[10px]', statusBadgeClass(r.status))}>
-                    {attendanceCorrectionStatusLabelAr(r.status)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground font-mono" dir="ltr">{r.workDate}</p>
-                <p className="text-xs"><span className="text-muted-foreground">نوع الطلب:</span> {r.requestTypeNameAr}{r.subtypeNameAr ? ` — ${r.subtypeNameAr}` : ''}</p>
-                <CorrectionTimesComparisonCell
-                  previousCheckIn={r.previousCheckIn}
-                  previousCheckOut={r.previousCheckOut}
-                  correctedPeriods={r.correctedPeriods}
+              viewMode === 'cards' ? (
+                <EntityActionCardGrid>
+                  {pageItems.map((r) => (
+                    <EntityActionCard
+                      key={r.id}
+                      onClick={() => setDetailRow(r)}
+                      title={r.employeeNameAr}
+                      subtitle={r.departmentNameAr || '—'}
+                      status={{
+                        label: attendanceCorrectionStatusLabelAr(r.status),
+                        tone: CORRECTION_STATUS_TONE[r.status],
+                      }}
+                      chips={
+                        <>
+                          <EntityActionCardChip>
+                            {r.requestTypeNameAr}
+                            {r.subtypeNameAr ? ` — ${r.subtypeNameAr}` : ''}
+                          </EntityActionCardChip>
+                          <EntityActionCardChip className="font-mono tabular-nums">
+                            <span className="inline-flex items-center gap-1" dir="ltr">
+                              <CalendarDays className="h-3 w-3 shrink-0" />
+                              {r.workDate}
+                            </span>
+                          </EntityActionCardChip>
+                          <EntityActionCardChip>
+                            الحالة السابقة: {r.previousStatusAr}
+                          </EntityActionCardChip>
+                        </>
+                      }
+                      description={r.reasonAr}
+                      workflow={
+                        canShowApprovalActions(r)
+                          ? {
+                              showApproveReject: true,
+                              onApprove: () => void handleApprove(r),
+                              onReject: () => void handleReject(r),
+                            }
+                          : undefined
+                      }
+                      extraFooter={
+                        r.status === 'pending' && !isEmployeeInRequestApproverStates(r.approverStates, currentEmployeeId) ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs text-amber-600"
+                            onClick={async () => {
+                              await cancel(r.id);
+                              toast.message('تم سحب الطلب.');
+                              await reloadList();
+                            }}
+                          >
+                            إلغاء
+                          </Button>
+                        ) : undefined
+                      }
+                    >
+                      <CorrectionTimesComparisonCell
+                        previousCheckIn={r.previousCheckIn}
+                        previousCheckOut={r.previousCheckOut}
+                        correctedPeriods={r.correctedPeriods}
+                      />
+                      <RequestApproverStatesPanel states={r.approverStates} compact className="border-0 bg-transparent p-0" />
+                    </EntityActionCard>
+                  ))}
+                </EntityActionCardGrid>
+              ) : (
+                <DataTable
+                  variant="directory"
+                  alwaysShowTable
+                  tableClassName="min-w-[960px]"
+                  columns={columns}
+                  data={pageItems}
+                  keyExtractor={(r) => r.id}
+                  emptyText="لا توجد طلبات"
+                  onRowClick={(r) => setDetailRow(r)}
                 />
-                <p className="text-xs"><span className="text-muted-foreground">الحالة السابقة:</span> {r.previousStatusAr}</p>
-                <RequestApproverStatesPanel states={r.approverStates} compact className="border-0 bg-transparent p-0" />
-                {canShowApprovalActions(r) ? (
-                  <div className="flex gap-2 pt-1" onClick={(ev) => ev.stopPropagation()}>
-                    <Button type="button" variant="outline" size="sm" className="flex-1 text-xs" onClick={() => void handleApprove(r)}>موافقة</Button>
-                    <Button type="button" variant="outline" size="sm" className="flex-1 text-xs text-destructive" onClick={() => void handleReject(r)}>رفض</Button>
-                  </div>
-                ) : null}
-                {r.status === 'pending' && !isEmployeeInRequestApproverStates(r.approverStates, currentEmployeeId) ? (
-                  <div className="pt-1" onClick={(ev) => ev.stopPropagation()}>
-                    <Button type="button" variant="outline" size="sm" className="w-full text-xs text-amber-600" onClick={async (ev) => { ev.stopPropagation(); await cancel(r.id); toast.message('تم سحب الطلب.'); await reloadList(); }}>إلغاء</Button>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          />
+              )
             )}
           </DirectoryPagedViews>
         )}
@@ -554,11 +618,11 @@ export function AttendanceCorrectionRequestsClient() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">وقت الحضور الجديد</Label>
-                  <Input type="time" value={formCorrIn} onChange={(e) => setFormCorrIn(e.target.value)} step={60} dir="ltr" />
+                  <ModernTimePicker value={formCorrIn} onChange={setFormCorrIn} placeholder="اختر الوقت" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">وقت الانصراف الجديد  </Label>
-                  <Input type="time" value={formCorrOut} onChange={(e) => setFormCorrOut(e.target.value)} step={60} dir="ltr" />
+                  <ModernTimePicker value={formCorrOut} onChange={setFormCorrOut} placeholder="اختر الوقت" />
                 </div>
               </div>
               <FormField label="سبب الطلب (اختياري)">

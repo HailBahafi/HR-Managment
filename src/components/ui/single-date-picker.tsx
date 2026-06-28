@@ -45,8 +45,7 @@ export type SingleDatePickerProps = {
   align?: 'start' | 'center' | 'end';
   /**
    * Optional portal container for the popover.
-   * Avoid passing a dialog panel that uses `overflow-hidden` — the calendar will be clipped.
-   * Omit to use the default body portal (recommended inside modals).
+   * Defaults to document body so the calendar is not clipped inside modals.
    */
   popoverContainer?: HTMLElement | DocumentFragment | null;
 };

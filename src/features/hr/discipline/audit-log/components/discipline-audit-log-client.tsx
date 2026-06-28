@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
-import { EmptyState } from '@/features/hr/requests/components/shared-ui';
+import { EmptyState } from '@/components/ui/shared-dialogs';
 import { Button } from '@/components/ui/button';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell } from '@/components/ui/table-cells';
@@ -29,11 +29,7 @@ import {
   type EntityFilterToolbarHandle,
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
-import {
-  DEFAULT_DATE_FILTER_META,
-  defaultDateFilterBounds,
-  type DateFilterTab,
-} from '@/features/hr/discipline/lib/discipline-date-filter';
+import { useDisciplineDateFilterState } from '@/features/hr/discipline/lib/use-discipline-date-filter-state';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,17 +120,8 @@ export function DisciplineAuditLogClient() {
   const [selectedActorIds, setSelectedActorIds] = React.useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('list');
-  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
-    ...DEFAULT_DATE_FILTER_META,
-  }));
+  const { dateBounds, dateMeta, setDateBounds, onDateBoundsChange, onDateFilterMetaChange } = useDisciplineDateFilterState();
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
-  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
-    setDateBounds(b);
-  }, []);
-  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
-    setDateMeta(meta);
-  }, []);
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [expandedSnapshots, setExpandedSnapshots] = React.useState<Set<string>>(() => new Set());
 

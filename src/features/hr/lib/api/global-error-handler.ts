@@ -40,7 +40,11 @@ export function formatApiErrorForDisplay(error: unknown): string {
  * Single entry for API failures. Shows toast, applies status rules.
  * Returns backend-shaped message for UI (never a generic Arabic override).
  */
-export function handleApiError(error: unknown, context?: string): ApiErrorHandleResult {
+export function handleApiError(
+  error: unknown,
+  context?: string,
+  options?: { suppressRedirect?: boolean },
+): ApiErrorHandleResult {
   if (!(error instanceof ApiError)) {
     const displayMessage = error instanceof Error ? error.message : String(error);
     toast.error(displayMessage);
@@ -55,7 +59,11 @@ export function handleApiError(error: unknown, context?: string): ApiErrorHandle
     : (envelope?.message?.trim() || error.message);
 
   if (status === 401 && typeof window !== 'undefined') {
-    window.location.href = '/login';
+    if (!options?.suppressRedirect) {
+      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.replace(`/login?returnTo=${returnTo}`);
+    }
+    // suppressRedirect=true → caller owns the message; no auto-toast
   } else {
     toast.error(displayMessage);
   }

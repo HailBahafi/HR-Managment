@@ -30,7 +30,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { TableRowActions } from '@/components/ui/table-cells';
-import { EmptyState, ConfirmationModal } from '@/features/hr/requests/components/shared-ui';
+import { EmptyState, ConfirmationModal } from '@/components/ui/shared-dialogs';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
@@ -64,7 +64,7 @@ import { SendNotificationDrawer } from '@/features/hr/notifications/components/s
 import {
   usePayslipEmployeeDecision,
 } from '@/features/hr/payroll/components/payslip-employee-decision-actions';
-import { MinimalDropdown } from '@/features/hr/requests/components/shared-ui';
+import { MinimalDropdown } from '@/components/ui/shared-dialogs';
 import { cn } from '@/shared/utils';
 
 const PAYSLIP_STATUS_ORDER = ['all', 'draft', 'approved', 'paid'] as const;

@@ -26,7 +26,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 /** Viewport-safe shell for header + scrollable body + footer (pass `className` with `p-0`). */
 export const dialogShellContentClass =
-  'flex max-h-[min(90dvh,calc(100%-2rem))] w-full flex-col gap-0 overflow-hidden p-0';
+  'flex max-h-[min(90dvh,calc(100%-2rem))] w-full flex-col gap-0 overflow-visible p-0';
 
 export const dialogShellHeaderClass =
   'shrink-0 border-b border-border px-6 py-5 pe-12 text-right';
@@ -45,7 +45,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         'fixed left-1/2 top-1/2 z-50 flex w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4',
-        'max-h-[min(90dvh,calc(100%-2rem))] overflow-y-auto overscroll-contain',
+        'max-h-[min(90dvh,calc(100%-2rem))] overflow-visible',
         'border bg-card p-6 shadow-luxe duration-200 radix-fade-zoom sm:max-w-lg sm:rounded-lg',
         className,
       )}

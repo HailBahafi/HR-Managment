@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/entity-action-card';
 import { toast } from 'sonner';
 import { cn, formatDisplayDate, formatDisplayDateTime } from '@/shared/utils';
-import { STATUS_PILL } from '@/shared/status-pill-classes';
+import { AR_VIOLATION_RECORD_STATUS_LABELS } from '@/shared/i18n/ar';
+import { STATUS_PILL, VIOLATION_RECORD_STATUS_PILL } from '@/shared/status-pill-classes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format, parse, isValid } from 'date-fns';
@@ -31,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField, EmptyState, SearchableDropdown,
-} from '@/features/hr/requests/components/shared-ui';
+} from '@/components/ui/shared-dialogs';
 import { useViolationCasesDirectoryModel } from '@/features/hr/discipline/violation-cases/hooks/useViolationCasesDirectoryModel';
 import type { ViolationCaseRecord } from '@/features/hr/discipline/violation-cases/hooks/useViolationCasesDirectoryModel';
 import type { ViolationRecordStatus } from '@/features/hr/discipline/lib/api/violation-records';
@@ -45,11 +46,7 @@ import {
   type EntityFilterToolbarHandle,
   type EntityFilterInlineSelect,
 } from '@/components/ui/entity-filter-toolbar';
-import {
-  DEFAULT_DATE_FILTER_META,
-  defaultDateFilterBounds,
-  type DateFilterTab,
-} from '@/features/hr/discipline/lib/discipline-date-filter';
+import { useDisciplineDateFilterState } from '@/features/hr/discipline/lib/use-discipline-date-filter-state';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,19 +81,9 @@ import { DisciplineListViewport, DisciplinePaginatedList } from '@/features/hr/d
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<ViolationRecordStatus, string> = {
-  pending:    'قيد الانتظار',
-  approved:   'معتمد',
-  rejected:   'مرفوض',
-  needs_edit: 'يحتاج تعديل',
-};
+const STATUS_LABELS: Record<ViolationRecordStatus, string> = AR_VIOLATION_RECORD_STATUS_LABELS;
 
-const STATUS_COLORS: Record<ViolationRecordStatus, string> = {
-  pending:    'text-primary border-primary/25 bg-primary/5',
-  approved:   'text-success border-success/30 bg-success/10',
-  rejected:   'text-destructive border-destructive/30 bg-destructive/10',
-  needs_edit: 'text-warning border-warning/30 bg-warning/10',
-};
+const STATUS_COLORS: Record<ViolationRecordStatus, string> = VIOLATION_RECORD_STATUS_PILL;
 
 const VIOLATION_STATUS_TONE: Record<ViolationRecordStatus, WorkflowStatusTone> = {
   pending: 'pending',
@@ -367,10 +354,7 @@ export function ViolationCasesClient() {
   const [viewMode, setViewMode] = React.useState<ViolationViewMode>('cards');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [violationTypeFilter, setViolationTypeFilter] = React.useState('all');
-  const [dateBounds, setDateBounds] = React.useState(defaultDateFilterBounds);
-  const [dateMeta, setDateMeta] = React.useState<{ tab: DateFilterTab; hasRestriction: boolean }>(() => ({
-    ...DEFAULT_DATE_FILTER_META,
-  }));
+  const { dateBounds, dateMeta, onDateBoundsChange, onDateFilterMetaChange } = useDisciplineDateFilterState();
   const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
 
   const [pdfOpen, setPdfOpen] = React.useState(false);
@@ -393,13 +377,6 @@ export function ViolationCasesClient() {
   const [noticeCase, setNoticeCase] = React.useState<ViolationCaseRecord | null>(null);
   const [investigationCase, setInvestigationCase] = React.useState<ViolationCaseRecord | null>(null);
   const [appealCase, setAppealCase] = React.useState<ViolationCaseRecord | null>(null);
-
-  const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
-    setDateBounds(b);
-  }, []);
-  const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
-    setDateMeta(meta);
-  }, []);
 
   // Sync toolbar filters to list model
   React.useEffect(() => {

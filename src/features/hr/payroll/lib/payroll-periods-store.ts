@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
+import { AR_STATUS } from '@/shared/i18n/ar';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { payrollPeriodsApi, type PayrollPeriodResponseDto } from './api/payroll-periods';
+import { ApiError } from '@/features/hr/lib/api/client';
 import {
   monthlyInputsApi,
   type MonthlyInputResponseDto,
@@ -216,7 +218,7 @@ interface State {
   catalogCompanyId: string | null;
   fullLoadCompanyId: string | null;
   isLoading: boolean;
-  error: string | null;
+  error: { message: string; status: number } | null;
   /** Raw backend inputs keyed by periodId → employeeId → list. Used to populate lines after materialize. */
   _rawInputs: Record<string, Record<string, MonthlyInputResponseDto[]>>;
   /** Period list only — for reports / dropdowns without loading all monthly inputs. */
@@ -265,7 +267,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
           isLoading: false,
         });
       } catch (e) {
-        set({ error: (e as Error).message, isLoading: false, catalogCompanyId: null });
+        set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false, catalogCompanyId: null });
       } finally {
         periodsCatalogFetchPromise = null;
       }
@@ -306,7 +308,7 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
           isLoading: false,
         });
       } catch (e) {
-        set({ error: (e as Error).message, isLoading: false, fullLoadCompanyId: null });
+        set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false, fullLoadCompanyId: null });
       } finally {
         periodsFullFetchPromise = null;
       }
@@ -630,11 +632,11 @@ export const useHRPayrollPeriodsStore = create<State>()((set, get) => ({
 }));
 
 export const PERIOD_STATUS_LABELS: Record<HRPayrollPeriodStatus, string> = {
-  draft: 'مسودة',
+  draft: AR_STATUS.draft,
   open: 'مفتوحة',
   locked: 'مقفلة',
   closed: 'مغلقة',
-  cancelled: 'ملغاة',
+  cancelled: AR_STATUS.cancelled,
 };
 
 export const PERIOD_STATUS_COLORS: Record<HRPayrollPeriodStatus, string> = {
