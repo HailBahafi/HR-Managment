@@ -33,9 +33,9 @@ import type { HRAppealChannel, HRAppealStatus } from '@/features/hr/discipline/l
 import { APPEAL_CHANNEL_LABELS, APPEAL_STATUS_LABELS, APPEAL_STATUS_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
 import type { AppealChannelDto, ProcessDisciplineAppealDecisionDto } from '@/features/hr/discipline/lib/api/discipline-appeals';
 import {
-  EntityFilterToolbar,
-  type EntityFilterToolbarHandle,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+  type ListFilterBarHandle,
+} from '@/components/ui/list-filter-bar';
 import { useDisciplineDateFilterState } from '@/features/hr/discipline/lib/use-discipline-date-filter-state';
 import {
   DropdownMenu,
@@ -100,7 +100,7 @@ export function AppealsClient() {
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('cards');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const { dateBounds, dateMeta, setDateBounds, onDateBoundsChange, onDateFilterMetaChange } = useDisciplineDateFilterState();
-  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
+  const filterToolbarRef = React.useRef<ListFilterBarHandle>(null);
 
   const empPickerList = React.useMemo(
     () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
@@ -446,7 +446,7 @@ export function AppealsClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         ref={filterToolbarRef}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}

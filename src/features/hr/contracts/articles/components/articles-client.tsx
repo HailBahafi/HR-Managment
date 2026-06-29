@@ -14,7 +14,7 @@ import { usePageFilters } from '@/components/layouts/filter-panel-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, ActiveBadge,
 } from '@/components/ui/shared-dialogs';
@@ -176,7 +176,7 @@ export function ContractArticlesClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
         showEmployeePicker={false}

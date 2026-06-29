@@ -86,9 +86,12 @@ export type DailyBreakdownResponseDto = {
   totals: {
     expectedMinutes: number;
     workedMinutes: number;
+    workedMinutesInsidePeriods: number;
+    workedMinutesOutsidePeriods: number;
     breakMinutes: number;
     lateMinutes: number;
     earlyLeaveMinutes: number;
+    earlyArrivalMinutes: number;
     overtimeMinutes: number;
     shortageMinutes: number;
     periodsTotal: number;
@@ -123,6 +126,10 @@ export type AttendanceEventResponseDto = {
   periodSortOrder: number | null;
   notes: string | null;
   isVoided: boolean;
+  isExcludedFromComputation?: boolean;
+  exclusionReasonCode?: string | null;
+  exclusionMessage?: string | null;
+  warningMessage?: string | null;
   voidReason: string | null;
   voidedAt: string | null;
   recordedBy: string | null;

@@ -1,13 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Banknote, Download, CheckCircle2, XCircle, Send, CalendarDays, X } from 'lucide-react';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Plus, Banknote, Download, CheckCircle2, XCircle, Send, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Button } from '@/components/ui/button';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +17,11 @@ import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import {
+  hrFiltersKey,
+  usePersistedEmpIdSet,
+  usePersistedFilterState,
+} from '@/features/hr/lib/use-persisted-filter-state';
 import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
 import { checkRequestApprovalAccess } from '@/features/hr/requests/lib/request-approval-access';
 import {
@@ -31,8 +35,11 @@ import {
 } from '@/components/ui/shared-dialogs';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { duplicateAdvanceNumberMessage, isDuplicateAdvanceNumberError } from '@/features/hr/contracts/lib/employee-advance-errors';
+import { employeeAdvancesApi } from '@/features/hr/contracts/lib/api/employee-advances';
+import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import {
   useHREmployeeAdvancesStore,
+  mapEmployeeAdvanceFromApi,
   ADVANCE_STATUS_LABELS,
   ADVANCE_STATUS_FILTER_ORDER,
   ADVANCE_KIND_LABELS,
@@ -45,6 +52,7 @@ import {
   type HREmployeeAdvanceRepaymentMode,
   type HREmployeeAdvanceStatus,
 } from '@/features/hr/contracts/lib/employee-advances-store';
+import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { cn, formatNumber } from '@/shared/utils';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
@@ -139,7 +147,7 @@ export function EmployeeAdvancesClient() {
   const decidedByActor = authUser?.id ?? undefined;
 
   const {
-    items, add, update, remove, fetch: fetchAdvances,
+    add, update, remove,
     submitForApproval, approve, reject,
   } = useHREmployeeAdvancesStore();
   const { employees: allEmployees, fetch: fetchEmployees } = useHREmployeeDirectoryStore();
@@ -154,10 +162,17 @@ export function EmployeeAdvancesClient() {
     [employees],
   );
 
-  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
-  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
-  const [datePickerOpen, setDatePickerOpen] = React.useState(false);
+  const [statusFilter, setStatusFilter] = usePersistedFilterState<StatusFilter>(
+    hrFiltersKey('requests', 'employee-advances', companyId, 'statusFilter'),
+    'all',
+  );
+  const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
+    hrFiltersKey('requests', 'employee-advances', companyId, 'selectedEmpIds'),
+  );
+  const [dateBounds, setDateBounds] = usePersistedFilterState(
+    hrFiltersKey('requests', 'employee-advances', companyId, 'dateBounds'),
+    { from: '', to: '' },
+  );
 
   const empPickerList = React.useMemo(
     () => employees.map(e => ({ id: e.id, name: e.nameAr })),
@@ -172,44 +187,91 @@ export function EmployeeAdvancesClient() {
   const [confirmId, setConfirmId] = React.useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
   const [detailAdvance, setDetailAdvance] = React.useState<HREmployeeAdvance | null>(null);
-  const [viewMode, setViewMode] = React.useState<ViewMode>('cards');
+  const [viewMode, setViewMode] = usePersistedFilterState<ViewMode>(
+    hrFiltersKey('requests', 'employee-advances', companyId, 'viewMode'),
+    'cards',
+  );
 
-  const fetchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
-  React.useEffect(() => {
-    const employeeId = selectedEmpIds.size === 1 ? [...selectedEmpIds][0] : undefined;
-    const status = statusFilter !== 'all' ? statusFilter : undefined;
-    const advanceDateFrom = dateBounds.from || undefined;
-    const advanceDateTo = dateBounds.to || undefined;
-    if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
-    fetchDebounceRef.current = setTimeout(() => {
-      void fetchAdvances({ employeeId, status, advanceDateFrom, advanceDateTo }).catch((e) => {
-        handleApiError(e, 'employee-advances/fetch');
-      });
-    }, 400);
-    return () => {
-      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
-    };
-  }, [selectedEmpIds, statusFilter, dateBounds, fetchAdvances]);
+  const bulkMode = selectedEmpIds.size > 1;
+
+  const buildListQuery = React.useCallback((page: number, pageSize: number) => ({
+    companyId: companyId!,
+    page,
+    limit: pageSize,
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    ...(dateBounds.from ? { advanceDateFrom: dateBounds.from } : {}),
+    ...(dateBounds.to ? { advanceDateTo: dateBounds.to } : {}),
+    ...(selectedEmpIds.size === 1 ? { employeeId: [...selectedEmpIds][0] } : {}),
+  }), [companyId, statusFilter, dateBounds.from, dateBounds.to, selectedEmpIds]);
+
+  const sortAdvances = React.useCallback(
+    (rows: HREmployeeAdvance[]) =>
+      [...rows].sort((a, b) => b.advanceDate.localeCompare(a.advanceDate)),
+    [],
+  );
+
+  const loadPage = React.useCallback(async (page: number, pageSize: number) => {
+    if (!companyId) return { items: [] as HREmployeeAdvance[], total: 0 };
+    try {
+      const res = await employeeAdvancesApi.list(buildListQuery(page, pageSize));
+      return {
+        items: sortAdvances(res.items.map(mapEmployeeAdvanceFromApi)),
+        total: res.pagination.total,
+      };
+    } catch (e) {
+      handleApiError(e, 'employee-advances/fetch');
+      return { items: [], total: 0 };
+    }
+  }, [buildListQuery, companyId, sortAdvances]);
+
+  const loadBulk = React.useCallback(async () => {
+    if (!companyId) return { items: [] as HREmployeeAdvance[], total: 0 };
+    try {
+      const res = await fetchAllPaginatedItems((page, limit) =>
+        employeeAdvancesApi.list(buildListQuery(page, limit)),
+      );
+      const items = sortAdvances(
+        res.items
+          .map(mapEmployeeAdvanceFromApi)
+          .filter((x) => selectedEmpIds.has(x.employeeId)),
+      );
+      return { items, total: items.length };
+    } catch (e) {
+      handleApiError(e, 'employee-advances/fetch');
+      return { items: [], total: 0 };
+    }
+  }, [buildListQuery, companyId, selectedEmpIds, sortAdvances]);
+
+  const {
+    items: sorted,
+    loading: listLoading,
+    pagination,
+    reload: reloadList,
+  } = useServerDirectoryPagination<HREmployeeAdvance>(loadPage, {
+    enabled: !!companyId,
+    bulkMode,
+    loadBulk: bulkMode ? loadBulk : undefined,
+    resetDeps: [companyId, statusFilter, dateBounds.from, dateBounds.to, selectedEmpKey],
+  });
 
   const advanceStatusCounts = React.useMemo((): Record<string, number> => {
-    const counts: Record<string, number> = { all: items.length };
+    const counts: Record<string, number> = { all: pagination.total };
     for (const key of ADVANCE_STATUS_FILTER_ORDER) {
-      counts[key] = items.filter((x) => x.status === key).length;
+      counts[key] = statusFilter === key
+        ? pagination.total
+        : sorted.filter((x) => x.status === key).length;
     }
     return counts;
-  }, [items]);
-
-  const filtered = React.useMemo(
-    () => [...items].sort((a, b) => b.advanceDate.localeCompare(a.advanceDate)),
-    [items],
-  );
+  }, [pagination.total, sorted, statusFilter]);
 
   const runAction = async (id: string, action: () => Promise<void>, successMessage: string) => {
     setActionLoadingId(id);
     try {
       await action();
       toast.success(successMessage);
+      await reloadList();
     } catch (e) {
       handleApiError(e, 'employee-advances/action');
     } finally {
@@ -243,6 +305,7 @@ export function EmployeeAdvancesClient() {
       } else {
         toast.success('تم تسجيل موافقتك — بانتظار بقية المعتمدين.');
       }
+      await reloadList();
       setDetailAdvance(null);
     } catch (e) {
       const { status, displayMessage } = handleApiError(e, 'employee-advances/decide.approve');
@@ -254,7 +317,7 @@ export function EmployeeAdvancesClient() {
     } finally {
       setActionLoadingId(null);
     }
-  }, [approve, companyId, currentEmployeeId, decidedByActor]);
+  }, [approve, companyId, currentEmployeeId, decidedByActor, reloadList]);
 
   const handleRejectAdvance = React.useCallback(async (x: HREmployeeAdvance) => {
     if (!companyId || !currentEmployeeId) return;
@@ -278,6 +341,7 @@ export function EmployeeAdvancesClient() {
       setActionLoadingId(x.id);
       await reject(x.id, payload);
       toast.message('تم رفض السلفة.');
+      await reloadList();
       setDetailAdvance(null);
     } catch (e) {
       const { status, displayMessage } = handleApiError(e, 'employee-advances/decide.reject');
@@ -289,7 +353,7 @@ export function EmployeeAdvancesClient() {
     } finally {
       setActionLoadingId(null);
     }
-  }, [companyId, currentEmployeeId, decidedByActor, reject]);
+  }, [companyId, currentEmployeeId, decidedByActor, reject, reloadList]);
 
   const canShowApprovalActions = React.useCallback(
     (x: HREmployeeAdvance) =>
@@ -306,7 +370,7 @@ export function EmployeeAdvancesClient() {
   };
 
   const openEdit = (id: string) => {
-    const x = items.find(i => i.id === id);
+    const x = sorted.find(i => i.id === id);
     if (!x || !isEditable(x.status)) return;
     setEditId(id);
     setForm({
@@ -365,6 +429,7 @@ export function EmployeeAdvancesClient() {
         await add(payload);
         toast.success('تم إنشاء السلفة — قيد الموافقة.');
       }
+      await reloadList();
       setDrawerOpen(false);
     } catch (e) {
       if (isDuplicateAdvanceNumberError(e)) {
@@ -386,9 +451,27 @@ export function EmployeeAdvancesClient() {
     patch({ employeeId: id, employeeNameAr: emp?.nameAr ?? '' });
   };
 
-  const downloadCsv = () => {
+  const downloadCsv = async () => {
+    if (!companyId) return;
+    let exportRows = sorted;
+    if (pagination.total > sorted.length) {
+      try {
+        const res = bulkMode
+          ? await loadBulk()
+          : await fetchAllPaginatedItems((page, limit) =>
+              employeeAdvancesApi.list(buildListQuery(page, limit)),
+            ).then((res) => ({
+              items: sortAdvances(res.items.map(mapEmployeeAdvanceFromApi)),
+              total: res.total,
+            }));
+        exportRows = res.items;
+      } catch (e) {
+        handleApiError(e, 'employee-advances/export');
+        return;
+      }
+    }
     const rows = [['رقم السلفة', 'الموظف', 'المبلغ', 'العملة', 'نوع السلفة', 'آلية القسط', 'عدد الأشهر', 'القسط الشهري', 'التاريخ', 'الحالة', 'السبب']];
-    filtered.forEach(x => rows.push([
+    exportRows.forEach(x => rows.push([
       x.advanceNumber,
       x.employeeNameAr,
       String(x.amount),
@@ -406,9 +489,8 @@ export function EmployeeAdvancesClient() {
     a.download = 'employee-advances.csv'; a.click();
   };
 
-  const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
-
-  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0);
+  const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0)
+    + (dateBounds.from || dateBounds.to ? 1 : 0);
 
   const columns = React.useMemo((): ColumnDef<HREmployeeAdvance>[] => [
     {
@@ -535,15 +617,13 @@ export function EmployeeAdvancesClient() {
     [activeFilterCount],
   );
 
-  const hasDateFilter = Boolean(dateBounds.from || dateBounds.to);
-  const dateLabel = hasDateFilter
-    ? `${dateBounds.from || '…'} — ${dateBounds.to || '…'}`
-    : 'نطاق التاريخ';
-
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
-        showDateSection={false}
+      <ListFilterBar
+        optionalDateRange
+        periodValue={dateBounds}
+        onPeriodChange={setDateBounds}
+        onDateBoundsChange={setDateBounds}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
@@ -552,39 +632,9 @@ export function EmployeeAdvancesClient() {
         statusOrder={ADVANCE_STATUS_FILTER_ORDER}
         statusLabels={statusFilterLabels}
         statusCounts={advanceStatusCounts}
-        onDateBoundsChange={() => {}}
-        leadingFilters={
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setDatePickerOpen(true)}
-              className={cn(
-                'flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs transition-colors',
-                hasDateFilter
-                  ? 'border-primary/40 bg-primary/5 text-primary hover:bg-primary/10'
-                  : 'border-input bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-              )}
-              dir="ltr"
-            >
-              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-              <span className="max-w-[160px] truncate" dir="rtl">{dateLabel}</span>
-            </button>
-            {hasDateFilter && (
-              <button
-                type="button"
-                aria-label="مسح التاريخ"
-                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onClick={(e) => { e.stopPropagation(); setDateBounds({ from: '', to: '' }); }}
-                className="absolute -end-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-            )}
-          </div>
-        }
         trailingActions={
-          filtered.length > 0 ? (
-            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={downloadCsv}>
+          pagination.total > 0 ? (
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => void downloadCsv()}>
               <Download className="h-3.5 w-3.5" />تصدير
             </Button>
           ) : undefined
@@ -602,11 +652,11 @@ export function EmployeeAdvancesClient() {
     [
       statusFilter,
       selectedEmpKey,
-      dateBounds,
-      hasDateFilter,
+      dateBounds.from,
+      dateBounds.to,
       advanceStatusCounts.all,
       advanceStatusCounts,
-      filtered.length,
+      pagination.total,
       empPickerList,
       statusFilterLabels,
       viewMode,
@@ -615,34 +665,34 @@ export function EmployeeAdvancesClient() {
 
   return (
     <>
-      <DateRangePicker
-        open={datePickerOpen}
-        onOpenChange={setDatePickerOpen}
-        value={dateBounds}
-        onApply={(range) => setDateBounds(range)}
-      />
-
       <SetPageTitle titleAr="سلف الموظفين" descriptionAr="تسجيل وإدارة سلف الموظفين واعتمادها." iconName="Banknote" />
 
-      {filtered.length === 0 ? (
-        <EmptyState icon={Banknote} title="لا توجد سلف" description="أضف سلفة جديدة لموظف للبدء." />
-      ) : viewMode === 'list' ? (
-        <DataTable
-          variant="directory"
-          alwaysShowTable
-          tableClassName="min-w-[960px]"
-          columns={columns}
-          data={filtered}
-          keyExtractor={(x) => x.id}
-          emptyText="لا توجد سلف"
-          onRowClick={(x) => {
-            if (canOpenAdvanceDetail(x.status)) openAdvanceDetail(x);
-            else if (isEditable(x.status) && x.status !== 'pending_approval') openEdit(x.id);
-          }}
-        />
-      ) : (
-        <EntityActionCardGrid>
-          {filtered.map((x) => {
+      <div className="flex min-h-0 flex-1 flex-col gap-5">
+        {!listLoading && sorted.length === 0 && pagination.total === 0 ? (
+          <EmptyState icon={Banknote} title="لا توجد سلف" description="أضف سلفة جديدة لموظف للبدء." />
+        ) : (
+          <DirectoryPagedViews
+            items={sorted}
+            serverPagination={pagination}
+            loading={listLoading}
+          >
+            {(pageItems) => viewMode === 'list' ? (
+              <DataTable
+                variant="directory"
+                alwaysShowTable
+                tableClassName="min-w-[960px]"
+                columns={columns}
+                data={pageItems}
+                keyExtractor={(x) => x.id}
+                emptyText="لا توجد سلف"
+                onRowClick={(x) => {
+                  if (canOpenAdvanceDetail(x.status)) openAdvanceDetail(x);
+                  else if (isEditable(x.status) && x.status !== 'pending_approval') openEdit(x.id);
+                }}
+              />
+            ) : (
+              <EntityActionCardGrid>
+                {pageItems.map((x) => {
             const loading = actionLoadingId === x.id;
             const canSubmit = x.status === 'draft' || x.status === 'rejected';
             const openDetail = canOpenAdvanceDetail(x.status);
@@ -736,8 +786,11 @@ export function EmployeeAdvancesClient() {
               </EntityActionCard>
             );
           })}
-        </EntityActionCardGrid>
-      )}
+              </EntityActionCardGrid>
+            )}
+          </DirectoryPagedViews>
+        )}
+      </div>
 
       <HRSettingsFormDrawer
         open={drawerOpen} onOpenChange={setDrawerOpen}
@@ -831,6 +884,7 @@ export function EmployeeAdvancesClient() {
               await remove(confirmId);
               toast.success('تم حذف السلفة.');
               setConfirmId(null);
+              await reloadList();
             } catch (e) {
               handleApiError(e, 'employee-advances/delete');
             }

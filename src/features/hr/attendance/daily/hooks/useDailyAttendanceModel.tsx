@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -30,24 +30,41 @@ import { attendanceEventsApi } from '@/features/hr/attendance/lib/api/attendance
 import { recomputeTodayDaySummaries } from '@/features/hr/attendance/lib/api/recompute-today-day-summaries';
 import { companiesApi } from '@/features/hr/lib/api/companies';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
-import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import {
+  attendanceFiltersKey,
+  usePersistedEmpIdSet,
+  usePersistedFilterState,
+} from '@/features/hr/attendance/lib/use-persisted-filter-state';
 
 export type AttendanceViewMode = 'card' | 'table';
 
 export function useDailyAttendanceModel() {
+  const companyId = useDefaultCompanyId();
   const [daySummaries, setDaySummaries] = React.useState<AttendanceDaySummary[]>([]);
   const [events, setEvents] = React.useState<AttendanceEvent[]>([]);
   const [allEmployees, setAllEmployees] = React.useState<{ id: string; name: string }[]>([]);
   const [companyNameAr, setCompanyNameAr] = React.useState('');
   const [companyNameEn, setCompanyNameEn] = React.useState('');
 
-  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [dateBounds, setDateBounds] = React.useState(() => ({ from: todayYMD(), to: todayYMD() }));
-  const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
+    attendanceFiltersKey('daily', companyId, 'selectedEmpIds'),
+  );
+  const [dateBounds, setDateBounds] = usePersistedFilterState(
+    attendanceFiltersKey('daily', companyId, 'dateBounds'),
+    { from: todayYMD(), to: todayYMD() },
+  );
+  const [statusFilter, setStatusFilter] = usePersistedFilterState(
+    attendanceFiltersKey('daily', companyId, 'statusFilter'),
+    'all',
+  );
+  const [viewMode, setViewMode] = usePersistedFilterState<AttendanceViewMode>(
+    attendanceFiltersKey('daily', companyId, 'viewMode'),
+    'card',
+  );
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [recomputeOpen, setRecomputeOpen] = React.useState(false);
   const [registerOpen, setRegisterOpen] = React.useState(false);
-  const [viewMode, setViewMode] = React.useState<AttendanceViewMode>('card');
 
   const { from: filterFrom, to: filterTo } = dateBounds;
 
@@ -303,7 +320,7 @@ export function useDailyAttendanceModel() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         empPickerEmployees={allEmployees}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}

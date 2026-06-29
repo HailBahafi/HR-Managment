@@ -65,7 +65,6 @@ export function DaySummarySettleConfirmDialog({
   if (!row) return null;
 
   const plan = computeDaySummarySettlePlan(row);
-  const notes = row.notes?.trim();
   const isPartial = plan.after.shortageMinutes > 0;
 
   return (
@@ -131,13 +130,6 @@ export function DaySummarySettleConfirmDialog({
               بعد التسوية يصبح الفعلي مساوياً للمتوقع.
             </p>
           )}
-
-          {notes ? (
-            <div className="rounded-lg border border-border/50 bg-muted/10 px-3 py-2 text-xs">
-              <p className="font-medium text-muted-foreground">ملاحظات (ستُرسل مع الطلب)</p>
-              <p className="mt-1 whitespace-pre-wrap text-foreground">{notes}</p>
-            </div>
-          ) : null}
         </div>
 
         <DialogFooter className={dialogFormFooterClass}>

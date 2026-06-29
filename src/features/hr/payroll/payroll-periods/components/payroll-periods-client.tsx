@@ -13,7 +13,7 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { usePageFilters } from '@/components/layouts/filter-panel-context';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -240,7 +240,7 @@ export function PayrollPeriodsClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showEmployeePicker={false}
         statusFilter={statusFilter}
         onStatusFilterChange={(v) => setValue('status', v)}

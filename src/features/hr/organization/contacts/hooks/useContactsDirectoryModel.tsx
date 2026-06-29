@@ -7,7 +7,7 @@ import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { PermissionGate } from '@/components/shared/permission-gate';
 import { branchesApi } from '@/features/hr/organization/lib/api/branches';
 import { toast } from 'sonner';
@@ -239,7 +239,7 @@ export function useContactsDirectoryModel() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
         showEmployeePicker={false}

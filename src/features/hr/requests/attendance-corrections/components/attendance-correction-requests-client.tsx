@@ -24,7 +24,7 @@ import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { correctionRequestsApi } from '@/features/hr/requests/lib/api/correction-requests';
 import { mapCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
@@ -59,6 +59,11 @@ import {
 } from '@/features/hr/requests/lib/attendance-correction-store';
 import type { AttendanceCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
 import { cn } from '@/shared/utils';
+import {
+  hrFiltersKey,
+  usePersistedEmpIdSet,
+  usePersistedFilterState,
+} from '@/features/hr/lib/use-persisted-filter-state';
 
 import { AR_CORRECTION_REQUEST_STATUS_LABELS } from '@/shared/i18n/ar';
 
@@ -106,10 +111,21 @@ export function AttendanceCorrectionRequestsClient() {
     [requestTypes],
   );
 
-  const [appliedDept, setAppliedDept] = React.useState('all');
-  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = React.useState('all');
-  const [dateBounds, setDateBounds] = React.useState({ from: '', to: '' });
+  const [appliedDept, setAppliedDept] = usePersistedFilterState(
+    hrFiltersKey('requests', 'attendance-corrections', companyId, 'appliedDept'),
+    'all',
+  );
+  const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
+    hrFiltersKey('requests', 'attendance-corrections', companyId, 'selectedEmpIds'),
+  );
+  const [statusFilter, setStatusFilter] = usePersistedFilterState(
+    hrFiltersKey('requests', 'attendance-corrections', companyId, 'statusFilter'),
+    'all',
+  );
+  const [dateBounds, setDateBounds] = usePersistedFilterState(
+    hrFiltersKey('requests', 'attendance-corrections', companyId, 'dateBounds'),
+    { from: '', to: '' },
+  );
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [formEmpId, setFormEmpId] = React.useState('');
@@ -119,7 +135,10 @@ export function AttendanceCorrectionRequestsClient() {
   const [formCorrOut, setFormCorrOut] = React.useState('');
   const [formReason, setFormReason] = React.useState('');
   const [detailRow, setDetailRow] = React.useState<AttendanceCorrectionRequest | null>(null);
-  const [viewMode, setViewMode] = React.useState<ViewMode>('cards');
+  const [viewMode, setViewMode] = usePersistedFilterState<ViewMode>(
+    hrFiltersKey('requests', 'attendance-corrections', companyId, 'viewMode'),
+    'cards',
+  );
 
   const deptOptions = React.useMemo(
     () => [{ value: 'all', label: 'جميع الأقسام' }, ...departments.filter((d) => d.isActive).map((d) => ({ value: d.id, label: d.nameAr }))],
@@ -324,7 +343,10 @@ export function AttendanceCorrectionRequestsClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
+        optionalDateRange
+        periodValue={dateBounds}
+        onPeriodChange={setDateBounds}
         inlineSelects={[
           {
             id: 'dept',

@@ -42,10 +42,10 @@ import {
   validateInvestigationResultsDraft,
 } from '@/features/hr/discipline/investigations/services/submit-violation-investigation';
 import {
-  EntityFilterToolbar,
-  type EntityFilterToolbarHandle,
-  type EntityFilterInlineSelect,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+  type ListFilterBarHandle,
+  type ListFilterInlineSelect,
+} from '@/components/ui/list-filter-bar';
 import {
   type DateFilterTab,
 } from '@/features/hr/discipline/lib/discipline-date-filter';
@@ -116,7 +116,7 @@ export function InvestigationsClient() {
     tab: 'all',
     hasRestriction: false,
   }));
-  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
+  const filterToolbarRef = React.useRef<ListFilterBarHandle>(null);
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
     setDateBounds(b);
   }, []);
@@ -167,7 +167,7 @@ export function InvestigationsClient() {
   const dateRangeActive = dateMeta.hasRestriction;
   const activeFilterCount = (selectedEmpIds.size > 0 ? 1 : 0) + (resultFilter !== 'all' ? 1 : 0) + (recommendationFilter !== 'all' ? 1 : 0) + (dateRangeActive ? 1 : 0);
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'recommendation',
       value: recommendationFilter,
@@ -466,7 +466,7 @@ export function InvestigationsClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         ref={filterToolbarRef}
         defaultDateFilterTab="all"
         inlineSelects={inlineSelects}

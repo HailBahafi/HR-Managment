@@ -15,7 +15,7 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { cn } from '@/shared/utils';
 import { usePermissionsCatalog } from '@/features/hr/permissions/hooks/usePermissionsCatalog';
 import { PermissionsCatalogModuleCard } from '@/features/hr/permissions/components/permissions-catalog-module-card';
@@ -83,7 +83,7 @@ export function PermissionsCatalogPage() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
         leadingFilters={searchFilter}

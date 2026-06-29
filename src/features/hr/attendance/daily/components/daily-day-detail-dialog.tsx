@@ -85,6 +85,17 @@ function trimTime(t: string) {
   return t.slice(0, 5);
 }
 
+function formatWallClock12(t: string | null | undefined) {
+  if (!t) return '—';
+  const match = t.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return trimTime(t);
+  const h24 = Number(match[1]);
+  const mm = match[2];
+  const period = h24 < 12 ? 'ص' : 'م';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${mm} ${period}`;
+}
+
 function statusCfg(status: string) {
   return BREAKDOWN_STATUS[status] ?? STATUS.unscheduled;
 }
@@ -140,12 +151,16 @@ function ActualRegistrationBlock({
         checkOutTime={fmtClock(actual.checkOutAt, offsetMinutes)}
         duration={duration}
       />
-      {actual.breakMinutes > 0 ? (
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-xs">
+          <span className="text-muted-foreground">مدة العمل</span>
+          <span className="font-semibold tabular-nums">{minutesToHHMM(actual.workedMinutes)}</span>
+        </div>
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-xs">
           <span className="text-muted-foreground">استراحات</span>
           <span className="font-semibold tabular-nums">{minutesToHHMM(actual.breakMinutes)}</span>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -212,17 +227,60 @@ function DetailRow({ label, value, hint }: { label: string; value: React.ReactNo
 function EventRow({ evt, offsetMinutes }: { evt: AttendanceEventResponseDto; offsetMinutes: number }) {
   const meta = EVENT_META[evt.eventType];
   const Icon = meta.icon;
+  const warning = evt.warningMessage ?? evt.exclusionMessage;
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-background px-2.5 py-2">
-      <Icon className={cn('h-3.5 w-3.5 shrink-0', meta.color)} />
-      <span className="flex-1 text-xs">{meta.labelAr}</span>
-      <span className="font-mono text-[11px] tabular-nums text-muted-foreground" dir="ltr">
-        {fmtClock(evt.occurredAt, offsetMinutes)}
-      </span>
-      {evt.source === 'manual_hr' ? (
-        <span className="text-[10px] text-muted-foreground/60">يدوي</span>
+    <div className="rounded-lg border border-border/60 bg-background px-2.5 py-2">
+      <div className="flex items-center gap-2">
+        <Icon className={cn('h-3.5 w-3.5 shrink-0', meta.color)} />
+        <span className="flex-1 text-xs">{meta.labelAr}</span>
+        <span className="font-mono text-[11px] tabular-nums text-muted-foreground" dir="ltr">
+          {fmtClock(evt.occurredAt, offsetMinutes)}
+        </span>
+        {evt.source === 'manual_hr' ? (
+          <span className="text-[10px] text-muted-foreground/60">يدوي</span>
+        ) : null}
+      </div>
+      {evt.checkInPointNameAr ? (
+        <p className="mt-1 text-[10px] text-muted-foreground">{evt.checkInPointNameAr}</p>
+      ) : null}
+      {evt.isExcludedFromComputation ? (
+        <p className="mt-1 text-[10px] text-amber-700">مُستبعد من الحساب</p>
+      ) : null}
+      {warning ? (
+        <p className="mt-1 text-[10px] text-amber-700">{warning}</p>
+      ) : null}
+      {evt.notes ? (
+        <p className="mt-1 text-[10px] text-muted-foreground/80">{evt.notes}</p>
       ) : null}
     </div>
+  );
+}
+
+function WindowStatusBadge({
+  label,
+  value,
+}: {
+  label: string;
+  value: boolean | null | undefined;
+}) {
+  if (value == null) {
+    return (
+      <span className="rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground">
+        {label}: —
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        'rounded-md border px-2 py-1 text-[10px] font-medium',
+        value
+          ? 'border-success/30 bg-success/10 text-success'
+          : 'border-destructive/30 bg-destructive/10 text-destructive',
+      )}
+    >
+      {label}: {value ? 'ضمن النافذة' : 'خارج النافذة'}
+    </span>
   );
 }
 
@@ -250,8 +308,8 @@ function PeriodCard({
         <div className="flex items-center gap-2">
         <Layers className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-sm font-semibold">{periodLabel}</span>
-          <span className="text-xs text-muted-foreground tabular-nums" dir="ltr">
-            {trimTime(expected.startTime)} — {trimTime(expected.endTime)}
+          <span className="text-xs text-muted-foreground tabular-nums" >
+            {formatWallClock12(expected.startTime)} — {formatWallClock12(expected.endTime)}
           </span>
         </div>
         <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold', cfg.color)}>
@@ -266,6 +324,24 @@ function PeriodCard({
           دوام صارم — البصمات يجب أن تكون ضمن النوافذ المسموحة
         </div>
       ) : null}
+
+      <div className="flex flex-wrap gap-1.5">
+        {expected.flexibilityEnabled ? (
+          <span className="rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground">
+            سماحية {expected.flexibilityMinutes ?? 0} د
+          </span>
+        ) : null}
+        {expected.checkOutNotRequired ? (
+          <span className="rounded-md border border-border/50 bg-muted/20 px-2 py-1 text-[10px] text-muted-foreground">
+            الخروج غير مطلوب
+          </span>
+        ) : null}
+        {expected.autoOvertime ? (
+          <span className="rounded-md border border-success/30 bg-success/10 px-2 py-1 text-[10px] text-success">
+            إضافي تلقائي
+          </span>
+        ) : null}
+      </div>
 
       <div className="grid gap-2 rounded-lg border border-border/50 bg-muted/10 p-2.5">
         <p className="text-[11px] font-semibold text-muted-foreground">الدوام المتوقع</p>
@@ -302,9 +378,38 @@ function PeriodCard({
 
       <ActualRegistrationBlock actual={displayActual} offsetMinutes={offsetMinutes} />
 
+      <div className="flex flex-wrap gap-1.5">
+        <WindowStatusBadge label="دخول" value={analysis.checkInWithinWindow} />
+        <WindowStatusBadge label="خروج" value={analysis.checkOutWithinWindow} />
+        {analysis.isComplete ? (
+          <span className="rounded-md border border-success/30 bg-success/10 px-2 py-1 text-[10px] font-medium text-success">
+            مكتمل
+          </span>
+        ) : null}
+        {analysis.isAbsent ? (
+          <span className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[10px] font-medium text-destructive">
+            غائب
+          </span>
+        ) : null}
+      </div>
+
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {analysis.rawLateMinutes > 0 ? (
+          <StatChip
+            label={analysis.lateMinutes > 0 ? 'تأخير خام' : 'تأخير ضمن السماحية'}
+            value={minutesToHHMM(analysis.rawLateMinutes)}
+            tone={analysis.lateMinutes > 0 ? 'warn' : 'default'}
+          />
+        ) : null}
         {analysis.lateMinutes > 0 ? (
           <StatChip label="تأخير" value={minutesToHHMM(analysis.lateMinutes)} tone="warn" />
+        ) : null}
+        {analysis.rawEarlyLeaveMinutes > 0 ? (
+          <StatChip
+            label={analysis.earlyLeaveMinutes > 0 ? 'انصراف مبكر خام' : 'انصراف مبكر ضمن السماحية'}
+            value={minutesToHHMM(analysis.rawEarlyLeaveMinutes)}
+            tone={analysis.earlyLeaveMinutes > 0 ? 'warn' : 'default'}
+          />
         ) : null}
         {analysis.earlyLeaveMinutes > 0 ? (
           <StatChip label="انصراف مبكر" value={minutesToHHMM(analysis.earlyLeaveMinutes)} tone="warn" />
@@ -556,6 +661,13 @@ export function DailyDayDetailDialog({
                     <div className="grid grid-cols-3 gap-2">
                       <StatChip label="متوقع" value={minutesToHHMM(totals.expectedMinutes)} />
                       <StatChip label="فعلي" value={minutesToHHMM(totals.workedMinutes)} />
+                      <StatChip label="داخل الفترات" value={minutesToHHMM(totals.workedMinutesInsidePeriods ?? 0)} />
+                      <StatChip label="خارج الفترات" value={minutesToHHMM(totals.workedMinutesOutsidePeriods ?? 0)} />
+                      <StatChip label="استراحات" value={minutesToHHMM(totals.breakMinutes)} />
+                      <StatChip
+                        label="حضور مبكر"
+                        value={minutesToHHMM(totals.earlyArrivalMinutes ?? 0)}
+                      />
                       <StatChip
                         label="تأخير"
                         value={minutesToHHMM(totals.lateMinutes)}

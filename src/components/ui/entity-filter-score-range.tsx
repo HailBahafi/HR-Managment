@@ -13,7 +13,7 @@ type Props = {
   className?: string;
 };
 
-/** Min/max score inputs for `EntityFilterToolbar` `beforeEmployeePicker` / `trailingActions`. */
+/** Min/max score inputs for `ListFilterBar` `beforeEmployeePicker` / `trailingActions`. */
 export function EntityFilterScoreRange({
   min,
   max,

@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar, type ListFilterInlineSelect } from '@/components/ui/list-filter-bar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -659,7 +659,7 @@ export function EmploymentContractsClient() {
     return counts;
   }, [filtered, pagination.total, employmentStatusOrder]);
 
-  const employmentInlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const employmentInlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'archive',
       value: archiveScope,
@@ -683,7 +683,7 @@ export function EmploymentContractsClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}

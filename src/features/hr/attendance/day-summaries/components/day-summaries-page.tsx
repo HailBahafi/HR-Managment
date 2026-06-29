@@ -25,6 +25,7 @@ import { useDaySummariesDirectoryModel } from '@/features/hr/attendance/day-summ
 import { DaySummaryMetricCell } from '@/features/hr/attendance/day-summaries/components/day-summary-metric-cell';
 import { DaySummarySettleButton } from '@/features/hr/attendance/day-summaries/components/day-summary-settle-button';
 import { DaySummarySettleConfirmDialog } from '@/features/hr/attendance/day-summaries/components/day-summary-settle-confirm-dialog';
+import { DaySummaryOvertimePayrollToggle } from '@/features/hr/attendance/day-summaries/components/day-summary-overtime-payroll-toggle';
 import { buildSettleDaySummaryPayload } from '@/features/hr/attendance/day-summaries/utils/day-summary-settle';
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -89,6 +90,24 @@ function DaySummaryDetailDialog({
           <DetailRow label="تأخير" value={formatDaySummaryMetric(row, 'late') ?? '00:00'} />
           <DetailRow label="انصراف مبكر" value={formatDaySummaryMetric(row, 'earlyLeave') ?? '00:00'} />
           <DetailRow label="إضافي" value={formatDaySummaryMetric(row, 'overtime') ?? '00:00'} />
+          <DetailRow
+            label="إضافي رواتب"
+            value={
+              row.overtimePayrollAllowed
+                ? `مسموح (${formatDaySummaryMetric(row, 'overtime') ?? '00:00'})`
+                : 'غير مسموح'
+            }
+          />
+          <DetailRow
+            label="تسوية"
+            value={
+              row.isSettled
+                ? `تمت (${row.settledMinutes ?? 0} د)`
+                : row.canSettle
+                  ? 'يمكن التسوية'
+                  : '—'
+            }
+          />
           <DetailRow label="تعديل يدوي" value={row.isManualOverride ? 'نعم' : 'لا'} />
           <DetailRow label="نهائي" value={row.isFinalized ? 'نعم' : 'لا'} />
           <DetailRow label="ملاحظات" value={row.notes} />
@@ -101,16 +120,22 @@ function DaySummaryDetailDialog({
 
 export function DaySummariesPage() {
   const companyId = useDefaultCompanyId() ?? '';
+  const authUser = useAuthStore((s) => s.user);
+  const updatedByActor = authUser?.id ?? undefined;
   const model = useDaySummariesDirectoryModel();
   const [detailRow, setDetailRow] = React.useState<DaySummaryResponseDto | null>(null);
   const [settleRow, setSettleRow] = React.useState<DaySummaryResponseDto | null>(null);
   const [settling, setSettling] = React.useState(false);
+  const [overtimePayrollBusyId, setOvertimePayrollBusyId] = React.useState<string | null>(null);
 
   const handleSettleConfirm = React.useCallback(async () => {
     if (!settleRow) return;
     setSettling(true);
     try {
-      await attendanceDaySummariesApi.settle(settleRow.id, buildSettleDaySummaryPayload(settleRow));
+      await attendanceDaySummariesApi.settle(
+        settleRow.id,
+        buildSettleDaySummaryPayload(updatedByActor),
+      );
       toast.success('تمت تسوية الحضور من الإضافي');
       setSettleRow(null);
       await model.reload();
@@ -120,7 +145,29 @@ export function DaySummariesPage() {
     } finally {
       setSettling(false);
     }
-  }, [model, settleRow]);
+  }, [model, settleRow, updatedByActor]);
+
+  const handleOvertimePayrollToggle = React.useCallback(
+    async (row: DaySummaryResponseDto, allowed: boolean) => {
+      setOvertimePayrollBusyId(row.id);
+      try {
+        await attendanceDaySummariesApi.setOvertimePayrollAllowed(row.id, {
+          allowed,
+          ...(updatedByActor ? { updatedBy: updatedByActor } : {}),
+        });
+        toast.success(
+          allowed ? 'تم السماح باحتساب الإضافي في الرواتب' : 'تم إلغاء السماح باحتساب الإضافي في الرواتب',
+        );
+        await model.reload();
+      } catch (err) {
+        const { displayMessage } = handleApiError(err, 'day-summaries.overtime-payroll');
+        toast.error(displayMessage);
+      } finally {
+        setOvertimePayrollBusyId(null);
+      }
+    },
+    [model, updatedByActor],
+  );
 
   const columns = React.useMemo((): ColumnDef<DaySummaryResponseDto>[] => [
     {
@@ -202,6 +249,21 @@ export function DaySummariesPage() {
       render: (row) => (row.isManualOverride ? 'نعم' : '—'),
     },
     {
+      key: 'overtimePayroll',
+      title: 'إضافي رواتب',
+      hideOnMobile: true,
+      isActions: true,
+      headerClassName: 'text-center',
+      className: 'text-center',
+      render: (row) => (
+        <DaySummaryOvertimePayrollToggle
+          row={row}
+          disabled={overtimePayrollBusyId === row.id}
+          onToggle={handleOvertimePayrollToggle}
+        />
+      ),
+    },
+    {
       key: 'settle',
       title: 'تسوية',
       isActions: true,
@@ -211,7 +273,7 @@ export function DaySummariesPage() {
         <DaySummarySettleButton row={row} onRequestSettle={setSettleRow} />
       ),
     },
-  ], [setSettleRow]);
+  ], [handleOvertimePayrollToggle, overtimePayrollBusyId, setSettleRow]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">

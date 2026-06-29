@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { EmployeesRegisterPrintHtml } from '@/components/pdf/print/employees-register-print-html';
 import { downloadXlsxFromAoA, type XlsxCell } from '@/shared/export/download-xlsx';
 import {
@@ -39,6 +39,11 @@ import {
   organizationListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
+import {
+  hrFiltersKey,
+  usePersistedEmpIdSet,
+  usePersistedFilterState,
+} from '@/features/hr/lib/use-persisted-filter-state';
 
 function empStartYmd(e: EmployeeResponseDto): string {
   const s = e.startDate;
@@ -60,17 +65,32 @@ export function useEmployeesListModel() {
   const [listError, setListError] = React.useState<string | null>(null);
   const [totalCount, setTotalCount] = React.useState(0);
 
-  const [branchFilter, setBranchFilter] = React.useState('all');
-  const [deptFilter, setDeptFilter] = React.useState('all');
+  const [branchFilter, setBranchFilter] = usePersistedFilterState(
+    hrFiltersKey('organization', 'employees', companyId, 'branchFilter'),
+    'all',
+  );
+  const [deptFilter, setDeptFilter] = usePersistedFilterState(
+    hrFiltersKey('organization', 'employees', companyId, 'deptFilter'),
+    'all',
+  );
   const [search, setSearch] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
-  const [view, setView] = React.useState<'table' | 'grid'>('table');
+  const [view, setView] = usePersistedFilterState<'table' | 'grid'>(
+    hrFiltersKey('organization', 'employees', companyId, 'view'),
+    'table',
+  );
   const [newEmpOpen, setNewEmpOpen] = React.useState(false);
-  const [toolbarStatus, setToolbarStatus] = React.useState<string>('all');
-  const [archiveScope, setArchiveScope] = React.useState<OrganizationArchiveScope>(
+  const [toolbarStatus, setToolbarStatus] = usePersistedFilterState(
+    hrFiltersKey('organization', 'employees', companyId, 'toolbarStatus'),
+    'all',
+  );
+  const [archiveScope, setArchiveScope] = usePersistedFilterState<OrganizationArchiveScope>(
+    hrFiltersKey('organization', 'employees', companyId, 'archiveScope'),
     ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   );
-  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+  const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
+    hrFiltersKey('organization', 'employees', companyId, 'selectedEmpIds'),
+  );
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
 
@@ -312,7 +332,7 @@ export function useEmployeesListModel() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         inlineSelects={[
           {

@@ -9,9 +9,9 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  EntityFilterToolbar,
-  type EntityFilterInlineSelect,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+  type ListFilterInlineSelect,
+} from '@/components/ui/list-filter-bar';
 import { useRoles } from '@/features/hr/permissions/hooks/useRoles';
 import { usePermissions } from '@/features/hr/permissions/hooks/usePermissions';
 import { useApplicationId } from '@/features/hr/permissions/hooks/useApplicationId';
@@ -100,7 +100,7 @@ export function PermissionsManagementPage() {
     [openCreate],
   );
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'roleKind',
       value: roleKind,
@@ -129,7 +129,7 @@ export function PermissionsManagementPage() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
         leadingFilters={searchFilter}

@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { History, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { EntityPeriodFilter } from '@/components/ui/entity-period-filter';
+import { DateRangeFilterTrigger } from '@/components/ui/date-range-filter-trigger';
+import type { PeriodRange } from '@/components/ui/list-filter-bar';
 import { FilterSelect } from '@/components/ui/select-with-clear';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
@@ -206,11 +207,12 @@ export function EmployeeAuditLogPanel({ audit }: Props) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
             <Label className="text-xs text-muted-foreground">الفترة</Label>
-            <EntityPeriodFilter
+            <DateRangeFilterTrigger
               value={dateRange}
               onChange={setDateRange}
               placeholder="كل الفترات"
               triggerClassName="h-9 w-full max-w-none text-xs"
+              allowEmpty
             />
           </div>
           <div className="space-y-1.5">

@@ -42,10 +42,10 @@ import {
   INVESTIGATION_RESULT_LABELS,
 } from '@/features/hr/discipline/lib/types';
 import {
-  EntityFilterToolbar,
-  type EntityFilterToolbarHandle,
-  type EntityFilterInlineSelect,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+  type ListFilterBarHandle,
+  type ListFilterInlineSelect,
+} from '@/components/ui/list-filter-bar';
 import { useDisciplineDateFilterState } from '@/features/hr/discipline/lib/use-discipline-date-filter-state';
 import {
   DropdownMenu,
@@ -355,7 +355,7 @@ export function ViolationCasesClient() {
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [violationTypeFilter, setViolationTypeFilter] = React.useState('all');
   const { dateBounds, dateMeta, onDateBoundsChange, onDateFilterMetaChange } = useDisciplineDateFilterState();
-  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
+  const filterToolbarRef = React.useRef<ListFilterBarHandle>(null);
 
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -408,7 +408,7 @@ export function ViolationCasesClient() {
     [violationTypes],
   );
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'violationType',
       value: violationTypeFilter,
@@ -786,7 +786,7 @@ export function ViolationCasesClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         ref={filterToolbarRef}
         inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}

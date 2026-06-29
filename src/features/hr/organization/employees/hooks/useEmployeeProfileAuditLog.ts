@@ -9,7 +9,7 @@ import {
 } from '@/features/hr/organization/employees/lib/api/employee-profile';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import type { PeriodRange } from '@/components/ui/entity-period-filter';
+import type { PeriodRange } from '@/components/ui/list-filter-bar';
 
 export type AuditScopeFilter = 'all' | AuditEntityScope;
 export type AuditActionFilter = 'all' | string;

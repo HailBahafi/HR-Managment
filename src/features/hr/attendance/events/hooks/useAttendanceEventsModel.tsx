@@ -21,9 +21,14 @@ import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar, type ListFilterInlineSelect } from '@/components/ui/list-filter-bar';
 import { Button } from '@/components/ui/button';
 import { isPeriodFilterActive, normalizePeriodRange, todayYMD } from '@/features/hr/discipline/lib/discipline-date-filter';
+import {
+  attendanceFiltersKey,
+  usePersistedEmpIdSet,
+  usePersistedFilterState,
+} from '@/features/hr/attendance/lib/use-persisted-filter-state';
 import type { AttendanceCheckInPoint } from '@/features/hr/attendance/lib/types';
 
 export type EventsFilterState = {
@@ -47,13 +52,21 @@ export function useAttendanceEventsModel() {
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
   const [listError, setListError] = React.useState<string | null>(null);
 
-  const [dateBounds, setDateBounds] = React.useState(() => {
-    const today = todayYMD();
-    return { from: today, to: today };
-  });
-  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [eventTypeFilter, setEventTypeFilter] = React.useState('all');
-  const [includeVoided, setIncludeVoided] = React.useState(false);
+  const [dateBounds, setDateBounds] = usePersistedFilterState(
+    attendanceFiltersKey('events', companyId, 'dateBounds'),
+    { from: todayYMD(), to: todayYMD() },
+  );
+  const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
+    attendanceFiltersKey('events', companyId, 'selectedEmpIds'),
+  );
+  const [eventTypeFilter, setEventTypeFilter] = usePersistedFilterState(
+    attendanceFiltersKey('events', companyId, 'eventTypeFilter'),
+    'all',
+  );
+  const [includeVoided, setIncludeVoided] = usePersistedFilterState(
+    attendanceFiltersKey('events', companyId, 'includeVoided'),
+    false,
+  );
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [voidTarget, setVoidTarget] = React.useState<AttendanceEventResponseDto | null>(null);
@@ -193,7 +206,7 @@ export function useAttendanceEventsModel() {
     + (includeVoided ? 1 : 0)
     + (periodFilterActive ? 1 : 0);
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'eventType',
       value: eventTypeFilter,
@@ -235,7 +248,7 @@ export function useAttendanceEventsModel() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showStatusSection={false}
         periodValue={{ from, to }}
         onPeriodChange={onPeriodChange}

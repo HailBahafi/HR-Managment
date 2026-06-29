@@ -20,9 +20,9 @@ import { useDisciplineNoticesDirectoryModel, type NoticeRecord } from '@/feature
 import type { HRDisciplineNoticeKind } from '@/features/hr/discipline/lib/types';
 import { NOTICE_KIND_LABELS, NOTICE_KIND_FILTER_ORDER } from '@/features/hr/discipline/lib/types';
 import {
-  EntityFilterToolbar,
-  type EntityFilterToolbarHandle,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+  type ListFilterBarHandle,
+} from '@/components/ui/list-filter-bar';
 import {
   type DateFilterTab,
 } from '@/features/hr/discipline/lib/discipline-date-filter';
@@ -75,7 +75,7 @@ export function NoticesClient() {
     tab: 'all',
     hasRestriction: false,
   }));
-  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
+  const filterToolbarRef = React.useRef<ListFilterBarHandle>(null);
   const onDateBoundsChange = React.useCallback((b: { from: string; to: string }) => {
     setDateBounds(b);
   }, []);
@@ -274,7 +274,7 @@ export function NoticesClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         ref={filterToolbarRef}
         defaultDateFilterTab="all"
         empPickerEmployees={empPickerList}

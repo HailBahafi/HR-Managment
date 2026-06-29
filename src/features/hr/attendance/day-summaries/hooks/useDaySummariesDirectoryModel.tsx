@@ -20,11 +20,16 @@ import {
 } from '@/features/hr/attendance/day-summaries/utils/month-date-range';
 import { isPeriodFilterActive, normalizePeriodRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { Button } from '@/components/ui/button';
-import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar, type ListFilterInlineSelect } from '@/components/ui/list-filter-bar';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { recomputeTodayDaySummaries } from '@/features/hr/attendance/lib/api/recompute-today-day-summaries';
+import {
+  attendanceFiltersKey,
+  usePersistedEmpIdSet,
+  usePersistedFilterState,
+} from '@/features/hr/attendance/lib/use-persisted-filter-state';
 
 export type DaySummariesFilters = {
   status: 'all' | AttendanceDayStatus;
@@ -36,23 +41,32 @@ export function useDaySummariesDirectoryModel() {
   const initialYm = currentYearMonth();
   const initialBounds = monthDateBounds(initialYm.year, initialYm.month);
 
-  const [from, setFrom] = React.useState(initialBounds.from);
-  const [to, setTo] = React.useState(initialBounds.to);
+  const [periodBounds, setPeriodBounds] = usePersistedFilterState(
+    attendanceFiltersKey('day-summaries', companyId, 'periodBounds'),
+    initialBounds,
+  );
+  const from = periodBounds.from;
+  const to = periodBounds.to;
 
   const [items, setItems] = React.useState<DaySummaryResponseDto[]>([]);
   const [total, setTotal] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(50);
   const [loading, setLoading] = React.useState(true);
-  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
+  const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
+    attendanceFiltersKey('day-summaries', companyId, 'selectedEmpIds'),
+  );
   const [allEmployees, setAllEmployees] = React.useState<{ id: string; name: string }[]>([]);
   const [recomputeOpen, setRecomputeOpen] = React.useState(false);
   const pageEnterRecomputeDone = React.useRef(false);
 
-  const [filters, setFilters] = React.useState<DaySummariesFilters>({
-    status: 'all',
-    isManualOverride: 'all',
-  });
+  const [filters, setFilters] = usePersistedFilterState<DaySummariesFilters>(
+    attendanceFiltersKey('day-summaries', companyId, 'filters'),
+    {
+      status: 'all',
+      isManualOverride: 'all',
+    },
+  );
 
   React.useEffect(() => {
     if (!companyId) {
@@ -80,16 +94,14 @@ export function useDaySummariesDirectoryModel() {
   const onPeriodChange = React.useCallback((range: { from: string; to: string }) => {
     const normalized = normalizePeriodRange(range);
     if (!normalized) return;
-    setFrom(normalized.from);
-    setTo(normalized.to);
-  }, []);
+    setPeriodBounds(normalized);
+  }, [setPeriodBounds]);
 
   const onPeriodFilterClear = React.useCallback(() => {
     const ym = currentYearMonth();
     const bounds = monthDateBounds(ym.year, ym.month);
-    setFrom(bounds.from);
-    setTo(bounds.to);
-  }, []);
+    setPeriodBounds(bounds);
+  }, [setPeriodBounds]);
 
   const periodFilterActive = isPeriodFilterActive({ from, to }, defaultPeriod);
 
@@ -159,7 +171,7 @@ export function useDaySummariesDirectoryModel() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'status',
       value: filters.status,
@@ -215,7 +227,7 @@ export function useDaySummariesDirectoryModel() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showStatusSection={false}
         periodValue={{ from, to }}
         onPeriodChange={onPeriodChange}

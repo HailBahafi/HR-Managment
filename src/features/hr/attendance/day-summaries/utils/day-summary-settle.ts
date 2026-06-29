@@ -56,20 +56,21 @@ export function computeDaySummarySettlePlan(row: DaySummaryResponseDto): DaySumm
 }
 
 export function canSettleDaySummary(row: DaySummaryResponseDto): boolean {
+  if (typeof row.canSettle === 'boolean') {
+    return row.canSettle;
+  }
   const plan = computeDaySummarySettlePlan(row);
   return (
     plan.transferMinutes > 0 &&
     plan.totalMinutes < plan.expectedMinutes &&
-    plan.overtimeMinutes > 0
+    plan.overtimeMinutes > 0 &&
+    !row.isSettled &&
+    !row.isFinalized
   );
 }
 
-export function buildSettleDaySummaryPayload(row: DaySummaryResponseDto): SettleDaySummaryDto {
-  const plan = computeDaySummarySettlePlan(row);
-  const notes = row.notes?.trim();
-
-  return {
-    minutes: plan.transferMinutes,
-    ...(notes ? { notes } : {}),
-  };
+export function buildSettleDaySummaryPayload(
+  updatedBy?: string | null,
+): SettleDaySummaryDto {
+  return updatedBy ? { updatedBy } : {};
 }

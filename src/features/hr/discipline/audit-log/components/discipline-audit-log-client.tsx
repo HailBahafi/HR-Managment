@@ -25,10 +25,10 @@ import {
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { DisciplineAuditLogPrintHtml } from '@/components/pdf/print/discipline-audit-log-print-html';
 import {
-  EntityFilterToolbar,
-  type EntityFilterToolbarHandle,
-  type EntityFilterInlineSelect,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+  type ListFilterBarHandle,
+  type ListFilterInlineSelect,
+} from '@/components/ui/list-filter-bar';
 import { useDisciplineDateFilterState } from '@/features/hr/discipline/lib/use-discipline-date-filter-state';
 import {
   DropdownMenu,
@@ -121,7 +121,7 @@ export function DisciplineAuditLogClient() {
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [viewMode, setViewMode] = React.useState<DisciplineViewMode>('list');
   const { dateBounds, dateMeta, setDateBounds, onDateBoundsChange, onDateFilterMetaChange } = useDisciplineDateFilterState();
-  const filterToolbarRef = React.useRef<EntityFilterToolbarHandle>(null);
+  const filterToolbarRef = React.useRef<ListFilterBarHandle>(null);
   const [pdfOpen, setPdfOpen] = React.useState(false);
   const [expandedSnapshots, setExpandedSnapshots] = React.useState<Set<string>>(() => new Set());
 
@@ -161,7 +161,7 @@ export function DisciplineAuditLogClient() {
     + (catFilter !== 'all' ? 1 : 0)
     + (dateRangeActive ? 1 : 0);
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'category',
       value: catFilter,
@@ -233,7 +233,7 @@ export function DisciplineAuditLogClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         ref={filterToolbarRef}
         inlineSelects={inlineSelects}
         empPickerEmployees={actorPickerList}

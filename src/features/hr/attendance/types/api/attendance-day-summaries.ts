@@ -12,17 +12,25 @@ export type DaySummaryDailyTotals = {
   minutes: {
     expected: number;
     total: number;
+    insidePeriods?: number;
+    outsidePeriods?: number;
     late: number;
     earlyLeave: number;
+    earlyArrival?: number;
     overtime: number;
+    payrollOvertime?: number;
     shortage: number;
   };
   display: {
     expected: string;
     total: string;
+    insidePeriods?: string;
+    outsidePeriods?: string;
     late: string;
     earlyLeave: string;
+    earlyArrival?: string;
     overtime: string;
+    payrollOvertime?: string;
     shortage: string;
   };
 };
@@ -43,10 +51,21 @@ export type DaySummaryResponseDto = {
   lateMinutes: number;
   earlyLeaveMinutes: number;
   workedMinutes: number;
+  workedMinutesInsidePeriods?: number;
+  workedMinutesOutsidePeriods?: number;
+  earlyArrivalMinutes?: number;
   overtimeMinutes: number;
+  overtimePayrollAllowed?: boolean;
+  overtimePayrollAllowedAt?: string | null;
+  payrollOvertimeMinutes?: number;
+  canAllowOvertimeForPayroll?: boolean;
   expectedMinutes?: number;
   shortageMinutes?: number;
   dailyTotals?: DaySummaryDailyTotals | null;
+  isSettled?: boolean;
+  settledAt?: string | null;
+  settledMinutes?: number;
+  canSettle?: boolean;
   isManualOverride: boolean;
   isFinalized: boolean;
   notes: string | null;
@@ -112,4 +131,15 @@ export type PushToPayrollResult = {
   inputsCreated: number;
   inputsDeleted: number;
   employeesProcessed: number;
+};
+
+export type SettleDaySummaryDto = {
+  updatedBy?: string | null;
+  notes?: string | null;
+};
+
+export type SetOvertimePayrollAllowedDto = {
+  allowed: boolean;
+  updatedBy?: string | null;
+  notes?: string | null;
 };

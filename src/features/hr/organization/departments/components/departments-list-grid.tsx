@@ -62,9 +62,6 @@ export function DepartmentsListGrid({
                 </DirectoryGridCardEyebrow>
               )}
               <DirectoryGridCardHeading className="text-sm">{dept.nameAr}</DirectoryGridCardHeading>
-              {record.code ? (
-                <p className="mt-0.5 text-[10px] text-muted-foreground" dir="ltr">{record.code}</p>
-              ) : null}
             </div>
 
             {record.description ? (
@@ -78,11 +75,6 @@ export function DepartmentsListGrid({
               {branchName ? (
                 <Badge variant="outline" className="text-[10px] font-normal">{branchName}</Badge>
               ) : null}
-              {record.levelNo > 0 ? (
-                <span className="flex items-center gap-1 text-[10px]">
-                  مستوى {record.levelNo}
-                </span>
-              ) : null}
               {record.managerEmployeeId ? (
                 <span className="text-[10px] text-muted-foreground" dir="ltr">
                   مدير: {record.managerEmployeeId.slice(0, 8)}…
@@ -94,12 +86,7 @@ export function DepartmentsListGrid({
                   {subDepts.length} فرعي
                 </span>
               )}
-              {depth > 0 && (
-                <span className="flex items-center gap-1">
-                  <ChevronRight className="h-3.5 w-3.5" />
-                  عمق {depth + 1}
-                </span>
-              )}
+           
             </DirectoryGridCardMetaChips>
 
             <DirectoryGridCardFooter className="border-border/60 pt-1">

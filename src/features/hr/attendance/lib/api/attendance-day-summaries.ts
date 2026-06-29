@@ -8,6 +8,8 @@ import type {
   PushToPayrollResult,
   RecomputeDto,
   RecomputeResult,
+  SetOvertimePayrollAllowedDto,
+  SettleDaySummaryDto,
   UpdateDaySummaryDto,
 } from '@/features/hr/attendance/types/api/attendance-day-summaries';
 
@@ -20,14 +22,10 @@ export type {
   PushToPayrollResult,
   RecomputeDto,
   RecomputeResult,
+  SetOvertimePayrollAllowedDto,
+  SettleDaySummaryDto,
   UpdateDaySummaryDto,
 } from '@/features/hr/attendance/types/api/attendance-day-summaries';
-
-export type SettleDaySummaryDto = {
-  /** Minutes to transfer from overtime to actual (capped so actual ≤ expected). */
-  minutes?: number;
-  notes?: string | null;
-};
 
 export const attendanceDaySummariesApi = {
   getAll(query?: DaySummaryListQuery) {
@@ -62,5 +60,14 @@ export const attendanceDaySummariesApi = {
       method: 'POST',
       body: payload ?? {},
     });
+  },
+  setOvertimePayrollAllowed(id: string, payload: SetOvertimePayrollAllowedDto) {
+    return apiRequest<DaySummaryResponseDto>(
+      `/attendance/day-summaries/${id}/overtime-payroll-allowed`,
+      {
+        method: 'POST',
+        body: payload,
+      },
+    );
   },
 };

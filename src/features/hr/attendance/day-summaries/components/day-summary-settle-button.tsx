@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowLeftRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
 import { canSettleDaySummary } from '@/features/hr/attendance/day-summaries/utils/day-summary-settle';
@@ -11,6 +12,14 @@ type DaySummarySettleButtonProps = {
 };
 
 export function DaySummarySettleButton({ row, onRequestSettle }: DaySummarySettleButtonProps) {
+  if (row.isSettled) {
+    return (
+      <Badge variant="outline" className="text-[10px] font-normal">
+        مُسوّى
+      </Badge>
+    );
+  }
+
   if (!canSettleDaySummary(row)) {
     return <span className="text-muted-foreground">—</span>;
   }

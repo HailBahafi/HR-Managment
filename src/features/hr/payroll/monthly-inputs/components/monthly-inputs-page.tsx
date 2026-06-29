@@ -11,7 +11,7 @@ import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
-import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar, type ListFilterInlineSelect } from '@/components/ui/list-filter-bar';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { EmptyState } from '@/components/ui/shared-dialogs';
@@ -93,7 +93,7 @@ export function MonthlyInputsPage() {
 
   const [detailRow, setDetailRow] = React.useState<MonthlyInputResponseDto | null>(null);
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'period',
       value: filters.payrollPeriodId,
@@ -155,7 +155,7 @@ export function MonthlyInputsPage() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
         inlineSelects={inlineSelects}

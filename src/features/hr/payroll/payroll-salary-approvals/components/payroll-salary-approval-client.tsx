@@ -24,8 +24,8 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import {
-  EntityFilterToolbar,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+} from '@/components/ui/list-filter-bar';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
@@ -289,7 +289,7 @@ export function PayrollSalaryApprovalClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         statusFilter={statusFilter}
         onStatusFilterChange={v => setStatusFilter(v as StatusFilter)}

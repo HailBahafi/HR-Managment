@@ -17,9 +17,9 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import {
-  EntityFilterToolbar,
-  type EntityFilterInlineSelect,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+  type ListFilterInlineSelect,
+} from '@/components/ui/list-filter-bar';
 import { EMPTY_PERIOD_RANGE } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { cn, formatDisplayDateTime } from '@/shared/utils';
@@ -159,7 +159,7 @@ export function NotificationsAdminClient() {
     [m.employeeOptions],
   );
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'category',
       value: m.filters.category,
@@ -211,7 +211,7 @@ export function NotificationsAdminClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showStatusSection={false}
         showEmployeePicker={false}
         periodValue={m.dateBounds}

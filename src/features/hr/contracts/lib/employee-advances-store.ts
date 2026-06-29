@@ -72,7 +72,7 @@ function mapRepaymentMode(m: RepaymentModeDto | null): HREmployeeAdvanceRepaymen
   return 'by_monthly_amount';
 }
 
-function mapApi(r: EmployeeAdvanceResponseDto): HREmployeeAdvance {
+export function mapEmployeeAdvanceFromApi(r: EmployeeAdvanceResponseDto): HREmployeeAdvance {
   const note = (r.note ?? '').trim();
   const reasonAr = (r.reasonAr ?? r.note ?? '').trim();
   return {
@@ -142,7 +142,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
         advanceDateTo: params?.advanceDateTo,
         limit: 200,
       });
-      set({ items: result.items.map(mapApi), isLoading: false });
+      set({ items: result.items.map(mapEmployeeAdvanceFromApi), isLoading: false });
     } catch (e) {
       set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false });
       throw e;
@@ -169,7 +169,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
     for (let attempt = 0; attempt < CREATE_RETRY_ATTEMPTS; attempt += 1) {
       try {
         const created = await employeeAdvancesApi.create(body);
-        const mapped = mapApi(created);
+        const mapped = mapEmployeeAdvanceFromApi(created);
         set(s => ({ items: [mapped, ...s.items] }));
         return mapped;
       } catch (e) {
@@ -197,7 +197,7 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
       repaymentMonths: patch.repaymentMonths ?? undefined,
       monthlyInstallmentAmount: patch.monthlyInstallmentAmount ?? undefined,
     });
-    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
+    set(s => ({ items: s.items.map(row => row.id === id ? mapEmployeeAdvanceFromApi(updated) : row) }));
     return true;
   },
 
@@ -209,17 +209,17 @@ export const useHREmployeeAdvancesStore = create<State>()((set) => ({
 
   submitForApproval: async (id) => {
     const updated = await employeeAdvancesApi.update(id, { status: 'pending_approval' });
-    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
+    set(s => ({ items: s.items.map(row => row.id === id ? mapEmployeeAdvanceFromApi(updated) : row) }));
   },
 
   approve: async (id, payload) => {
     const updated = await employeeAdvancesApi.decide(id, payload);
-    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
+    set(s => ({ items: s.items.map(row => row.id === id ? mapEmployeeAdvanceFromApi(updated) : row) }));
   },
 
   reject: async (id, payload) => {
     const updated = await employeeAdvancesApi.decide(id, payload);
-    set(s => ({ items: s.items.map(row => row.id === id ? mapApi(updated) : row) }));
+    set(s => ({ items: s.items.map(row => row.id === id ? mapEmployeeAdvanceFromApi(updated) : row) }));
   },
 }));
 

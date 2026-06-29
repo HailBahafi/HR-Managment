@@ -7,7 +7,7 @@ import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { PermissionGate } from '@/components/shared/permission-gate';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
@@ -314,7 +314,7 @@ export function useDepartmentsDirectoryModel() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
         showEmployeePicker={false}

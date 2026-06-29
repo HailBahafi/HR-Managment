@@ -12,9 +12,9 @@ import {
 
 import { Button } from '@/components/ui/button';
 import {
-  EntityFilterToolbar,
-  type EntityFilterInlineSelect,
-} from '@/components/ui/entity-filter-toolbar';
+  ListFilterBar,
+  type ListFilterInlineSelect,
+} from '@/components/ui/list-filter-bar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,7 +97,7 @@ export function PayrollMultiPeriodExplorer() {
     [sortedPeriods],
   );
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'period',
       value: selectedId ?? '',
@@ -110,7 +110,7 @@ export function PayrollMultiPeriodExplorer() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
         inlineSelects={inlineSelects}

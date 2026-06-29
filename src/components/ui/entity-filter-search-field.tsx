@@ -13,7 +13,7 @@ type Props = {
   inputClassName?: string;
 };
 
-/** Search field sized for `EntityFilterToolbar` `leadingFilters`. */
+/** Search field sized for `ListFilterBar` `leadingFilters`. */
 export function EntityFilterSearchField({
   value,
   onChange,

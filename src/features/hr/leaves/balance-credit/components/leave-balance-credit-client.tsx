@@ -18,7 +18,7 @@ import {
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { EntityFilterToolbar } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { cn, toWesternDigits } from '@/shared/utils';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
 import { AR_LEAVE_BALANCE_CREDIT_STATUS_LABELS } from '@/shared/i18n/ar';
@@ -66,7 +66,7 @@ export function LeaveBalanceCreditClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
         inlineSelects={[
           { id: 'branch', value: m.branchId, onChange: m.setBranchId, placeholder: 'الفرع', options: m.branchInlineOptions },
           { id: 'dept', value: m.departmentId, onChange: m.setDepartmentId, placeholder: 'القسم', options: m.deptInlineOptions },

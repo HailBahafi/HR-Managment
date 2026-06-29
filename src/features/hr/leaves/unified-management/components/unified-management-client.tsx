@@ -17,8 +17,13 @@ import { SingleDatePicker } from '@/components/ui/single-date-picker';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
-import { EntityFilterToolbar, type EntityFilterInlineSelect } from '@/components/ui/entity-filter-toolbar';
+import { ListFilterBar, type ListFilterInlineSelect } from '@/components/ui/list-filter-bar';
 import { intervalOverlapsYmdRange } from '@/features/hr/discipline/lib/discipline-date-filter';
+import {
+  hrFiltersKey,
+  usePersistedEmpIdSet,
+  usePersistedFilterState,
+} from '@/features/hr/lib/use-persisted-filter-state';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
   dialogFormFooterClass,
@@ -418,10 +423,22 @@ export function UnifiedManagementClient() {
     setFilterEmpActivated(false);
   }, [companyId]);
 
-  const [branchId, setBranchId] = React.useState('all');
-  const [departmentId, setDepartmentId] = React.useState('all');
-  const [leaveType, setLeaveType] = React.useState<string>('all');
-  const [approvalStageFilter, setApprovalStageFilter] = React.useState<string>('all');
+  const [branchId, setBranchId] = usePersistedFilterState(
+    hrFiltersKey('requests', 'unified-management', companyId, 'branchId'),
+    'all',
+  );
+  const [departmentId, setDepartmentId] = usePersistedFilterState(
+    hrFiltersKey('requests', 'unified-management', companyId, 'departmentId'),
+    'all',
+  );
+  const [leaveType, setLeaveType] = usePersistedFilterState(
+    hrFiltersKey('requests', 'unified-management', companyId, 'leaveType'),
+    'all',
+  );
+  const [approvalStageFilter, setApprovalStageFilter] = usePersistedFilterState(
+    hrFiltersKey('requests', 'unified-management', companyId, 'approvalStageFilter'),
+    'all',
+  );
 
   const handleBranchChange = React.useCallback((v: string) => {
     setBranchId(v);
@@ -463,7 +480,7 @@ export function UnifiedManagementClient() {
     [],
   );
 
-  const inlineSelects = React.useMemo((): EntityFilterInlineSelect[] => [
+  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
       id: 'branch',
       value: branchId,
@@ -515,9 +532,17 @@ export function UnifiedManagementClient() {
     stageInlineOptions,
   ]);
 
-  const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = React.useState<string>('all');
-  const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
+  const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
+    hrFiltersKey('requests', 'unified-management', companyId, 'selectedEmpIds'),
+  );
+  const [statusFilter, setStatusFilter] = usePersistedFilterState(
+    hrFiltersKey('requests', 'unified-management', companyId, 'statusFilter'),
+    'all',
+  );
+  const [dateBounds, setDateBounds] = usePersistedFilterState(
+    hrFiltersKey('requests', 'unified-management', companyId, 'dateBounds'),
+    { from: '', to: '' },
+  );
 
   const empPickerList = React.useMemo(
     () => (filterEmpActivated ? employeesList.map((e) => ({ id: e.id, name: e.nameAr })) : []),
@@ -538,7 +563,10 @@ export function UnifiedManagementClient() {
     employeeIds: [...selectedEmpIds],
   };
 
-  const [view, setView] = React.useState<'table' | 'card'>('table');
+  const [view, setView] = usePersistedFilterState<'table' | 'card'>(
+    hrFiltersKey('requests', 'unified-management', companyId, 'view'),
+    'table',
+  );
   const [detailLeave, setDetailLeave] = React.useState<UnifiedLeaveRecord | null>(null);
   const [addOpen, setAddOpen] = React.useState(false);
   const [editLeave, setEditLeave] = React.useState<UnifiedLeaveRecord | null>(null);
@@ -728,7 +756,10 @@ export function UnifiedManagementClient() {
 
   useEntityFilterSlot(
     () => (
-      <EntityFilterToolbar
+      <ListFilterBar
+        optionalDateRange
+        periodValue={dateBounds}
+        onPeriodChange={setDateBounds}
         inlineSelects={inlineSelects}
         empPickerEmployees={empPickerList}
         selectedEmpIds={selectedEmpIds}
