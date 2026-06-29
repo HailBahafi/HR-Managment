@@ -145,11 +145,6 @@ export function AttendanceCorrectionRequestsClient() {
     [departments],
   );
 
-  const empPickerList = React.useMemo(
-    () => activeEmployees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [activeEmployees],
-  );
-
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
   const bulkMode = appliedDept !== 'all' || selectedEmpIds.size > 1;
 
@@ -356,7 +351,7 @@ export function AttendanceCorrectionRequestsClient() {
             options: deptOptions,
           },
         ]}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
@@ -386,7 +381,7 @@ export function AttendanceCorrectionRequestsClient() {
       statusCounts.approved,
       statusCounts.rejected,
       deptOptions,
-      empPickerList,
+      companyId,
       viewMode,
     ],
   );

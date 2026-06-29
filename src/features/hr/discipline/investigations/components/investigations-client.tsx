@@ -124,11 +124,6 @@ export function InvestigationsClient() {
     setDateMeta(meta);
   }, []);
 
-  const empPickerList = React.useMemo(
-    () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [m.employees],
-  );
-
   React.useEffect(() => {
     setListFilters({
       selectedEmpIds: [...selectedEmpIds],
@@ -470,7 +465,7 @@ export function InvestigationsClient() {
         ref={filterToolbarRef}
         defaultDateFilterTab="all"
         inlineSelects={inlineSelects}
-        empPickerEmployees={empPickerList}
+        companyId={m.companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={resultFilter}
@@ -491,7 +486,7 @@ export function InvestigationsClient() {
       />
     ),
     [
-      empPickerList,
+      m.companyId,
       selectedEmpIds,
       resultFilter,
       recommendationFilter,

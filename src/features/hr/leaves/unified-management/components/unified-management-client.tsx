@@ -355,7 +355,6 @@ export function UnifiedManagementClient() {
   const employeesLoadRef = React.useRef<Promise<EmployeeResponseDto[]> | null>(null);
   const [employeesList, setEmployeesList] = React.useState<EmployeeResponseDto[]>([]);
   const [employeesLoading, setEmployeesLoading] = React.useState(false);
-  const [filterEmpActivated, setFilterEmpActivated] = React.useState(false);
 
   const loadEmployees = React.useCallback(async (): Promise<EmployeeResponseDto[]> => {
     if (!companyId) return [];
@@ -380,12 +379,6 @@ export function UnifiedManagementClient() {
     })();
     return employeesLoadRef.current;
   }, [companyId]);
-
-  const loadFilterEmployees = React.useCallback(() => {
-    if (!companyId) return;
-    setFilterEmpActivated(true);
-    void loadEmployees();
-  }, [companyId, loadEmployees]);
 
   const ensureAddDialogData = React.useCallback(async () => {
     if (!companyId) return;
@@ -420,7 +413,6 @@ export function UnifiedManagementClient() {
     setLeaveTypes([]);
     setLeaveRequestTypes([]);
     setEmployeesList([]);
-    setFilterEmpActivated(false);
   }, [companyId]);
 
   const [branchId, setBranchId] = usePersistedFilterState(
@@ -542,11 +534,6 @@ export function UnifiedManagementClient() {
   const [dateBounds, setDateBounds] = usePersistedFilterState(
     hrFiltersKey('requests', 'unified-management', companyId, 'dateBounds'),
     { from: '', to: '' },
-  );
-
-  const empPickerList = React.useMemo(
-    () => (filterEmpActivated ? employeesList.map((e) => ({ id: e.id, name: e.nameAr })) : []),
-    [filterEmpActivated, employeesList],
   );
 
   const employeeById = React.useMemo(
@@ -761,7 +748,7 @@ export function UnifiedManagementClient() {
         periodValue={dateBounds}
         onPeriodChange={setDateBounds}
         inlineSelects={inlineSelects}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
@@ -770,8 +757,6 @@ export function UnifiedManagementClient() {
         statusLabels={LEAVE_STATUS_LABELS_FOR_TOOLBAR}
         statusCounts={statusCounts}
         onDateBoundsChange={setDateBounds}
-        onEmployeePickerOpen={loadFilterEmployees}
-        employeePickerLoading={filterEmpActivated && employeesLoading}
         dataView={{
           value: view,
           onChange: (v) => setView(v as 'table' | 'card'),
@@ -787,7 +772,7 @@ export function UnifiedManagementClient() {
       statusFilter, selectedEmpKey,
       dateBounds.from, dateBounds.to,
       statusCounts.all, statusCounts.pending, statusCounts.approved, statusCounts.rejected, statusCounts.cancelled,
-      view, empPickerList, inlineSelects, loadFilterEmployees, filterEmpActivated, employeesLoading,
+      view, companyId, inlineSelects,
     ],
   );
 

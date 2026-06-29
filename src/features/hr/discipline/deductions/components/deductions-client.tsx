@@ -90,11 +90,6 @@ export function DeductionsClient() {
     });
   }, [selectedEmpIds, statusFilter, kindFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
-  const empPickerList = React.useMemo(
-    () => m.employees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [m.employees],
-  );
-
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
   const dateFiltered = dateFilteredItems;
@@ -213,7 +208,7 @@ export function DeductionsClient() {
         primaryActionLabel=""
         onPrimaryAction={() => {}}
         beforeEmployeePicker={kindSelect}
-        empPickerEmployees={empPickerList}
+        companyId={m.companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
@@ -228,7 +223,7 @@ export function DeductionsClient() {
       />
     ),
     [
-      empPickerList,
+      m.companyId,
       selectedEmpKey,
       statusFilter,
       kindFilter,

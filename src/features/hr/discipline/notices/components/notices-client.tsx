@@ -61,7 +61,7 @@ const EMPTY: DraftForm = { employeeId: '', kind: 'verbal', reasonAr: '', date: '
 
 export function NoticesClient() {
   const hook = useDisciplineNoticesDirectoryModel();
-  const { employees, cases, loading, listError, createNotice, deleteNotice, setListFilters, items, pagination, filteredItems, dateFilteredItems, sourceNotices } = hook;
+  const { employees, cases, loading, listError, createNotice, deleteNotice, setListFilters, items, pagination, filteredItems, dateFilteredItems, sourceNotices, companyId } = hook;
 
   const { data: defaultCompany } = useDefaultCompany();
   const companyNameAr = defaultCompany?.nameAr ?? '';
@@ -82,11 +82,6 @@ export function NoticesClient() {
   const onDateFilterMetaChange = React.useCallback((meta: { tab: DateFilterTab; hasRestriction: boolean }) => {
     setDateMeta(meta);
   }, []);
-
-  const empPickerList = React.useMemo(
-    () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [employees],
-  );
 
   React.useEffect(() => {
     setListFilters({
@@ -277,7 +272,7 @@ export function NoticesClient() {
       <ListFilterBar
         ref={filterToolbarRef}
         defaultDateFilterTab="all"
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={kindFilter}
@@ -297,7 +292,7 @@ export function NoticesClient() {
         }}
       />
     ),
-    [empPickerList, selectedEmpIds, kindFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
+    [companyId, selectedEmpIds, kindFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
   );
 
   if (loading) {

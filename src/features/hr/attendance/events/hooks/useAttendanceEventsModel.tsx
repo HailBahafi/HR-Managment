@@ -177,11 +177,6 @@ export function useAttendanceEventsModel() {
     }
   }, [reload]);
 
-  const allEmployeesForPicker = React.useMemo(
-    () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [employees],
-  );
-
   const defaultPeriod = React.useMemo(() => {
     const today = todayYMD();
     return { from: today, to: today };
@@ -254,7 +249,7 @@ export function useAttendanceEventsModel() {
         onPeriodChange={onPeriodChange}
         defaultPeriod={defaultPeriod}
         onPeriodFilterClear={onPeriodFilterClear}
-        empPickerEmployees={allEmployeesForPicker}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         inlineSelects={inlineSelects}
@@ -268,7 +263,7 @@ export function useAttendanceEventsModel() {
       to,
       periodFilterActive,
       onPeriodFilterClear,
-      allEmployeesForPicker,
+      companyId,
       inlineSelects,
       onPeriodChange,
     ],

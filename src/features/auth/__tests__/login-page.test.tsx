@@ -163,11 +163,24 @@ describe('LoginPage', () => {
   });
 
   it('shows wrong-credentials toast on 401 without redirect', async () => {
+    const { handleApiError: realHandleApiError } = jest.requireActual<
+      typeof import('@/features/hr/lib/api/global-error-handler')
+    >('@/features/hr/lib/api/global-error-handler');
     const { handleApiError } = await import('@/features/hr/lib/api/global-error-handler');
     const { toast } = await import('sonner');
-    const err401 = new ApiError(null, 401);
-    (handleApiError as jest.Mock).mockReturnValueOnce({ status: 401, displayMessage: 'Unauthorized', debugPayload: null, envelope: null });
-    mockLogin.mockRejectedValueOnce(err401);
+    (handleApiError as jest.Mock).mockImplementationOnce(realHandleApiError);
+
+    mockLogin.mockRejectedValueOnce(
+      new ApiError(
+        {
+          status: 401,
+          message: 'Invalid email or password',
+          data: null,
+          error: { message: 'Invalid email or password', error: 'Unauthorized', statusCode: 401 },
+        },
+        401,
+      ),
+    );
 
     renderLoginPage();
     await fillLoginForm();

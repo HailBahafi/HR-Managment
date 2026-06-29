@@ -25,6 +25,8 @@ import {
 } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { DateRangeFilterTrigger } from '@/components/ui/date-range-filter-trigger';
 import { SelectWithClear } from '@/components/ui/select-with-clear';
+import { useEmployeeFilterPicker } from '@/features/hr/lib/use-employee-filter-picker';
+import type { EmployeePickerOption } from '@/components/ui/employee-picker';
 
 export type PeriodRange = { from: string; to: string };
 
@@ -76,7 +78,7 @@ export type ListFilterInlineSelect = {
   onOpen?: () => void;
 };
 
-const EMPTY_EMP_PICKER_LIST: { id: string; name: string }[] = [];
+const EMPTY_EMP_PICKER_LIST: EmployeePickerOption[] = [];
 const EMPTY_SELECTED_EMP_IDS = new Set<string>();
 const EMPTY_STATUS_ORDER_LIST: readonly string[] = [];
 const EMPTY_STATUS_LABELS: Record<string, string> = {};
@@ -101,7 +103,9 @@ function DataViewIcon({ name }: { name?: ListDataViewIcon }) {
 }
 
 export interface ListFilterBarProps {
-  empPickerEmployees?: { id: string; name: string }[];
+  /** When set and `empPickerEmployees` is omitted, loads the company employee list (attendance daily UX). */
+  companyId?: string | null;
+  empPickerEmployees?: EmployeePickerOption[];
   selectedEmpIds?: Set<string>;
   onSelectedEmpIdsChange?: (s: Set<string>) => void;
   onEmployeePickerOpen?: () => void;
@@ -141,7 +145,8 @@ export interface ListFilterBarProps {
 export const ListFilterBar = React.forwardRef<ListFilterBarHandle, ListFilterBarProps>(
   function ListFilterBar(
     {
-      empPickerEmployees = EMPTY_EMP_PICKER_LIST,
+      companyId,
+      empPickerEmployees,
       selectedEmpIds = EMPTY_SELECTED_EMP_IDS,
       onSelectedEmpIdsChange = noopSetEmp,
       onEmployeePickerOpen,
@@ -173,6 +178,12 @@ export const ListFilterBar = React.forwardRef<ListFilterBarHandle, ListFilterBar
     },
     ref,
   ) {
+    const autoEmployeePicker = useEmployeeFilterPicker(
+      empPickerEmployees === undefined ? companyId : null,
+    );
+    const resolvedEmpPickerEmployees = empPickerEmployees ?? autoEmployeePicker.employees;
+    const resolvedEmployeePickerLoading = employeePickerLoading || autoEmployeePicker.loading;
+
     const emptyPeriod = React.useMemo<PeriodRange>(() => ({ from: '', to: '' }), []);
 
     const resolvedDefaultPeriod = React.useMemo(
@@ -310,10 +321,10 @@ export const ListFilterBar = React.forwardRef<ListFilterBarHandle, ListFilterBar
         {beforeEmployeePicker}
         {showEmployeePicker ? (
           <EmployeePicker
-            employees={empPickerEmployees}
+            employees={resolvedEmpPickerEmployees}
             selected={selectedEmpIds}
             onChange={onSelectedEmpIdsChange}
-            loading={employeePickerLoading}
+            loading={resolvedEmployeePickerLoading}
             onRequestLoad={onEmployeePickerOpen}
           />
         ) : null}

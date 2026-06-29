@@ -8,7 +8,9 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { ListFilterBar } from '@/components/ui/list-filter-bar';
-import { PermissionGate } from '@/components/shared/permission-gate';
+import { Can } from '@/components/shared/can';
+import { usePagePermissions } from '@/features/auth/permissions';
+import { CONTACTS_PAGE_PERMISSIONS } from '@/features/hr/organization/contacts/permissions';
 import { branchesApi } from '@/features/hr/organization/lib/api/branches';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -60,6 +62,9 @@ export function useContactsDirectoryModel() {
     descriptionAr: 'حسابات مستخدمي النظام — ربط الشركات والفروع والصلاحيات.',
     iconName: 'UserCircle',
   });
+
+  const perms = usePagePermissions(CONTACTS_PAGE_PERMISSIONS);
+  const accessDenied = !perms.canRead;
 
   const defaultCompanyId = useDefaultCompanyId();
   const { data: defaultCompany } = useDefaultCompany();
@@ -139,6 +144,7 @@ export function useContactsDirectoryModel() {
   }, []);
 
   const openCreate = React.useCallback(() => {
+    if (!perms.canCreate) return;
     setEditId(null);
     setForm({
       ...EMPTY_USER_FORM,
@@ -146,14 +152,15 @@ export function useContactsDirectoryModel() {
     });
     setError(null);
     setDrawerOpen(true);
-  }, [defaultCompanyId]);
+  }, [defaultCompanyId, perms.canCreate]);
 
   const openEdit = React.useCallback((row: UserRecord) => {
+    if (!perms.canUpdate) return;
     setEditId(row.id);
     setForm(userToDraftForm(row));
     setError(null);
     setDrawerOpen(true);
-  }, []);
+  }, [perms.canUpdate]);
 
   const branchesForDefault = React.useMemo(() => branches, [branches]);
 
@@ -173,6 +180,7 @@ export function useContactsDirectoryModel() {
   }), [defaultCompanyId, form]);
 
   const handleSave = React.useCallback(async () => {
+    if (editId ? !perms.canUpdate : !perms.canCreate) return;
     if (!form.email.trim()) { setError('البريد الإلكتروني مطلوب'); return; }
     if (!editId && !form.password.trim()) { setError('كلمة المرور مطلوبة'); return; }
     if (!defaultCompanyId && !editId) {
@@ -206,10 +214,10 @@ export function useContactsDirectoryModel() {
     } finally {
       setSaving(false);
     }
-  }, [buildPayloadBase, defaultCompanyId, editId, form.password, reloadList]);
+  }, [buildPayloadBase, defaultCompanyId, editId, form.password, perms.canCreate, perms.canUpdate, reloadList]);
 
   const handleDelete = React.useCallback(async () => {
-    if (!confirmId) return;
+    if (!confirmId || !perms.canDelete) return;
     try {
       await usersApi.remove(confirmId);
       await reloadList();
@@ -221,20 +229,20 @@ export function useContactsDirectoryModel() {
       toast.error(displayMessage);
       setConfirmId(null);
     }
-  }, [confirmId, reloadList, viewRow?.id]);
+  }, [confirmId, perms.canDelete, reloadList, viewRow?.id]);
 
   usePageHeaderActions(
     () => (
       <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton />
-        <PermissionGate permission="hr.employees.create">
+        <Can when={perms.canCreate}>
           <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
             <Plus className="h-4 w-4" /> مستخدم جديد
           </Button>
-        </PermissionGate>
+        </Can>
       </div>
     ),
-    [openCreate],
+    [openCreate, perms.canCreate],
   );
 
   useEntityFilterSlot(
@@ -267,6 +275,8 @@ export function useContactsDirectoryModel() {
   );
 
   return {
+    perms,
+    accessDenied,
     users: pagedUsers,
     companies,
     branches,

@@ -180,11 +180,6 @@ export function useEmployeesListModel() {
     [departments],
   );
 
-  const empPickerList = React.useMemo(
-    () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [employees],
-  );
-
   // Server handles filters; bulkMode applies multi-employee picker client-side
   const filtered = React.useMemo(
     () => (bulkMode ? pagedEmployees : (
@@ -357,7 +352,7 @@ export function useEmployeesListModel() {
             options: deptSelectOptions,
           },
         ]}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={toolbarStatus}
@@ -380,7 +375,7 @@ export function useEmployeesListModel() {
       branchFilter, deptFilter, view, toolbarStatus, selectedEmpKey,
       contractStatusCounts.all, contractStatusCounts.active,
       contractStatusCounts.suspended, contractStatusCounts.ended,
-      empPickerList, branchSelectOptions, deptSelectOptions,
+      companyId, branchSelectOptions, deptSelectOptions,
     ],
   );
 

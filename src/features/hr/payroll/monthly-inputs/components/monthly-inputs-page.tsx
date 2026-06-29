@@ -15,7 +15,6 @@ import { ListFilterBar, type ListFilterInlineSelect } from '@/components/ui/list
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { EmptyState } from '@/components/ui/shared-dialogs';
-import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import type { MonthlyInputResponseDto } from '@/features/hr/payroll/lib/api/monthly-inputs';
 import {
   MONTHLY_INPUT_DIRECTION_LABELS,
@@ -27,6 +26,7 @@ import {
   formatPayrollPeriodLabel,
 } from '@/features/hr/payroll/monthly-inputs/constants/monthly-input-labels';
 import { useMonthlyInputsDirectoryModel } from '@/features/hr/payroll/monthly-inputs/hooks/useMonthlyInputsDirectoryModel';
+import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { TableDateCell } from '@/components/ui/table-cells';
 import { cn } from '@/shared/utils';
 
@@ -81,15 +81,7 @@ export function MonthlyInputsPage() {
     activeFilterCount, clearFilters,
   } = useMonthlyInputsDirectoryModel();
 
-  const { employees: allEmployees, fetch: fetchEmployees } = useHREmployeeDirectoryStore();
-  React.useEffect(() => {
-    if (allEmployees.length === 0) void fetchEmployees();
-  }, [allEmployees.length, fetchEmployees]);
-
-  const empPickerList = React.useMemo(
-    () => allEmployees.filter((e) => e.status === 'active').map((e) => ({ id: e.id, name: e.nameAr })),
-    [allEmployees],
-  );
+  const companyId = useDefaultCompanyId();
 
   const [detailRow, setDetailRow] = React.useState<MonthlyInputResponseDto | null>(null);
 
@@ -159,13 +151,13 @@ export function MonthlyInputsPage() {
         showDateSection={false}
         showStatusSection={false}
         inlineSelects={inlineSelects}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         onDateBoundsChange={() => {}}
       />
     ),
-    [inlineSelects, empPickerList, selectedEmpIds, setSelectedEmpIds],
+    [inlineSelects, companyId, selectedEmpIds, setSelectedEmpIds],
   );
 
   usePageHeaderActions(

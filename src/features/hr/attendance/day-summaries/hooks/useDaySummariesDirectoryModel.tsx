@@ -9,7 +9,7 @@ import {
   type AttendanceDayStatus,
   type DaySummaryResponseDto,
 } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
-import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
+import { useEmployeeFilterPicker } from '@/features/hr/lib/use-employee-filter-picker';
 import {
   DAY_SUMMARY_STATUS_LABELS,
   DAY_SUMMARY_STATUS_ORDER,
@@ -56,7 +56,11 @@ export function useDaySummariesDirectoryModel() {
   const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
     attendanceFiltersKey('day-summaries', companyId, 'selectedEmpIds'),
   );
-  const [allEmployees, setAllEmployees] = React.useState<{ id: string; name: string }[]>([]);
+  const { employees: pickerEmployees } = useEmployeeFilterPicker(companyId);
+  const allEmployees = React.useMemo(
+    () => pickerEmployees.map((e) => ({ id: e.id, name: e.name })),
+    [pickerEmployees],
+  );
   const [recomputeOpen, setRecomputeOpen] = React.useState(false);
   const pageEnterRecomputeDone = React.useRef(false);
 
@@ -67,24 +71,6 @@ export function useDaySummariesDirectoryModel() {
       isManualOverride: 'all',
     },
   );
-
-  React.useEffect(() => {
-    if (!companyId) {
-      setAllEmployees([]);
-      return;
-    }
-    void employeesApi
-      .getAll({ companyId, limit: 500 })
-      .then((res) => {
-        setAllEmployees(res.items.map((e) => ({ id: e.id, name: e.nameAr })));
-      })
-      .catch((err) => {
-        handleApiError(err, 'day-summaries.employees');
-        setAllEmployees([]);
-      });
-  }, [companyId]);
-
-  const empPickerList = React.useMemo(() => allEmployees, [allEmployees]);
 
   const defaultPeriod = React.useMemo(() => {
     const ym = currentYearMonth();
@@ -233,7 +219,7 @@ export function useDaySummariesDirectoryModel() {
         onPeriodChange={onPeriodChange}
         defaultPeriod={defaultPeriod}
         onPeriodFilterClear={onPeriodFilterClear}
-        empPickerEmployees={empPickerList}
+        empPickerEmployees={pickerEmployees}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         inlineSelects={inlineSelects}
@@ -246,7 +232,7 @@ export function useDaySummariesDirectoryModel() {
       filters.status,
       filters.isManualOverride,
       selectedEmpKey,
-      empPickerList,
+      pickerEmployees,
       inlineSelects,
       onPeriodChange,
       onPeriodFilterClear,

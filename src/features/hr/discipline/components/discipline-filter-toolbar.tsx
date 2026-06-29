@@ -29,7 +29,10 @@ export interface DisciplineFilterToolbarProps {
   onPrimaryAction: () => void;
   primaryActionIcon?: React.ReactNode;
 
-  empPickerEmployees: { id: string; name: string }[];
+  /** Loads the standard employee picker when `empPickerEmployees` is omitted. */
+  companyId?: string | null;
+  /** Override picker options (e.g. audit log actors). */
+  empPickerEmployees?: { id: string; name: string }[];
   selectedEmpIds: Set<string>;
   onSelectedEmpIdsChange: (s: Set<string>) => void;
 
@@ -64,6 +67,7 @@ export const DisciplineFilterToolbar = React.forwardRef<
     primaryActionLabel,
     onPrimaryAction,
     primaryActionIcon,
+    companyId,
     empPickerEmployees,
     selectedEmpIds,
     onSelectedEmpIdsChange,
@@ -87,6 +91,7 @@ export const DisciplineFilterToolbar = React.forwardRef<
   return (
     <ListFilterBar
       ref={ref}
+      companyId={companyId}
       empPickerEmployees={empPickerEmployees}
       selectedEmpIds={selectedEmpIds}
       onSelectedEmpIdsChange={onSelectedEmpIdsChange}

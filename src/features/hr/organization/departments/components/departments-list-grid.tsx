@@ -25,6 +25,8 @@ type DepartmentsListGridProps = {
   filtered: FlatNode[];
   branchLabel?: (branchId: string) => string | undefined;
   companyLabel?: (companyId: string) => string;
+  canUpdate?: boolean;
+  canDelete?: boolean;
   onEdit: (dept: HRDepartmentEntity) => void;
   onDelete: (id: string) => void;
 };
@@ -34,6 +36,8 @@ export function DepartmentsListGrid({
   filtered,
   branchLabel,
   companyLabel,
+  canUpdate = false,
+  canDelete = false,
   onEdit,
   onDelete,
 }: DepartmentsListGridProps) {
@@ -45,7 +49,13 @@ export function DepartmentsListGrid({
         const subDepts = departments.filter((d) => d.parentId === dept.id);
         const branchName = branchLabel?.(record.branchId);
         return (
-          <DirectoryGridCard key={dept.id} interactive hoverLift onClick={() => onEdit(dept)} className="p-3.5 space-y-1.5">
+          <DirectoryGridCard
+            key={dept.id}
+            interactive={canUpdate}
+            hoverLift={canUpdate}
+            onClick={canUpdate ? () => onEdit(dept) : undefined}
+            className="p-3.5 space-y-1.5"
+          >
             <DirectoryGridCardDecoration />
             <div className="relative mb-2 flex items-start justify-between">
               <DirectoryGridCardIconWrap active={dept.isActive} className="h-7 w-7">
@@ -90,30 +100,34 @@ export function DepartmentsListGrid({
             </DirectoryGridCardMetaChips>
 
             <DirectoryGridCardFooter className="border-border/60 pt-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(dept);
-                }}
-                aria-label="تعديل"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(dept.id);
-                }}
-                aria-label="حذف"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {canUpdate ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(dept);
+                  }}
+                  aria-label="تعديل"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              ) : null}
+              {canDelete ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(dept.id);
+                  }}
+                  aria-label="حذف"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              ) : null}
             </DirectoryGridCardFooter>
           </DirectoryGridCard>
         );

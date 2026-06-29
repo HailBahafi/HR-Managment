@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +16,11 @@ import {
   persistLoginBranding,
   useLoginPageBranding,
 } from '@/features/auth/hooks/use-default-company-branding';
+import {
+  buildAuthFlowHref,
+  readAuthFlowEmailFromParams,
+} from '@/features/auth/hooks/use-auth-flow-email';
+import { AUTH_SUCCESS_TOAST } from '@/features/auth/lib/auth-api-messages';
 import { authApi } from '@/features/auth/lib/api/auth';
 import { setAccessTokenCookie } from '@/features/auth/lib/auth-cookie';
 import {
@@ -68,6 +74,7 @@ export function LoginPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -76,11 +83,21 @@ export function LoginPage() {
 
   React.useEffect(() => {
     let cancelled = false;
+    const fromUrl =
+      typeof window !== 'undefined'
+        ? readAuthFlowEmailFromParams(new URLSearchParams(window.location.search))
+        : '';
+
+    if (fromUrl) {
+      setValue('email', fromUrl, { shouldDirty: false });
+    }
 
     void (async () => {
       const saved = await loadBrowserSavedCredentials();
       if (cancelled || !saved) return;
-      setValue('email', saved.email, { shouldDirty: false });
+      if (!fromUrl) {
+        setValue('email', saved.email, { shouldDirty: false });
+      }
       setValue('password', saved.password, { shouldDirty: false });
     })();
 
@@ -92,6 +109,7 @@ export function LoginPage() {
   const appTitle = publicConfig.appName.trim() || 'نظام الموارد البشرية';
   const { logoUrl, logoAlt, companyNameAr } = useLoginPageBranding();
   const welcomeTitle = hydrated ? (companyNameAr || appTitle) : appTitle;
+  const draftEmail = watch('email');
 
   const onSubmit = async (values: FormValues) => {
     if (!publicConfig.apiUrl) {
@@ -122,12 +140,12 @@ export function LoginPage() {
       await storeBrowserCredentials(email, values.password);
 
       const destination = resolvePostLoginPath(getReturnToFromLocation());
-      window.location.assign(destination);
+      toast.success(AUTH_SUCCESS_TOAST.login);
+      window.setTimeout(() => {
+        window.location.assign(destination);
+      }, 400);
     } catch (err) {
-      const { status } = handleApiError(err, 'auth.login', { suppressRedirect: true });
-      if (status === 401) {
-        toast.error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-      }
+      handleApiError(err, 'auth.login', { suppressRedirect: true });
     } finally {
       setLoading(false);
     }
@@ -192,9 +210,17 @@ export function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                  كلمة المرور
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                    كلمة المرور
+                  </Label>
+                  <Link
+                    href={buildAuthFlowHref('/login/forgot-password', draftEmail)}
+                    className="text-xs font-medium text-primary transition-colors hover:underline"
+                  >
+                    نسيت كلمة المرور؟
+                  </Link>
+                </div>
                 <div className="relative">
                   <Lock className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
                   <Input
@@ -234,6 +260,16 @@ export function LoginPage() {
               >
                 {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
               </Button>
+
+              <p className="text-center text-xs text-muted-foreground">
+                حسابك غير مفعّل؟{' '}
+                <Link
+                  href={buildAuthFlowHref('/login/activate', draftEmail)}
+                  className="font-medium text-primary hover:underline"
+                >
+                  تفعيل الحساب
+                </Link>
+              </p>
             </form>
           )}
         </div>

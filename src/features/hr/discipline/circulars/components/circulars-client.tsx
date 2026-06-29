@@ -157,7 +157,7 @@ export function CircularsClient() {
             />
           </div>
         )}
-        empPickerEmployees={empPickerList}
+        companyId={m.companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={audienceFilter}
@@ -171,7 +171,7 @@ export function CircularsClient() {
         onDateFilterMetaChange={onDateFilterMetaChange}
       />
     ),
-    [q, empPickerList, selectedEmpIds, audienceFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
+    [q, m.companyId, selectedEmpIds, audienceFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
   );
 
   const set = (patch: Partial<DraftForm>) => setDraft((d) => ({ ...d, ...patch }));

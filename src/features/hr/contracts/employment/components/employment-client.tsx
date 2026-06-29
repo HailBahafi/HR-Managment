@@ -103,17 +103,6 @@ export function EmploymentContractsClient() {
   } = useHREmployeeDirectoryStore();
   const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
 
-  const [filterEmpActivated, setFilterEmpActivated] = React.useState(false);
-
-  const loadFilterEmployees = React.useCallback(() => {
-    if (!companyId) return;
-    setFilterEmpActivated(true);
-    const { employees: cached, isLoading, loadedCompanyId } = useHREmployeeDirectoryStore.getState();
-    if (loadedCompanyId === companyId && cached.length > 0) return;
-    if (isLoading) return;
-    void fetchEmployees();
-  }, [companyId, fetchEmployees]);
-
   const ensureFormEmployeesLoaded = React.useCallback(() => {
     if (!companyId) return;
     const emps = useHREmployeeDirectoryStore.getState();
@@ -177,11 +166,6 @@ export function EmploymentContractsClient() {
   );
 
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
-
-  const empPickerList = React.useMemo(
-    () => (filterEmpActivated ? allEmployees.map((e) => ({ id: e.id, name: e.nameAr })) : []),
-    [filterEmpActivated, allEmployees],
-  );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
   const bulkMode = selectedEmpIds.size > 1;
@@ -685,11 +669,9 @@ export function EmploymentContractsClient() {
     () => (
       <ListFilterBar
         showDateSection={false}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
-        onEmployeePickerOpen={loadFilterEmployees}
-        employeePickerLoading={filterEmpActivated && employeesLoading}
         statusFilter={statusFilter}
         onStatusFilterChange={handleStatusFilterChange}
         statusOrder={employmentStatusOrder}
@@ -705,13 +687,10 @@ export function EmploymentContractsClient() {
       archiveScope,
       selectedEmpKey,
       statusCounts,
-      empPickerList,
+      companyId,
       employmentStatusOrder,
       employmentInlineSelects,
       handleStatusFilterChange,
-      loadFilterEmployees,
-      filterEmpActivated,
-      employeesLoading,
     ],
   );
 

@@ -393,11 +393,6 @@ export function ViolationCasesClient() {
     [violationTypes, draft.violationTypeId],
   );
 
-  const empPickerList = React.useMemo(
-    () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [employees],
-  );
-
   const listFiltered = filteredItems;
 
   const typeInlineOptions = React.useMemo(
@@ -789,7 +784,7 @@ export function ViolationCasesClient() {
       <ListFilterBar
         ref={filterToolbarRef}
         inlineSelects={inlineSelects}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
@@ -810,7 +805,7 @@ export function ViolationCasesClient() {
       />
     ),
     [
-      empPickerList,
+      companyId,
       selectedEmpIds,
       statusFilter,
       violationTypeFilter,

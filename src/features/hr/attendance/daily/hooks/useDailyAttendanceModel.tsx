@@ -29,7 +29,7 @@ import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/atte
 import { attendanceEventsApi } from '@/features/hr/attendance/lib/api/attendance-events';
 import { recomputeTodayDaySummaries } from '@/features/hr/attendance/lib/api/recompute-today-day-summaries';
 import { companiesApi } from '@/features/hr/lib/api/companies';
-import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
+import { useEmployeeFilterPicker } from '@/features/hr/lib/use-employee-filter-picker';
 import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   attendanceFiltersKey,
@@ -43,7 +43,11 @@ export function useDailyAttendanceModel() {
   const companyId = useDefaultCompanyId();
   const [daySummaries, setDaySummaries] = React.useState<AttendanceDaySummary[]>([]);
   const [events, setEvents] = React.useState<AttendanceEvent[]>([]);
-  const [allEmployees, setAllEmployees] = React.useState<{ id: string; name: string }[]>([]);
+  const { employees: pickerEmployees } = useEmployeeFilterPicker(companyId);
+  const allEmployees = React.useMemo(
+    () => pickerEmployees.map((e) => ({ id: e.id, name: e.name })),
+    [pickerEmployees],
+  );
   const [companyNameAr, setCompanyNameAr] = React.useState('');
   const [companyNameEn, setCompanyNameEn] = React.useState('');
 
@@ -68,20 +72,14 @@ export function useDailyAttendanceModel() {
 
   const { from: filterFrom, to: filterTo } = dateBounds;
 
-  // Load company info and employees for the default company
+  // Load company info for the default company
   React.useEffect(() => {
     const companyId = getDefaultCompanyId();
     if (!companyId) return;
-    void Promise.allSettled([
-      companiesApi.getById(companyId),
-      employeesApi.getAll({ companyId, limit: 500 }),
-    ]).then(([companyRes, empRes]) => {
-      if (companyRes.status === 'fulfilled') {
-        const c = companyRes.value;
-        if (c) { setCompanyNameAr(c.nameAr); setCompanyNameEn(c.nameEn ?? ''); }
-      }
-      if (empRes.status === 'fulfilled') {
-        setAllEmployees(empRes.value.items.map((e) => ({ id: e.id, name: e.nameAr })));
+    void companiesApi.getById(companyId).then((companyRes) => {
+      if (companyRes) {
+        setCompanyNameAr(companyRes.nameAr);
+        setCompanyNameEn(companyRes.nameEn ?? '');
       }
     });
   }, []);
@@ -321,7 +319,7 @@ export function useDailyAttendanceModel() {
   useEntityFilterSlot(
     () => (
       <ListFilterBar
-        empPickerEmployees={allEmployees}
+        empPickerEmployees={pickerEmployees}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
@@ -351,7 +349,7 @@ export function useDailyAttendanceModel() {
       statusFilter,
       selectedEmpKey,
       viewMode,
-      allEmployees.length,
+      pickerEmployees.length,
       dateBounds.from,
       dateBounds.to,
       attendanceStatusCounts.all,

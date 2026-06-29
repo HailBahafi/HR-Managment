@@ -1,4 +1,9 @@
 import { publicConfig } from '@/shared/config';
+import {
+  extractApiErrorMessage,
+  isAuthApiContext,
+  resolveAuthDisplayMessage,
+} from '@/features/auth/lib/auth-api-messages';
 import { ApiError } from '@/features/hr/lib/api/client';
 import type { ApiErrorEnvelope } from '@/features/hr/lib/api/types';
 import { isApiErrorEnvelope } from '@/features/hr/lib/api/types';
@@ -54,18 +59,25 @@ export function handleApiError(
   const envelope = error.envelope;
   const status = error.status;
 
-  const displayMessage = isDuplicateAdvanceNumberError(error)
+  const rawMessage = isDuplicateAdvanceNumberError(error)
     ? duplicateAdvanceNumberMessage()
-    : (envelope?.message?.trim() || error.message);
+    : extractApiErrorMessage(envelope, error.message);
 
-  if (status === 401 && typeof window !== 'undefined') {
-    if (!options?.suppressRedirect) {
-      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.replace(`/login?returnTo=${returnTo}`);
-    }
-    // suppressRedirect=true → caller owns the message; no auto-toast
+  const displayMessage = isDuplicateAdvanceNumberError(error)
+    ? rawMessage
+    : resolveAuthDisplayMessage(rawMessage, context);
+
+  const authContext = isAuthApiContext(context);
+  const suppressRedirect = Boolean(options?.suppressRedirect);
+
+  if (status === 401 && typeof window !== 'undefined' && !suppressRedirect) {
+    const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.replace(`/login?returnTo=${returnTo}`);
   } else {
-    toast.error(displayMessage);
+    const skipToast = status === 401 && suppressRedirect && !authContext;
+    if (!skipToast) {
+      toast.error(displayMessage);
+    }
   }
   const debugPayload = isDevEnv() ? formatApiErrorForDisplay(error) : null;
 

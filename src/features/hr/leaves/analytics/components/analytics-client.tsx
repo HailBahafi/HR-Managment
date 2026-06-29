@@ -480,11 +480,6 @@ export function AnalyticsClient() {
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
   const bulkMode = selectedEmpIds.size > 1;
 
-  const empPickerList = React.useMemo(
-    () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
-    [employees],
-  );
-
   const applyEmployeeFilter = React.useCallback(
     (items: EmployeeLeaveBalanceGroupDto[]) => {
       if (selectedEmpIds.size <= 1) return items;
@@ -579,13 +574,13 @@ export function AnalyticsClient() {
       <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         onDateBoundsChange={() => {}}
       />
     ),
-    [selectedEmpKey, empPickerList],
+    [selectedEmpKey, companyId],
   );
 
   const deleteEmpName = deleteTarget

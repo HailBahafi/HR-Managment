@@ -8,7 +8,9 @@ import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-con
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { ListFilterBar } from '@/components/ui/list-filter-bar';
-import { PermissionGate } from '@/components/shared/permission-gate';
+import { Can } from '@/components/shared/can';
+import { usePagePermissions } from '@/features/auth/permissions';
+import { COMPANIES_PAGE_PERMISSIONS } from '@/features/hr/organization/companies/permissions';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
@@ -32,6 +34,9 @@ export function useCompaniesDirectoryModel() {
     descriptionAr: 'إدارة الشركات (جذور المستأجرين) وبياناتها التعريفية.',
     iconName: 'Building2',
   });
+
+  const perms = usePagePermissions(COMPANIES_PAGE_PERMISSIONS);
+  const accessDenied = !perms.canRead;
 
   const [listError, setListError] = React.useState<string | null>(null);
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('table');
@@ -67,20 +72,23 @@ export function useCompaniesDirectoryModel() {
   }, []);
 
   const openCreate = React.useCallback(() => {
+    if (!perms.canCreate) return;
     setEditId(null);
     setForm(COMPANY_EMPTY_FORM);
     setError(null);
     setDrawerOpen(true);
-  }, []);
+  }, [perms.canCreate]);
 
   const openEdit = React.useCallback((row: CompanyRow) => {
+    if (!perms.canUpdate) return;
     setEditId(row.id);
     setForm(companyToDraftForm(row));
     setError(null);
     setDrawerOpen(true);
-  }, []);
+  }, [perms.canUpdate]);
 
   const handleSave = React.useCallback(async () => {
+    if (editId ? !perms.canUpdate : !perms.canCreate) return;
     if (!form.nameAr.trim()) { setError('اسم الشركة مطلوب'); return; }
     const code = form.code.trim() || slugify(form.nameAr);
 
@@ -109,10 +117,10 @@ export function useCompaniesDirectoryModel() {
     } finally {
       setSaving(false);
     }
-  }, [editId, form, reloadList]);
+  }, [editId, form, perms.canCreate, perms.canUpdate, reloadList]);
 
   const handleDelete = React.useCallback(async () => {
-    if (!confirmId) return;
+    if (!confirmId || !perms.canDelete) return;
     try {
       await companiesApi.remove(confirmId);
       await reloadList();
@@ -123,7 +131,7 @@ export function useCompaniesDirectoryModel() {
       toast.error(displayMessage);
       setConfirmId(null);
     }
-  }, [confirmId, reloadList]);
+  }, [confirmId, perms.canDelete, reloadList]);
 
   const formatDate = React.useCallback(
     (iso: string | null) => (iso ? formatDisplayDateTime(iso) : '—'),
@@ -134,14 +142,14 @@ export function useCompaniesDirectoryModel() {
     () => (
       <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
         <FilterToggleButton />
-        <PermissionGate permission="hr.employees.create">
+        <Can when={perms.canCreate}>
           <Button variant="luxe" size="sm" className="h-8 gap-2" onClick={openCreate}>
             <Plus className="h-4 w-4" /> شركة جديدة
           </Button>
-        </PermissionGate>
+        </Can>
       </div>
     ),
-    [openCreate],
+    [openCreate, perms.canCreate],
   );
 
   useEntityFilterSlot(
@@ -165,6 +173,8 @@ export function useCompaniesDirectoryModel() {
   );
 
   return {
+    perms,
+    accessDenied,
     companies,
     loading,
     listError,

@@ -263,19 +263,6 @@ export function PayrollSalaryApprovalClient() {
     return counts;
   }, [metaPayslips]);
 
-  const empPickerList = React.useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const p of metaPayslips) {
-      if (!seen.has(p.employeeId)) seen.set(p.employeeId, p.employeeNameAr);
-    }
-    if (seen.size === 0) {
-      return allEmployees
-        .filter(e => e.status === 'active')
-        .map(e => ({ id: e.id, name: e.nameAr?.trim() || e.nameEn?.trim() || '—' }));
-    }
-    return [...seen.entries()].map(([id, name]) => ({ id, name }));
-  }, [metaPayslips, allEmployees]);
-
   const activeFilterCount =
     (statusFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0);
 
@@ -296,13 +283,13 @@ export function PayrollSalaryApprovalClient() {
         statusOrder={PAYSLIP_STATUS_ORDER}
         statusLabels={STATUS_TAB_LABELS}
         statusCounts={statusCounts}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         onDateBoundsChange={() => {}}
       />
     ),
-    [statusFilter, statusCounts, empPickerList, selectedEmpIds],
+    [statusFilter, statusCounts, companyId, selectedEmpIds],
   );
 
   const canFinalize = period

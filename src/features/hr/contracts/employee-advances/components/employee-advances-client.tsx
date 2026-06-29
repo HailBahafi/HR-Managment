@@ -174,11 +174,6 @@ export function EmployeeAdvancesClient() {
     { from: '', to: '' },
   );
 
-  const empPickerList = React.useMemo(
-    () => employees.map(e => ({ id: e.id, name: e.nameAr })),
-    [employees],
-  );
-
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<DraftForm>(EMPTY_FORM);
@@ -624,7 +619,7 @@ export function EmployeeAdvancesClient() {
         periodValue={dateBounds}
         onPeriodChange={setDateBounds}
         onDateBoundsChange={setDateBounds}
-        empPickerEmployees={empPickerList}
+        companyId={companyId}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
@@ -657,7 +652,6 @@ export function EmployeeAdvancesClient() {
       advanceStatusCounts.all,
       advanceStatusCounts,
       pagination.total,
-      empPickerList,
       statusFilterLabels,
       viewMode,
     ],

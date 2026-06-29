@@ -71,7 +71,7 @@ export function LeaveBalanceCreditClient() {
           { id: 'branch', value: m.branchId, onChange: m.setBranchId, placeholder: 'الفرع', options: m.branchInlineOptions },
           { id: 'dept', value: m.departmentId, onChange: m.setDepartmentId, placeholder: 'القسم', options: m.deptInlineOptions },
         ]}
-        empPickerEmployees={m.empPickerList}
+        companyId={m.companyId}
         selectedEmpIds={m.selectedEmpIds}
         onSelectedEmpIdsChange={m.setSelectedEmpIds}
         statusFilter={m.statusFilter}
@@ -94,7 +94,7 @@ export function LeaveBalanceCreditClient() {
       m.statusCounts.pending,
       m.statusCounts.approved,
       m.statusCounts.rejected,
-      m.empPickerList,
+      m.companyId,
       m.branchInlineOptions,
       m.deptInlineOptions,
     ],
@@ -315,7 +315,7 @@ export function LeaveBalanceCreditClient() {
                     <SelectValue placeholder="اختر الموظف…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {m.empPickerList.map((e) => (
+                    {m.employeeOptions.map((e) => (
                       <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                     ))}
                   </SelectContent>
