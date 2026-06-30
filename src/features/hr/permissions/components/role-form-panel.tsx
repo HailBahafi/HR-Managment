@@ -31,15 +31,13 @@ type Props = {
   initialValues: RoleFormValues | null;
   /** Full permission catalog (all applications) */
   availablePermissions: PermissionResponseDto[];
-  /** Role application label — shown so users know which permissions can be saved */
-  applicationLabel?: string;
   onOpenChange: (open: boolean) => void;
   onSave: (values: RoleFormValues) => void;
 };
 
 export function RoleFormPanel({
   open, isLoading, isSaving, editingTitle, initialValues,
-  availablePermissions, applicationLabel,
+  availablePermissions,
   onOpenChange, onSave,
 }: Props) {
   const [form, setForm] = React.useState<RoleFormValues>(BLANK);
@@ -123,12 +121,6 @@ export function RoleFormPanel({
 
             <div className="space-y-3">
               <Label>شجرة الصلاحيات</Label>
-              {applicationLabel ? (
-                <p className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-                  هذا الدور يتبع تطبيق <span className="font-semibold text-foreground">{applicationLabel}</span>.
-                  يمكن حفظ صلاحيات هذا التطبيق فقط — لصلاحيات أخرى (مثل المستخدمون) استخدم دوراً من التطبيق المناسب.
-                </p>
-              ) : null}
               <RolePermissionTreePicker
                 permissions={availablePermissions}
                 selectedIds={form.permissionIds}

@@ -13,7 +13,7 @@ import {
   type ListFilterInlineSelect,
 } from '@/components/ui/list-filter-bar';
 import { useRoles } from '@/features/hr/permissions/hooks/useRoles';
-import { usePermissions, filterPermissionIdsForApplication, resolveApplicationLabel } from '@/features/hr/permissions/hooks/usePermissions';
+import { usePermissions } from '@/features/hr/permissions/hooks/usePermissions';
 import { useApplicationId } from '@/features/hr/permissions/hooks/useApplicationId';
 import { useRolePermissionsMap } from '@/features/hr/permissions/hooks/useRolePermissionsMap';
 import { useRolesMutations } from '@/features/hr/permissions/hooks/useRolesMutations';
@@ -50,7 +50,6 @@ export function PermissionsManagementPage() {
     refetch: refetchPermissions,
   } = usePermissions(appFromApi);
 
-  const applicationId = permissionsResult?.applicationId ?? appFromApi;
   const allPermissions: PermissionResponseDto[] = permissionsResult?.items ?? [];
   const roles = rolesResult?.items ?? [];
   const roleIds = React.useMemo(() => roles.map((r) => r.id), [roles]);
@@ -67,16 +66,8 @@ export function PermissionsManagementPage() {
   const [deleteTarget, setDeleteTarget] = React.useState<RoleResponseDto | null>(null);
   const [search, setSearch] = React.useState('');
   const [roleKind, setRoleKind] = React.useState<RoleKindFilter>('all');
-  const [roleApplicationId, setRoleApplicationId] = React.useState('');
 
   const isCatalogReady = !permissionsLoading && !permissionsError;
-
-  const effectiveRoleApplicationId =
-    roleApplicationId || editingRole?.applicationId || applicationId;
-  const roleApplicationLabel = React.useMemo(
-    () => resolveApplicationLabel(allPermissions, effectiveRoleApplicationId),
-    [allPermissions, effectiveRoleApplicationId],
-  );
 
   const filteredRoles = React.useMemo(() => {
     return roles.filter((role) => {
@@ -89,10 +80,9 @@ export function PermissionsManagementPage() {
   const openCreate = React.useCallback(() => {
     void refetchPermissions();
     setEditingRole(null);
-    setRoleApplicationId(applicationId);
     setInitialValues(null);
     setPanelOpen(true);
-  }, [refetchPermissions, applicationId]);
+  }, [refetchPermissions]);
 
   usePageHeaderActions(
     () => (
@@ -152,14 +142,11 @@ export function PermissionsManagementPage() {
   async function openEdit(role: RoleResponseDto) {
     void refetchPermissions();
     setEditingRole(role);
-    setRoleApplicationId(role.applicationId ?? applicationId);
     setInitialValues(null);
     setPanelOpen(true);
     setPanelLoading(true);
     try {
       const loaded = await loadRoleForEdit(role.id);
-      const appId = loaded.applicationId || role.applicationId || applicationId;
-      setRoleApplicationId(appId);
       setInitialValues({
         name: loaded.name,
         description: loaded.description,
@@ -174,34 +161,22 @@ export function PermissionsManagementPage() {
     }
   }
 
+  /** No client-side permission filtering — backend validates and returns errors. */
   async function handleSave(values: RoleFormValues) {
-    const { allowed: permissionIds, rejected } = filterPermissionIdsForApplication(
-      values.permissionIds,
-      allPermissions,
-      effectiveRoleApplicationId,
-    );
-
-    if (rejected.length > 0) {
-      toast.error(
-        `لا يمكن حفظ ${rejected.length} صلاحية — هذا الدور يتبع تطبيق «${roleApplicationLabel || '…'}» فقط. لصلاحيات تطبيق آخر (مثل المستخدمون) عدّل دوراً من ذلك التطبيق.`,
-      );
-      return;
-    }
-
     try {
       if (editingRole) {
         await update.mutateAsync({
           roleId: editingRole.id,
           name: values.name,
           description: values.description,
-          permissionIds,
+          permissionIds: values.permissionIds,
         });
         toast.success('تم تحديث الدور والصلاحيات بنجاح');
       } else {
         await create.mutateAsync({
           name: values.name,
           description: values.description,
-          permissionIds,
+          permissionIds: values.permissionIds,
         });
         toast.success('تم إنشاء الدور وربط الصلاحيات بنجاح');
       }
@@ -278,7 +253,6 @@ export function PermissionsManagementPage() {
         editingTitle={editingRole ? (editingRole.nameAr ?? editingRole.name ?? null) : null}
         initialValues={initialValues}
         availablePermissions={appPermissions}
-        applicationLabel={roleApplicationLabel}
         onOpenChange={setPanelOpen}
         onSave={handleSave}
       />
