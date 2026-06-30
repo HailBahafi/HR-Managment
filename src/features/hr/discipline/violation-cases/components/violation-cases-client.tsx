@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  Trash2, CalendarDays, CheckCircle2, XCircle, Edit3,
+  Trash2, CalendarDays, Edit3,
   FileDown, FileSpreadsheet, Plus, AlertTriangle, Scale, Search,
 } from 'lucide-react';
 import {
@@ -68,11 +68,16 @@ import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/u
 import { checkViolationApprovalAccess } from '@/features/hr/discipline/lib/violation-approval-access';
 import {
   buildViolationDecisionPayload,
-  canEmployeeActOnViolationApproval,
+  getViolationApprovalUiState,
   isEmployeeInViolationApproverStates,
   isViolationFullyApproved,
 } from '@/features/hr/discipline/lib/violation-approver-states';
 import { ViolationApproverStatesPanel } from '@/features/hr/discipline/violation-cases/components/violation-approver-states-panel';
+import {
+  ViolationApprovalActionButtons,
+  ViolationApprovalActionCell,
+} from '@/features/hr/discipline/violation-cases/components/violation-approval-actions';
+import { RequestApproversInline } from '@/features/hr/requests/components/request-approvers-inline';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
@@ -701,6 +706,9 @@ export function ViolationCasesClient() {
       render: (c) => {
         return (
           <div className="flex flex-wrap gap-1">
+            {c.typeNeedsApproval ? (
+              <Badge variant="outline" className={cn('text-[9px]', STATUS_PILL.pending)}>موافقة</Badge>
+            ) : null}
             {c.typeNeedsInvestigation ? (
               <Badge variant="outline" className={cn('text-[9px]', STATUS_PILL.info)}>تحقيق</Badge>
             ) : null}
@@ -733,6 +741,22 @@ export function ViolationCasesClient() {
       },
     },
     {
+      key: 'approvers',
+      title: 'مسار الموافقة',
+      hideOnMobile: true,
+      render: (c) => <RequestApproversInline states={c.approverStates} />,
+    },
+    {
+      key: 'decisionNotes',
+      title: 'ملاحظات القرار',
+      hideOnMobile: true,
+      render: (c) => (
+        <span className="line-clamp-2 max-w-[12rem] text-xs text-muted-foreground" title={c.decisionNotes || undefined}>
+          {c.decisionNotes || '—'}
+        </span>
+      ),
+    },
+    {
       key: 'actions',
       title: 'إجراءات',
       isActions: true,
@@ -741,7 +765,7 @@ export function ViolationCasesClient() {
         const canMutate = canMutateViolationCase(c.status);
         const canFollowUp = canAddDisciplineFollowUp(c.status);
         const isCurrentUserApprover = isEmployeeInViolationApproverStates(c.approverStates, currentEmployeeId);
-        const canCurrentUserApprove = canEmployeeActOnViolationApproval(c.approverStates, currentEmployeeId);
+        const approvalUi = getViolationApprovalUiState(c.approverStates, currentEmployeeId);
         const showMutateActions = !isCurrentUserApprover;
         const menuItems = [
           ...(showMutateActions && canMutate
@@ -767,13 +791,19 @@ export function ViolationCasesClient() {
             : []),
         ];
         return (
-          <TableRowActions
-            primaryActions={c.status === 'pending' && canCurrentUserApprove ? [
-              { label: 'موافقة', variant: 'success', icon: <CheckCircle2 className="h-3.5 w-3.5" />, onClick: () => void handleApprove(c) },
-              { label: 'رفض', variant: 'destructive', icon: <XCircle className="h-3.5 w-3.5" />, onClick: () => void openRejectDialog(c) },
-            ] : []}
-            menuItems={menuItems}
-          />
+          <div className="flex items-start justify-end gap-1">
+            {c.status === 'pending' && approvalUi.showActions ? (
+              <ViolationApprovalActionCell
+                states={c.approverStates}
+                currentEmployeeId={currentEmployeeId}
+                onApprove={() => void handleApprove(c)}
+                onReject={() => void openRejectDialog(c)}
+              />
+            ) : null}
+            {menuItems.length > 0 ? (
+              <TableRowActions menuItems={menuItems} />
+            ) : null}
+          </div>
         );
       },
     },
@@ -851,7 +881,7 @@ export function ViolationCasesClient() {
             {items.map((c) => {
             const isPending = c.status === 'pending';
             const isCurrentUserApprover = isEmployeeInViolationApproverStates(c.approverStates, currentEmployeeId);
-            const canCurrentUserApprove = canEmployeeActOnViolationApproval(c.approverStates, currentEmployeeId);
+            const approvalUi = getViolationApprovalUiState(c.approverStates, currentEmployeeId);
             const showMutateActions = !isCurrentUserApprover;
             return (
               <EntityActionCard
@@ -860,14 +890,18 @@ export function ViolationCasesClient() {
                 reference={c.caseNumber}
                 title={c.employeeNameAr ?? '—'}
                 subtitle={c.typeNameAr}
-                description={c.description}
+                description={
+                  [c.description, c.decisionNotes?.trim() ? `ملاحظات القرار: ${c.decisionNotes}` : '']
+                    .filter(Boolean)
+                    .join(' — ') || undefined
+                }
                 status={{
                   label: STATUS_LABELS[c.status],
                   tone: VIOLATION_STATUS_TONE[c.status],
                 }}
                 children={
                   c.approverStates ? (
-                    <ViolationApproverStatesPanel states={c.approverStates} compact className="mt-2 border-0 bg-transparent p-0" />
+                    <RequestApproversInline states={c.approverStates} />
                   ) : undefined
                 }
                 chips={
@@ -909,11 +943,13 @@ export function ViolationCasesClient() {
                   ) : undefined
                 }
                 workflow={
-                  isPending && canCurrentUserApprove
+                  isPending && approvalUi.showActions
                     ? {
                         showApproveReject: true,
                         onApprove: () => void handleApprove(c),
                         onReject: () => void openRejectDialog(c),
+                        disabled: !approvalUi.canAct,
+                        waitingReason: approvalUi.reasonAr ?? undefined,
                       }
                     : undefined
                 }
@@ -952,7 +988,7 @@ export function ViolationCasesClient() {
           <DataTable
             variant="directory"
             alwaysShowTable
-            tableClassName="min-w-[900px]"
+            tableClassName="min-w-[1200px]"
             columns={columns}
             data={items}
             keyExtractor={(c) => c.id}
@@ -1107,17 +1143,13 @@ export function ViolationCasesClient() {
                   </p>
                 </div>
               ) : null}
-              {viewCase.status === 'pending' && canEmployeeActOnViolationApproval(viewCase.approverStates, currentEmployeeId) ? (
-                <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
-                  <Button size="sm" variant="outline" className="gap-1.5 text-success border-success/30 hover:bg-success/10"
-                    onClick={() => void handleApprove(viewCase)}>
-                    <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
-                    onClick={() => void openRejectDialog(viewCase)}>
-                    <XCircle className="h-3.5 w-3.5" /> رفض
-                  </Button>
-                </div>
+              {viewCase.status === 'pending' ? (
+                <ViolationApprovalActionButtons
+                  states={viewCase.approverStates}
+                  currentEmployeeId={currentEmployeeId}
+                  onApprove={() => void handleApprove(viewCase)}
+                  onReject={() => void openRejectDialog(viewCase)}
+                />
               ) : null}
               {!isEmployeeInViolationApproverStates(viewCase.approverStates, currentEmployeeId) && canAddDisciplineFollowUp(viewCase.status) ? (
                 <div className="flex flex-wrap gap-2 pt-1 border-t border-border">

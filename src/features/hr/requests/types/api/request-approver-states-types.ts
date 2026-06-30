@@ -18,7 +18,14 @@ export type RequestApproverStatesSnapshot = {
   approvers: RequestApproverStateEntry[];
 };
 
+export type RequestApprovalAssignmentDto = {
+  id: string;
+  approvalMode: RequestApprovalMode;
+  approvers: RequestApproverStateEntry[];
+};
+
 export type RequestApproverStatesCarrier = {
   approverStates?: RequestApproverStatesSnapshot | null;
   approver_states?: RequestApproverStatesSnapshot | null;
+  approvalAssignment?: RequestApprovalAssignmentDto | null;
 };

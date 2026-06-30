@@ -39,18 +39,45 @@ function normalizeApproverEntry(
   };
 }
 
+function snapshotFromRaw(
+  raw: {
+    assignmentId?: string;
+    approvalMode?: ApprovalMode;
+    approvers?: Array<Partial<ApproverStateEntry>>;
+  },
+  assignmentIdFallback = '',
+): ApproverStatesSnapshot | null {
+  const approvers = Array.isArray(raw.approvers) ? raw.approvers : [];
+  if (approvers.length === 0) return null;
+  return {
+    assignmentId: raw.assignmentId ?? assignmentIdFallback,
+    approvalMode: raw.approvalMode ?? 'sequential',
+    approvers: approvers.map((a, i) => normalizeApproverEntry(a, i)),
+  };
+}
+
 export function normalizeApproverStates(
   dto: ApproverStatesCarrier | null | undefined,
 ): ApproverStatesSnapshot | null {
   const raw = dto?.approverStates ?? dto?.approver_states ?? null;
-  if (!raw || typeof raw !== 'object') return null;
-  const approvers = Array.isArray(raw.approvers) ? raw.approvers : [];
-  if (approvers.length === 0) return null;
-  return {
-    assignmentId: raw.assignmentId ?? '',
-    approvalMode: raw.approvalMode ?? 'sequential',
-    approvers: approvers.map((a, i) => normalizeApproverEntry(a, i)),
-  };
+  if (raw && typeof raw === 'object') {
+    const fromStates = snapshotFromRaw(raw);
+    if (fromStates) return fromStates;
+  }
+
+  const assignment = dto?.approvalAssignment;
+  if (assignment && typeof assignment === 'object') {
+    return snapshotFromRaw(
+      {
+        assignmentId: assignment.id,
+        approvalMode: assignment.approvalMode,
+        approvers: assignment.approvers,
+      },
+      assignment.id,
+    );
+  }
+
+  return null;
 }
 
 export function buildApproverStatesFromAssignment(
@@ -115,10 +142,9 @@ export function getApproverActionContext(
   }
 
   if (states.approvalMode === 'sequential') {
-    for (let i = 0; i < idx; i++) {
-      if (approvers[i]!.status !== 'approved') {
-        return { canAct: false, reasonAr: messages.waitingPriorApprovers };
-      }
+    const firstPending = approvers.find((a) => a.status === 'pending');
+    if (!firstPending || firstPending.employeeId !== employeeId) {
+      return { canAct: false, reasonAr: messages.waitingPriorApprovers };
     }
   }
 

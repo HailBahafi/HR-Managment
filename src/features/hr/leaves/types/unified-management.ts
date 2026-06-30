@@ -46,6 +46,7 @@ export interface UnifiedLeaveRecord {
   noteEn?: string;
   subtypeSlug?: string | null;
   subtypeNameAr?: string | null;
+  departmentNameAr?: string | null;
   submittedAt?: string;
   decidedAt?: string;
   cancelledAt?: string;

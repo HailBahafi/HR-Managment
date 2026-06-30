@@ -144,4 +144,37 @@ export function isEmployeeInRequestApproverStates(
   return isEmployeeInApproverStates(states, employeeId);
 }
 
+/** Whether approval order matters (sequential chain). */
+export function isSequentialRequestApproval(
+  states: RequestApproverStatesSnapshot | null | undefined,
+): boolean {
+  return states?.approvalMode === 'sequential';
+}
+
+/** UI state for approve/reject controls — shows disabled buttons while waiting in sequential mode. */
+export function getRequestApprovalUiState(
+  states: RequestApproverStatesSnapshot | null | undefined,
+  employeeId: string | null | undefined,
+): { showActions: boolean; canAct: boolean; reasonAr: string | null } {
+  if (!states || !employeeId) {
+    return { showActions: false, canAct: false, reasonAr: null };
+  }
+
+  if (!isEmployeeInRequestApproverStates(states, employeeId)) {
+    return { showActions: false, canAct: false, reasonAr: null };
+  }
+
+  const self = states.approvers.find((a) => a.employeeId === employeeId);
+  if (!self || self.status !== 'pending') {
+    return { showActions: false, canAct: false, reasonAr: null };
+  }
+
+  const ctx = getRequestApproverActionContext(states, employeeId);
+  return {
+    showActions: true,
+    canAct: ctx.canAct,
+    reasonAr: ctx.reasonAr,
+  };
+}
+
 export type { RequestApproverStateEntry };

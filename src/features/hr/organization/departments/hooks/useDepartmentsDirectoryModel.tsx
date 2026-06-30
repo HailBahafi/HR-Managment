@@ -129,7 +129,7 @@ export function useDepartmentsDirectoryModel() {
     reload: reloadList,
   } = useServerDirectoryPagination<DeptTreeNode>(
     async () => ({ items: [], total: 0 }),
-    { bulkMode: true, loadBulk, enabled: !!defaultCompanyId, resetDeps: [defaultCompanyId, branchFilter, archiveScope] },
+    { bulkMode: true, loadBulk, enabled: !!defaultCompanyId && perms.canRead, resetDeps: [defaultCompanyId, branchFilter, archiveScope] },
   );
 
   const loadFormBranches = React.useCallback(async (companyId: string | null) => {

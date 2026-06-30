@@ -44,11 +44,13 @@ import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { checkRequestApprovalAccess } from '@/features/hr/requests/lib/request-approval-access';
 import {
   buildRequestCorrectionDecisionPayload,
-  canEmployeeActOnRequestApproval,
+  getRequestApprovalUiState,
   isEmployeeInRequestApproverStates,
   isRequestFullyApproved,
 } from '@/features/hr/requests/lib/request-approver-states';
 import { RequestApproverStatesPanel } from '@/features/hr/requests/components/request-approver-states-panel';
+import { RequestApprovalActionCell, RequestApprovalActionButtons } from '@/features/hr/requests/components/request-approval-actions';
+import { RequestApproversInline } from '@/features/hr/requests/components/request-approvers-inline';
 import {
   CorrectionTimesComparisonCell,
   CorrectionTimesComparisonDetail,
@@ -308,7 +310,7 @@ export function AttendanceCorrectionRequestsClient() {
 
   const canShowApprovalActions = React.useCallback(
     (r: AttendanceCorrectionRequest) =>
-      r.status === 'pending' && canEmployeeActOnRequestApproval(r.approverStates, currentEmployeeId),
+      r.status === 'pending' && getRequestApprovalUiState(r.approverStates, currentEmployeeId).showActions,
     [currentEmployeeId],
   );
 
@@ -454,6 +456,28 @@ export function AttendanceCorrectionRequestsClient() {
         render: (r) => <TableDateCell value={r.workDate} />,
       },
       {
+        key: 'submittedAt',
+        title: 'تاريخ التقديم',
+        hideOnMobile: true,
+        render: (r) => <TableDateCell value={r.submittedAt} mode="datetime" />,
+      },
+      {
+        key: 'approvers',
+        title: 'مسار الموافقة',
+        hideOnMobile: true,
+        render: (r) => <RequestApproversInline states={r.approverStates} />,
+      },
+      {
+        key: 'decisionNotes',
+        title: 'ملاحظات القرار',
+        hideOnMobile: true,
+        render: (r) => (
+          <span className="line-clamp-2 max-w-[12rem] text-xs text-muted-foreground" title={r.decisionNotesAr || undefined}>
+            {r.decisionNotesAr || '—'}
+          </span>
+        ),
+      },
+      {
         key: 'actions',
         title: 'إجراء',
         isActions: true,
@@ -461,43 +485,40 @@ export function AttendanceCorrectionRequestsClient() {
           if (r.status !== 'pending') {
             return <TableDateCell value={r.decidedAt} mode="datetime" />;
           }
-          if (!canShowApprovalActions(r)) {
-            return <span className="text-xs text-muted-foreground">—</span>;
+          if (getRequestApprovalUiState(r.approverStates, currentEmployeeId).showActions) {
+            return (
+              <RequestApprovalActionCell
+                states={r.approverStates}
+                currentEmployeeId={currentEmployeeId}
+                onApprove={() => void handleApprove(r)}
+                onReject={() => void handleReject(r)}
+              />
+            );
           }
-          return (
-            <TableRowActions
-              primaryActions={[
-                {
-                  label: 'موافقة',
-                  variant: 'success',
-                  icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-                  onClick: () => void handleApprove(r),
-                },
-                {
-                  label: 'رفض',
-                  variant: 'destructive',
-                  icon: <XCircle className="h-3.5 w-3.5" />,
-                  onClick: () => void handleReject(r),
-                },
-              ]}
-              menuItems={
-                !isEmployeeInRequestApproverStates(r.approverStates, currentEmployeeId)
-                  ? [
-                      {
-                        label: 'إلغاء',
-                        onClick: () => void cancel(r.id).then(async () => { toast.message('تم سحب الطلب.'); await reloadList(); }),
-                        icon: <Ban className="h-3.5 w-3.5" />,
-                        separator: true,
-                      },
-                    ]
-                  : []
-              }
-            />
-          );
+          if (!isEmployeeInRequestApproverStates(r.approverStates, currentEmployeeId)) {
+            return (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs text-amber-600"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void cancel(r.id).then(async () => {
+                    toast.message('تم سحب الطلب.');
+                    await reloadList();
+                  });
+                }}
+              >
+                إلغاء
+              </Button>
+            );
+          }
+          return <span className="text-xs text-muted-foreground">—</span>;
         },
       },
     ],
-    [cancel, canShowApprovalActions, currentEmployeeId, handleApprove, handleReject, reloadList],
+    [cancel, currentEmployeeId, handleApprove, handleReject, reloadList],
   );
 
   return (
@@ -539,15 +560,29 @@ export function AttendanceCorrectionRequestsClient() {
                           <EntityActionCardChip>
                             الحالة السابقة: {r.previousStatusAr}
                           </EntityActionCardChip>
+                          {r.submittedAt ? (
+                            <EntityActionCardChip className="font-mono tabular-nums">
+                              <span className="inline-flex items-center gap-1" dir="ltr">
+                                <CalendarDays className="h-3 w-3 shrink-0" />
+                                {r.submittedAt.slice(0, 10)}
+                              </span>
+                            </EntityActionCardChip>
+                          ) : null}
                         </>
                       }
-                      description={r.reasonAr}
+                      description={
+                        [r.reasonAr, r.decisionNotesAr?.trim() ? `ملاحظات القرار: ${r.decisionNotesAr}` : '']
+                          .filter(Boolean)
+                          .join(' — ') || undefined
+                      }
                       workflow={
                         canShowApprovalActions(r)
                           ? {
                               showApproveReject: true,
                               onApprove: () => void handleApprove(r),
                               onReject: () => void handleReject(r),
+                              disabled: !getRequestApprovalUiState(r.approverStates, currentEmployeeId).canAct,
+                              waitingReason: getRequestApprovalUiState(r.approverStates, currentEmployeeId).reasonAr ?? undefined,
                             }
                           : undefined
                       }
@@ -582,7 +617,7 @@ export function AttendanceCorrectionRequestsClient() {
                 <DataTable
                   variant="directory"
                   alwaysShowTable
-                  tableClassName="min-w-[960px]"
+                  tableClassName="min-w-[1200px]"
                   columns={columns}
                   data={pageItems}
                   keyExtractor={(r) => r.id}
@@ -668,6 +703,7 @@ export function AttendanceCorrectionRequestsClient() {
                 <div><p className="text-xs text-muted-foreground">تاريخ التصحيح</p><p className="text-sm font-medium"><TableDateCell value={detailRow.workDate} /></p></div>
                 <div><p className="text-xs text-muted-foreground">الحالة السابقة</p><p className="text-sm font-medium">{detailRow.previousStatusAr}</p></div>
                 <div><p className="text-xs text-muted-foreground">حالة الطلب</p><p className="text-sm font-medium">{attendanceCorrectionStatusLabelAr(detailRow.status)}</p></div>
+                <div><p className="text-xs text-muted-foreground">تاريخ التقديم</p><p className="text-sm font-medium"><TableDateCell value={detailRow.submittedAt} mode="datetime" /></p></div>
                 <CorrectionTimesComparisonDetail
                   previousCheckIn={detailRow.previousCheckIn}
                   previousCheckOut={detailRow.previousCheckOut}
@@ -678,14 +714,12 @@ export function AttendanceCorrectionRequestsClient() {
               </div>
               <RequestApproverStatesPanel states={detailRow.approverStates} />
               {canShowApprovalActions(detailRow) ? (
-                <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-                  <Button size="sm" variant="outline" className="gap-1.5 text-success border-success/30" onClick={() => void handleApprove(detailRow)}>
-                    <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30" onClick={() => void handleReject(detailRow)}>
-                    <XCircle className="h-3.5 w-3.5" /> رفض
-                  </Button>
-                </div>
+                <RequestApprovalActionButtons
+                  states={detailRow.approverStates}
+                  currentEmployeeId={currentEmployeeId}
+                  onApprove={() => void handleApprove(detailRow)}
+                  onReject={() => void handleReject(detailRow)}
+                />
               ) : null}
             </div>
           ) : null}

@@ -1,4 +1,7 @@
-import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/types/api/request-approver-states-types';
+import type {
+  RequestApprovalAssignmentDto,
+  RequestApproverStatesSnapshot,
+} from '@/features/hr/requests/types/api/request-approver-states-types';
 
 export type CorrectionRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
@@ -36,6 +39,7 @@ export type ApiCorrectionRequest = {
   status: CorrectionRequestStatus;
   approverStates?: RequestApproverStatesSnapshot | null;
   approver_states?: RequestApproverStatesSnapshot | null;
+  approvalAssignment?: RequestApprovalAssignmentDto | null;
   submittedAt: string;
   decidedAt: string | null;
   cancelledAt: string | null;
@@ -108,6 +112,7 @@ export type ApiLeaveRequest = {
   status: LeaveRequestStatusNew;
   approverStates?: RequestApproverStatesSnapshot | null;
   approver_states?: RequestApproverStatesSnapshot | null;
+  approvalAssignment?: RequestApprovalAssignmentDto | null;
   submittedAt: string;
   decidedAt: string | null;
   cancelledAt: string | null;

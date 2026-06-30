@@ -63,9 +63,11 @@ export function handleApiError(
     ? duplicateAdvanceNumberMessage()
     : extractApiErrorMessage(envelope, error.message);
 
-  const displayMessage = isDuplicateAdvanceNumberError(error)
-    ? rawMessage
-    : resolveAuthDisplayMessage(rawMessage, context);
+  const displayMessage = status === 403
+    ? 'ليس لديك صلاحية للوصول إلى هذا المورد'
+    : isDuplicateAdvanceNumberError(error)
+      ? rawMessage
+      : resolveAuthDisplayMessage(rawMessage, context);
 
   const authContext = isAuthApiContext(context);
   const suppressRedirect = Boolean(options?.suppressRedirect);

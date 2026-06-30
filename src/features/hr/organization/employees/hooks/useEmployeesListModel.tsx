@@ -30,6 +30,8 @@ import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organi
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { usePagePermissions } from '@/features/auth/permissions';
+import { EMPLOYEES_PAGE_PERMISSIONS } from '@/features/hr/organization/employees/permissions';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import {
@@ -56,6 +58,8 @@ export function useEmployeesListModel() {
   useSetPageTitle({ titleAr: 'الموظفين', descriptionAr: 'سجل وإدارة بيانات الموظفين', iconName: 'Users' });
   const router = useRouter();
   const companyId = useDefaultCompanyId();
+  const perms = usePagePermissions(EMPLOYEES_PAGE_PERMISSIONS);
+  const accessDenied = !perms.canRead;
   // company details are optional (used only for PDF header); 403 is silently ignored
   const { data: activeCompany } = useActiveCompany();
 
@@ -165,7 +169,7 @@ export function useEmployeesListModel() {
     pagination,
     reload: reloadEmployees,
   } = useServerDirectoryPagination<EmployeeResponseDto>(loadPage, {
-    enabled: !!companyId,
+    enabled: !!companyId && perms.canRead,
     bulkMode,
     loadBulk: bulkMode ? loadBulk : undefined,
     resetDeps: [companyId, branchFilter, deptFilter, toolbarStatus, archiveScope, debouncedSearch, selectedEmpKey, view],
@@ -381,6 +385,8 @@ export function useEmployeesListModel() {
 
   return {
     router,
+    accessDenied,
+    perms,
     employees,
     filtered,
     loading,

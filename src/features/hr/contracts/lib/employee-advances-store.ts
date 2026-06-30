@@ -32,6 +32,7 @@ export type HREmployeeAdvance = {
   advanceNumber: string;
   employeeId: string;
   employeeNameAr: string;
+  branchNameAr: string | null;
   amount: number;
   currency: string;
   advanceDate: string;
@@ -42,9 +43,13 @@ export type HREmployeeAdvance = {
   repaymentMode: HREmployeeAdvanceRepaymentMode;
   repaymentMonths: number | null;
   monthlyInstallmentAmount: number | null;
+  totalRepaidAmount: number;
+  remainingAmount: number;
   approvedAt: string | null;
   rejectedAt: string | null;
   decisionNotes: string | null;
+  disbursedAt: string | null;
+  createdAt: string;
   approverStates: RequestApproverStatesSnapshot | null;
   updatedAt: string;
 };
@@ -80,6 +85,7 @@ export function mapEmployeeAdvanceFromApi(r: EmployeeAdvanceResponseDto): HREmpl
     advanceNumber: r.advanceNumber,
     employeeId: r.employeeId,
     employeeNameAr: r.employeeNameAr,
+    branchNameAr: r.branchNameAr ?? null,
     amount: parseFloat(r.amount) || 0,
     currency: r.currency,
     advanceDate: r.advanceDate,
@@ -92,9 +98,13 @@ export function mapEmployeeAdvanceFromApi(r: EmployeeAdvanceResponseDto): HREmpl
     monthlyInstallmentAmount: r.monthlyInstallmentAmount != null
       ? parseFloat(r.monthlyInstallmentAmount)
       : null,
+    totalRepaidAmount: parseFloat(r.totalRepaidAmount) || 0,
+    remainingAmount: parseFloat(r.remainingAmount) || 0,
     approvedAt: r.approvedAt,
     rejectedAt: r.rejectedAt ?? null,
     decisionNotes: r.decisionNotes ?? null,
+    disbursedAt: r.disbursedAt,
+    createdAt: r.createdAt,
     approverStates: normalizeRequestApproverStates(r),
     updatedAt: r.updatedAt,
   };
@@ -116,7 +126,7 @@ type State = {
   isLoading: boolean;
   error: { message: string; status: number } | null;
   fetch: (params?: { employeeId?: string; status?: HREmployeeAdvanceStatus; advanceDateFrom?: string; advanceDateTo?: string }) => Promise<void>;
-  add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status' | 'approverStates' | 'rejectedAt' | 'decisionNotes' | 'reasonAr'>) => Promise<HREmployeeAdvance>;
+  add: (a: Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'status' | 'approverStates' | 'rejectedAt' | 'decisionNotes' | 'reasonAr' | 'branchNameAr' | 'totalRepaidAmount' | 'remainingAmount' | 'disbursedAt' | 'createdAt'>) => Promise<HREmployeeAdvance>;
   update: (id: string, patch: Partial<Omit<HREmployeeAdvance, 'id' | 'advanceNumber' | 'approvedAt' | 'updatedAt' | 'reasonAr'>>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   submitForApproval: (id: string) => Promise<void>;

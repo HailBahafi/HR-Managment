@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Banknote, Download, CheckCircle2, XCircle, Send, CalendarDays } from 'lucide-react';
+import { Plus, Banknote, Download, Send, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -26,10 +26,12 @@ import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/u
 import { checkRequestApprovalAccess } from '@/features/hr/requests/lib/request-approval-access';
 import {
   buildEmployeeAdvanceDecisionPayload,
-  canEmployeeActOnRequestApproval,
+  getRequestApprovalUiState,
   isRequestFullyApproved,
 } from '@/features/hr/requests/lib/request-approver-states';
 import { RequestApproverStatesPanel } from '@/features/hr/requests/components/request-approver-states-panel';
+import { RequestApproversInline } from '@/features/hr/requests/components/request-approvers-inline';
+import { RequestApprovalActionCell, RequestApprovalActionButtons } from '@/features/hr/requests/components/request-approval-actions';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown, MinimalDropdown,
 } from '@/components/ui/shared-dialogs';
@@ -352,7 +354,8 @@ export function EmployeeAdvancesClient() {
 
   const canShowApprovalActions = React.useCallback(
     (x: HREmployeeAdvance) =>
-      x.status === 'pending_approval' && canEmployeeActOnRequestApproval(x.approverStates, currentEmployeeId),
+      x.status === 'pending_approval' &&
+      getRequestApprovalUiState(x.approverStates, currentEmployeeId).showActions,
     [currentEmployeeId],
   );
 
@@ -495,6 +498,9 @@ export function EmployeeAdvancesClient() {
         <div className="min-w-0">
           <p className="font-medium truncate">{x.employeeNameAr}</p>
           <p className="font-mono text-[10px] text-muted-foreground" dir="ltr">{x.advanceNumber}</p>
+          {x.branchNameAr ? (
+            <p className="text-[10px] text-muted-foreground">{x.branchNameAr}</p>
+          ) : null}
         </div>
       ),
     },
@@ -535,13 +541,44 @@ export function EmployeeAdvancesClient() {
       ),
     },
     {
+      key: 'repayment',
+      title: 'السداد',
+      hideOnMobile: true,
+      render: (x) => (
+        <div className="text-xs text-muted-foreground space-y-0.5">
+          <p>{repaymentLine(x)}</p>
+          {(x.status === 'repaying' || x.status === 'fully_repaid' || x.remainingAmount > 0) ? (
+            <p className="tabular-nums" dir="ltr">
+              متبقي: {formatNumber(x.remainingAmount)} {x.currency}
+            </p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: 'approvers',
+      title: 'مسار الموافقة',
+      hideOnMobile: true,
+      render: (x) => <RequestApproversInline states={x.approverStates} />,
+    },
+    {
+      key: 'decisionNotes',
+      title: 'ملاحظات القرار',
+      hideOnMobile: true,
+      render: (x) => (
+        <span className="line-clamp-2 max-w-[12rem] text-xs text-muted-foreground" title={x.decisionNotes || undefined}>
+          {x.decisionNotes || '—'}
+        </span>
+      ),
+    },
+    {
       key: 'actions',
       title: 'إجراءات',
       isActions: true,
       render: (x) => {
         const loading = actionLoadingId === x.id;
         const canSubmit = x.status === 'draft' || x.status === 'rejected';
-        const showApproval = canShowApprovalActions(x);
+        const approvalUi = getRequestApprovalUiState(x.approverStates, currentEmployeeId);
         const menuItems = [
           ...(canOpenAdvanceDetail(x.status) ? [{
             label: 'التفاصيل',
@@ -562,31 +599,26 @@ export function EmployeeAdvancesClient() {
           }] : []),
         ];
         return (
-          <TableRowActions
-            primaryActions={showApproval ? [
-              {
-                label: 'موافقة',
-                variant: 'success',
-                icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-                onClick: () => void handleApproveAdvance(x),
-                disabled: loading,
-              },
-              {
-                label: 'رفض',
-                variant: 'destructive',
-                icon: <XCircle className="h-3.5 w-3.5" />,
-                onClick: () => void handleRejectAdvance(x),
-                disabled: loading,
-              },
-            ] : undefined}
-            menuItems={menuItems}
-          />
+          <div className="flex items-start justify-end gap-1">
+            {x.status === 'pending_approval' && approvalUi.showActions ? (
+              <RequestApprovalActionCell
+                states={x.approverStates}
+                currentEmployeeId={currentEmployeeId}
+                onApprove={() => void handleApproveAdvance(x)}
+                onReject={() => void handleRejectAdvance(x)}
+              />
+            ) : null}
+            {menuItems.length > 0 ? (
+              <TableRowActions menuItems={menuItems} />
+            ) : null}
+            {loading ? <span className="text-[10px] text-muted-foreground">…</span> : null}
+          </div>
         );
       },
     },
   ], [
     actionLoadingId,
-    canShowApprovalActions,
+    currentEmployeeId,
     handleApproveAdvance,
     handleRejectAdvance,
     submitForApproval,
@@ -674,7 +706,7 @@ export function EmployeeAdvancesClient() {
               <DataTable
                 variant="directory"
                 alwaysShowTable
-                tableClassName="min-w-[960px]"
+                tableClassName="min-w-[1200px]"
                 columns={columns}
                 data={pageItems}
                 keyExtractor={(x) => x.id}
@@ -697,6 +729,7 @@ export function EmployeeAdvancesClient() {
                 key={x.id}
                 reference={x.advanceNumber}
                 title={x.employeeNameAr}
+                subtitle={x.branchNameAr || undefined}
                 onClick={() => {
                   if (openDetail) openAdvanceDetail(x);
                   else if (openEditOnClick) openEdit(x.id);
@@ -726,21 +759,31 @@ export function EmployeeAdvancesClient() {
                     <EntityActionCardMetric label="القسط" value={repaymentLine(x)} />
                   </EntityActionCardMetricsRow>
                 }
-                description={advanceReasonText(x)}
+                description={
+                  [advanceReasonText(x), x.decisionNotes?.trim() ? `ملاحظات القرار: ${x.decisionNotes}` : '']
+                    .filter(Boolean)
+                    .join(' — ') || undefined
+                }
                 workflow={
                   canShowApprovalActions(x)
                     ? {
                         showApproveReject: true,
                         onApprove: () => void handleApproveAdvance(x),
                         onReject: () => void handleRejectAdvance(x),
+                        disabled: !getRequestApprovalUiState(x.approverStates, currentEmployeeId).canAct,
+                        waitingReason: getRequestApprovalUiState(x.approverStates, currentEmployeeId).reasonAr ?? undefined,
                       }
                     : undefined
                 }
                 footerNote={
-                  x.approvedAt ? (
-                    <p className="text-[10px] text-muted-foreground">
-                      تاريخ الاعتماد: {x.approvedAt.slice(0, 10)}
-                    </p>
+                  x.approvedAt || x.disbursedAt || x.remainingAmount > 0 ? (
+                    <div className="space-y-0.5 text-[10px] text-muted-foreground">
+                      {x.approvedAt ? <p>تاريخ الاعتماد: {x.approvedAt.slice(0, 10)}</p> : null}
+                      {x.disbursedAt ? <p>تاريخ الصرف: {x.disbursedAt.slice(0, 10)}</p> : null}
+                      {x.remainingAmount > 0 ? (
+                        <p dir="ltr">متبقي: {formatNumber(x.remainingAmount)} {x.currency}</p>
+                      ) : null}
+                    </div>
                   ) : undefined
                 }
                 extraFooter={
@@ -772,6 +815,7 @@ export function EmployeeAdvancesClient() {
                   ) : undefined
                 }
               >
+                <RequestApproversInline states={x.approverStates} />
                 <RequestApproverStatesPanel
                   states={x.approverStates}
                   compact
@@ -903,6 +947,10 @@ export function EmployeeAdvancesClient() {
                   <p className="text-sm font-medium font-mono" dir="ltr">{detailAdvance.advanceNumber}</p>
                 </div>
                 <div>
+                  <p className="text-xs text-muted-foreground">الفرع</p>
+                  <p className="text-sm font-medium">{detailAdvance.branchNameAr || '—'}</p>
+                </div>
+                <div>
                   <p className="text-xs text-muted-foreground">المبلغ</p>
                   <p className="text-sm font-medium tabular-nums">{formatNumber(detailAdvance.amount)} {detailAdvance.currency}</p>
                 </div>
@@ -928,6 +976,24 @@ export function EmployeeAdvancesClient() {
                     <p className="text-sm">{advanceReasonText(detailAdvance)}</p>
                   </div>
                 ) : null}
+                {detailAdvance.remainingAmount > 0 ? (
+                  <div>
+                    <p className="text-xs text-muted-foreground">المبلغ المتبقي</p>
+                    <p className="text-sm font-medium tabular-nums">{formatNumber(detailAdvance.remainingAmount)} {detailAdvance.currency}</p>
+                  </div>
+                ) : null}
+                {detailAdvance.disbursedAt ? (
+                  <div>
+                    <p className="text-xs text-muted-foreground">تاريخ الصرف</p>
+                    <p className="text-sm font-medium font-mono">{detailAdvance.disbursedAt.slice(0, 10)}</p>
+                  </div>
+                ) : null}
+                {detailAdvance.createdAt ? (
+                  <div>
+                    <p className="text-xs text-muted-foreground">تاريخ الإنشاء</p>
+                    <p className="text-sm font-medium font-mono">{detailAdvance.createdAt.slice(0, 10)}</p>
+                  </div>
+                ) : null}
                 {detailAdvance.decisionNotes ? (
                   <div className="sm:col-span-2">
                     <p className="text-xs text-muted-foreground">ملاحظات القرار</p>
@@ -935,7 +1001,16 @@ export function EmployeeAdvancesClient() {
                   </div>
                 ) : null}
               </div>
+              <RequestApproversInline states={detailAdvance.approverStates} />
               <RequestApproverStatesPanel states={detailAdvance.approverStates} />
+              {canShowApprovalActions(detailAdvance) ? (
+                <RequestApprovalActionButtons
+                  states={detailAdvance.approverStates}
+                  currentEmployeeId={currentEmployeeId}
+                  onApprove={() => void handleApproveAdvance(detailAdvance)}
+                  onReject={() => void handleRejectAdvance(detailAdvance)}
+                />
+              ) : null}
             </div>
           ) : null}
         </DialogContent>

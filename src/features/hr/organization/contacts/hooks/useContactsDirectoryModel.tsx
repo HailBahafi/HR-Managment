@@ -131,7 +131,7 @@ export function useContactsDirectoryModel() {
     reload: reloadList,
   } = useServerDirectoryPagination<UserRecord>(
     async () => ({ items: [], total: 0 }),
-    { bulkMode: true, loadBulk, resetDeps: [defaultCompanyId, archiveScope] },
+    { bulkMode: true, loadBulk, enabled: !!defaultCompanyId && perms.canRead, resetDeps: [defaultCompanyId, archiveScope] },
   );
 
   const patchUserInList = React.useCallback((updated: UserResponseDto) => {

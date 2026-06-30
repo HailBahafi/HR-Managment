@@ -28,7 +28,7 @@ import {
 export function PermissionsCatalogPage() {
   useSetPageTitle({
     titleAr: 'الصلاحيات',
-    descriptionAr: 'دليل صلاحيات نظام الموارد البشرية',
+    descriptionAr: 'دليل صلاحيات النظام — جميع التطبيقات',
     iconName: 'Shield',
   });
 
