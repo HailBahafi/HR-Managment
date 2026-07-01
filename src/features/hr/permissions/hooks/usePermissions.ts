@@ -42,26 +42,6 @@ export function scopePermissionsToApplication(
   return all.filter((p) => p.applicationId === applicationId);
 }
 
-/** Splits selected ids into assignable vs blocked for a role's application. */
-export function filterPermissionIdsForApplication(
-  permissionIds: string[],
-  all: PermissionResponseDto[],
-  applicationId: string,
-): { allowed: string[]; rejected: PermissionResponseDto[] } {
-  if (!applicationId) {
-    return { allowed: permissionIds, rejected: [] };
-  }
-  const byId = new Map(all.map((p) => [p.id, p]));
-  const allowed: string[] = [];
-  const rejected: PermissionResponseDto[] = [];
-  for (const id of permissionIds) {
-    const perm = byId.get(id);
-    if (perm && perm.applicationId === applicationId) allowed.push(id);
-    else if (perm) rejected.push(perm);
-  }
-  return { allowed, rejected };
-}
-
 /** Keeps all permission nodes for the HR application (GROUP + ACTION). */
 export function scopeToHrApplication(all: PermissionResponseDto[], applicationIdHint?: string) {
   const resolvedApplicationId = resolveHrApplicationId(all, applicationIdHint);
