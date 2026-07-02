@@ -64,13 +64,18 @@ export class ApiError extends Error {
   }
 }
 
-type QueryValue = string | number | boolean | null | undefined;
+type QueryValue = string | number | boolean | null | undefined | string[];
 
 function buildQuery(query?: Record<string, QueryValue>) {
   if (!query) return '';
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
+    if (Array.isArray(value)) {
+      if (value.length === 0) return;
+      params.set(key, value.join(','));
+      return;
+    }
     params.set(key, String(value));
   });
   const qs = params.toString();

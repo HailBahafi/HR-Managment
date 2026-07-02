@@ -103,7 +103,7 @@ export function LeaveTypesPanel() {
       )}
 
       <Dialog open={m.open} onOpenChange={m.setOpen}>
-        <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden border-border p-0">
+        <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-visible border-border p-0">
           <div className="shrink-0 border-b border-border px-6 py-5">
             <DialogHeader>
               <DialogTitle className="font-display text-xl">{m.editId ? 'تعديل نوع الإجازة' : 'إضافة نوع إجازة'}</DialogTitle>

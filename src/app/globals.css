@@ -207,7 +207,9 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: 'ss01', 'cv11';
+    /* IBM Plex Sans Arabic swaps 0–9 to Arabic-Indic under lang=ar unless locl is off */
+    font-feature-settings: 'ss01', 'cv11', 'locl' 0, 'lnum' 1, 'tnum' 1;
+    font-variant-numeric: lining-nums tabular-nums;
     background-image:
       radial-gradient(circle at 0% 0%, hsl(var(--primary) / 0.03) 0%, transparent 50%),
       radial-gradient(circle at 100% 100%, hsl(var(--gold) / 0.04) 0%, transparent 50%);
@@ -424,7 +426,7 @@
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
-  .number-ar { font-feature-settings: 'tnum', 'lnum'; }
+  .number-ar { font-variant-numeric: lining-nums tabular-nums; font-feature-settings: 'locl' 0, 'lnum' 1, 'tnum' 1; }
 
   .surface-radial-primary-end {
     background-image: radial-gradient(circle at 80% 20%, hsl(var(--primary)) 0%, transparent 45%);

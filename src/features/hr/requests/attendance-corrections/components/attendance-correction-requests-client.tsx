@@ -20,7 +20,6 @@ import {
   type WorkflowStatusTone,
 } from '@/components/ui/entity-action-card';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
-import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { correctionRequestsApi } from '@/features/hr/requests/lib/api/correction-requests';
 import { mapCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
@@ -148,7 +147,6 @@ export function AttendanceCorrectionRequestsClient() {
   );
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
-  const bulkMode = appliedDept !== 'all' || selectedEmpIds.size > 1;
 
   const buildListQuery = React.useCallback((page: number, pageSize: number) => ({
     companyId: companyId!,
@@ -157,36 +155,20 @@ export function AttendanceCorrectionRequestsClient() {
     ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
     ...(dateBounds.from ? { workDateFrom: dateBounds.from } : {}),
     ...(dateBounds.to ? { workDateTo: dateBounds.to } : {}),
-    ...(selectedEmpIds.size === 1 ? { employeeId: [...selectedEmpIds][0] } : {}),
-  }), [companyId, statusFilter, dateBounds.from, dateBounds.to, selectedEmpIds]);
-
-  const applyDeptFilter = React.useCallback((rows: AttendanceCorrectionRequest[]) => {
-    if (appliedDept === 'all') return rows;
-    const deptName = departments.find((d) => d.id === appliedDept)?.nameAr ?? appliedDept;
-    return rows.filter((r) => r.departmentNameAr === deptName);
-  }, [appliedDept, departments]);
+    ...(selectedEmpIds.size > 0 ? { employeeIds: [...selectedEmpIds] } : {}),
+    ...(appliedDept !== 'all' ? { departmentId: appliedDept } : {}),
+  }), [companyId, statusFilter, dateBounds.from, dateBounds.to, selectedEmpIds, appliedDept]);
 
   const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     if (!companyId) return { items: [] as AttendanceCorrectionRequest[], total: 0 };
     try {
       const res = await correctionRequestsApi.list(buildListQuery(page, pageSize));
-      const items = applyDeptFilter(res.items.map(mapCorrectionRequest));
-      return { items, total: appliedDept === 'all' ? res.pagination.total : items.length };
+      const items = res.items.map(mapCorrectionRequest);
+      return { items, total: res.pagination.total };
     } catch {
       return { items: [], total: 0 };
     }
-  }, [applyDeptFilter, appliedDept, buildListQuery, companyId]);
-
-  const loadBulk = React.useCallback(async () => {
-    if (!companyId) return { items: [] as AttendanceCorrectionRequest[], total: 0 };
-    const res = await fetchAllPaginatedItems((page, limit) => correctionRequestsApi.list(buildListQuery(page, limit)));
-    let items = res.items.map(mapCorrectionRequest);
-    if (selectedEmpIds.size > 1) {
-      items = items.filter((r) => selectedEmpIds.has(r.employeeId));
-    }
-    items = applyDeptFilter(items);
-    return { items, total: items.length };
-  }, [applyDeptFilter, buildListQuery, companyId, selectedEmpIds]);
+  }, [buildListQuery, companyId]);
 
   const {
     items: sorted,
@@ -195,8 +177,6 @@ export function AttendanceCorrectionRequestsClient() {
     reload: reloadList,
   } = useServerDirectoryPagination<AttendanceCorrectionRequest>(loadPage, {
     enabled: !!companyId,
-    bulkMode,
-    loadBulk: bulkMode ? loadBulk : undefined,
     resetDeps: [companyId, appliedDept, statusFilter, dateBounds.from, dateBounds.to, selectedEmpKey],
   });
 

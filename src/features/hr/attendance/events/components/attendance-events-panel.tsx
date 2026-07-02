@@ -6,7 +6,7 @@ import {
   MapPin, Clock, Smartphone, Monitor, Fingerprint, Bot, Globe, Pencil, Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/shared/utils';
+import { cn, formatTime } from '@/shared/utils';
 import { STATUS_PILL, statusDotClass } from '@/shared/status-pill-classes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,8 +44,7 @@ const SOURCE_META: Record<string, { label: string; icon: React.ElementType }> = 
 };
 
 function fmtTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return formatTime(iso);
 }
 function nowTimeLocal() {
   const d = new Date();

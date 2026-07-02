@@ -115,7 +115,7 @@ export function EmploymentContractDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden border-border p-0"
+        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-visible border-border p-0"
         dir="rtl"
       >
         <div className="shrink-0 border-b border-border/60 bg-linear-to-b from-primary/6 to-transparent px-6 pb-4 pt-6">

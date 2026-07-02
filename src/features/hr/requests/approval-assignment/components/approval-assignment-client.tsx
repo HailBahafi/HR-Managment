@@ -261,7 +261,7 @@ export function ApprovalAssignmentClient() {
 
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) setDialogOpen(false); }}>
         <DialogContent
-          className="flex h-[92vh] max-h-[92vh] w-[96vw] max-w-2xl flex-col gap-0 overflow-hidden border-border p-0"
+          className="flex h-[92vh] max-h-[92vh] w-[96vw] max-w-2xl flex-col gap-0 overflow-visible border-border p-0"
           hideClose
           ref={(el) => setDialogContentEl(el)}
         >

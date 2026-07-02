@@ -7,3 +7,11 @@ export const DEPARTMENTS_PAGE_PERMISSIONS = {
   update: 'hr.organization.departments.update',
   delete: 'hr.organization.departments.delete',
 } as const satisfies PagePermissionDefs;
+
+/**
+ * Filter permission codes used by the departments page toolbar. Missing one
+ * of these must never lock the page — see `useFilterPermission`.
+ */
+export const DEPARTMENTS_FILTER_PERMISSIONS = {
+  branch: 'hr.organization.branches.read',
+} as const;

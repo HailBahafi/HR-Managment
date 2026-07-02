@@ -119,7 +119,7 @@ export function AtsApplicantDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl overflow-hidden p-0">
+      <DialogContent className="max-w-xl overflow-visible p-0">
         <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background px-6 pb-6 pt-8">
           <div className="relative flex items-center gap-4">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-lg font-bold text-primary-foreground shadow-lg">

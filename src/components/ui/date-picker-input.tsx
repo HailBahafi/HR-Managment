@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import * as SelectPrimitive from '@radix-ui/react-select';
+import { useDialogPortalContainer } from '@/components/ui/dialog';
 import { cn, formatDisplayDate } from '@/shared/utils';
 
 const DEFAULT_FROM_YEAR = 1950;
@@ -260,6 +261,7 @@ export function DatePickerInput({
   popoverContainer,
 }: DatePickerInputProps) {
   const [open, setOpen] = React.useState(false);
+  const dialogContainer = useDialogPortalContainer();
   const selected = ymdToDate(value);
 
   return (
@@ -291,7 +293,7 @@ export function DatePickerInput({
         align="start"
         sideOffset={8}
         dir="rtl"
-        container={popoverContainer ?? undefined}
+        container={popoverContainer ?? dialogContainer ?? undefined}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DatePickerCalendar

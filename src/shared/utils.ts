@@ -134,6 +134,14 @@ export function formatTime(date: string | Date | null | undefined): string {
   return formatArabicTime(hours24, hours12, minutes);
 }
 
+/** 24-hour clock HH:mm with Western digits (for tables / heatmaps). */
+export function formatTime24FromIso(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 /** Alias for formatDisplayDateTime — use for ISO timestamps (createdAt, submittedAt, …). */
 export const formatDateTime = formatDisplayDateTime;
 
@@ -153,8 +161,8 @@ export function relativeTime(date: string | Date): string {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
   if (minutes < 1) return 'الآن';
-  if (minutes < 60) return `منذ ${minutes} دقيقة`;
-  if (hours < 24) return `منذ ${hours} ساعة`;
-  if (days < 7) return `منذ ${days} يوم`;
+  if (minutes < 60) return `منذ ${formatNumber(minutes)} دقيقة`;
+  if (hours < 24) return `منذ ${formatNumber(hours)} ساعة`;
+  if (days < 7) return `منذ ${formatNumber(days)} يوم`;
   return formatDate(d);
 }

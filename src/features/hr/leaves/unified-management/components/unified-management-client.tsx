@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { TableDateCell } from '@/components/ui/table-cells';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SingleDatePicker } from '@/components/ui/single-date-picker';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -1083,7 +1083,7 @@ function LeaveDetailDialog({ leave, employees, open, onClose }: {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden border-border p-0">
+      <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-visible border-border p-0">
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">تفاصيل الإجازة</DialogTitle>
@@ -1271,7 +1271,7 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden border-border p-0">
+      <DialogContent className="flex max-h-[90vh] w-full max-w-md flex-col overflow-visible border-border p-0">
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">{editLeave ? 'تعديل الإجازة' : 'إضافة إجازة'}</DialogTitle>
@@ -1328,11 +1328,11 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>من <span className="text-destructive">*</span></Label>
-              <SingleDatePicker value={start} onChange={setStart} placeholder="تاريخ البداية" />
+              <DatePickerInput value={start} onChange={setStart} placeholder="تاريخ البداية" />
             </div>
             <div className="space-y-2">
               <Label>إلى <span className="text-destructive">*</span></Label>
-              <SingleDatePicker value={end} onChange={setEnd} placeholder="تاريخ النهاية" min={start} />
+              <DatePickerInput value={end} onChange={setEnd} placeholder="تاريخ النهاية" minDate={start || undefined} />
             </div>
           </div>
 

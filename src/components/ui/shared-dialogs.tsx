@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
   dialogFormFooterClass,
+  useDialogPortalContainer,
 } from '@/components/ui/dialog';
 import { cn } from '@/shared/utils';
 import { paginationItemCount } from '@/components/ui/sticky-pagination';
@@ -40,6 +41,7 @@ export function MinimalDropdown({
   disabled,
 }: MinimalDropdownProps) {
   const [open, setOpen] = React.useState(false);
+  const dialogContainer = useDialogPortalContainer();
   const selected = options.find(o => o.value === value);
 
   return (
@@ -61,7 +63,7 @@ export function MinimalDropdown({
           <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Portal container={dialogContainer ?? undefined}>
         <PopoverPrimitive.Content
           className={cn(
             'popover-match-trigger z-[200] max-h-64 min-w-[12rem] overflow-auto rounded-md border border-border bg-popover p-1 shadow-elevated',
@@ -118,6 +120,7 @@ interface SearchableDropdownProps extends Omit<MinimalDropdownProps, 'onChange'>
 export function SearchableDropdown({ value, onChange, options, placeholder = 'ابحث أو اختر…', className, disabled, allowClear }: SearchableDropdownProps) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState('');
+  const dialogContainer = useDialogPortalContainer();
   const selected = options.find(o => o.value === value);
   const filtered = q ? options.filter(o => o.label.toLowerCase().includes(q.toLowerCase()) || (o.sub?.toLowerCase().includes(q.toLowerCase()))) : options;
 
@@ -151,9 +154,9 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
           </div>
         </button>
       </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Portal container={dialogContainer ?? undefined}>
         <PopoverPrimitive.Content
-          className="popover-match-trigger z-[200] min-w-[12rem] overflow-hidden rounded-md border border-border bg-popover shadow-elevated"
+          className="popover-match-trigger z-[200] min-w-[12rem] overflow-auto rounded-md border border-border bg-popover shadow-elevated"
           sideOffset={4}
           collisionPadding={12}
         >
