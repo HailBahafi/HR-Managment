@@ -57,18 +57,14 @@ export type CreateCorrectionRequestDto = {
   subtypeSlug?: string;
   attendanceDaySummaryId?: string;
   workDate: string;
-  correctedCheckInAt?: string;
-  correctedCheckOutAt?: string;
   correctedTimes?: CorrectionTimesDto;
-  reasonAr?: string;
+  reasonAr: string;
   attachments?: unknown[];
   createdBy?: string;
 };
 
 export type UpdateCorrectionRequestDto = {
   subtypeSlug?: string | null;
-  correctedCheckInAt?: string | null;
-  correctedCheckOutAt?: string | null;
   correctedTimes?: CorrectionTimesDto | null;
   reasonAr?: string;
   attachments?: unknown[];

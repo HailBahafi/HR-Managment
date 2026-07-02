@@ -9,6 +9,7 @@ import {
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { cn } from '@/shared/utils';
+import { paginationItemCount } from '@/components/ui/sticky-pagination';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 
 // ─── MinimalDropdown ──────────────────────────────────────────────────────────
@@ -328,9 +329,14 @@ export function EmptyState({ icon: Icon, title, description }: { icon?: React.El
 
 export function Pagination({ page, perPage, total, onPage, onPerPage }: { page: number; perPage: number; total: number; onPage: (n: number) => void; onPerPage: (n: number) => void }) {
   const pages = Math.max(1, Math.ceil(total / perPage));
+  const { displayed, total: totalItems } = paginationItemCount(page, perPage, total);
   return (
     <div className="flex min-w-0 flex-col gap-2 border-t border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-4">
-      <span className="min-w-0 text-center sm:text-right">عرض <strong className="text-foreground">{Math.min((page - 1) * perPage + 1, total)}–{Math.min(page * perPage, total)}</strong> من <strong className="text-foreground">{total}</strong></span>
+      <span className="min-w-0 text-center tabular-nums sm:text-right" dir="ltr">
+        <strong className="text-foreground">{displayed}</strong>
+        <span className="mx-0.5 text-muted-foreground/70">/</span>
+        <strong className="text-foreground">{totalItems}</strong>
+      </span>
       <div className="flex min-w-0 flex-wrap items-center justify-center gap-2 sm:justify-end">
         <select value={perPage} onChange={e => { onPerPage(Number(e.target.value)); onPage(1); }} className="max-w-full shrink-0 rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none">
           {[10, 15, 20, 50].map(n => <option key={n} value={n}>{n} / صفحة</option>)}

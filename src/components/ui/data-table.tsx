@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { cn } from '@/shared/utils';
+import { paginationItemCount } from '@/components/ui/sticky-pagination';
 import { Button } from '@/components/ui/button';
 
 /* ── Column definition ───────────────────────────────────────────────── */
@@ -178,13 +179,14 @@ export function AppPagination({
 
   if (totalPages <= 1 && !onPageSizeChange) return null;
 
-  const start = (page - 1) * pageSize + 1;
-  const end   = Math.min(page * pageSize, total);
+  const { displayed, total: totalItems } = paginationItemCount(page, pageSize, total);
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-3">
-      <p className="text-[12px] text-muted-foreground number-ar">
-        {start}–{end} من {total}
+      <p className="text-[12px] tabular-nums text-muted-foreground number-ar" dir="ltr">
+        <span className="text-foreground">{displayed}</span>
+        <span className="mx-0.5 text-muted-foreground/70">/</span>
+        <span>{totalItems}</span>
       </p>
 
       <div className="flex items-center gap-1">

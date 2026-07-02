@@ -386,6 +386,40 @@
     color:            hsl(var(--accent-foreground));
   }
 
+  /* DatePickerInput — keep table grid intact (no flex on table cells) */
+  .date-picker-calendar {
+    overflow: visible;
+  }
+  .date-picker-calendar .rdp-root {
+    overflow: visible;
+  }
+  .date-picker-calendar .rdp-months {
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+  }
+  .date-picker-calendar .rdp-month_grid {
+    width: 100%;
+    table-layout: fixed;
+    margin-inline: auto;
+  }
+  .date-picker-calendar .rdp-weekday,
+  .date-picker-calendar .rdp-day {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    max-width: 2.25rem;
+    text-align: center;
+    vertical-align: middle;
+    overflow: visible;
+  }
+  .date-picker-calendar .rdp-day_button {
+    margin-inline: auto;
+  }
+  .date-picker-calendar .rdp-today:not(.rdp-outside) .rdp-day_button,
+  .date-picker-calendar .rdp-selected .rdp-day_button {
+    overflow: visible;
+  }
+
 }
 
 @layer utilities {

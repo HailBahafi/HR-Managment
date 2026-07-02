@@ -665,7 +665,7 @@ export function AttendanceCorrectionRequestsClient() {
                 </Select>
               </FormField>
               <FormField label="تاريخ التصحيح">
-                <DatePickerInput value={formWorkDate} onChange={setFormWorkDate} />
+                <DatePickerInput value={formWorkDate} onChange={setFormWorkDate} placeholder="اختر تاريخ التصحيح" />
               </FormField>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -677,8 +677,15 @@ export function AttendanceCorrectionRequestsClient() {
                   <ModernTimePicker value={formCorrOut} onChange={setFormCorrOut} placeholder="اختر الوقت" />
                 </div>
               </div>
-              <FormField label="سبب الطلب (اختياري)">
-                <Textarea value={formReason} onChange={(e) => setFormReason(e.target.value)} rows={3} placeholder="تفاصيل إضافية للمراجع…" />
+              <FormField label="سبب الطلب">
+                <Textarea
+                  value={formReason}
+                  onChange={(e) => setFormReason(e.target.value)}
+                  rows={3}
+                  minLength={3}
+                  required
+                  placeholder="اشرح سبب طلب التصحيح (٣ أحرف على الأقل)…"
+                />
               </FormField>
             </div>
             <DialogFooter className={dialogFormFooterClass}>
