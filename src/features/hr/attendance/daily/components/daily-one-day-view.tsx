@@ -29,6 +29,10 @@ import { fmtDayFull } from '@/features/hr/attendance/daily/utils/daily-attendanc
 import { DailyAttendanceLegend } from '@/features/hr/attendance/daily/components/daily-attendance-legend';
 import { DailyDayDetailDialog } from '@/features/hr/attendance/daily/components/daily-day-detail-dialog';
 import { useNextEventType } from '@/features/hr/attendance/daily/hooks/useNextEventType';
+import {
+  RegisterEventTypePicker,
+  type RegisterableEventType,
+} from '@/features/hr/attendance/daily/components/register-event-type-picker';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 // ─── constants ─────────────────────────────────────────────────────────────────
@@ -170,14 +174,6 @@ const EVENT_TYPE_META: Record<AttendanceEventType, { labelAr: string; icon: Reac
   check_out:   { labelAr: 'خروج',           icon: LogOut },
   break_start: { labelAr: 'بداية استراحة',  icon: Coffee },
   break_end:   { labelAr: 'نهاية استراحة',  icon: Coffee },
-};
-
-const REGISTERABLE_EVENT_TYPES = ['check_in', 'check_out'] as const;
-type RegisterableEventType = (typeof REGISTERABLE_EVENT_TYPES)[number];
-
-const REGISTER_EVENT_TYPE_META: Record<RegisterableEventType, { labelAr: string; icon: React.ElementType }> = {
-  check_in:  { labelAr: 'تسجيل حضور',   icon: LogIn  },
-  check_out: { labelAr: 'تسجيل انصراف', icon: LogOut },
 };
 
 const REGISTER_SUCCESS_MSG: Record<RegisterableEventType, string> = {
@@ -661,7 +657,7 @@ export function RegisterEventComboDialog({
 
   const showDatePicker = availableDates && availableDates.length > 1;
 
-  const { loading: nextTypeLoading, nextEventType, message: nextTypeMessage } = useNextEventType({
+  const { loading: nextTypeLoading, nextEventType, message: nextTypeMessage, data: nextEventData } = useNextEventType({
     employeeId: selectedId,
     companyId,
     workDate: selectedDate,
@@ -776,45 +772,14 @@ export function RegisterEventComboDialog({
           {/* Event form — only shown after employee is selected */}
           {selectedId && (
             <>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">نوع الحدث</Label>
-                {nextTypeLoading ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    جاري تحديد نوع الحدث القادم…
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      {REGISTERABLE_EVENT_TYPES.map((t) => {
-                        const meta = REGISTER_EVENT_TYPE_META[t];
-                        const Icon = meta.icon;
-                        const isNext = t === nextEventType;
-                        return (
-                          <button
-                            key={t}
-                            type="button"
-                            disabled={!isNext}
-                            onClick={() => isNext && setEventType(t)}
-                            className={cn(
-                              'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition-all',
-                              eventType === t
-                                ? 'border-primary bg-primary/8 text-primary shadow-sm ring-1 ring-primary/30'
-                                : 'border-border bg-card text-muted-foreground',
-                              !isNext && 'cursor-not-allowed opacity-40',
-                            )}
-                          >
-                            <Icon className="h-3.5 w-3.5 shrink-0" />{meta.labelAr}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {nextTypeMessage ? (
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">{nextTypeMessage}</p>
-                    ) : null}
-                  </>
-                )}
-              </div>
+              <RegisterEventTypePicker
+                value={eventType}
+                onChange={setEventType}
+                nextEventType={nextEventType}
+                loading={nextTypeLoading}
+                message={nextTypeMessage}
+                nextEventData={nextEventData}
+              />
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">الوقت <span className="text-destructive">*</span></Label>
                 <ModernTimePicker
