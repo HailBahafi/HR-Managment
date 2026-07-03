@@ -20,7 +20,6 @@ import {
   organizationListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
-import { filterApprovalAssignableRequestTypes } from '@/features/hr/requests/approval-assignment/lib/approval-assignable-request-types';
 
 export type { RequestApprovalTemplateResponseDto as ApprovalTemplate };
 export type { RequestApprovalMode };
@@ -110,24 +109,9 @@ export function useApprovalAssignmentModel() {
     await reloadList();
   }, [reloadList]);
 
-  const approvalRequestTypes = React.useMemo(
-    () => filterApprovalAssignableRequestTypes(requestTypes),
-    [requestTypes],
-  );
-
-  const templates = React.useMemo(() => {
-    const allowedIds = new Set(approvalRequestTypes.map((rt) => rt.id));
-    return items
-      .map((tpl) => ({
-        ...tpl,
-        requestTypes: tpl.requestTypes.filter((rt) => allowedIds.has(rt.requestTypeId)),
-      }))
-      .filter((tpl) => tpl.requestTypes.length > 0);
-  }, [items, approvalRequestTypes]);
-
   return {
-    templates,
-    requestTypes: approvalRequestTypes,
+    templates: items,
+    requestTypes,
     employees,
     loading,
     listError,

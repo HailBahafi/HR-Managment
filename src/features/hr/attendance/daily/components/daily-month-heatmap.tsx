@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '@/shared/utils';
+import { cn, formatTime24FromIso } from '@/shared/utils';
 import { themeAvatarClassFromKey } from '@/shared/theme-avatar-palette';
 import type { AttendanceDaySummary } from '@/features/hr/attendance/lib/types';
 import { todayIso } from '@/features/hr/attendance/lib/utils';
@@ -339,12 +339,8 @@ function TableView({
           {allRecords.map(({ row, date, summary }) => {
             const vk = resolveVisualKey(summary.status);
             const cfg = STATUS[vk];
-            const checkIn = summary.actualCheckInAt ? (() => {
-              try { return new Date(summary.actualCheckInAt!).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch { return null; }
-            })() : null;
-            const checkOut = summary.actualCheckOutAt ? (() => {
-              try { return new Date(summary.actualCheckOutAt!).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch { return null; }
-            })() : null;
+            const checkIn = formatTime24FromIso(summary.actualCheckInAt);
+            const checkOut = formatTime24FromIso(summary.actualCheckOutAt);
             const dow = DAY_NAMES_FULL[getDayOfWeek(date)];
             return (
               <tr

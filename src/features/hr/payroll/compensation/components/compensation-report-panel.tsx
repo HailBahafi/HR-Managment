@@ -329,7 +329,6 @@ export function CompensationReportPanel({
       await downloadCompensationExcel(period, exportLines, cols, footerTotals);
       toast.success('تم تحميل ملف Excel.');
     } catch (err) {
-      console.error(err);
       toast.error('حدث خطأ أثناء إنشاء ملف Excel.');
     } finally {
       setExcelExporting(false);
@@ -355,7 +354,6 @@ export function CompensationReportPanel({
       await downloadCompensationPdf(el, period.code);
       toast.success('تم تحميل ملف PDF.');
     } catch (err) {
-      console.error(err);
       toast.error('حدث خطأ أثناء تصدير PDF.');
     } finally {
       setPdfExporting(false);

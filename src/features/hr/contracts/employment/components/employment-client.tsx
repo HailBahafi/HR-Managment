@@ -17,7 +17,6 @@ import {
   EmptyState,
 } from '@/components/ui/shared-dialogs';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
-import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { employeeContractsApi } from '@/features/hr/contracts/lib/contracts-api';
 import {
   useHRContractsStore,
@@ -85,6 +84,13 @@ const formToDraft = employmentFormToDraft;
 type PanelMode = 'create' | 'edit';
 type StatusFilter = 'all' | HRContractLifecycleStatus;
 type KindFilter = 'all' | HRContractNature;
+type DraftFilter = 'all' | 'draft' | 'undraft';
+
+const DRAFT_FILTER_OPTIONS: { value: DraftFilter; label: string }[] = [
+  { value: 'all', label: 'الكل' },
+  { value: 'draft', label: 'مسودة' },
+  { value: 'undraft', label: 'غير مسودة' },
+];
 
 export function EmploymentContractsClient() {
   const router = useRouter();
@@ -156,10 +162,15 @@ export function EmploymentContractsClient() {
       key: 'kind', label: 'نوع العقد', type: 'select',
       options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
     },
+    {
+      key: 'draft', label: 'المسودات', type: 'select',
+      options: DRAFT_FILTER_OPTIONS,
+    },
   ]);
 
   const statusFilter = (values.status as StatusFilter) || 'all';
   const kindFilter = (values.kind as KindFilter) || 'all';
+  const draftFilter = (values.draft as DraftFilter) || 'all';
 
   const [archiveScope, setArchiveScope] = React.useState<OrganizationArchiveScope>(
     ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
@@ -168,7 +179,6 @@ export function EmploymentContractsClient() {
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
-  const bulkMode = selectedEmpIds.size > 1;
 
   const buildListQuery = React.useCallback((page: number, pageSize: number) => ({
     companyId: companyId!,
@@ -177,8 +187,9 @@ export function EmploymentContractsClient() {
     ...payrollListArchiveQuery(),
     ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
     ...(kindFilter !== 'all' ? { contractNature: kindFilter } : {}),
-    ...(selectedEmpIds.size === 1 ? { employeeId: [...selectedEmpIds][0] } : {}),
-  }), [companyId, archiveScope, statusFilter, kindFilter, selectedEmpIds]);
+    ...(draftFilter !== 'all' ? { isDraft: draftFilter === 'draft' } : {}),
+    ...(selectedEmpIds.size > 0 ? { employeeIds: [...selectedEmpIds] } : {}),
+  }), [companyId, archiveScope, statusFilter, kindFilter, draftFilter, selectedEmpIds]);
 
   const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     if (!companyId) return { items: [] as HRContractRecord[], total: 0 };
@@ -191,21 +202,6 @@ export function EmploymentContractsClient() {
     }
   }, [buildListQuery, companyId]);
 
-  const loadBulk = React.useCallback(async () => {
-    if (!companyId) return { items: [] as HRContractRecord[], total: 0 };
-    try {
-      const res = await fetchAllPaginatedItems((page, limit) => employeeContractsApi.list(buildListQuery(page, limit)));
-      const scoped = selectedEmpIds.size > 0
-        ? res.items.filter((c) => selectedEmpIds.has(c.employeeId))
-        : res.items;
-      const items = scoped.map(mapEmployeeContractFromApi);
-      return { items, total: items.length };
-    } catch (err) {
-      handleApiError(err, 'contracts.list');
-      return { items: [], total: 0 };
-    }
-  }, [buildListQuery, companyId, selectedEmpIds]);
-
   const {
     items: filtered,
     loading: listLoading,
@@ -213,9 +209,7 @@ export function EmploymentContractsClient() {
     reload: reloadList,
   } = useServerDirectoryPagination<HRContractRecord>(loadPage, {
     enabled: !!companyId,
-    bulkMode,
-    loadBulk: bulkMode ? loadBulk : undefined,
-    resetDeps: [companyId, statusFilter, kindFilter, archiveScope, selectedEmpKey],
+    resetDeps: [companyId, statusFilter, kindFilter, draftFilter, archiveScope, selectedEmpKey],
   });
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -415,7 +409,7 @@ export function EmploymentContractsClient() {
     router.push(`${hrContractsRoutes.employment}?${HR_CONTRACTS_MODE_PARAM}=createContract`);
   }, [router]);
 
-  const activeFilterCount = (kindFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0);
+  const activeFilterCount = (kindFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (draftFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0);
 
   usePageHeaderActions(
     () => (
@@ -658,7 +652,14 @@ export function EmploymentContractsClient() {
       options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
       placeholder: 'نوع العقد',
     },
-  ], [archiveScope, kindFilter, setValue]);
+    {
+      id: 'draft',
+      value: draftFilter,
+      onChange: (v) => setValue('draft', v),
+      options: DRAFT_FILTER_OPTIONS,
+      placeholder: 'المسودات',
+    },
+  ], [archiveScope, kindFilter, draftFilter, setValue]);
 
   const handleStatusFilterChange = React.useCallback(
     (v: string) => setValue('status', v),
@@ -684,6 +685,7 @@ export function EmploymentContractsClient() {
     [
       statusFilter,
       kindFilter,
+      draftFilter,
       archiveScope,
       selectedEmpKey,
       statusCounts,

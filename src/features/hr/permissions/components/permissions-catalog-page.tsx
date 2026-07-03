@@ -86,6 +86,7 @@ export function PermissionsCatalogPage() {
       <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
+        showEmployeePicker={false}
         leadingFilters={searchFilter}
         onDateBoundsChange={() => {}}
       />

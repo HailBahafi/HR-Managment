@@ -155,15 +155,32 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
     if (!input.employeeId.trim()) return { ok: false, error: 'اختر الموظف.' };
     if (!input.requestTypeId.trim()) return { ok: false, error: 'اختر نوع الطلب.' };
     if (!input.workDate.trim()) return { ok: false, error: 'أدخل تاريخ اليوم.' };
+
+    const checkInAt = dateTimeIso(input.workDate, input.correctedCheckIn ?? '');
+    const checkOutAt = dateTimeIso(input.workDate, input.correctedCheckOut ?? '');
+    if (!checkInAt && !checkOutAt) {
+      return { ok: false, error: 'أدخل وقت حضور أو انصراف على الأقل.' };
+    }
+
+    const reasonAr = input.reasonAr?.trim() ?? '';
+    if (reasonAr.length < 3) {
+      return { ok: false, error: 'سبب الطلب مطلوب (٣ أحرف على الأقل).' };
+    }
+
     try {
       const created = await correctionRequestsApi.create({
         companyId,
         employeeId: input.employeeId,
         requestTypeId: input.requestTypeId,
         workDate: input.workDate,
-        correctedCheckInAt: dateTimeIso(input.workDate, input.correctedCheckIn ?? ''),
-        correctedCheckOutAt: dateTimeIso(input.workDate, input.correctedCheckOut ?? ''),
-        reasonAr: input.reasonAr,
+        correctedTimes: {
+          periods: [{
+            periodId: 'period-1',
+            checkInAt: checkInAt ?? null,
+            checkOutAt: checkOutAt ?? null,
+          }],
+        },
+        reasonAr,
         createdBy: userId,
       });
       set(s => ({ items: [mapCorrectionRequest(created), ...s.items] }));

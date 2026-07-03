@@ -15,6 +15,8 @@ export const correctionRequestsApi = {
   list: (params?: {
     companyId?: string;
     employeeId?: string;
+    employeeIds?: string[];
+    departmentId?: string;
     requestTypeId?: string;
     status?: string;
     workDateFrom?: string;
@@ -23,7 +25,7 @@ export const correctionRequestsApi = {
     limit?: number;
   }) =>
     apiRequest<PaginatedResult<ApiCorrectionRequest>>('/requests/correction-requests', {
-      query: params as Record<string, string | number | boolean | null | undefined>,
+      query: params as Record<string, string | number | boolean | null | undefined | string[]>,
     }),
 
   get: (id: string) =>

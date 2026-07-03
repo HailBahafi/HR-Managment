@@ -219,7 +219,6 @@ export function PayrollMultiPeriodExplorer() {
       XLSX.utils.book_append_sheet(wb, ws, (selectedPeriod.nameAr || selectedPeriod.code).slice(0, 31));
       XLSX.writeFile(wb, `payroll-${selectedPeriod.code}.xlsx`);
     } catch (err) {
-      console.error(err);
       alert('حدث خطأ أثناء إنشاء ملف Excel');
     } finally {
       setDownloading(false);

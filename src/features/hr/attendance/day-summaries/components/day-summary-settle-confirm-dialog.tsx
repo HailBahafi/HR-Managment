@@ -69,7 +69,7 @@ export function DaySummarySettleConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden border-border p-0" dir="rtl">
+      <DialogContent className="max-w-md gap-0 overflow-visible border-border p-0" dir="rtl">
         <div className="border-b border-border/60 bg-linear-to-b from-primary/8 to-transparent px-6 pb-4 pt-6">
           <DialogHeader className="space-y-2 text-right">
             <DialogTitle className="font-display text-base">تسوية الحضور</DialogTitle>

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Link2, Link2Off, Plus, Search, Trash2, Pencil, Users, MapPin, CalendarDays, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { SingleDatePicker } from '@/components/ui/single-date-picker';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -265,7 +265,7 @@ export function CheckpointLinksPanel() {
 
       {/* ── Create batch dialog ── */}
       <Dialog open={m.open} onOpenChange={m.setOpen}>
-        <DialogContent className="flex max-h-[80vh] h-[80vh] flex-col gap-0 overflow-hidden border-border p-0 sm:max-w-5xl">
+        <DialogContent className="flex max-h-[80vh] h-[80vh] flex-col gap-0 overflow-visible border-border p-0 sm:max-w-5xl">
           {/* dialog header */}
           <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
             <div className="flex items-center gap-3">
@@ -463,7 +463,7 @@ export function CheckpointLinksPanel() {
         <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Label className="shrink-0 text-sm text-muted-foreground">ساري من</Label>
                 <div className="w-52">
-                  <SingleDatePicker value={m.eff} onChange={m.setEff} />
+                  <DatePickerInput value={m.eff} onChange={m.setEff} />
                 </div>
               </div>
             </div>
@@ -496,7 +496,7 @@ export function CheckpointLinksPanel() {
                     <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                     ساري من
                   </Label>
-                  <SingleDatePicker value={m.editEff} onChange={m.setEditEff} />
+                  <DatePickerInput value={m.editEff} onChange={m.setEditEff} />
                 </div>
 
                 <label className="flex cursor-pointer items-center justify-between rounded-xl border-2 px-4 py-3 transition-all border-border hover:bg-muted/20">

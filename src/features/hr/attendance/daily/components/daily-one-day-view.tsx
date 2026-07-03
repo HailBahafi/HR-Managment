@@ -50,10 +50,6 @@ function minsTo12HourParts(mins: number): { hour: number; period: 'ص' | 'م'; b
   return { hour: h24 - 12, period: 'م', bucket };
 }
 
-function minsToHourBucket(mins: number): number {
-  return Math.min(23, Math.max(0, Math.floor(mins / 60)));
-}
-
 function formatHoverTime12(mins: number): string {
   const minute = mins % 60;
   const h24 = Math.floor(mins / 60) % 24;
@@ -98,10 +94,8 @@ function resolvePunchTimes(
 
 function HourAxis({ activeBucket }: { activeBucket: number | null }) {
   return (
-    <div className="relative mt-2 w-full select-none overflow-visible" aria-hidden>
-     
-
-      <div className="relative h-7 w-full">
+    <div className="relative w-full select-none overflow-visible" aria-hidden>
+      <div className="relative h-6 w-full">
         {HOUR_BUCKETS.map((bucket) => {
           const isActive = activeBucket === bucket;
           const { hour, period } = minsTo12HourParts(bucket * 60);
@@ -340,26 +334,24 @@ function TimelineBar({
     });
   }, [markers]);
 
-  const hoverBucket = hoverMins !== null ? minsToHourBucket(hoverMins) : null;
-
   return (
     <div
       ref={trackRef}
-      className="relative cursor-crosshair pt-8"
+      className="relative cursor-crosshair overflow-visible"
       onPointerMove={(e) => updateHover(e.clientX)}
       onPointerLeave={() => setHoverMins(null)}
     >
-      {/* Hover time card — above dotted line */}
+      {/* Hover time card — floats above the bar without reserving row height */}
       {hoverMins !== null && (
         <div
-          className="pointer-events-none absolute top-0 z-[3] whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1 text-xs font-medium text-popover-foreground shadow-elevated"
+          className="pointer-events-none absolute -top-7 z-[3] whitespace-nowrap rounded-md border border-border bg-popover px-2 py-0.5 text-[11px] font-medium text-popover-foreground shadow-elevated"
           style={{ left: minsToPct(TOTAL_MINS - hoverMins), transform: 'translateX(-50%)' }}
         >
           <span className="font-mono tabular-nums text-primary">{formatHoverTime12(hoverMins)}</span>
         </div>
       )}
 
-      <div className="relative h-14 w-full overflow-visible rounded-xl border border-border/50 bg-muted/20" dir="rtl">
+      <div className="relative h-11 w-full overflow-visible rounded-lg border border-border/50 bg-muted/20" dir="rtl">
         {/* Hour grid — every hour boundary */}
         {Array.from({ length: 25 }, (_, h) => (
           <div
@@ -397,7 +389,7 @@ function TimelineBar({
         {/* Expected shift window */}
         {expectedIn !== null && expectedOut !== null && !isFullCover && (
           <div
-            className="absolute top-3 h-8 rounded-md border border-border/40 bg-muted/50"
+            className="absolute top-2 h-7 rounded-md border border-border/40 bg-muted/50"
             style={{ insetInlineStart: pct(expectedIn), width: pct(Math.max(expectedOut - expectedIn, 0)) }}
           />
         )}
@@ -423,8 +415,6 @@ function TimelineBar({
         {/* Live now cursor */}
         <NowCursor workDate={summary.date} />
       </div>
-
-      <HourAxis activeBucket={hoverBucket} />
     </div>
   );
 }
@@ -498,7 +488,7 @@ function EmployeeMobileCard({
           tabIndex={0}
           onClick={openDetail}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(); } }}
-          className="flex w-full flex-col gap-3 px-4 py-3.5 text-right transition-colors hover:bg-muted/20 active:bg-muted/30 cursor-pointer"
+          className="flex w-full flex-col gap-2 px-4 py-2.5 text-right transition-colors hover:bg-muted/20 active:bg-muted/30 cursor-pointer"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -583,7 +573,7 @@ function EmployeeDesktopRow({
   return (
     <>
       <div className="group hidden border-b border-border/50 last:border-0 transition-colors hover:bg-muted/20 lg:block">
-        <div className="grid grid-cols-[11rem_minmax(0,1fr)] items-center gap-3 px-4 py-3.5">
+        <div className="grid grid-cols-[11rem_minmax(0,1fr)] items-center gap-2 px-4 py-2">
 
           {/* Avatar + name */}
           <div className="col-start-1 flex min-w-0 items-center gap-2.5">
@@ -886,11 +876,13 @@ export function DailyOneDayView({
   initialEvents,
   workDate,
   allEmployees,
+  className,
 }: {
   summaries: AttendanceDaySummary[];
   initialEvents: AttendanceEvent[];
   workDate: string;
   allEmployees: { id: string; name: string }[];
+  className?: string;
 }) {
   const companyId = useDefaultCompanyId() ?? '';
 
@@ -981,7 +973,10 @@ export function DailyOneDayView({
   }, [allRows]);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft" dir="rtl">
+    <div
+      className={cn('flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft', className)}
+      dir="rtl"
+    >
       <DailyDayDetailDialog
         summary={detailSummary}
         open={detailOpen}
@@ -990,7 +985,7 @@ export function DailyOneDayView({
       />
 
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/30 px-4 py-2">
         <div>
           <p className="text-sm font-semibold">{fmtDayFull(workDate)}</p>
           <p className="font-mono text-[11px] text-muted-foreground" dir="ltr">{workDate}</p>
@@ -1014,31 +1009,8 @@ export function DailyOneDayView({
         </div>
       </div>
 
-    
-
-      {/* Rows — dispatch console */}
-      {allRows.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-16 text-center">
-          <Clock className="h-8 w-8 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">لا سجلات في هذا اليوم</p>
-        </div>
-      ) : (
-        allRows.map((s) => (
-          <EmployeeRow
-            key={s.id}
-            summary={s}
-            events={eventsMap.get(s.employeeId) ?? []}
-            workDate={workDate}
-            companyId={companyId}
-            onEventsChange={handleEventsChange}
-            allEmployees={allEmployees}
-            onOpenDayDetail={openDayDetail}
-          />
-        ))
-      )}
-
       {headerEventsExpanded && allDayEvents.length > 0 && (
-        <div className="border-t border-border/50 bg-muted/10 px-4 py-2" dir="rtl">
+        <div className="shrink-0 border-b border-border/50 bg-muted/10 px-4 py-2" dir="rtl">
           {allDayEvents.map(({ event, employeeId, employeeName }, i) => {
             const meta = EVENT_TYPE_META[event.eventType];
             const Icon = meta.icon;
@@ -1077,10 +1049,41 @@ export function DailyOneDayView({
         </div>
       )}
 
-      {/* Footer legend */}
-      <div className="border-t border-border/50 px-4 py-2.5">
-        <DailyAttendanceLegend inline />
+      {/* Scrollable employee rows */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {allRows.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-16 text-center">
+            <Clock className="h-8 w-8 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">لا سجلات في هذا اليوم</p>
+          </div>
+        ) : (
+          allRows.map((s) => (
+            <EmployeeRow
+              key={s.id}
+              summary={s}
+              events={eventsMap.get(s.employeeId) ?? []}
+              workDate={workDate}
+              companyId={companyId}
+              onEventsChange={handleEventsChange}
+              allEmployees={allEmployees}
+              onOpenDayDetail={openDayDetail}
+            />
+          ))
+        )}
       </div>
+
+      {/* Pinned time axis + legend */}
+      {allRows.length > 0 && (
+        <div className="shrink-0 border-t border-border/50 bg-card shadow-[0_-6px_16px_-8px_rgba(0,0,0,0.12)]">
+          <div className="hidden lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:items-center lg:gap-2 lg:px-4 lg:pt-2.5 lg:pb-1.5">
+            <div aria-hidden />
+            <HourAxis activeBucket={null} />
+          </div>
+          <div className="border-t border-border/40 px-4 py-2">
+            <DailyAttendanceLegend inline />
+          </div>
+        </div>
+      )}
 
       <RegisterEventComboDialog
         open={registerDialogOpen}

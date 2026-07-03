@@ -73,6 +73,18 @@ export function formatDisplayDate(date: string | Date | null | undefined): strin
 const LRI = '\u2066';
 const PDI = '\u2069';
 
+/** Duration as Arabic units with Western digits — e.g. 90 → "1س 30د" (number then unit). */
+export function formatDurationMinutesAr(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes < 0) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const hn = formatNumber(h);
+  const mn = formatNumber(m);
+  if (h <= 0) return `${LRI}${mn}د${PDI}`;
+  if (m <= 0) return `${LRI}${hn}س${PDI}`;
+  return `${LRI}${hn}س ${mn}د${PDI}`;
+}
+
 function formatArabicTime(hours24: number, hours12: number, minutes: string): string {
   const period = hours24 < 12 ? 'ص' : 'م';
   return `${LRI}${hours12}:${minutes}${period}${PDI}`;
@@ -134,6 +146,14 @@ export function formatTime(date: string | Date | null | undefined): string {
   return formatArabicTime(hours24, hours12, minutes);
 }
 
+/** 24-hour clock HH:mm with Western digits (for tables / heatmaps). */
+export function formatTime24FromIso(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 /** Alias for formatDisplayDateTime — use for ISO timestamps (createdAt, submittedAt, …). */
 export const formatDateTime = formatDisplayDateTime;
 
@@ -153,8 +173,8 @@ export function relativeTime(date: string | Date): string {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
   if (minutes < 1) return 'الآن';
-  if (minutes < 60) return `منذ ${minutes} دقيقة`;
-  if (hours < 24) return `منذ ${hours} ساعة`;
-  if (days < 7) return `منذ ${days} يوم`;
+  if (minutes < 60) return `منذ ${formatNumber(minutes)} دقيقة`;
+  if (hours < 24) return `منذ ${formatNumber(hours)} ساعة`;
+  if (days < 7) return `منذ ${formatNumber(days)} يوم`;
   return formatDate(d);
 }
