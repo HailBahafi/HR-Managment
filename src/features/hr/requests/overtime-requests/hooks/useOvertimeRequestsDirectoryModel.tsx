@@ -23,6 +23,10 @@ import type { OvertimeRequestStatusDto } from '@/features/hr/requests/lib/api/ov
 import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import {
+  attendanceEventsApi,
+  type DailyBreakdownResponseDto,
+} from '@/features/hr/attendance/lib/api/attendance-events';
+import {
   mapOvertimeRequestListItem,
   type OvertimeRequestRecord,
 } from '@/features/hr/requests/overtime-requests/services/overtime-requests.service';
@@ -117,9 +121,51 @@ export function useOvertimeRequestsDirectoryModel() {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [editTarget, setEditTarget] = React.useState<OvertimeRequestRecord | null>(null);
   const [detailTarget, setDetailTarget] = React.useState<OvertimeRequestRecord | null>(null);
+  const [approveTarget, setApproveTarget] = React.useState<OvertimeRequestRecord | null>(null);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [cancelId, setCancelId] = React.useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
+
+  // Real check-in/check-out + computed overtime for whichever request is
+  // currently open in the detail or approve dialog — lets the approver
+  // compare the requested minutes against what actually happened that day.
+  const [dailyBreakdown, setDailyBreakdown] = React.useState<DailyBreakdownResponseDto | null>(null);
+  const [breakdownLoading, setBreakdownLoading] = React.useState(false);
+  const [breakdownError, setBreakdownError] = React.useState<string | null>(null);
+
+  const breakdownSource = detailTarget ?? approveTarget;
+  React.useEffect(() => {
+    if (!breakdownSource) {
+      setDailyBreakdown(null);
+      setBreakdownError(null);
+      return;
+    }
+    let cancelled = false;
+    setBreakdownLoading(true);
+    setBreakdownError(null);
+    void attendanceEventsApi
+      .getDailyBreakdown({
+        employeeId: breakdownSource.employeeId,
+        workDate: breakdownSource.workDate,
+        companyId: companyId ?? undefined,
+        timezoneOffsetMinutes: 180,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        setDailyBreakdown(res);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setDailyBreakdown(null);
+        setBreakdownError(handleApiError(err, 'overtime-requests.daily-breakdown').displayMessage);
+      })
+      .finally(() => {
+        if (!cancelled) setBreakdownLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [breakdownSource, companyId]);
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
@@ -205,13 +251,18 @@ export function useOvertimeRequestsDirectoryModel() {
     await reloadList();
   }, [actor, reloadList]);
 
-  const handleApprove = React.useCallback(async (x: OvertimeRequestRecord) => {
+  const handleApprove = React.useCallback(async (
+    x: OvertimeRequestRecord,
+    options?: { approvedMinutes?: number; decisionNotesAr?: string | null },
+  ) => {
     if (!companyId) return;
     try {
       setActionLoadingId(x.id);
       const updated = await overtimeRequestsApi.decide(x.id, {
         decision: 'approve',
         ...(currentEmployeeId ? { approverEmployeeId: currentEmployeeId, decidedByEmployeeId: currentEmployeeId } : {}),
+        ...(options?.approvedMinutes != null ? { approvedMinutes: options.approvedMinutes } : {}),
+        ...(options?.decisionNotesAr?.trim() ? { decisionNotesAr: options.decisionNotesAr.trim() } : {}),
         updatedBy: actor,
       });
       toast.success(
@@ -221,6 +272,7 @@ export function useOvertimeRequestsDirectoryModel() {
       );
       await reloadList();
       setDetailTarget(null);
+      setApproveTarget(null);
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'overtime-requests.decide.approve');
       toast.error(displayMessage);
@@ -359,6 +411,11 @@ export function useOvertimeRequestsDirectoryModel() {
     setEditTarget,
     detailTarget,
     setDetailTarget,
+    approveTarget,
+    setApproveTarget,
+    dailyBreakdown,
+    breakdownLoading,
+    breakdownError,
     deleteId,
     setDeleteId,
     cancelId,

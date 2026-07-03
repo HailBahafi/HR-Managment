@@ -2,13 +2,14 @@
 
 import * as React from 'react';
 import { toast } from 'sonner';
-import { Timer, CalendarDays, Ban } from 'lucide-react';
+import { Timer, CalendarDays, Ban, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import type { DailyBreakdownResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown,
@@ -32,7 +33,7 @@ import {
 } from '@/features/hr/requests/components/request-approval-actions';
 import { ForbiddenState } from '@/components/shared/forbidden-state';
 import { Can } from '@/components/shared/can';
-import { cn } from '@/shared/utils';
+import { cn, formatTime } from '@/shared/utils';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
 import {
   useOvertimeRequestsDirectoryModel,
@@ -83,12 +84,94 @@ function isDeletable(status: OvertimeRequestStatusDto): boolean {
   return status === 'rejected' || status === 'cancelled';
 }
 
+type AttendanceSummary = {
+  checkInAt: string | null;
+  checkOutAt: string | null;
+  workedMinutes: number;
+  expectedMinutes: number;
+  overtimeMinutes: number;
+};
+
+/** Earliest check-in / latest check-out across the day's periods, plus totals. */
+function summarizeAttendance(breakdown: DailyBreakdownResponseDto): AttendanceSummary {
+  let checkInAt: string | null = null;
+  let checkOutAt: string | null = null;
+  for (const period of breakdown.periods) {
+    const { checkInAt: inAt, checkOutAt: outAt } = period.actual;
+    if (inAt && (!checkInAt || inAt < checkInAt)) checkInAt = inAt;
+    if (outAt && (!checkOutAt || outAt > checkOutAt)) checkOutAt = outAt;
+  }
+  return {
+    checkInAt,
+    checkOutAt,
+    workedMinutes: breakdown.totals.workedMinutes,
+    expectedMinutes: breakdown.totals.expectedMinutes,
+    overtimeMinutes: breakdown.totals.overtimeMinutes,
+  };
+}
+
+/** Real check-in/check-out + computed overtime for a work day, pulled from /attendance/events/daily-breakdown. */
+function AttendanceBreakdownPanel({
+  loading,
+  error,
+  breakdown,
+}: {
+  loading: boolean;
+  error: string | null;
+  breakdown: DailyBreakdownResponseDto | null;
+}) {
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 px-3 py-4 text-center text-xs text-muted-foreground">
+        جاري تحميل بيانات الحضور الفعلية…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        {error}
+      </div>
+    );
+  }
+  if (!breakdown) return null;
+
+  const summary = summarizeAttendance(breakdown);
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-muted/10 p-3">
+      <p className="text-xs font-semibold text-foreground">الحضور الفعلي لهذا اليوم</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="rounded-md bg-background px-2.5 py-2">
+          <p className="flex items-center gap-1 text-[10px] text-muted-foreground"><LogIn className="h-3 w-3" />الحضور</p>
+          <p className="font-mono text-xs font-medium tabular-nums" dir="ltr">{summary.checkInAt ? formatTime(summary.checkInAt) : '—'}</p>
+        </div>
+        <div className="rounded-md bg-background px-2.5 py-2">
+          <p className="flex items-center gap-1 text-[10px] text-muted-foreground"><LogOut className="h-3 w-3" />الانصراف</p>
+          <p className="font-mono text-xs font-medium tabular-nums" dir="ltr">{summary.checkOutAt ? formatTime(summary.checkOutAt) : '—'}</p>
+        </div>
+        <div className="rounded-md bg-background px-2.5 py-2">
+          <p className="text-[10px] text-muted-foreground">ساعات العمل الفعلية</p>
+          <p className="text-xs font-medium tabular-nums" dir="ltr">{formatMinutesAsHM(summary.workedMinutes)}</p>
+        </div>
+        <div className="rounded-md bg-background px-2.5 py-2">
+          <p className="text-[10px] text-muted-foreground">الإضافي المحسوب فعلياً</p>
+          <p className="text-xs font-medium tabular-nums text-primary" dir="ltr">{formatMinutesAsHM(summary.overtimeMinutes)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function OvertimeRequestsClient() {
   const m = useOvertimeRequestsDirectoryModel();
 
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [form, setForm] = React.useState<DraftForm>(EMPTY_FORM);
+
+  const [approveChoice, setApproveChoice] = React.useState<'requested' | 'actual'>('requested');
+  const [approveNotes, setApproveNotes] = React.useState('');
 
   const patch = (p: Partial<DraftForm>) => setForm((f) => ({ ...f, ...p }));
 
@@ -108,9 +191,31 @@ export function OvertimeRequestsClient() {
     setError(null);
   }, [m.drawerOpen, m.editTarget]);
 
+  React.useEffect(() => {
+    if (!m.approveTarget) return;
+    setApproveChoice('requested');
+    setApproveNotes('');
+  }, [m.approveTarget]);
+
   if (m.accessDenied) {
     return <ForbiddenState title="لا تملك صلاحية الوصول لطلبات العمل الإضافي" />;
   }
+
+  const openApprove = (x: OvertimeRequestRecord) => {
+    m.setDetailTarget(null);
+    m.setApproveTarget(x);
+  };
+
+  const rawActualOvertimeMinutes = m.dailyBreakdown ? summarizeAttendance(m.dailyBreakdown).overtimeMinutes : null;
+  const actualOvertimeMinutes = rawActualOvertimeMinutes != null && rawActualOvertimeMinutes > 0 ? rawActualOvertimeMinutes : null;
+
+  const confirmApprove = async () => {
+    if (!m.approveTarget) return;
+    const approvedMinutes = approveChoice === 'actual' && actualOvertimeMinutes != null
+      ? actualOvertimeMinutes
+      : m.approveTarget.requestedMinutes;
+    await m.handleApprove(m.approveTarget, { approvedMinutes, decisionNotesAr: approveNotes });
+  };
 
   const handleSave = async () => {
     if (!form.employeeId) { setError('اختر الموظف'); return; }
@@ -242,7 +347,7 @@ export function OvertimeRequestsClient() {
                 states={x.approverStates}
                 currentEmployeeId={m.currentEmployeeId}
                 getUiState={() => m.getApprovalUiState(x)}
-                onApprove={() => void m.handleApprove(x)}
+                onApprove={() => openApprove(x)}
                 onReject={() => void m.handleReject(x)}
               />
             ) : null}
@@ -321,7 +426,7 @@ export function OvertimeRequestsClient() {
                         m.canShowApprovalActions(x)
                           ? {
                               showApproveReject: true,
-                              onApprove: () => void m.handleApprove(x),
+                              onApprove: () => openApprove(x),
                               onReject: () => void m.handleReject(x),
                               disabled: !m.getApprovalUiState(x).canAct,
                               waitingReason: m.getApprovalUiState(x).reasonAr ?? undefined,
@@ -358,7 +463,6 @@ export function OvertimeRequestsClient() {
                         ) : undefined
                       }
                     >
-                      <RequestApproversInline states={x.approverStates} />
                       <RequestApproverStatesPanel states={x.approverStates} compact className="border-0 bg-transparent p-0" />
                     </EntityActionCard>
                   );
@@ -503,17 +607,122 @@ export function OvertimeRequestsClient() {
                   </div>
                 ) : null}
               </div>
-              <RequestApproversInline states={m.detailTarget.approverStates} />
+              <AttendanceBreakdownPanel
+                loading={m.breakdownLoading}
+                error={m.breakdownError}
+                breakdown={m.dailyBreakdown}
+              />
               <RequestApproverStatesPanel states={m.detailTarget.approverStates} />
               {m.canShowApprovalActions(m.detailTarget) ? (
                 <ApprovalActionButtons
                   states={m.detailTarget.approverStates}
                   currentEmployeeId={m.currentEmployeeId}
                   getUiState={() => m.getApprovalUiState(m.detailTarget!)}
-                  onApprove={() => void m.handleApprove(m.detailTarget!)}
+                  onApprove={() => openApprove(m.detailTarget!)}
                   onReject={() => void m.handleReject(m.detailTarget!)}
                 />
               ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={m.approveTarget != null} onOpenChange={(o) => { if (!o) m.setApproveTarget(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>اعتماد طلب العمل الإضافي</DialogTitle>
+          </DialogHeader>
+          {m.approveTarget ? (
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">الموظف</p>
+                  <p className="text-sm font-medium">{m.approveTarget.employeeNameAr}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">تاريخ العمل الإضافي</p>
+                  <p className="text-sm font-medium font-mono">{m.approveTarget.workDate}</p>
+                </div>
+              </div>
+
+              <AttendanceBreakdownPanel
+                loading={m.breakdownLoading}
+                error={m.breakdownError}
+                breakdown={m.dailyBreakdown}
+              />
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-foreground">المدة التي يتم اعتمادها للرواتب</p>
+
+                <label
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 text-sm transition-colors',
+                    approveChoice === 'requested' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/20',
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="approve-minutes-choice"
+                      checked={approveChoice === 'requested'}
+                      onChange={() => setApproveChoice('requested')}
+                    />
+                    المدة المطلوبة في الطلب
+                  </span>
+                  <span className="font-mono font-medium tabular-nums" dir="ltr">
+                    {formatMinutesAsHM(m.approveTarget.requestedMinutes)}
+                  </span>
+                </label>
+
+                <label
+                  className={cn(
+                    'flex items-center justify-between gap-3 rounded-lg border p-3 text-sm transition-colors',
+                    actualOvertimeMinutes == null
+                      ? 'cursor-not-allowed border-border/60 opacity-50'
+                      : cn('cursor-pointer', approveChoice === 'actual' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/20'),
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="approve-minutes-choice"
+                      checked={approveChoice === 'actual'}
+                      disabled={actualOvertimeMinutes == null}
+                      onChange={() => setApproveChoice('actual')}
+                    />
+                    المدة الفعلية المحسوبة من الحضور
+                  </span>
+                  <span className="font-mono font-medium tabular-nums" dir="ltr">
+                    {actualOvertimeMinutes != null ? formatMinutesAsHM(actualOvertimeMinutes) : '—'}
+                  </span>
+                </label>
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">ملاحظات القرار (اختياري)</p>
+                <Textarea
+                  value={approveNotes}
+                  onChange={(e) => setApproveNotes(e.target.value)}
+                  rows={2}
+                  placeholder="ملاحظة تُرفق مع قرار الاعتماد…"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => m.setApproveTarget(null)}>
+                  إلغاء
+                </Button>
+                <Button
+                  variant="luxe"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={m.actionLoadingId === m.approveTarget.id}
+                  onClick={() => void confirmApprove()}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  اعتماد
+                </Button>
+              </div>
             </div>
           ) : null}
         </DialogContent>

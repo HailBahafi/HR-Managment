@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import { cn } from '@/shared/utils';
 import { approvalModeLabelAr, formalApproverStatusLabelAr } from '@/shared/i18n/ar';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
