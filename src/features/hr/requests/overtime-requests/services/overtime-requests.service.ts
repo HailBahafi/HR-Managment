@@ -1,5 +1,9 @@
 import { formatDurationMinutesAr } from '@/shared/utils';
 import type {
+  RequestApproverEntryStatus,
+  RequestApproverStatesSnapshot,
+} from '@/features/hr/requests/types/api/request-approver-states-types';
+import type {
   OvertimeRequestResponseDto,
   OvertimeRequestListItemDto,
   RequestApprovalAssignmentCatalogDto,
