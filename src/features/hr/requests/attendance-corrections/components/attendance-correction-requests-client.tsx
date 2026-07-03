@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/entity-action-card';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { correctionRequestsApi } from '@/features/hr/requests/lib/api/correction-requests';
+import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
 import { mapCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 import { ListFilterBar } from '@/components/ui/list-filter-bar';
@@ -30,8 +31,17 @@ import { usePageHeaderActions } from '@/components/layouts/page-header-actions-c
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   dialogFormFooterClass,
+  dialogShellBodyClass,
+  dialogShellContentClass,
+  dialogShellHeaderClass,
 } from '@/components/ui/dialog';
 import { FormField, EmptyState } from '@/components/ui/shared-dialogs';
 import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
@@ -93,24 +103,39 @@ export function AttendanceCorrectionRequestsClient() {
   const currentEmployeeId = currentEmployee?.id ?? null;
   const updatedByActor = authUser?.id ?? undefined;
   const departments = useHRConfigurationStore((s) => s.departments);
-  const { requestTypes, fetchRequestTypes, fetchDepartments } = useHRConfigurationStore();
+  const fetchDepartments = useHRConfigurationStore((s) => s.fetchDepartments);
   const employees = useHREmployeeDirectoryStore((s) => s.employees);
   const fetchEmployees = useHREmployeeDirectoryStore((s) => s.fetch);
   const activeEmployees = React.useMemo(() => employees.filter((e) => e.status === 'active'), [employees]);
 
   const { submit, approve, reject, cancel } = useAttendanceCorrectionRequestsStore();
 
+  // Catalog row for "تصحيح حضور وانصراف" — resolved once per company.
+  const [correctionRequestType, setCorrectionRequestType] = React.useState<ApiRequestType | null>(null);
   React.useEffect(() => {
     if (!companyId) return;
-    fetchRequestTypes();
-    fetchDepartments();
-    fetchEmployees();
+    let cancelled = false;
+    void requestTypesApi
+      .list({ companyId, requestCategory: 'attendance_correction', isActive: true, limit: 50 })
+      .then((res) => {
+        if (cancelled) return;
+        const officialFirst =
+          res.items.find((t) => t.slug === 'attendance-correction') ?? res.items[0] ?? null;
+        setCorrectionRequestType(officialFirst);
+      })
+      .catch(() => {
+        if (!cancelled) setCorrectionRequestType(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [companyId]);
 
-  const attendanceRequestTypes = React.useMemo(
-    () => requestTypes.filter(rt => rt.isActive),
-    [requestTypes],
-  );
+  React.useEffect(() => {
+    if (!companyId) return;
+    fetchDepartments();
+    fetchEmployees();
+  }, [companyId, fetchDepartments, fetchEmployees]);
 
   const [appliedDept, setAppliedDept] = usePersistedFilterState(
     hrFiltersKey('requests', 'attendance-corrections', companyId, 'appliedDept'),
@@ -130,7 +155,6 @@ export function AttendanceCorrectionRequestsClient() {
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [formEmpId, setFormEmpId] = React.useState('');
-  const [formRequestTypeId, setFormRequestTypeId] = React.useState('');
   const [formWorkDate, setFormWorkDate] = React.useState('');
   const [formCorrIn, setFormCorrIn] = React.useState('');
   const [formCorrOut, setFormCorrOut] = React.useState('');
@@ -192,7 +216,6 @@ export function AttendanceCorrectionRequestsClient() {
 
   const resetForm = React.useCallback(() => {
     setFormEmpId('');
-    setFormRequestTypeId('');
     setFormWorkDate('');
     setFormCorrIn('');
     setFormCorrOut('');
@@ -202,15 +225,18 @@ export function AttendanceCorrectionRequestsClient() {
   const openNew = React.useCallback(() => {
     resetForm();
     if (activeEmployees.length) setFormEmpId(activeEmployees[0]!.id);
-    if (attendanceRequestTypes.length) setFormRequestTypeId(attendanceRequestTypes[0]!.id);
     setDialogOpen(true);
-  }, [activeEmployees, attendanceRequestTypes, resetForm]);
+  }, [activeEmployees, resetForm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!correctionRequestType) {
+      toast.error('تعذر تحديد نوع طلب تصحيح الحضور — تأكد من وجود نوع طلب مفعّل بفئة «تصحيح حضور».');
+      return;
+    }
     const res = await submit({
       employeeId: formEmpId,
-      requestTypeId: formRequestTypeId,
+      requestTypeId: correctionRequestType.id,
       workDate: formWorkDate,
       correctedCheckIn: formCorrIn,
       correctedCheckOut: formCorrOut,
@@ -611,15 +637,15 @@ export function AttendanceCorrectionRequestsClient() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) resetForm(); setDialogOpen(o); }}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
-          <form onSubmit={handleSubmit}>
-            <DialogHeader>
+        <DialogContent className={cn(dialogShellContentClass, 'sm:max-w-lg')} dir="rtl">
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <DialogHeader className={dialogShellHeaderClass}>
               <DialogTitle>طلب تصحيح حضور</DialogTitle>
               <DialogDescription>
                 أدخل الموظف وتاريخ التصحيح والأوقات المصححة وسبب الطلب.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-2">
+            <DialogBody className={cn(dialogShellBodyClass, 'grid gap-4')}>
               <FormField label="الموظف مقدّم الطلب">
                 <Select value={formEmpId} onValueChange={setFormEmpId}>
                   <SelectTrigger><SelectValue placeholder="اختر الموظف…" /></SelectTrigger>
@@ -627,20 +653,6 @@ export function AttendanceCorrectionRequestsClient() {
                     {activeEmployees.map((e) => (
                       <SelectItem key={e.id} value={e.id}>{e.nameAr}</SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="نوع الطلب">
-                <Select value={formRequestTypeId} onValueChange={setFormRequestTypeId}>
-                  <SelectTrigger><SelectValue placeholder="اختر نوع الطلب…" /></SelectTrigger>
-                  <SelectContent>
-                    {attendanceRequestTypes.length === 0 ? (
-                      <SelectItem value="__none__" disabled>لا توجد أنواع طلبات للحضور — أضفها من إعدادات أنواع الطلبات</SelectItem>
-                    ) : (
-                      attendanceRequestTypes.map((rt) => (
-                        <SelectItem key={rt.id} value={rt.id}>{rt.nameAr}</SelectItem>
-                      ))
-                    )}
                   </SelectContent>
                 </Select>
               </FormField>
@@ -667,7 +679,7 @@ export function AttendanceCorrectionRequestsClient() {
                   placeholder="اشرح سبب طلب التصحيح (٣ أحرف على الأقل)…"
                 />
               </FormField>
-            </div>
+            </DialogBody>
             <DialogFooter className={dialogFormFooterClass}>
               <Button type="submit" variant="luxe">تسجيل الطلب</Button>
               <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>إلغاء</Button>

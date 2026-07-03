@@ -66,8 +66,8 @@ export function DataTable<T>({
     : 'border-b border-border/60';
 
   const headerCellClass = isDirectory
-    ? 'sticky top-0 z-10 bg-muted px-4 py-3 text-start border-b border-border'
-    : 'sticky top-0 z-10 bg-card px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground/70 border-b border-border';
+    ? 'sticky top-0 z-10 whitespace-nowrap bg-muted px-4 py-3 text-start border-b border-border'
+    : 'sticky top-0 z-10 bg-card px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground/70 border-b border-border whitespace-nowrap';
 
   const bodyRowClass = isDirectory
     ? cn('border-b border-border/60', onRowClick && 'group cursor-pointer hover:bg-muted/25')
