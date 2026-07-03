@@ -32,6 +32,7 @@ import {
   ApprovalActionButtons,
 } from '@/features/hr/requests/components/request-approval-actions';
 import { ForbiddenState } from '@/components/shared/forbidden-state';
+import { DurationMinutesDisplay } from '@/components/shared/duration-minutes-display';
 import { Can } from '@/components/shared/can';
 import { cn, formatTime } from '@/shared/utils';
 import { STATUS_PILL } from '@/shared/status-pill-classes';
@@ -39,7 +40,7 @@ import {
   useOvertimeRequestsDirectoryModel,
   OVERTIME_STATUS_LABELS,
 } from '@/features/hr/requests/overtime-requests/hooks/useOvertimeRequestsDirectoryModel';
-import { formatMinutesAsHM, type OvertimeRequestRecord } from '@/features/hr/requests/overtime-requests/services/overtime-requests.service';
+import type { OvertimeRequestRecord } from '@/features/hr/requests/overtime-requests/services/overtime-requests.service';
 import type { OvertimeRequestStatusDto } from '@/features/hr/requests/lib/api/overtime-requests';
 
 const STATUS_COLORS: Record<OvertimeRequestStatusDto, string> = {
@@ -152,11 +153,11 @@ function AttendanceBreakdownPanel({
         </div>
         <div className="rounded-md bg-background px-2.5 py-2">
           <p className="text-[10px] text-muted-foreground">ساعات العمل الفعلية</p>
-          <p className="text-xs font-medium tabular-nums" dir="ltr">{formatMinutesAsHM(summary.workedMinutes)}</p>
+          <p className="text-xs font-medium tabular-nums"><DurationMinutesDisplay minutes={summary.workedMinutes} /></p>
         </div>
         <div className="rounded-md bg-background px-2.5 py-2">
           <p className="text-[10px] text-muted-foreground">الإضافي المحسوب فعلياً</p>
-          <p className="text-xs font-medium tabular-nums text-primary" dir="ltr">{formatMinutesAsHM(summary.overtimeMinutes)}</p>
+          <p className="text-xs font-medium tabular-nums text-primary"><DurationMinutesDisplay minutes={summary.overtimeMinutes} /></p>
         </div>
       </div>
     </div>
@@ -282,16 +283,17 @@ export function OvertimeRequestsClient() {
     {
       key: 'minutes',
       title: 'المدة المطلوبة',
-      render: (x) => <span className="tabular-nums font-medium" dir="ltr">{formatMinutesAsHM(x.requestedMinutes)}</span>,
+      render: (x) => <DurationMinutesDisplay minutes={x.requestedMinutes} className="font-medium" />,
     },
     {
       key: 'approvedMinutes',
       title: 'المدة المعتمدة',
       hideOnMobile: true,
       render: (x) => (
-        <span className="tabular-nums text-muted-foreground" dir="ltr">
-          {x.approvedMinutes != null ? formatMinutesAsHM(x.approvedMinutes) : '—'}
-        </span>
+        <DurationMinutesDisplay
+          minutes={x.approvedMinutes}
+          className="text-muted-foreground"
+        />
       ),
     },
     {
@@ -409,11 +411,10 @@ export function OvertimeRequestsClient() {
                       }
                       metrics={
                         <EntityActionCardMetricsRow>
-                          <EntityActionCardMetric label="المدة المطلوبة" value={formatMinutesAsHM(x.requestedMinutes)} dir="ltr" />
+                          <EntityActionCardMetric label="المدة المطلوبة" value={<DurationMinutesDisplay minutes={x.requestedMinutes} />} />
                           <EntityActionCardMetric
                             label="المدة المعتمدة"
-                            value={x.approvedMinutes != null ? formatMinutesAsHM(x.approvedMinutes) : '—'}
-                            dir="ltr"
+                            value={<DurationMinutesDisplay minutes={x.approvedMinutes} />}
                           />
                         </EntityActionCardMetricsRow>
                       }
@@ -569,19 +570,19 @@ export function OvertimeRequestsClient() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">المدة المطلوبة</p>
-                  <p className="text-sm font-medium tabular-nums" dir="ltr">{formatMinutesAsHM(m.detailTarget.requestedMinutes)}</p>
+                  <p className="text-sm font-medium tabular-nums"><DurationMinutesDisplay minutes={m.detailTarget.requestedMinutes} /></p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">المدة المعتمدة</p>
-                  <p className="text-sm font-medium tabular-nums" dir="ltr">
-                    {m.detailTarget.approvedMinutes != null ? formatMinutesAsHM(m.detailTarget.approvedMinutes) : '—'}
+                  <p className="text-sm font-medium tabular-nums">
+                    <DurationMinutesDisplay minutes={m.detailTarget.approvedMinutes} />
                   </p>
                 </div>
                 {m.detailTarget.previousOvertimeMinutes != null ? (
                   <div>
                     <p className="text-xs text-muted-foreground">إضافي سابق في اليوم</p>
-                    <p className="text-sm font-medium tabular-nums" dir="ltr">
-                      {formatMinutesAsHM(m.detailTarget.previousOvertimeMinutes)}
+                    <p className="text-sm font-medium tabular-nums">
+                      <DurationMinutesDisplay minutes={m.detailTarget.previousOvertimeMinutes} />
                       {m.detailTarget.previousOvertimePayrollAllowed ? ' · محتسب في الرواتب' : ''}
                     </p>
                   </div>
@@ -669,9 +670,7 @@ export function OvertimeRequestsClient() {
                     />
                     المدة المطلوبة في الطلب
                   </span>
-                  <span className="font-mono font-medium tabular-nums" dir="ltr">
-                    {formatMinutesAsHM(m.approveTarget.requestedMinutes)}
-                  </span>
+                  <DurationMinutesDisplay minutes={m.approveTarget.requestedMinutes} className="font-medium" />
                 </label>
 
                 <label
@@ -692,9 +691,7 @@ export function OvertimeRequestsClient() {
                     />
                     المدة الفعلية المحسوبة من الحضور
                   </span>
-                  <span className="font-mono font-medium tabular-nums" dir="ltr">
-                    {actualOvertimeMinutes != null ? formatMinutesAsHM(actualOvertimeMinutes) : '—'}
-                  </span>
+                  <DurationMinutesDisplay minutes={actualOvertimeMinutes} className="font-medium" />
                 </label>
               </div>
 

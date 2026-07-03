@@ -1,4 +1,4 @@
-import type { RequestApproverStatesSnapshot, RequestApproverEntryStatus } from '@/features/hr/requests/types/api/request-approver-states-types';
+import { formatDurationMinutesAr } from '@/shared/utils';
 import type {
   OvertimeRequestResponseDto,
   OvertimeRequestListItemDto,
@@ -127,11 +127,7 @@ export function mapOvertimeRequestListItem(
   };
 }
 
-/** ٦٠ → "1س 0د"، 90 → "1س 30د" */
+/** 60 → "1س 0د"، 90 → "1س 30د" */
 export function formatMinutesAsHM(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h <= 0) return `${m}د`;
-  if (m <= 0) return `${h}س`;
-  return `${h}س ${m}د`;
+  return formatDurationMinutesAr(minutes);
 }

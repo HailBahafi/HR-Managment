@@ -73,6 +73,18 @@ export function formatDisplayDate(date: string | Date | null | undefined): strin
 const LRI = '\u2066';
 const PDI = '\u2069';
 
+/** Duration as Arabic units with Western digits — e.g. 90 → "1س 30د" (number then unit). */
+export function formatDurationMinutesAr(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes < 0) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const hn = formatNumber(h);
+  const mn = formatNumber(m);
+  if (h <= 0) return `${LRI}${mn}د${PDI}`;
+  if (m <= 0) return `${LRI}${hn}س${PDI}`;
+  return `${LRI}${hn}س ${mn}د${PDI}`;
+}
+
 function formatArabicTime(hours24: number, hours12: number, minutes: string): string {
   const period = hours24 < 12 ? 'ص' : 'م';
   return `${LRI}${hours12}:${minutes}${period}${PDI}`;
