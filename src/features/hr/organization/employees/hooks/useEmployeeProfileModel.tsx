@@ -78,7 +78,9 @@ export function useEmployeeProfileModel(employee: Employee, onUpdated?: (updated
 
   return {
     employee,
-    hasLinkedUser,
+    // `hasLinkedUser` comes from the `...permissions` spread below (same
+    // `employee.hasUser ?? !!employee.userId` formula) — not re-listed here
+    // to avoid a duplicate-key overwrite.
     SECTIONS: visibleSections,
     activeSection,
     setActiveSection,
