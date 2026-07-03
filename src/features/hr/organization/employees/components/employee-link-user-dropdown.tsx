@@ -29,8 +29,10 @@ export function EmployeeLinkUserDropdown({
           value=""
           onChange={onSelect}
           options={options}
-          placeholder={loading ? 'جاري تحميل المستخدمين…' : 'ربط مستخدم موجود…'}
+          placeholder={loading ? 'جاري تحميل المستخدمين…' : `ربط مستخدم موجود… (${options.length})`}
           disabled={disabled || loading || linking || options.length === 0}
+          listClassName="max-h-[min(70vh,28rem)]"
+          contentClassName="min-w-[min(100vw-2rem,20rem)]"
           className="w-full"
         />
         {linking ? (

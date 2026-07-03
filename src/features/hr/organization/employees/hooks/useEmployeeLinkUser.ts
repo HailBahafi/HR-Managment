@@ -15,12 +15,12 @@ export function useEmployeeLinkUser(
   const qc = useQueryClient();
 
   const usersQuery = useQuery({
-    queryKey: ['users', 'link-picker'],
+    queryKey: ['users', 'link-picker', 'all'],
     queryFn: () =>
       fetchAllPaginatedItems((page, limit) =>
         usersApi.getAll({ page, limit, archiveScope: 'all' }),
       ),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 
   const linkUserOptions = React.useMemo(

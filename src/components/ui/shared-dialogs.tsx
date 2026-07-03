@@ -115,9 +115,21 @@ export function MinimalDropdown({
 interface SearchableDropdownProps extends Omit<MinimalDropdownProps, 'onChange'> {
   onChange: (v: string) => void;
   allowClear?: boolean;
+  /** Scrollable list height (default max-h-52 ≈ 4 rows). */
+  listClassName?: string;
 }
 
-export function SearchableDropdown({ value, onChange, options, placeholder = 'ابحث أو اختر…', className, disabled, allowClear }: SearchableDropdownProps) {
+export function SearchableDropdown({
+  value,
+  onChange,
+  options,
+  placeholder = 'ابحث أو اختر…',
+  className,
+  contentClassName,
+  disabled,
+  allowClear,
+  listClassName,
+}: SearchableDropdownProps) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState('');
   const dialogContainer = useDialogPortalContainer();
@@ -156,9 +168,14 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal container={dialogContainer ?? undefined}>
         <PopoverPrimitive.Content
-          className="popover-match-trigger z-[200] min-w-[12rem] overflow-auto rounded-md border border-border bg-popover shadow-elevated"
+          className={cn(
+            'popover-match-trigger z-[200] min-w-[12rem] overflow-hidden rounded-md border border-border bg-popover p-0 shadow-elevated',
+            contentClassName,
+          )}
           sideOffset={4}
-          collisionPadding={12}
+          collisionPadding={16}
+          avoidCollisions
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <div className="border-b border-border p-2">
             <div className="relative">
@@ -171,8 +188,19 @@ export function SearchableDropdown({ value, onChange, options, placeholder = 'ا
                 autoFocus
               />
             </div>
+            {options.length > 0 ? (
+              <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+                {filtered.length} / {options.length}
+              </p>
+            ) : null}
           </div>
-          <div className="max-h-52 overflow-auto">
+          <div
+            className={cn(
+              'max-h-52 overflow-y-auto overscroll-contain',
+              listClassName,
+            )}
+            onWheel={(e) => e.stopPropagation()}
+          >
             {filtered.map(opt => (
               <button
                 key={opt.value || '__empty__'}
