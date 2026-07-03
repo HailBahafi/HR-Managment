@@ -10,7 +10,7 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck, UserPlus,
-  Coins, FileStack, Receipt, KeyRound, Settings,
+  Coins, FileStack, Receipt, KeyRound, Settings, Timer,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -163,6 +163,7 @@ export const navConfig: NavItem[] = [
         { label: 'إدارة طلبات الحضور', href: '/hr/requests/attendance-corrections', icon: CalendarClock },
         { label: 'إدارة طلبات الإجازات', href: '/hr/requests/unified-management', icon: LayoutList },
         { label: 'إدارة سلف الموظفين', href: '/hr/requests/employee-advances', icon: Banknote },
+        { label: 'طلبات العمل الإضافي', href: '/hr/requests/overtime-requests', icon: Timer },
       ] },
       { labelAr: 'الإعداد', items: [
         { label: 'أنواع الطلبات', href: '/hr/requests/request-types',   icon: ListChecks },

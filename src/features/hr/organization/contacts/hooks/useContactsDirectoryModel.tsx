@@ -53,7 +53,11 @@ export {
 
 function userBelongsToCompany(user: UserRecord, companyId: string): boolean {
   if (user.defaultCompanyId === companyId) return true;
-  return user.companies.some((c) => c.companyId === companyId);
+  if (user.companies.some((c) => c.companyId === companyId)) return true;
+  // Not yet assigned to any company (e.g. a freshly created/self-registered
+  // account) — surface it under every company view so an admin can find it
+  // and assign it, instead of it being invisible everywhere.
+  return !user.defaultCompanyId && user.companies.length === 0;
 }
 
 export function useContactsDirectoryModel() {

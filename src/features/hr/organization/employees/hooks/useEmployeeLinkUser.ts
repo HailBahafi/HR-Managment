@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { usersApi } from '@/features/hr/organization/lib/api/users';
-import { organizationActiveListStatusQuery } from '@/features/hr/organization/lib/archive-scope';
 import type { Employee } from '@/features/hr/organization/employees/types';
 
 export function useEmployeeLinkUser(
@@ -19,7 +18,7 @@ export function useEmployeeLinkUser(
     queryKey: ['users', 'link-picker'],
     queryFn: () =>
       fetchAllPaginatedItems((page, limit) =>
-        usersApi.getAll({ page, limit, ...organizationActiveListStatusQuery() }),
+        usersApi.getAll({ page, limit, archiveScope: 'all' }),
       ),
     staleTime: 5 * 60 * 1000,
   });
