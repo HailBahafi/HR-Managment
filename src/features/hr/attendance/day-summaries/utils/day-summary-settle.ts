@@ -5,15 +5,14 @@ import type {
 import { getDaySummaryMetricMinutes } from '@/features/hr/attendance/day-summaries/utils/day-summary-display';
 
 export type DaySummarySettlePlan = {
-  expectedMinutes: number;
-  totalMinutes: number;
-  overtimeMinutes: number;
   shortageMinutes: number;
+  outsidePeriodMinutes: number;
+  overtimeMinutes: number;
   transferMinutes: number;
   after: {
-    totalMinutes: number;
-    overtimeMinutes: number;
     shortageMinutes: number;
+    outsidePeriodMinutes: number;
+    overtimeMinutes: number;
   };
 };
 
@@ -21,27 +20,27 @@ export function getDaySummaryShortageMinutes(row: DaySummaryResponseDto): number
   return getDaySummaryMetricMinutes(row, 'shortage');
 }
 
-/** Transfer from overtime to actual until actual reaches expected (partial if overtime is insufficient). */
-export function computeDaySummarySettlePlan(row: DaySummaryResponseDto): DaySummarySettlePlan {
-  const expectedMinutes = getDaySummaryMetricMinutes(row, 'expected');
-  const totalMinutes = getDaySummaryMetricMinutes(row, 'total');
-  const overtimeMinutes = getDaySummaryMetricMinutes(row, 'overtime');
-  const shortageMinutes = getDaySummaryShortageMinutes(row);
+export function getDaySummaryOutsidePeriodMinutes(row: DaySummaryResponseDto): number {
+  return getDaySummaryMetricMinutes(row, 'outsidePeriods');
+}
 
-  const gapToExpected = Math.max(0, expectedMinutes - totalMinutes);
-  const transferMinutes = Math.min(overtimeMinutes, gapToExpected);
-  const afterTotal = totalMinutes + transferMinutes;
+/** Net shortage against outside-period work: min(shortage, outsidePeriods). */
+export function computeDaySummarySettlePlan(row: DaySummaryResponseDto): DaySummarySettlePlan {
+  const shortageMinutes = getDaySummaryShortageMinutes(row);
+  const outsidePeriodMinutes = getDaySummaryOutsidePeriodMinutes(row);
+  const overtimeMinutes = getDaySummaryMetricMinutes(row, 'overtime');
+
+  const transferMinutes = Math.min(shortageMinutes, outsidePeriodMinutes);
 
   return {
-    expectedMinutes,
-    totalMinutes,
-    overtimeMinutes,
     shortageMinutes,
+    outsidePeriodMinutes,
+    overtimeMinutes,
     transferMinutes,
     after: {
-      totalMinutes: afterTotal,
-      overtimeMinutes: overtimeMinutes - transferMinutes,
-      shortageMinutes: Math.max(0, expectedMinutes - afterTotal),
+      shortageMinutes: shortageMinutes - transferMinutes,
+      outsidePeriodMinutes: outsidePeriodMinutes - transferMinutes,
+      overtimeMinutes: Math.max(0, overtimeMinutes - transferMinutes),
     },
   };
 }
@@ -53,8 +52,8 @@ export function canSettleDaySummary(row: DaySummaryResponseDto): boolean {
   const plan = computeDaySummarySettlePlan(row);
   return (
     plan.transferMinutes > 0 &&
-    plan.totalMinutes < plan.expectedMinutes &&
-    plan.overtimeMinutes > 0 &&
+    plan.shortageMinutes > 0 &&
+    plan.outsidePeriodMinutes > 0 &&
     !row.isSettled &&
     !row.isFinalized
   );

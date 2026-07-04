@@ -65,7 +65,8 @@ export function DaySummarySettleConfirmDialog({
   if (!row) return null;
 
   const plan = computeDaySummarySettlePlan(row);
-  const isPartial = plan.after.shortageMinutes > 0;
+  const partialShortage = plan.after.shortageMinutes > 0;
+  const surplusOutside = plan.after.outsidePeriodMinutes > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,10 +75,10 @@ export function DaySummarySettleConfirmDialog({
           <DialogHeader className="space-y-2 text-right">
             <DialogTitle className="font-display text-base">تسوية الحضور</DialogTitle>
             <DialogDescription className="text-xs leading-relaxed">
-              هل تريد تسوية الحضور من الإضافي؟ سيتم خصم{' '}
+              تسوية بين <span className="font-semibold text-destructive">النقص</span> و{' '}
+              <span className="font-semibold text-success">خارج الفترات</span>: يُنقَل{' '}
               <span className="font-semibold text-foreground">{minutesToHHMM(plan.transferMinutes)}</span>{' '}
-              من الإضافي وإضافتها إلى الفعلي دون تجاوز المتوقع (
-              {minutesToHHMM(plan.expectedMinutes)}).
+              (أقلّ القيمتين).
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -97,37 +98,53 @@ export function DaySummarySettleConfirmDialog({
               <span className="font-mono font-semibold tabular-nums text-primary">
                 {minutesToHHMM(plan.transferMinutes)}
               </span>{' '}
-              من الإضافي إلى الفعلي
+              من خارج الفترات → سد النقص
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <MetricPreview label="فعلي" before={plan.totalMinutes} after={plan.after.totalMinutes} />
-            <MetricPreview
-              label="إضافي"
-              before={plan.overtimeMinutes}
-              after={plan.after.overtimeMinutes}
-              tone="success"
-            />
+          <div className="grid grid-cols-2 gap-2">
             <MetricPreview
               label="نقص"
               before={plan.shortageMinutes}
               after={plan.after.shortageMinutes}
               tone="destructive"
             />
+            <MetricPreview
+              label="خارج الفترات"
+              before={plan.outsidePeriodMinutes}
+              after={plan.after.outsidePeriodMinutes}
+              tone="success"
+            />
           </div>
 
-          {isPartial ? (
+          {plan.overtimeMinutes > 0 ? (
+            <MetricPreview
+              label="إضافي (مرتبط)"
+              before={plan.overtimeMinutes}
+              after={plan.after.overtimeMinutes}
+              tone="default"
+            />
+          ) : null}
+
+          {partialShortage ? (
             <p className="text-xs leading-relaxed text-muted-foreground">
-              الإضافي المتاح أقل من النقص — ستُسوّى جزئياً ويبقى نقص{' '}
+              خارج الفترات أقل من النقص — تسوية جزئية، يبقى نقص{' '}
               <span className="font-mono font-medium text-destructive">
                 {minutesToHHMM(plan.after.shortageMinutes)}
               </span>
               .
             </p>
+          ) : surplusOutside ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              بعد التسوية الكاملة للنقص، يبقى خارج الفترات{' '}
+              <span className="font-mono font-medium text-success">
+                {minutesToHHMM(plan.after.outsidePeriodMinutes)}
+              </span>
+              .
+            </p>
           ) : (
             <p className="text-xs leading-relaxed text-muted-foreground">
-              بعد التسوية يصبح الفعلي مساوياً للمتوقع.
+              تسوية كاملة — لا نقص ولا رصيد خارج متبقٍ.
             </p>
           )}
         </div>

@@ -7,6 +7,7 @@ export type DaySummaryDailyMetricKey =
   | 'late'
   | 'earlyLeave'
   | 'shortage'
+  | 'outsidePeriods'
   | 'overtime';
 
 const MINUTES_FIELD: Record<
@@ -18,6 +19,7 @@ const MINUTES_FIELD: Record<
     | 'lateMinutes'
     | 'earlyLeaveMinutes'
     | 'shortageMinutes'
+    | 'workedMinutesOutsidePeriods'
     | 'overtimeMinutes'
   >
 > = {
@@ -26,6 +28,7 @@ const MINUTES_FIELD: Record<
   late: 'lateMinutes',
   earlyLeave: 'earlyLeaveMinutes',
   shortage: 'shortageMinutes',
+  outsidePeriods: 'workedMinutesOutsidePeriods',
   overtime: 'overtimeMinutes',
 };
 
