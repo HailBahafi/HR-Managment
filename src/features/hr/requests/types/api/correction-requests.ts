@@ -9,10 +9,18 @@ export type { RequestApprovalAssignmentCatalogDto, RequestApproverDecisionOverla
 
 export type CorrectionRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
-export type CorrectionPeriodTimeDto = {
-  periodId: string;
+export type CorrectionPeriodPunchesDto = {
   checkInAt: string | null;
   checkOutAt: string | null;
+};
+
+export type CorrectionPeriodTimeDto = {
+  periodId: string;
+  recorded: CorrectionPeriodPunchesDto;
+  corrected: CorrectionPeriodPunchesDto;
+  /** @deprecated legacy flat corrected punches */
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
 };
 
 export type CorrectionTimesDto = {

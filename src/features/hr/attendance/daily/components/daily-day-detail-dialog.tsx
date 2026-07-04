@@ -40,7 +40,7 @@ import {
   formatMinutesAr,
 } from '@/features/hr/attendance/components/attendance-punch-pair';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { toast } from 'sonner';
+import { AttendanceCorrectionRequestDialog } from '@/features/hr/requests/attendance-corrections/components/attendance-correction-request-dialog';
 
 const WEEKDAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -465,7 +465,8 @@ export function DailyDayDetailDialog({
   const [registerOpen, setRegisterOpen] = React.useState(false);
   const [breakdown, setBreakdown] = React.useState<DailyBreakdownResponseDto | null>(null);
   const [loading, setLoading] = React.useState(false);
-  const [correctingIndex, setCorrectingIndex] = React.useState<number | null>(null);
+  const [correctionOpen, setCorrectionOpen] = React.useState(false);
+  const [correctionPeriodIndex, setCorrectionPeriodIndex] = React.useState<number | undefined>();
 
   const loadBreakdown = React.useCallback(async (opts?: { silent?: boolean }) => {
     if (!summary || !companyId) return;
@@ -486,63 +487,10 @@ export function DailyDayDetailDialog({
     }
   }, [summary, companyId]);
 
-  const correctPeriod = React.useCallback(
-    async (period: DailyBreakdownPeriod, periodIndex: number) => {
-      if (!summary || !companyId || !breakdown) return;
-
-      const { expected } = period;
-      const label =
-        breakdown.periods.length > 1 ? `وردية ${periodIndex + 1}` : 'الوردية';
-      const voidReason = `تصحيح ${label} — اختبار`;
-
-      setCorrectingIndex(periodIndex);
-      try {
-        const punchTypes = new Set<AttendanceEventType>(['check_in', 'check_out']);
-        const toVoid = [
-          ...period.events,
-          ...(breakdown.periods.length === 1 ? breakdown.unmatchedEvents : []),
-        ].filter((evt) => !evt.isVoided && punchTypes.has(evt.eventType));
-
-        for (const evt of toVoid) {
-          await attendanceEventsApi.void(evt.id, voidReason);
-        }
-
-        await attendanceEventsApi.create({
-          companyId,
-          employeeId: summary.employeeId,
-          eventType: 'check_in',
-          occurredAt: expected.startAt,
-          workDate: summary.date,
-          source: 'manual_hr',
-          periodSortOrder: expected.sortOrder,
-          notes: voidReason,
-        });
-
-        if (!expected.checkOutNotRequired && expected.endAt) {
-          await attendanceEventsApi.create({
-            companyId,
-            employeeId: summary.employeeId,
-            eventType: 'check_out',
-            occurredAt: expected.endAt,
-            workDate: summary.date,
-            source: 'manual_hr',
-            periodSortOrder: expected.sortOrder,
-            notes: voidReason,
-          });
-        }
-
-        toast.success(
-          `تم تصحيح ${label} (${trimTime(expected.startTime)} — ${trimTime(expected.endTime)})`,
-        );
-        await loadBreakdown({ silent: true });
-      } catch (err) {
-        handleApiError(err, 'attendance/events/correct-period');
-      } finally {
-        setCorrectingIndex(null);
-      }
-    },
-    [breakdown, companyId, loadBreakdown, summary],
-  );
+  const openCorrectionForPeriod = React.useCallback((periodIndex: number) => {
+    setCorrectionPeriodIndex(periodIndex);
+    setCorrectionOpen(true);
+  }, []);
 
   React.useEffect(() => {
     if (!open || !summary || !companyId) {
@@ -579,7 +527,6 @@ export function DailyDayDetailDialog({
                 <div className="flex flex-wrap gap-1.5 sm:justify-end">
                   {breakdown.periods.map((period, index) => {
                     const multi = breakdown.periods.length > 1;
-                    const busy = correctingIndex !== null;
                     return (
                       <Button
                         key={period.expected.periodId}
@@ -587,15 +534,10 @@ export function DailyDayDetailDialog({
                         variant="outline"
                         size="sm"
                         className="h-7 gap-1.5 border-primary/30 px-2.5 text-[11px] text-primary hover:bg-primary/5"
-                        disabled={busy}
                         title={`تصحيح ${multi ? `وردية ${index + 1}` : 'الوردية'} — ${trimTime(period.expected.startTime)} إلى ${trimTime(period.expected.endTime)}`}
-                        onClick={() => void correctPeriod(period, index)}
+                        onClick={() => openCorrectionForPeriod(index)}
                       >
-                        {correctingIndex === index ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Wrench className="h-3 w-3" />
-                        )}
+                        <Wrench className="h-3 w-3" />
                         تصحيح {multi ? `وردية ${index + 1}` : 'الوردية'}
                       </Button>
                     );
@@ -773,6 +715,22 @@ export function DailyDayDetailDialog({
           onCreated={() => {
             void loadBreakdown();
           }}
+        />
+      ) : null}
+
+      {companyId ? (
+        <AttendanceCorrectionRequestDialog
+          open={correctionOpen}
+          onOpenChange={(open) => {
+            setCorrectionOpen(open);
+            if (!open) setCorrectionPeriodIndex(undefined);
+          }}
+          companyId={companyId}
+          employees={[{ id: summary.employeeId, nameAr: summary.employeeName }]}
+          initialEmployeeId={summary.employeeId}
+          initialWorkDate={summary.date}
+          initialAttendanceDaySummaryId={summary.id}
+          initialPeriodIndex={correctionPeriodIndex}
         />
       ) : null}
     </>

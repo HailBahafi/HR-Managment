@@ -30,17 +30,6 @@ function isoToTime(iso: string | null | undefined): string {
   }
 }
 
-function dateTimeIso(workDate: string, time: string): string | undefined {
-  if (!time) return undefined;
-  // Include local timezone offset so backend stores the correct instant
-  const d = new Date(`${workDate}T${time}:00`);
-  const off = -d.getTimezoneOffset();
-  const sign = off >= 0 ? '+' : '-';
-  const hh = String(Math.floor(Math.abs(off) / 60)).padStart(2, '0');
-  const mm = String(Math.abs(off) % 60).padStart(2, '0');
-  return `${workDate}T${time}:00${sign}${hh}:${mm}`;
-}
-
 const ATTENDANCE_STATUS_AR: Record<string, string> = {
   present:     'حاضر',
   late:        'متأخر',
@@ -61,19 +50,47 @@ function translateAttendanceStatus(s: string | null | undefined): string {
   return ATTENDANCE_STATUS_AR[s] ?? s;
 }
 
+function resolvePeriodPunches(
+  side: 'recorded' | 'corrected',
+  p: NonNullable<ApiCorrectionRequest['correctedTimes']>['periods'][number],
+): { checkInAt: string | null; checkOutAt: string | null } {
+  const nested = p[side];
+  if (nested) {
+    return {
+      checkInAt: nested.checkInAt ?? null,
+      checkOutAt: nested.checkOutAt ?? null,
+    };
+  }
+  if (side === 'corrected') {
+    return {
+      checkInAt: p.checkInAt ?? null,
+      checkOutAt: p.checkOutAt ?? null,
+    };
+  }
+  return { checkInAt: null, checkOutAt: null };
+}
+
 function mapCorrectedPeriods(r: ApiCorrectionRequest): AttendanceCorrectionPeriod[] {
   const fromNew = r.correctedTimes?.periods;
   if (fromNew?.length) {
-    return fromNew.map((p) => ({
-      periodId: p.periodId,
-      checkInAt: p.checkInAt,
-      checkOutAt: p.checkOutAt,
-    }));
+    return fromNew.map((p) => {
+      const recorded = resolvePeriodPunches('recorded', p);
+      const corrected = resolvePeriodPunches('corrected', p);
+      return {
+        periodId: p.periodId,
+        recordedCheckInAt: recorded.checkInAt,
+        recordedCheckOutAt: recorded.checkOutAt,
+        checkInAt: corrected.checkInAt,
+        checkOutAt: corrected.checkOutAt,
+      };
+    });
   }
 
   if (r.correctedCheckInAt || r.correctedCheckOutAt) {
     return [{
       periodId: 'period-1',
+      recordedCheckInAt: r.previousCheckInAt ?? null,
+      recordedCheckOutAt: r.previousCheckOutAt ?? null,
       checkInAt: r.correctedCheckInAt,
       checkOutAt: r.correctedCheckOutAt,
     }];
@@ -144,8 +161,13 @@ interface State {
     employeeId: string;
     requestTypeId: string;
     workDate: string;
-    correctedCheckIn?: string;
-    correctedCheckOut?: string;
+    attendanceDaySummaryId?: string;
+    subtypeSlug?: string;
+    periods: Array<{
+      periodId: string;
+      recorded: { checkInAt: string | null; checkOutAt: string | null };
+      corrected: { checkInAt: string | null; checkOutAt: string | null };
+    }>;
     reasonAr?: string;
   }) => Promise<{ ok: true } | { ok: false; error: string }>;
   approve: (id: string, payload: CorrectionDecisionDto) => Promise<void>;
@@ -177,10 +199,11 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
     if (!input.requestTypeId.trim()) return { ok: false, error: 'اختر نوع الطلب.' };
     if (!input.workDate.trim()) return { ok: false, error: 'أدخل تاريخ اليوم.' };
 
-    const checkInAt = dateTimeIso(input.workDate, input.correctedCheckIn ?? '');
-    const checkOutAt = dateTimeIso(input.workDate, input.correctedCheckOut ?? '');
-    if (!checkInAt && !checkOutAt) {
-      return { ok: false, error: 'أدخل وقت حضور أو انصراف على الأقل.' };
+    const hasCorrectedPunch = input.periods.some(
+      (p) => p.corrected.checkInAt || p.corrected.checkOutAt,
+    );
+    if (!hasCorrectedPunch) {
+      return { ok: false, error: 'أدخل وقت حضور أو انصراف مصحّحاً لفترة واحدة على الأقل.' };
     }
 
     const reasonAr = input.reasonAr?.trim() ?? '';
@@ -194,12 +217,20 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
         employeeId: input.employeeId,
         requestTypeId: input.requestTypeId,
         workDate: input.workDate,
+        ...(input.attendanceDaySummaryId ? { attendanceDaySummaryId: input.attendanceDaySummaryId } : {}),
+        ...(input.subtypeSlug ? { subtypeSlug: input.subtypeSlug } : {}),
         correctedTimes: {
-          periods: [{
-            periodId: 'period-1',
-            checkInAt: checkInAt ?? null,
-            checkOutAt: checkOutAt ?? null,
-          }],
+          periods: input.periods.map((p) => ({
+            periodId: p.periodId,
+            recorded: {
+              checkInAt: p.recorded.checkInAt,
+              checkOutAt: p.recorded.checkOutAt,
+            },
+            corrected: {
+              checkInAt: p.corrected.checkInAt,
+              checkOutAt: p.corrected.checkOutAt,
+            },
+          })),
         },
         reasonAr,
         createdBy: userId,
