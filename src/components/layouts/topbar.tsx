@@ -93,7 +93,6 @@ function mapContractsOnlyNavGroups(groups: typeof hrContractsOnlyNavGroups): Nav
 }
 
 export const navConfig: NavItem[] = [
-  { key: 'dashboard', label: 'الرئيسية', href: '/hr/dashboard', icon: LayoutDashboard },
   {
     key: 'employees', label: 'الهيكل الإداري', icon: Users,
     isActive: isHrOrganizationNavPath,
@@ -377,7 +376,7 @@ export function Topbar() {
       <div className="flex h-[54px] items-center gap-2 px-4 sm:px-5">
 
         {/* Logo */}
-        <Link href="/hr/dashboard" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50" title="التطبيقات">
           <Logo size={28} src={logoUrl} alt={logoAlt} />
         </Link>
 

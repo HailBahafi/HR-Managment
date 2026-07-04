@@ -248,7 +248,7 @@ export function SendNotificationDrawer({
           <Input
             value={form.actionUrl}
             onChange={(e) => setForm((f) => ({ ...f, actionUrl: e.target.value }))}
-            placeholder="/hr/dashboard"
+            placeholder="/hr/organization/employees"
             dir="ltr"
           />
         </FormField>

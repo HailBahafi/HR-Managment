@@ -41,7 +41,7 @@ type MobileNavItem = {
 };
 
 const mobileNav: MobileNavItem[] = [
-  { key: 'dashboard', label: 'الرئيسية', href: '/hr/dashboard', icon: LayoutDashboard },
+  { key: 'apps', label: 'التطبيقات', href: '/', icon: LayoutGrid },
   {
     key: 'employees', label: 'الهيكل الإداري', href: '/hr/organization/employees', icon: Users,
     children: [

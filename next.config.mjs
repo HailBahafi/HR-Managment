@@ -64,7 +64,9 @@ const nextConfig = {
       { source: '/hr/departments', destination: '/hr/organization/departments', permanent: true },
       { source: '/branches', destination: '/hr/organization/branches', permanent: true },
       { source: '/hr/branches', destination: '/hr/organization/branches', permanent: true },
-      { source: '/dashboard', destination: '/hr/dashboard', permanent: true },
+      { source: '/hr', destination: '/hr/organization/employees', permanent: false },
+      { source: '/dashboard', destination: '/', permanent: true },
+      { source: '/hr/dashboard', destination: '/hr/organization/employees', permanent: true },
       { source: '/contacts', destination: '/hr/organization/contacts', permanent: true },
       { source: '/hr/contacts', destination: '/hr/organization/contacts', permanent: true },
       { source: '/attendance', destination: '/hr/attendance', permanent: true },
@@ -76,8 +78,8 @@ const nextConfig = {
       { source: '/hr/settings', destination: '/hr/organization/pages/hr', permanent: true },
       { source: '/hr/settings/hr', destination: '/hr/organization/pages/hr', permanent: true },
       { source: '/hr/settings/organization', destination: '/hr/organization/pages/organization', permanent: true },
-      { source: '/notifications', destination: '/hr/dashboard', permanent: true },
-      { source: '/hr/notifications', destination: '/hr/dashboard', permanent: true },
+      { source: '/notifications', destination: '/hr/notifications/admin', permanent: true },
+      { source: '/hr/notifications', destination: '/hr/notifications/admin', permanent: true },
     ];
   },
 };
