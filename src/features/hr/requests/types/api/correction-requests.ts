@@ -5,12 +5,22 @@ import type {
   RequestApproverStatesSnapshot,
 } from '@/features/hr/requests/types/api/request-approver-states-types';
 
+export type { RequestApprovalAssignmentCatalogDto, RequestApproverDecisionOverlayDto };
+
 export type CorrectionRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export type CorrectionPeriodPunchesDto = {
+  checkInAt: string | null;
+  checkOutAt: string | null;
+};
 
 export type CorrectionPeriodTimeDto = {
   periodId: string;
-  checkInAt: string | null;
-  checkOutAt: string | null;
+  recorded: CorrectionPeriodPunchesDto;
+  corrected: CorrectionPeriodPunchesDto;
+  /** @deprecated legacy flat corrected punches */
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
 };
 
 export type CorrectionTimesDto = {
@@ -42,6 +52,8 @@ export type ApiCorrectionRequest = {
   approverStates?: RequestApproverStatesSnapshot | null;
   approver_states?: RequestApproverStatesSnapshot | null;
   approvalAssignment?: RequestApprovalAssignmentDto | null;
+  approvalAssignmentId?: string | null;
+  approverDecisions?: RequestApproverDecisionOverlayDto[] | null;
   submittedAt: string;
   decidedAt: string | null;
   cancelledAt: string | null;
@@ -121,6 +133,12 @@ export type ApiLeaveRequest = {
   updatedAt: string;
   createdBy: string | null;
   updatedBy: string | null;
+};
+
+export type ApiCorrectionRequestListResponse = {
+  items: ApiCorrectionRequest[];
+  approvalAssignments: RequestApprovalAssignmentCatalogDto[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
 };
 
 export type ApiLeaveRequestListResponse = {

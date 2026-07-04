@@ -1,17 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Ban, CalendarDays, CheckCircle2, LogIn, LogOut, Plus, XCircle } from 'lucide-react';
+import { Ban, CalendarDays, CheckCircle2, Plus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import ModernTimePicker from '@/components/ui/modern-time-picker';
-import { Textarea } from '@/components/ui/textarea';
-import { DatePickerInput } from '@/components/ui/date-picker-input';
-import { Label } from '@/components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import {
   EntityActionCard,
@@ -21,11 +14,6 @@ import {
 } from '@/components/ui/entity-action-card';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { correctionRequestsApi } from '@/features/hr/requests/lib/api/correction-requests';
-import {
-  attendanceEventsApi,
-  type DailyBreakdownResponseDto,
-} from '@/features/hr/attendance/lib/api/attendance-events';
-import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
 import { mapCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 import { ListFilterBar } from '@/components/ui/list-filter-bar';
@@ -36,18 +24,12 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
-  DialogBody,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  dialogFormFooterClass,
-  dialogShellBodyClass,
-  dialogShellContentClass,
-  dialogShellHeaderClass,
 } from '@/components/ui/dialog';
-import { FormField, EmptyState } from '@/components/ui/shared-dialogs';
+import { EmptyState } from '@/components/ui/shared-dialogs';
+import { AttendanceCorrectionRequestDialog } from '@/features/hr/requests/attendance-corrections/components/attendance-correction-request-dialog';
 import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
@@ -73,7 +55,7 @@ import {
   attendanceCorrectionStatusLabelAr,
 } from '@/features/hr/requests/lib/attendance-correction-store';
 import type { AttendanceCorrectionRequest } from '@/features/hr/requests/lib/attendance-correction-store';
-import { cn, formatTime } from '@/shared/utils';
+import { cn } from '@/shared/utils';
 import {
   hrFiltersKey,
   usePersistedEmpIdSet,
@@ -100,62 +82,6 @@ function statusBadgeClass(s: AttendanceCorrectionRequest['status']) {
   return 'bg-destructive/10 text-destructive border-destructive/30';
 }
 
-/** Earliest check-in / latest check-out across the day's periods, pulled from /attendance/events/daily-breakdown. */
-function lastCheckInOut(breakdown: DailyBreakdownResponseDto): { checkInAt: string | null; checkOutAt: string | null } {
-  let checkInAt: string | null = null;
-  let checkOutAt: string | null = null;
-  for (const period of breakdown.periods) {
-    const { checkInAt: inAt, checkOutAt: outAt } = period.actual;
-    if (inAt && (!checkInAt || inAt < checkInAt)) checkInAt = inAt;
-    if (outAt && (!checkOutAt || outAt > checkOutAt)) checkOutAt = outAt;
-  }
-  return { checkInAt, checkOutAt };
-}
-
-function LastAttendancePanel({
-  loading,
-  error,
-  breakdown,
-}: {
-  loading: boolean;
-  error: string | null;
-  breakdown: DailyBreakdownResponseDto | null;
-}) {
-  if (loading) {
-    return (
-      <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 px-3 py-4 text-center text-xs text-muted-foreground">
-        جاري تحميل بيانات الحضور المسجلة لهذا اليوم…
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-        {error}
-      </div>
-    );
-  }
-  if (!breakdown) return null;
-
-  const { checkInAt, checkOutAt } = lastCheckInOut(breakdown);
-
-  return (
-    <div className="space-y-2 rounded-lg border border-border bg-muted/10 p-3">
-      <p className="text-xs font-semibold text-foreground">الحضور المسجل لهذا اليوم</p>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-md bg-background px-2.5 py-2">
-          <p className="flex items-center gap-1 text-[10px] text-muted-foreground"><LogIn className="h-3 w-3" />الحضور</p>
-          <p className="font-mono text-xs font-medium tabular-nums" >{checkInAt ? formatTime(checkInAt) : '—'}</p>
-        </div>
-        <div className="rounded-md bg-background px-2.5 py-2">
-          <p className="flex items-center gap-1 text-[10px] text-muted-foreground"><LogOut className="h-3 w-3" />الانصراف</p>
-          <p className="font-mono text-xs font-medium tabular-nums" >{checkOutAt ? formatTime(checkOutAt) : '—'}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function AttendanceCorrectionRequestsClient() {
   const companyId = useDefaultCompanyId();
   const authUser = useAuthStore((s) => s.user);
@@ -168,28 +94,7 @@ export function AttendanceCorrectionRequestsClient() {
   const fetchEmployees = useHREmployeeDirectoryStore((s) => s.fetch);
   const activeEmployees = React.useMemo(() => employees.filter((e) => e.status === 'active'), [employees]);
 
-  const { submit, approve, reject, cancel } = useAttendanceCorrectionRequestsStore();
-
-  // Catalog row for "تصحيح حضور وانصراف" — resolved once per company.
-  const [correctionRequestType, setCorrectionRequestType] = React.useState<ApiRequestType | null>(null);
-  React.useEffect(() => {
-    if (!companyId) return;
-    let cancelled = false;
-    void requestTypesApi
-      .list({ companyId, requestCategory: 'attendance_correction', isActive: true, limit: 50 })
-      .then((res) => {
-        if (cancelled) return;
-        const officialFirst =
-          res.items.find((t) => t.slug === 'attendance-correction') ?? res.items[0] ?? null;
-        setCorrectionRequestType(officialFirst);
-      })
-      .catch(() => {
-        if (!cancelled) setCorrectionRequestType(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [companyId]);
+  const { approve, reject, cancel } = useAttendanceCorrectionRequestsStore();
 
   React.useEffect(() => {
     if (!companyId) return;
@@ -214,15 +119,7 @@ export function AttendanceCorrectionRequestsClient() {
   );
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [formEmpId, setFormEmpId] = React.useState('');
-  const [formWorkDate, setFormWorkDate] = React.useState('');
-  const [formCorrIn, setFormCorrIn] = React.useState('');
-  const [formCorrOut, setFormCorrOut] = React.useState('');
-  const [formReason, setFormReason] = React.useState('');
   const [detailRow, setDetailRow] = React.useState<AttendanceCorrectionRequest | null>(null);
-  const [formBreakdown, setFormBreakdown] = React.useState<DailyBreakdownResponseDto | null>(null);
-  const [formBreakdownLoading, setFormBreakdownLoading] = React.useState(false);
-  const [formBreakdownError, setFormBreakdownError] = React.useState<string | null>(null);
   const [viewMode, setViewMode] = usePersistedFilterState<ViewMode>(
     hrFiltersKey('requests', 'attendance-corrections', companyId, 'viewMode'),
     'cards',
@@ -250,7 +147,7 @@ export function AttendanceCorrectionRequestsClient() {
     if (!companyId) return { items: [] as AttendanceCorrectionRequest[], total: 0 };
     try {
       const res = await correctionRequestsApi.list(buildListQuery(page, pageSize));
-      const items = res.items.map(mapCorrectionRequest);
+      const items = res.items.map((r) => mapCorrectionRequest(r, res.approvalAssignments));
       return { items, total: res.pagination.total };
     } catch {
       return { items: [], total: 0 };
@@ -277,79 +174,9 @@ export function AttendanceCorrectionRequestsClient() {
     [sorted, pagination.total],
   );
 
-  const resetForm = React.useCallback(() => {
-    setFormEmpId('');
-    setFormWorkDate('');
-    setFormCorrIn('');
-    setFormCorrOut('');
-    setFormReason('');
-    setFormBreakdown(null);
-    setFormBreakdownError(null);
-  }, []);
-
-  React.useEffect(() => {
-    if (!dialogOpen || !formEmpId || !formWorkDate) {
-      setFormBreakdown(null);
-      setFormBreakdownError(null);
-      return;
-    }
-    let cancelled = false;
-    setFormBreakdownLoading(true);
-    setFormBreakdownError(null);
-    void attendanceEventsApi
-      .getDailyBreakdown({
-        employeeId: formEmpId,
-        workDate: formWorkDate,
-        companyId: companyId ?? undefined,
-        timezoneOffsetMinutes: 180,
-      })
-      .then((res) => {
-        if (cancelled) return;
-        setFormBreakdown(res);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setFormBreakdown(null);
-        setFormBreakdownError(handleApiError(err, 'attendance-corrections.daily-breakdown').displayMessage);
-      })
-      .finally(() => {
-        if (!cancelled) setFormBreakdownLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dialogOpen, formEmpId, formWorkDate, companyId]);
-
   const openNew = React.useCallback(() => {
-    resetForm();
-    if (activeEmployees.length) setFormEmpId(activeEmployees[0]!.id);
-    setFormWorkDate(new Date().toISOString().slice(0, 10));
     setDialogOpen(true);
-  }, [activeEmployees, resetForm]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!correctionRequestType) {
-      toast.error('تعذر تحديد نوع طلب تصحيح الحضور — تأكد من وجود نوع طلب مفعّل بفئة «تصحيح حضور».');
-      return;
-    }
-    const res = await submit({
-      employeeId: formEmpId,
-      requestTypeId: correctionRequestType.id,
-      workDate: formWorkDate,
-      correctedCheckIn: formCorrIn,
-      correctedCheckOut: formCorrOut,
-      reasonAr: formReason.trim(),
-    });
-    if (res.ok === false) {
-      toast.error(res.error);
-      return;
-    }
-    toast.success('تم تسجيل طلب التصحيح — قيد الموافقة.');
-    resetForm();
-    setDialogOpen(false);
-    await reloadList();
-  };
+  }, []);
 
   const handleApprove = React.useCallback(async (r: AttendanceCorrectionRequest) => {
     if (!companyId || !currentEmployeeId) return;
@@ -735,64 +562,13 @@ export function AttendanceCorrectionRequestsClient() {
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) resetForm(); setDialogOpen(o); }}>
-        <DialogContent className={cn(dialogShellContentClass, 'sm:max-w-lg')} dir="rtl">
-          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-            <DialogHeader className={dialogShellHeaderClass}>
-              <DialogTitle>طلب تصحيح حضور</DialogTitle>
-              <DialogDescription>
-                أدخل الموظف وتاريخ التصحيح والأوقات المصححة وسبب الطلب.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogBody className={cn(dialogShellBodyClass, 'grid gap-4')}>
-              <FormField label="الموظف مقدّم الطلب">
-                <Select value={formEmpId} onValueChange={setFormEmpId}>
-                  <SelectTrigger><SelectValue placeholder="اختر الموظف…" /></SelectTrigger>
-                  <SelectContent>
-                    {activeEmployees.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>{e.nameAr}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-              <FormField label="تاريخ التصحيح">
-                <DatePickerInput value={formWorkDate} onChange={setFormWorkDate} placeholder="اختر تاريخ التصحيح" />
-              </FormField>
-              {formEmpId && formWorkDate ? (
-                <LastAttendancePanel
-                  loading={formBreakdownLoading}
-                  error={formBreakdownError}
-                  breakdown={formBreakdown}
-                />
-              ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">وقت الحضور الجديد</Label>
-                  <ModernTimePicker value={formCorrIn} onChange={setFormCorrIn} placeholder="اختر الوقت" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">وقت الانصراف الجديد  </Label>
-                  <ModernTimePicker value={formCorrOut} onChange={setFormCorrOut} placeholder="اختر الوقت" />
-                </div>
-              </div>
-              <FormField label="سبب الطلب">
-                <Textarea
-                  value={formReason}
-                  onChange={(e) => setFormReason(e.target.value)}
-                  rows={3}
-                  minLength={3}
-                  required
-                  placeholder="اشرح سبب طلب التصحيح (٣ أحرف على الأقل)…"
-                />
-              </FormField>
-            </DialogBody>
-            <DialogFooter className={dialogFormFooterClass}>
-              <Button type="submit" variant="luxe">تسجيل الطلب</Button>
-              <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>إلغاء</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <AttendanceCorrectionRequestDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        companyId={companyId ?? undefined}
+        employees={activeEmployees.map((e) => ({ id: e.id, nameAr: e.nameAr }))}
+        onSuccess={() => void reloadList()}
+      />
 
       <Dialog open={detailRow != null} onOpenChange={(o) => !o && setDetailRow(null)}>
         <DialogContent className="max-w-lg" dir="rtl">

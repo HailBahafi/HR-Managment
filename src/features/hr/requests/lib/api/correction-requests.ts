@@ -1,8 +1,8 @@
-import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import { apiRequest } from '@/features/hr/lib/api/client';
 import { toRequestDecisionApiBody } from '@/features/hr/requests/lib/request-approver-states';
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/types/api/request-approver-states-types';
-export type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, ApiLeaveRequestListResponse, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
-import type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, ApiLeaveRequestListResponse, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
+export type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, ApiCorrectionRequestListResponse, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, ApiLeaveRequestListResponse, CreateLeaveRequestNewDto, LeaveDecisionDto, RequestApprovalAssignmentCatalogDto } from '@/features/hr/requests/types/api/correction-requests';
+import type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, ApiCorrectionRequestListResponse, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, ApiLeaveRequestListResponse, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
 
 
 
@@ -25,7 +25,7 @@ export const correctionRequestsApi = {
     page?: number;
     limit?: number;
   }) =>
-    apiRequest<PaginatedResult<ApiCorrectionRequest>>('/requests/correction-requests', {
+    apiRequest<ApiCorrectionRequestListResponse>('/requests/correction-requests', {
       query: params as Record<string, string | number | boolean | null | undefined | string[]>,
     }),
 
