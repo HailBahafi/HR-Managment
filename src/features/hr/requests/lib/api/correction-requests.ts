@@ -1,7 +1,7 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/types/api/request-approver-states-types';
-export type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
-import type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
+export type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, ApiLeaveRequestListResponse, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
+import type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, ApiLeaveRequestListResponse, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
 
 
 
@@ -70,7 +70,7 @@ export const leaveRequestsNewApi = {
     page?: number;
     limit?: number;
   }) =>
-    apiRequest<PaginatedResult<ApiLeaveRequest>>('/requests/leave-requests', {
+    apiRequest<ApiLeaveRequestListResponse>('/requests/leave-requests', {
       query: params as Record<string, string | number | boolean | null | undefined>,
     }),
 

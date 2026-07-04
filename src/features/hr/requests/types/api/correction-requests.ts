@@ -1,5 +1,7 @@
 import type {
+  RequestApprovalAssignmentCatalogDto,
   RequestApprovalAssignmentDto,
+  RequestApproverDecisionOverlayDto,
   RequestApproverStatesSnapshot,
 } from '@/features/hr/requests/types/api/request-approver-states-types';
 
@@ -109,6 +111,8 @@ export type ApiLeaveRequest = {
   approverStates?: RequestApproverStatesSnapshot | null;
   approver_states?: RequestApproverStatesSnapshot | null;
   approvalAssignment?: RequestApprovalAssignmentDto | null;
+  approvalAssignmentId?: string | null;
+  approverDecisions?: RequestApproverDecisionOverlayDto[] | null;
   submittedAt: string;
   decidedAt: string | null;
   cancelledAt: string | null;
@@ -117,6 +121,12 @@ export type ApiLeaveRequest = {
   updatedAt: string;
   createdBy: string | null;
   updatedBy: string | null;
+};
+
+export type ApiLeaveRequestListResponse = {
+  items: ApiLeaveRequest[];
+  approvalAssignments: RequestApprovalAssignmentCatalogDto[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
 };
 
 export type CreateLeaveRequestNewDto = {
