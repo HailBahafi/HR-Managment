@@ -671,8 +671,8 @@ export function RegisterEventComboDialog({
   }, [open, defaultEmployeeId, workDate]);
 
   React.useEffect(() => {
-    if (open && selectedId) setEventType(nextEventType);
-  }, [open, selectedId, nextEventType]);
+    if (open && selectedId && !nextTypeLoading) setEventType(nextEventType);
+  }, [open, selectedId, selectedDate, nextTypeLoading, nextEventType]);
 
   const selectedName = allEmployees.find((e) => e.id === selectedId)?.name ?? '';
   const q = search.trim().toLowerCase();
@@ -779,19 +779,18 @@ export function RegisterEventComboDialog({
                       {REGISTERABLE_EVENT_TYPES.map((t) => {
                         const meta = REGISTER_EVENT_TYPE_META[t];
                         const Icon = meta.icon;
-                        const isNext = t === nextEventType;
+                        const isSuggested = t === nextEventType;
                         return (
                           <button
                             key={t}
                             type="button"
-                            disabled={!isNext}
-                            onClick={() => isNext && setEventType(t)}
+                            onClick={() => setEventType(t)}
                             className={cn(
                               'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition-all',
                               eventType === t
                                 ? 'border-primary bg-primary/8 text-primary shadow-sm ring-1 ring-primary/30'
-                                : 'border-border bg-card text-muted-foreground',
-                              !isNext && 'cursor-not-allowed opacity-40',
+                                : 'border-border bg-card text-muted-foreground hover:bg-accent/50',
+                              isSuggested && eventType !== t && 'border-primary/25',
                             )}
                           >
                             <Icon className="h-3.5 w-3.5 shrink-0" />{meta.labelAr}
