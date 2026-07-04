@@ -208,13 +208,18 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-sidebar-border/50 p-4">
-        <div className="flex items-center gap-2.5">
+        <Link
+          href="/"
+          onClick={onClose}
+          className="flex items-center gap-2.5 rounded-lg p-1 transition-colors hover:bg-sidebar-border/40"
+          title="التطبيقات"
+        >
           <Logo size={30} src={logoUrl} alt={logoAlt} />
           <div className="flex flex-col leading-none">
             <span className="font-display text-base font-bold tracking-tight">روز</span>
             <span className="text-[9px] text-sidebar-foreground/60 tracking-[0.2em] uppercase">rose HR</span>
           </div>
-        </div>
+        </Link>
         <button
           type="button"
           onClick={onClose}

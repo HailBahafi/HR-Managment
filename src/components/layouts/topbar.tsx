@@ -375,10 +375,26 @@ export function Topbar() {
       {/* ── Row 1: logo + nav + actions ── */}
       <div className="flex h-[54px] items-center gap-2 px-4 sm:px-5">
 
-        {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-xl p-1.5 transition-colors hover:bg-muted/50" title="التطبيقات">
-          <Logo size={28} src={logoUrl} alt={logoAlt} />
-        </Link>
+        {/* Apps launcher + logo */}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Link
+            href="/"
+            className="flex h-8 items-center gap-1.5 rounded-xl px-2 text-foreground/65 transition-colors hover:bg-muted/70 hover:text-foreground"
+            title="التطبيقات"
+            aria-label="التطبيقات"
+          >
+            <LayoutGrid className="h-[18px] w-[18px] shrink-0" />
+            <span className="hidden text-[13px] font-medium sm:inline">التطبيقات</span>
+          </Link>
+          <Link
+            href="/"
+            className="hidden items-center rounded-xl p-1.5 transition-colors hover:bg-muted/50 sm:flex"
+            title="الرئيسية"
+            aria-label="الرئيسية"
+          >
+            <Logo size={28} src={logoUrl} alt={logoAlt} />
+          </Link>
+        </div>
 
         <div className="mx-0.5 hidden h-5 w-px bg-border/70 xl:block" />
 
@@ -505,6 +521,12 @@ export function Topbar() {
                 </>
               )}
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/" className="flex items-center gap-2">
+                  <LayoutGrid className="h-4 w-4" />
+                  <span>التطبيقات</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/hr/guide/introduction" className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
