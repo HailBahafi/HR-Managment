@@ -1,4 +1,5 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import { toRequestDecisionApiBody } from '@/features/hr/requests/lib/request-approver-states';
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/types/api/request-approver-states-types';
 export type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, ApiLeaveRequestListResponse, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
 import type { CorrectionRequestStatus, CorrectionPeriodTimeDto, CorrectionTimesDto, ApiCorrectionRequest, CreateCorrectionRequestDto, UpdateCorrectionRequestDto, CorrectionDecisionDto, CorrectionCancelDto, LeaveRequestStatusNew, ApiLeaveRequest, ApiLeaveRequestListResponse, CreateLeaveRequestNewDto, LeaveDecisionDto } from '@/features/hr/requests/types/api/correction-requests';
@@ -43,7 +44,7 @@ export const correctionRequestsApi = {
   decide: (id: string, body: CorrectionDecisionDto) =>
     apiRequest<ApiCorrectionRequest>(`/requests/correction-requests/${id}/decision`, {
       method: 'POST',
-      body,
+      body: toRequestDecisionApiBody(body),
     }),
 
   cancel: (id: string, body?: CorrectionCancelDto) =>
@@ -89,7 +90,7 @@ export const leaveRequestsNewApi = {
   decide: (id: string, body: LeaveDecisionDto) =>
     apiRequest<ApiLeaveRequest>(`/requests/leave-requests/${id}/decision`, {
       method: 'POST',
-      body,
+      body: toRequestDecisionApiBody(body),
     }),
 
   cancel: (id: string, body?: { decisionNotesAr?: string; updatedBy?: string }) =>

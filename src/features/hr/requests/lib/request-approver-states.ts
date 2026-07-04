@@ -131,12 +131,21 @@ export function buildRequestDecisionPayload(
 
   return {
     decision,
+    /** Client-side preview only — backend recomputes approver_states. */
     approverStates: updatedStates,
     approverEmployeeId: employeeId,
     decidedByEmployeeId: employeeId,
     decisionNotesAr: notes ?? undefined,
     updatedBy: options.updatedBy ?? undefined,
   };
+}
+
+/** Strip fields the decision API computes server-side (ValidationPipe forbidNonWhitelisted). */
+export function toRequestDecisionApiBody<
+  T extends { approverStates?: unknown },
+>(body: T): Omit<T, 'approverStates'> {
+  const { approverStates: _removed, ...rest } = body;
+  return rest;
 }
 
 /** Payload قرار موافقة/رفض سلفة — يطابق API الرواتب */

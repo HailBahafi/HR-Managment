@@ -1,4 +1,5 @@
 import { apiRequest, ApiError, type PaginatedResult } from '@/features/hr/lib/api/client';
+import { toRequestDecisionApiBody } from '@/features/hr/requests/lib/request-approver-states';
 import type { RequestApproverStatesSnapshot } from '@/features/hr/requests/lib/api/request-approver-states-types';
 import type {
   RequestApprovalAssignmentCatalogDto,
@@ -132,11 +133,12 @@ export const employeeAdvancesApi = {
     apiRequest<EmployeeAdvanceResponseDto>(`/payroll/employee-advances/${id}`, { method: 'PATCH', body }),
   decide: async (id: string, body: EmployeeAdvanceDecisionDto) => {
     const path = `/payroll/employee-advances/${id}/decision`;
+    const apiBody = toRequestDecisionApiBody(body);
     try {
-      return await apiRequest<EmployeeAdvanceResponseDto>(path, { method: 'PATCH', body });
+      return await apiRequest<EmployeeAdvanceResponseDto>(path, { method: 'PATCH', body: apiBody });
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
-        return apiRequest<EmployeeAdvanceResponseDto>(path, { method: 'POST', body });
+        return apiRequest<EmployeeAdvanceResponseDto>(path, { method: 'POST', body: apiBody });
       }
       throw err;
     }
