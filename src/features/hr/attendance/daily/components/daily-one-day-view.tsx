@@ -771,44 +771,6 @@ export function RegisterEventComboDialog({
                 nextEventData={nextEventData}
               />
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">نوع الحدث</Label>
-                {nextTypeLoading ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    جاري تحديد نوع الحدث القادم…
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      {REGISTERABLE_EVENT_TYPES.map((t) => {
-                        const meta = REGISTER_EVENT_TYPE_META[t];
-                        const Icon = meta.icon;
-                        const isSuggested = t === nextEventType;
-                        return (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => setEventType(t)}
-                            className={cn(
-                              'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition-all',
-                              eventType === t
-                                ? 'border-primary bg-primary/8 text-primary shadow-sm ring-1 ring-primary/30'
-                                : 'border-border bg-card text-muted-foreground hover:bg-accent/50',
-                              isSuggested && eventType !== t && 'border-primary/25',
-                            )}
-                          >
-                            <Icon className="h-3.5 w-3.5 shrink-0" />{meta.labelAr}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {nextTypeMessage ? (
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">{nextTypeMessage}</p>
-                    ) : null}
-                  </>
-                )}
-              </div>
-              <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">الوقت <span className="text-destructive">*</span></Label>
                 <ModernTimePicker
                   value={time}

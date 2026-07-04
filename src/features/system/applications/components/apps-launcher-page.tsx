@@ -54,11 +54,11 @@ function AppTile({
 }
 
 function LauncherHeader() {
-  const { logout, loggingOut } = useLogout();
+  const { logout, loading: logoutLoading } = useLogout();
   const userDisplay = useAuthUserDisplay();
   const branding = useDefaultCompanyBranding();
-  const theme = useThemeStore((s) => s.theme);
-  const toggleTheme = useThemeStore((s) => s.toggleTheme);
+  const themeMode = useThemeStore((s) => s.mode);
+  const toggleTheme = useThemeStore((s) => s.toggle);
 
   return (
     <header className="flex items-center justify-between gap-3 px-4 py-4 sm:px-8">
@@ -77,7 +77,7 @@ function LauncherHeader() {
           onClick={toggleTheme}
           aria-label="تبديل السمة"
         >
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {themeMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
         <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1 sm:flex">
           <Avatar className="h-7 w-7">
@@ -91,7 +91,7 @@ function LauncherHeader() {
           variant="ghost"
           size="sm"
           className="h-9 gap-1.5 text-white/80 hover:bg-white/10 hover:text-white"
-          disabled={loggingOut}
+          disabled={logoutLoading}
           onClick={() => void logout()}
         >
           <LogOut className="h-4 w-4" />
