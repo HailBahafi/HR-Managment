@@ -9,7 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import type { DailyBreakdownResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
+import {
+  attendanceEventsApi,
+  type DailyBreakdownResponseDto,
+} from '@/features/hr/attendance/lib/api/attendance-events';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import {
   HRSettingsFormDrawer, FormField, ConfirmationModal, EmptyState, SearchableDropdown,
@@ -145,11 +149,11 @@ function AttendanceBreakdownPanel({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="rounded-md bg-background px-2.5 py-2">
           <p className="flex items-center gap-1 text-[10px] text-muted-foreground"><LogIn className="h-3 w-3" />الحضور</p>
-          <p className="font-mono text-xs font-medium tabular-nums" dir="ltr">{summary.checkInAt ? formatTime(summary.checkInAt) : '—'}</p>
+          <p className="font-mono text-xs font-medium tabular-nums" >{summary.checkInAt ? formatTime(summary.checkInAt) : '—'}</p>
         </div>
         <div className="rounded-md bg-background px-2.5 py-2">
           <p className="flex items-center gap-1 text-[10px] text-muted-foreground"><LogOut className="h-3 w-3" />الانصراف</p>
-          <p className="font-mono text-xs font-medium tabular-nums" dir="ltr">{summary.checkOutAt ? formatTime(summary.checkOutAt) : '—'}</p>
+          <p className="font-mono text-xs font-medium tabular-nums" >{summary.checkOutAt ? formatTime(summary.checkOutAt) : '—'}</p>
         </div>
         <div className="rounded-md bg-background px-2.5 py-2">
           <p className="text-[10px] text-muted-foreground">ساعات العمل الفعلية</p>
@@ -174,7 +178,44 @@ export function OvertimeRequestsClient() {
   const [approveChoice, setApproveChoice] = React.useState<'requested' | 'actual'>('requested');
   const [approveNotes, setApproveNotes] = React.useState('');
 
+  const [formBreakdown, setFormBreakdown] = React.useState<DailyBreakdownResponseDto | null>(null);
+  const [formBreakdownLoading, setFormBreakdownLoading] = React.useState(false);
+  const [formBreakdownError, setFormBreakdownError] = React.useState<string | null>(null);
+
   const patch = (p: Partial<DraftForm>) => setForm((f) => ({ ...f, ...p }));
+
+  React.useEffect(() => {
+    if (!m.drawerOpen || !form.employeeId || !form.workDate) {
+      setFormBreakdown(null);
+      setFormBreakdownError(null);
+      return;
+    }
+    let cancelled = false;
+    setFormBreakdownLoading(true);
+    setFormBreakdownError(null);
+    void attendanceEventsApi
+      .getDailyBreakdown({
+        employeeId: form.employeeId,
+        workDate: form.workDate,
+        companyId: m.companyId ?? undefined,
+        timezoneOffsetMinutes: 180,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        setFormBreakdown(res);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setFormBreakdown(null);
+        setFormBreakdownError(handleApiError(err, 'overtime-requests.form.daily-breakdown').displayMessage);
+      })
+      .finally(() => {
+        if (!cancelled) setFormBreakdownLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [m.drawerOpen, form.employeeId, form.workDate, m.companyId]);
 
   React.useEffect(() => {
     if (!m.drawerOpen) return;
@@ -495,6 +536,13 @@ export function OvertimeRequestsClient() {
           <FormField label="تاريخ العمل الإضافي" required>
             <DatePickerInput value={form.workDate} onChange={(ymd) => patch({ workDate: ymd })} disabled={!!m.editTarget} />
           </FormField>
+          {form.employeeId && form.workDate ? (
+            <AttendanceBreakdownPanel
+              loading={formBreakdownLoading}
+              error={formBreakdownError}
+              breakdown={formBreakdown}
+            />
+          ) : null}
           <FormField label="المدة المطلوبة" required span2>
             <div className="flex items-center gap-2">
               <div className="flex-1 space-y-1">

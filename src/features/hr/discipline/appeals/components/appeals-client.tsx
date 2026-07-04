@@ -361,7 +361,7 @@ export function AppealsClient() {
       key: 'caseNumber',
       title: 'المخالفة',
       className: 'font-mono text-xs font-medium tabular-nums text-muted-foreground',
-      render: (a) => <span dir="ltr">{a.caseNumber}</span>,
+      render: (a) => <span >{a.caseNumber}</span>,
     },
     {
       key: 'employee',

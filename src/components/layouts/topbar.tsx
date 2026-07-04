@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  Bell, Moon, Sun, LogOut, Shield, Menu,
+  Bell, Shield, Menu,
   LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, ChevronDown,
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
@@ -12,16 +12,7 @@ import {
   Banknote, FileSignature, BookOpen, FileSpreadsheet, UserCircle, Briefcase, UserCheck, UserPlus,
   Coins, FileStack, Receipt, KeyRound, Settings, Timer,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useSidebar } from '@/components/layouts/sidebar-context';
 import { usePageTitle } from '@/components/layouts/page-title-context';
 import { usePageHeaderActionsSlotRegion } from '@/components/layouts/page-header-actions-context';
@@ -31,7 +22,6 @@ import { Logo } from '@/components/layouts/logo';
 import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
 import { NotificationBellPopover } from '@/features/hr/notifications/components/notification-bell-popover';
 import { cn } from '@/shared/utils';
-import { useThemeStore } from '@/shared/store/theme-store';
 import { hrDisciplineNavGroups } from '@/features/hr/discipline/lib/types';
 import { hrNotificationsNavGroups, isHrNotificationsNavPath } from '@/features/hr/notifications/constants/nav';
 import { hrPayrollNavGroups, isHrPayrollNavPath } from '@/features/hr/payroll/constants/nav';
@@ -44,15 +34,12 @@ import {
   hrOrganizationStructureNavItems,
   isHrOrganizationNavPath,
 } from '@/features/hr/organization/constants/nav';
-import { useLogout } from '@/features/auth/hooks/use-logout';
-import { useAuthUserDisplay } from '@/features/auth/hooks/use-auth-user-display';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
-import { getBranchAccessLabel } from '@/features/auth/types/access-profile';
-import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import { UserMenuDropdown } from '@/components/layouts/user-menu-dropdown';
+import { isHrAppPath, isLauncherPath } from '@/shared/app-paths';
 
 /* ── Icon registry ────────────────────────────────────────────────────── */
 export const PAGE_ICONS: Record<string, React.ElementType> = {
-  LayoutDashboard, Users, Clock, CalendarDays, ClipboardList,
+  LayoutDashboard, LayoutGrid, Users, Clock, CalendarDays, ClipboardList,
   ShieldAlert, Wallet, BarChart3, Building2, Settings,
   CalendarRange, Banknote, FileSignature, BookOpen, FileSpreadsheet, Bell,
   UserCircle, Briefcase, UserCheck, UserPlus,
@@ -235,16 +222,16 @@ function parentIsActive(pathname: string, item: NavItem) {
 
 /* ── NavDropdown — needs useSearchParams for query-aware active state ── */
 function NavDropdownContent({
-  groups, itemKey, onOpen, onClose,
+  groups,
+  onOpen,
+  onClose,
 }: {
   groups: NavGroup[];
-  itemKey: string;
   onOpen: () => void;
   onClose: () => void;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const multiGroup = groups.length > 1;
 
   function subIsActive(href: string) {
     const [hrefPath, hrefQuery] = href.split('?');
@@ -261,7 +248,7 @@ function NavDropdownContent({
   return (
     <div
       className={cn(
-        'nav-dropdown absolute right-0 top-[calc(100%+6px)] z-50 rounded-2xl border border-border/60 bg-popover/95 p-2 shadow-elevated backdrop-blur-xl min-w-[220px]',
+        'nav-dropdown absolute right-0 top-[calc(100%+6px)] z-[200] min-w-[220px] rounded-2xl border border-border/60 bg-popover/95 p-2 shadow-elevated backdrop-blur-xl',
       )}
       onMouseEnter={onOpen}
       onMouseLeave={onClose}
@@ -311,25 +298,70 @@ function NavDropdownContent({
   );
 }
 
+function TopbarNavItem({
+  item,
+  pathname,
+  activeMenu,
+  openMenu,
+  delayClose,
+}: {
+  item: NavItem;
+  pathname: string;
+  activeMenu: string | null;
+  openMenu: (key: string) => void;
+  delayClose: () => void;
+}) {
+  const active = parentIsActive(pathname, item);
+  const isOpen = activeMenu === item.key;
+  const hasDrop = !!item.groups;
+
+  const btnClass = cn(
+    'relative flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2 py-1.5 text-[12px] font-medium outline-none',
+    'min-[1400px]:gap-1.5 min-[1400px]:px-2.5 min-[1400px]:py-2 min-[1400px]:text-[13px]',
+    'transition-all duration-200 ease-out',
+    active ? 'bg-primary text-primary-foreground shadow-sm'
+           : 'text-foreground/65 hover:bg-muted/70 hover:text-foreground',
+    isOpen && !active && 'bg-muted/70 text-foreground',
+  );
+
+  return (
+    <div
+      className="relative shrink-0"
+      onMouseEnter={() => { if (hasDrop) openMenu(item.key); }}
+      onMouseLeave={() => { if (hasDrop) delayClose(); }}
+    >
+      {item.href && !hasDrop ? (
+        <Link href={item.href} className={btnClass}>
+          <item.icon className="h-[14px] w-[14px] shrink-0" />
+          {item.label}
+        </Link>
+      ) : (
+        <button type="button" className={btnClass}>
+          <item.icon className="h-[14px] w-[14px] shrink-0" />
+          {item.label}
+          <ChevronDown className={cn(
+            'h-3 w-3 opacity-60 transition-transform duration-200',
+            isOpen && 'rotate-180',
+          )} />
+        </button>
+      )}
+
+      {isOpen && hasDrop && (
+        <React.Suspense fallback={null}>
+          <NavDropdownContent
+            groups={item.groups!}
+            onOpen={() => openMenu(item.key)}
+            onClose={delayClose}
+          />
+        </React.Suspense>
+      )}
+    </div>
+  );
+}
+
 /* ── Main Topbar ─────────────────────────────────────────────────────── */
 export function Topbar() {
-  const themeMode = useThemeStore((state) => state.mode);
-  const toggleTheme = useThemeStore((state) => state.toggle);
-  const { logout, loading: logoutLoading } = useLogout();
-  const {
-    displayName,
-    subtitle,
-    avatarFallback,
-    avatarUrl,
-    email,
-    phone,
-    roleLabel,
-    accessProfile,
-    activeBranchId,
-  } = useAuthUserDisplay();
-  const defaultCompanyId = useDefaultCompanyId();
   const { logoUrl, logoAlt } = useDefaultCompanyBranding();
-  const setActiveContext = useAuthStore((s) => s.setActiveContext);
   const { toggle } = useSidebar();
   const { meta } = usePageTitle();
   const pathname = usePathname();
@@ -357,12 +389,14 @@ export function Topbar() {
 
   React.useEffect(() => { setActiveMenu(null); }, [pathname]);
 
+  const inHrApp = isHrAppPath(pathname);
+  const onLauncher = isLauncherPath(pathname);
   const PageIcon = meta.iconName ? PAGE_ICONS[meta.iconName] : null;
 
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 flex flex-col border-b backdrop-blur-xl',
+        'sticky top-0 z-40 flex flex-col overflow-visible border-b backdrop-blur-xl',
         'border-border/60',
         /* Light: crisp glass bar — cool white → parchment → whisper of primary teal */
         'bg-linear-to-b from-card via-background to-primary-50/35',
@@ -373,184 +407,73 @@ export function Topbar() {
     >
 
       {/* ── Row 1: logo + nav + actions ── */}
-      <div className="flex h-[54px] items-center gap-2 px-4 sm:px-5">
+      <div className="relative z-50 flex h-[54px] items-center gap-2 overflow-visible px-4 sm:px-5">
 
         {/* Apps launcher + logo */}
         <div className="flex shrink-0 items-center gap-0.5">
-          <Link
-            href="/"
-            className="flex h-8 items-center gap-1.5 rounded-xl px-2 text-foreground/65 transition-colors hover:bg-muted/70 hover:text-foreground"
-            title="التطبيقات"
-            aria-label="التطبيقات"
-          >
-            <LayoutGrid className="h-[18px] w-[18px] shrink-0" />
-            <span className="hidden text-[13px] font-medium sm:inline">التطبيقات</span>
-          </Link>
-          <Link
-            href="/"
-            className="hidden items-center rounded-xl p-1.5 transition-colors hover:bg-muted/50 sm:flex"
-            title="الرئيسية"
-            aria-label="الرئيسية"
-          >
-            <Logo size={28} src={logoUrl} alt={logoAlt} />
-          </Link>
+          {onLauncher ? (
+            logoUrl ? (
+              <Link
+                href="/"
+                className="flex items-center rounded-xl p-1.5 transition-colors hover:bg-muted/50"
+                title={logoAlt}
+                aria-label={logoAlt}
+              >
+                <Logo size={28} src={logoUrl} alt={logoAlt} />
+              </Link>
+            ) : null
+          ) : (
+            <>
+              
+              <Link
+                href="/"
+                className="hidden items-center rounded-xl p-1.5 transition-colors hover:bg-muted/50 sm:flex"
+                title="الرئيسية"
+                aria-label="الرئيسية"
+              >
+                <Logo size={28} src={logoUrl} alt={logoAlt} />
+              </Link>
+            </>
+          )}
         </div>
 
-        <div className="mx-0.5 hidden h-5 w-px bg-border/70 xl:block" />
+        {inHrApp && <div className="mx-0.5 hidden h-5 w-px bg-border/70 lg:block" />}
 
-        {/* Desktop nav */}
-        <nav className="hidden flex-1 items-center gap-0.5 xl:flex" aria-label="التنقل الرئيسي">
-          {navConfig.map(item => {
-            const active  = parentIsActive(pathname, item);
-            const isOpen  = activeMenu === item.key;
-            const hasDrop = !!item.groups;
-
-            const btnClass = cn(
-              'relative flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-[13px] font-medium outline-none',
-              'transition-all duration-200 ease-out',
-              active  ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-foreground/65 hover:bg-muted/70 hover:text-foreground',
-              isOpen && !active && 'bg-muted/70 text-foreground',
-            );
-
-            return (
-              <div
-                key={item.key}
-                className="relative"
-                onMouseEnter={() => { if (hasDrop) openMenu(item.key); }}
-                onMouseLeave={() => { if (hasDrop) delayClose(); }}
-              >
-                {item.href && !hasDrop ? (
-                  <Link href={item.href} className={btnClass}>
-                    <item.icon className="h-[14px] w-[14px] shrink-0" />
-                    {item.label}
-                  </Link>
-                ) : (
-                  <button type="button" className={btnClass}>
-                    <item.icon className="h-[14px] w-[14px] shrink-0" />
-                    {item.label}
-                    <ChevronDown className={cn(
-                      'h-3 w-3 opacity-60 transition-transform duration-200',
-                      isOpen && 'rotate-180',
-                    )} />
-                  </button>
-                )}
-
-                {/* Dropdown — wrapped in Suspense so useSearchParams is safe */}
-                {isOpen && hasDrop && (
-                  <React.Suspense fallback={null}>
-                    <NavDropdownContent
-                      groups={item.groups!}
-                      itemKey={item.key}
-                      onOpen={() => openMenu(item.key)}
-                      onClose={delayClose}
-                    />
-                  </React.Suspense>
-                )}
-              </div>
-            );
-          })}
+        {/* Desktop nav — HR app only */}
+        {inHrApp && (
+        <nav className="hidden min-w-0 flex-1 flex-nowrap items-center gap-0.5 overflow-visible min-[1400px]:gap-1 lg:flex" aria-label="التنقل الرئيسي">
+          {navConfig.map(item => (
+            <TopbarNavItem
+              key={item.key}
+              item={item}
+              pathname={pathname}
+              activeMenu={activeMenu}
+              openMenu={openMenu}
+              delayClose={delayClose}
+            />
+          ))}
         </nav>
+        )}
 
-        <div className="flex-1 xl:hidden" />
+        <div className={cn('flex-1', inHrApp && 'lg:hidden')} />
 
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
 
-          {/* Filter trigger */}
-          <FilterTrigger />
+          {inHrApp && <FilterTrigger />}
 
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={toggleTheme}>
-            {themeMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          {inHrApp && <NotificationBellPopover />}
 
-          <NotificationBellPopover />
-
-          <div className="mx-1 h-5 w-px bg-border/70" />
+          {inHrApp && <div className="mx-1 h-5 w-px bg-border/70" />}
 
           {/* User menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-colors hover:bg-muted/60">
-                <Avatar className="h-7 w-7 ring-2 ring-gold/40">
-                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
-                  <AvatarFallback>{avatarFallback}</AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuLabel>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold">{displayName}</span>
-                  {email ? (
-                    <span className="text-xs font-normal text-muted-foreground" dir="ltr">
-                      {email}
-                    </span>
-                  ) : null}
-                  {phone ? (
-                    <span className="text-xs font-normal text-muted-foreground" dir="ltr">
-                      {phone}
-                    </span>
-                  ) : null}
-                  {roleLabel ? (
-                    <span className="text-xs font-normal text-primary">{roleLabel}</span>
-                  ) : null}
-                </div>
-              </DropdownMenuLabel>
+          <UserMenuDropdown />
 
-              {(accessProfile?.companies.find((c) => c.companyId === defaultCompanyId)?.branches.length ?? 0) > 1 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    الفرع النشط
-                  </DropdownMenuLabel>
-                  {accessProfile!.companies
-                    .find((c) => c.companyId === defaultCompanyId)
-                    ?.branches.map((branch) => (
-                      <DropdownMenuItem
-                        key={branch.branchId}
-                        onSelect={() => {
-                          if (defaultCompanyId) setActiveContext(defaultCompanyId, branch.branchId);
-                        }}
-                        className={branch.branchId === activeBranchId ? 'bg-primary/10 font-medium' : undefined}
-                      >
-                        {branch.branchId === activeBranchId ? '● ' : ''}
-                        {getBranchAccessLabel(branch)}
-                      </DropdownMenuItem>
-                    ))}
-                </>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/" className="flex items-center gap-2">
-                  <LayoutGrid className="h-4 w-4" />
-                  <span>التطبيقات</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/hr/guide/introduction" className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  <span>دليل المشروع والتهيئة</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                disabled={logoutLoading}
-                onSelect={(e) => {
-                  e.preventDefault();
-                  void logout();
-                }}
-              >
-                <LogOut className="h-4 w-4" />
-                <span>{logoutLoading ? 'جاري الخروج…' : 'تسجيل الخروج'}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Mobile hamburger */}
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl xl:hidden" onClick={toggle} aria-label="القائمة">
-            <Menu className="h-4 w-4" />
-          </Button>
+          {inHrApp && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl lg:hidden" onClick={toggle} aria-label="القائمة">
+              <Menu className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -561,7 +484,6 @@ export function Topbar() {
           'border-border/25 bg-white/55 backdrop-blur-sm dark:border-border/30 dark:bg-muted/15',
         )}
       >
-        {/* Title + subtitle */}
         {meta.titleAr ? (
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:items-start sm:gap-2.5">
             {PageIcon && <PageIcon className="h-4 w-4 shrink-0 text-primary sm:mt-0.5" />}
@@ -583,7 +505,6 @@ export function Topbar() {
           </div>
         )}
 
-        {/* Per-page actions (filter toggle, add button, …) */}
         {headerActionsSlot ? (
           <PageHeaderActionsRow>{headerActionsSlot}</PageHeaderActionsRow>
         ) : null}

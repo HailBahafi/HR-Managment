@@ -288,7 +288,7 @@ export function InvestigationsClient() {
       title: 'المخالفة',
       headerClassName: 'whitespace-nowrap',
       className: 'font-mono text-xs font-medium tabular-nums text-muted-foreground',
-      render: (inv) => <span dir="ltr">{inv.caseNumber}</span>,
+      render: (inv) => <span >{inv.caseNumber}</span>,
     },
     {
       key: 'employee',
