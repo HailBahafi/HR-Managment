@@ -140,7 +140,7 @@ export function DaySummariesPage() {
         settleRow.id,
         buildSettleDaySummaryPayload(updatedByActor),
       );
-      toast.success('تمت تسوية النقص من خارج الفترات');
+      toast.success('تمت تسوية النقص من الإضافي');
       setSettleRow(null);
       await model.reload();
     } catch (err) {
@@ -247,10 +247,10 @@ export function DaySummariesPage() {
       ),
     },
     {
-      key: 'outsidePeriods',
-      title: 'خارج الفترات',
+      key: 'overtime',
+      title: 'إضافي',
       render: (row) => (
-        <DaySummaryMetricCell row={row} metric="outsidePeriods" emptyWhenZero tone="success" />
+        <DaySummaryMetricCell row={row} metric="overtime" emptyWhenZero tone="success" />
       ),
     },
     {
@@ -290,7 +290,7 @@ export function DaySummariesPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="كشف الحضور"
-        descriptionAr="متوقع والفعلي مع نقص وخارج الفترات للتسوية بينهما."
+        descriptionAr="متوقع والفعلي مع نقص وإضافي للتسوية بينهما."
         iconName="CalendarRange"
       />
 
