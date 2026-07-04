@@ -29,6 +29,10 @@ import { fmtDayFull } from '@/features/hr/attendance/daily/utils/daily-attendanc
 import { DailyAttendanceLegend } from '@/features/hr/attendance/daily/components/daily-attendance-legend';
 import { DailyDayDetailDialog } from '@/features/hr/attendance/daily/components/daily-day-detail-dialog';
 import { useNextEventType } from '@/features/hr/attendance/daily/hooks/useNextEventType';
+import {
+  RegisterEventTypePicker,
+  type RegisterableEventType,
+} from '@/features/hr/attendance/daily/components/register-event-type-picker';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 
 // ─── constants ─────────────────────────────────────────────────────────────────
@@ -164,14 +168,6 @@ const EVENT_TYPE_META: Record<AttendanceEventType, { labelAr: string; icon: Reac
   check_out:   { labelAr: 'خروج',           icon: LogOut },
   break_start: { labelAr: 'بداية استراحة',  icon: Coffee },
   break_end:   { labelAr: 'نهاية استراحة',  icon: Coffee },
-};
-
-const REGISTERABLE_EVENT_TYPES = ['check_in', 'check_out'] as const;
-type RegisterableEventType = (typeof REGISTERABLE_EVENT_TYPES)[number];
-
-const REGISTER_EVENT_TYPE_META: Record<RegisterableEventType, { labelAr: string; icon: React.ElementType }> = {
-  check_in:  { labelAr: 'تسجيل حضور',   icon: LogIn  },
-  check_out: { labelAr: 'تسجيل انصراف', icon: LogOut },
 };
 
 const REGISTER_SUCCESS_MSG: Record<RegisterableEventType, string> = {
@@ -651,7 +647,7 @@ export function RegisterEventComboDialog({
 
   const showDatePicker = availableDates && availableDates.length > 1;
 
-  const { loading: nextTypeLoading, nextEventType, message: nextTypeMessage } = useNextEventType({
+  const { loading: nextTypeLoading, nextEventType, message: nextTypeMessage, data: nextEventData } = useNextEventType({
     employeeId: selectedId,
     companyId,
     workDate: selectedDate,
@@ -766,6 +762,14 @@ export function RegisterEventComboDialog({
           {/* Event form — only shown after employee is selected */}
           {selectedId && (
             <>
+              <RegisterEventTypePicker
+                value={eventType}
+                onChange={setEventType}
+                nextEventType={nextEventType}
+                loading={nextTypeLoading}
+                message={nextTypeMessage}
+                nextEventData={nextEventData}
+              />
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">نوع الحدث</Label>
                 {nextTypeLoading ? (

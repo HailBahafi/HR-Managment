@@ -1,9 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, Loader2, LogIn, LogOut } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
 import ModernTimePicker from '@/components/ui/modern-time-picker';
 import { Label } from '@/components/ui/label';
@@ -11,15 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, dialogFormFooterClass } from '@/components/ui/dialog';
 import { attendanceEventsApi, type AttendanceEventResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
 import { useNextEventType } from '@/features/hr/attendance/daily/hooks/useNextEventType';
+import {
+  RegisterEventTypePicker,
+  type RegisterableEventType,
+} from '@/features/hr/attendance/daily/components/register-event-type-picker';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-
-const REGISTERABLE_EVENT_TYPES = ['check_in', 'check_out'] as const;
-type RegisterableEventType = (typeof REGISTERABLE_EVENT_TYPES)[number];
-
-const REGISTER_EVENT_TYPE_META: Record<RegisterableEventType, { labelAr: string; icon: React.ElementType; color: string }> = {
-  check_in:  { labelAr: 'تسجيل حضور',   icon: LogIn,  color: 'text-emerald-700 bg-emerald-500/15 border-emerald-500/30' },
-  check_out: { labelAr: 'تسجيل انصراف', icon: LogOut, color: 'text-sky-700 bg-sky-500/15 border-sky-500/30' },
-};
 
 const REGISTER_SUCCESS_MSG: Record<RegisterableEventType, string> = {
   check_in:  'تم تسجيل الحضور بنجاح',
@@ -47,7 +42,7 @@ export function DailyRegisterEventDialog({ open, onOpenChange, employeeId, emplo
   const [notes, setNotes] = React.useState('');
   const [saving, setSaving] = React.useState(false);
 
-  const { loading: nextTypeLoading, nextEventType, message: nextTypeMessage } = useNextEventType({
+  const { loading: nextTypeLoading, nextEventType, message: nextTypeMessage, data: nextEventData } = useNextEventType({
     employeeId,
     companyId,
     workDate,
@@ -98,6 +93,14 @@ export function DailyRegisterEventDialog({ open, onOpenChange, employeeId, emplo
         </DialogHeader>
 
         <div className="space-y-4 py-1">
+          <RegisterEventTypePicker
+            value={eventType}
+            onChange={setEventType}
+            nextEventType={nextEventType}
+            loading={nextTypeLoading}
+            message={nextTypeMessage}
+            nextEventData={nextEventData}
+          />
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">نوع الحدث</Label>
             {nextTypeLoading ? (
