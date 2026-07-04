@@ -26,7 +26,6 @@ type Props = {
   compact?: boolean;
   hideSummary?: boolean;
   summaryClassName?: string;
-  popoverPortalContainer?: HTMLElement | DocumentFragment | null;
 };
 
 export function RolesAssignmentEditor({
@@ -36,7 +35,6 @@ export function RolesAssignmentEditor({
   compact = false,
   hideSummary = false,
   summaryClassName,
-  popoverPortalContainer,
 }: Props) {
   const canEdit = model.hasLinkedUser && !disabled;
   const deniedCount = [...model.overlayMap.values()].filter((o) => o.effect === 'DENY').length;
@@ -69,7 +67,6 @@ export function RolesAssignmentEditor({
           deselectAllLabel="إلغاء الكل"
           listMaxHeight="min(280px,45vh)"
           disabled={!canEdit || model.rolesAssignLoading || model.isSyncingRoles}
-          popoverPortalContainer={popoverPortalContainer}
           triggerClassName="h-10 rounded-xl bg-background"
         />
 

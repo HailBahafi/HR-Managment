@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { ensurePaginatedResult, fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import type { HRDisciplinePayrollDeductionRecord } from '@/features/hr/discipline/lib/types';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
@@ -18,7 +18,6 @@ import {
 import {
   mapDisciplinePayrollDeductionResponse,
 } from '@/features/hr/discipline/deductions/services/discipline-payroll-deductions.service';
-import { dateToYMD, matchesDateRange } from '@/features/hr/discipline/lib/discipline-date-filter';
 import type { HRDeductionStatus, HRViolationDeductionKind } from '@/features/hr/discipline/lib/types';
 
 const PAGE_LIMIT = 200;
@@ -57,26 +56,8 @@ export type DeductionCaseOption = {
   employeeNameAr: string;
 };
 
-function createdAtToYmd(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return dateToYMD(d);
-}
-
-function applyDeductionClientFilters(
-  deductions: HRDisciplinePayrollDeductionRecord[],
-  filters: DeductionListFilters,
-): HRDisciplinePayrollDeductionRecord[] {
-  const selected = new Set(filters.selectedEmpIds);
-  return deductions.filter((d) => {
-    if (selected.size > 1 && !selected.has(d.employeeId)) return false;
-    return matchesDateRange(createdAtToYmd(d.createdAt), filters.dateFrom, filters.dateTo);
-  });
-}
-
 export function useDisciplinePayrollDeductionsDirectoryModel() {
   const [listFilters, setListFilters] = React.useState<DeductionListFilters>(DEFAULT_LIST_FILTERS);
-  const [sourceDeductions, setSourceDeductions] = React.useState<HRDisciplinePayrollDeductionRecord[]>([]);
   const [employees, setEmployees] = React.useState<DeductionEmployeeOption[]>([]);
   const [cases, setCases] = React.useState<DeductionCaseOption[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
@@ -85,13 +66,8 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
   const companyIdRef = React.useRef<string | null>(null);
   const employeeNameByIdRef = React.useRef<Record<string, string>>({});
 
-  const bulkMode = Boolean(listFilters.dateFrom || listFilters.dateTo || listFilters.selectedEmpIds.length > 1);
-
   const apiParams = React.useMemo((): DeductionFetchParams => {
     const params: DeductionFetchParams = {};
-    if (listFilters.selectedEmpIds.length === 1) {
-      params.employeeId = listFilters.selectedEmpIds[0];
-    }
     if (listFilters.statusFilter !== 'all') {
       params.status = listFilters.statusFilter as PayrollDeductionStatusDto;
     }
@@ -138,12 +114,14 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
         : { page, limit };
       return {
         ...baseQuery,
-        ...(apiParams.employeeId ? { employeeId: apiParams.employeeId } : {}),
+        ...(listFilters.selectedEmpIds.length > 0 ? { employeeIds: listFilters.selectedEmpIds } : {}),
         ...(apiParams.status ? { status: apiParams.status } : {}),
         ...(apiParams.deductionType ? { deductionType: apiParams.deductionType } : {}),
+        ...(listFilters.dateFrom ? { createdFrom: listFilters.dateFrom } : {}),
+        ...(listFilters.dateTo ? { createdTo: listFilters.dateTo } : {}),
       };
     },
-    [apiParams],
+    [apiParams, listFilters],
   );
 
   const mapItems = React.useCallback(
@@ -162,37 +140,13 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
       }
       const res = await disciplinePayrollDeductionsApi.getAll(buildDeductionsQuery(page, pageSize));
       const items = mapItems(res.items);
-      setSourceDeductions(items);
-      const filtered = applyDeductionClientFilters(items, listFilters);
-      return { items: bulkMode ? filtered : items, total: res.pagination.total };
+      return { items, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'discipline-payroll-deductions.load');
       setListError(displayMessage);
       return { items: [], total: 0 };
     }
-  }, [buildDeductionsQuery, bulkMode, listFilters, mapItems]);
-
-  const loadBulk = React.useCallback(async () => {
-    setListError(null);
-    try {
-      if (!companyIdRef.current) {
-        const scope = await resolveOrganizationScope();
-        companyIdRef.current = scope.companyId ?? null;
-        setCompanyId(companyIdRef.current);
-      }
-      const res = await fetchAllPaginatedItems((page, limit) =>
-        disciplinePayrollDeductionsApi.getAll(buildDeductionsQuery(page, limit)),
-      );
-      const items = mapItems(res.items);
-      setSourceDeductions(items);
-      const filtered = applyDeductionClientFilters(items, listFilters);
-      return { items: filtered, total: filtered.length };
-    } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-payroll-deductions.load');
-      setListError(displayMessage);
-      return { items: [], total: 0 };
-    }
-  }, [buildDeductionsQuery, listFilters, mapItems]);
+  }, [buildDeductionsQuery, mapItems]);
 
   const {
     items,
@@ -200,10 +154,7 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
     pagination,
     reload,
   } = useServerDirectoryPagination<HRDisciplinePayrollDeductionRecord>(loadPage, {
-    bulkMode,
-    loadBulk: bulkMode ? loadBulk : undefined,
     resetDeps: [
-      apiParams.employeeId,
       apiParams.status,
       apiParams.deductionType,
       listFilters.dateFrom,
@@ -212,17 +163,9 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
     ],
   });
 
-  const filteredItems = React.useMemo(
-    () => applyDeductionClientFilters(sourceDeductions, listFilters),
-    [listFilters, sourceDeductions],
-  );
-
-  const dateFilteredItems = React.useMemo(
-    () => sourceDeductions.filter((d) =>
-      matchesDateRange(createdAtToYmd(d.createdAt), listFilters.dateFrom, listFilters.dateTo),
-    ),
-    [listFilters.dateFrom, listFilters.dateTo, sourceDeductions],
-  );
+  // Server applies all list filters now; kept as aliases for existing consumers.
+  const filteredItems = items;
+  const dateFilteredItems = items;
 
   const add = React.useCallback(
     async (payload: CreateDisciplinePayrollDeductionDto) => {
@@ -260,7 +203,7 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
     items,
     filteredItems,
     dateFilteredItems,
-    sourceDeductions,
+    sourceDeductions: items,
     employees,
     cases,
     companyId,

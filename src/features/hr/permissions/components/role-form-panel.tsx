@@ -29,7 +29,7 @@ type Props = {
   isSaving: boolean;
   editingTitle: string | null;
   initialValues: RoleFormValues | null;
-  /** Permissions scoped to the role's application — passed by the parent */
+  /** Full permission catalog (all applications) */
   availablePermissions: PermissionResponseDto[];
   onOpenChange: (open: boolean) => void;
   onSave: (values: RoleFormValues) => void;
@@ -37,7 +37,8 @@ type Props = {
 
 export function RoleFormPanel({
   open, isLoading, isSaving, editingTitle, initialValues,
-  availablePermissions, onOpenChange, onSave,
+  availablePermissions,
+  onOpenChange, onSave,
 }: Props) {
   const [form, setForm] = React.useState<RoleFormValues>(BLANK);
 

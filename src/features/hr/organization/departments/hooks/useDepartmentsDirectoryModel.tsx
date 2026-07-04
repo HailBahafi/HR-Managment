@@ -10,8 +10,13 @@ import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import { ListFilterBar } from '@/components/ui/list-filter-bar';
 import { Can } from '@/components/shared/can';
 import { usePagePermissions } from '@/features/auth/permissions';
-import { DEPARTMENTS_PAGE_PERMISSIONS } from '@/features/hr/organization/departments/permissions';
+import { useFilterPermission } from '@/features/auth/permissions/use-filter-permission';
+import {
+  DEPARTMENTS_FILTER_PERMISSIONS,
+  DEPARTMENTS_PAGE_PERMISSIONS,
+} from '@/features/hr/organization/departments/permissions';
 import { branchesApi, type BranchResponseDto } from '@/features/hr/organization/lib/api/branches';
+import { loadFilterOptions } from '@/features/hr/lib/load-filter-options';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import type { DeptTreeNode } from '@/features/hr/requests/lib/hierarchy-utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -44,6 +49,7 @@ export function useDepartmentsDirectoryModel() {
 
   const perms = usePagePermissions(DEPARTMENTS_PAGE_PERMISSIONS);
   const accessDenied = !perms.canRead;
+  const branchFilterAccess = useFilterPermission(DEPARTMENTS_FILTER_PERMISSIONS.branch);
 
   const defaultCompanyId = useDefaultCompanyId();
   const { data: defaultCompany } = useDefaultCompany();
@@ -93,10 +99,27 @@ export function useDepartmentsDirectoryModel() {
   const [parentPickerDepartments, setParentPickerDepartments] = React.useState<DepartmentRecord[]>([]);
   const [parentPickerLoading, setParentPickerLoading] = React.useState(false);
 
+  // Isolated from the departments load below: a denied/failed branches fetch
+  // (e.g. missing branches.read) must not block the departments list itself.
+  React.useEffect(() => {
+    if (!defaultCompanyId) {
+      setBranches([]);
+      return;
+    }
+    void loadFilterOptions({
+      loader: () =>
+        branchesApi.getAll({
+          companyId: defaultCompanyId,
+          limit: 200,
+          ...organizationActiveListStatusQuery(),
+        }),
+      fallback: () => ({ items: [] as BranchResponseDto[], pagination: { page: 1, limit: 0, total: 0, totalPages: 0 } }),
+    }).then((res) => setBranches(res?.items ?? []));
+  }, [defaultCompanyId]);
+
   const loadBulk = React.useCallback(async () => {
     if (!defaultCompanyId) {
       setDepartments([]);
-      setBranches([]);
       return { items: [] as DeptTreeNode[], total: 0 };
     }
     setListError(null);
@@ -107,12 +130,6 @@ export function useDepartmentsDirectoryModel() {
         branchId: branchFilter === 'all' ? null : branchFilter,
       });
       setDepartments(data.departments);
-      const branchRes = await branchesApi.getAll({
-        companyId: defaultCompanyId,
-        limit: 200,
-        ...organizationActiveListStatusQuery(),
-      });
-      setBranches(branchRes.items);
       const flat = flattenDepartmentsTree(buildDepartmentForest(data.departments));
       return { items: flat, total: flat.length };
     } catch (err) {
@@ -129,7 +146,7 @@ export function useDepartmentsDirectoryModel() {
     reload: reloadList,
   } = useServerDirectoryPagination<DeptTreeNode>(
     async () => ({ items: [], total: 0 }),
-    { bulkMode: true, loadBulk, enabled: !!defaultCompanyId, resetDeps: [defaultCompanyId, branchFilter, archiveScope] },
+    { bulkMode: true, loadBulk, enabled: !!defaultCompanyId && perms.canRead, resetDeps: [defaultCompanyId, branchFilter, archiveScope] },
   );
 
   const loadFormBranches = React.useCallback(async (companyId: string | null) => {
@@ -332,7 +349,8 @@ export function useDepartmentsDirectoryModel() {
           {
             id: 'branch',
             value: branchFilter,
-            onChange: setBranchFilter,
+            onChange: branchFilterAccess.guardOnChange(setBranchFilter),
+            onOpen: branchFilterAccess.guardOnOpen(),
             placeholder: 'الفرع',
             options: branchSelectOptions,
           },
@@ -346,7 +364,7 @@ export function useDepartmentsDirectoryModel() {
         ]}
       />
     ),
-    [archiveScope, branchFilter, branchSelectOptions],
+    [archiveScope, branchFilter, branchSelectOptions, branchFilterAccess.allowed],
   );
 
   return {

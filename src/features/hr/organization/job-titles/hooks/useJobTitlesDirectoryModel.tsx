@@ -110,7 +110,7 @@ export function useJobTitlesDirectoryModel() {
     pagination,
     reload: reloadList,
   } = useServerDirectoryPagination<JobTitleTemplateRecord>(loadPage, {
-    enabled: !!defaultCompanyId,
+    enabled: !!defaultCompanyId && perms.canRead,
     resetDeps: [defaultCompanyId, layoutView, archiveScope],
   });
 

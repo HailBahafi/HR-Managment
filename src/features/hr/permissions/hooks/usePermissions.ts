@@ -23,6 +23,25 @@ export function resolveHrApplicationId(
   );
 }
 
+/** Arabic label for an application id (from its module root node). */
+export function resolveApplicationLabel(
+  all: PermissionResponseDto[],
+  applicationId: string,
+): string {
+  if (!applicationId) return '';
+  const root = all.find((p) => p.parentId === null && p.applicationId === applicationId);
+  return root?.nameAr?.trim() || root?.nameEn?.trim() || applicationId.slice(0, 8);
+}
+
+/** Keeps permission nodes belonging to one application (GROUP + ACTION). */
+export function scopePermissionsToApplication(
+  all: PermissionResponseDto[],
+  applicationId: string,
+): PermissionResponseDto[] {
+  if (!applicationId) return all;
+  return all.filter((p) => p.applicationId === applicationId);
+}
+
 /** Keeps all permission nodes for the HR application (GROUP + ACTION). */
 export function scopeToHrApplication(all: PermissionResponseDto[], applicationIdHint?: string) {
   const resolvedApplicationId = resolveHrApplicationId(all, applicationIdHint);
@@ -38,7 +57,7 @@ export function scopeToHrApplication(all: PermissionResponseDto[], applicationId
   return { items, resolvedApplicationId };
 }
 
-/** Fetches GET /permissions (no applicationId query param) and scopes to HR client-side. */
+/** Fetches GET /permissions — returns the full catalog (all applications). */
 export function usePermissions(hrApplicationId?: string, queryEnabled = true) {
   const query = useQuery({
     queryKey: ['permissions', 'all-pages'],
@@ -48,9 +67,10 @@ export function usePermissions(hrApplicationId?: string, queryEnabled = true) {
     enabled: queryEnabled && hasAuthToken(),
   });
 
-  const catalog = React.useMemo(
-    () => scopeToHrApplication(query.data?.items ?? [], hrApplicationId || undefined),
-    [query.data, hrApplicationId],
+  const items = query.data?.items ?? [];
+  const resolvedHrApplicationId = React.useMemo(
+    () => resolveHrApplicationId(items, hrApplicationId || undefined),
+    [items, hrApplicationId],
   );
 
   return {
@@ -58,8 +78,8 @@ export function usePermissions(hrApplicationId?: string, queryEnabled = true) {
     data: query.data
       ? {
           ...query.data,
-          items: catalog.items,
-          applicationId: catalog.resolvedApplicationId,
+          items,
+          applicationId: resolvedHrApplicationId,
         }
       : undefined,
   };

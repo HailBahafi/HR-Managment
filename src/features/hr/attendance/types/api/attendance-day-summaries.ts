@@ -81,6 +81,7 @@ export type DaySummaryListQuery = {
   limit?: number;
   companyId?: string;
   employeeId?: string;
+  employeeIds?: string[];
   status?: AttendanceDayStatus;
   from?: string;
   to?: string;

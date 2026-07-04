@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { ensurePaginatedResult, fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
+import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
@@ -122,19 +122,6 @@ function mapRecord(
   };
 }
 
-function applyViolationCaseClientFilters(
-  cases: ViolationCaseRecord[],
-  filters: ViolationCaseListFilters,
-): ViolationCaseRecord[] {
-  const selected = new Set(filters.selectedEmpIds);
-  return cases.filter((c) => {
-    if (selected.size > 1 && !selected.has(c.employeeId)) return false;
-    if (filters.statusFilter !== 'all' && c.status !== filters.statusFilter) return false;
-    if (filters.violationTypeFilter !== 'all' && c.violationTypeId !== filters.violationTypeFilter) return false;
-    return true;
-  });
-}
-
 export function useViolationCasesDirectoryModel() {
   const [listFilters, setListFilters] = React.useState<ViolationCaseListFilters>(DEFAULT_LIST_FILTERS);
   const [sourceCases, setSourceCases] = React.useState<ViolationCaseRecord[]>([]);
@@ -146,15 +133,6 @@ export function useViolationCasesDirectoryModel() {
   const companyIdRef = React.useRef<string | null>(null);
   const employeeMapRef = React.useRef<Map<string, string>>(new Map());
   const typeMapRef = React.useRef<Map<string, string>>(new Map());
-
-  const bulkMode = Boolean(
-    listFilters.statusFilter !== 'all'
-    || listFilters.selectedEmpIds.length > 1,
-  );
-
-  const apiEmployeeId = listFilters.selectedEmpIds.length === 1
-    ? listFilters.selectedEmpIds[0]
-    : undefined;
 
   const loadReferenceData = React.useCallback(async () => {
     const scope = await resolveOrganizationScope();
@@ -198,12 +176,19 @@ export function useViolationCasesDirectoryModel() {
       ...(companyIdRef.current ? { companyId: companyIdRef.current } : {}),
       page,
       limit,
-      ...(apiEmployeeId ? { employeeId: apiEmployeeId } : {}),
+      ...(listFilters.selectedEmpIds.length > 0 ? { employeeIds: listFilters.selectedEmpIds } : {}),
+      ...(listFilters.statusFilter !== 'all' ? { status: listFilters.statusFilter } : {}),
       ...(listFilters.violationTypeFilter !== 'all' ? { violationTypeId: listFilters.violationTypeFilter } : {}),
       ...(listFilters.dateFrom ? { violationDateFrom: listFilters.dateFrom } : {}),
       ...(listFilters.dateTo ? { violationDateTo: listFilters.dateTo } : {}),
     }),
-    [apiEmployeeId, listFilters.dateFrom, listFilters.dateTo, listFilters.violationTypeFilter],
+    [
+      listFilters.selectedEmpIds,
+      listFilters.statusFilter,
+      listFilters.dateFrom,
+      listFilters.dateTo,
+      listFilters.violationTypeFilter,
+    ],
   );
 
   const mapItems = React.useCallback(
@@ -223,36 +208,13 @@ export function useViolationCasesDirectoryModel() {
       const res = await violationRecordsApi.getAll(buildRecordsQuery(page, pageSize));
       const items = mapItems(res.items);
       setSourceCases(items);
-      const filtered = applyViolationCaseClientFilters(items, listFilters);
-      return { items: bulkMode ? filtered : items, total: res.pagination.total };
+      return { items, total: res.pagination.total };
     } catch (err) {
       const { displayMessage } = handleApiError(err, 'violation-records.load');
       setListError(displayMessage);
       return { items: [], total: 0 };
     }
-  }, [buildRecordsQuery, bulkMode, listFilters, mapItems]);
-
-  const loadBulk = React.useCallback(async () => {
-    setListError(null);
-    try {
-      if (!companyIdRef.current) {
-        const scope = await resolveOrganizationScope();
-        companyIdRef.current = scope.companyId ?? null;
-        setCompanyId(companyIdRef.current);
-      }
-      const res = await fetchAllPaginatedItems((page, limit) =>
-        violationRecordsApi.getAll(buildRecordsQuery(page, limit)),
-      );
-      const items = mapItems(res.items);
-      setSourceCases(items);
-      const filtered = applyViolationCaseClientFilters(items, listFilters);
-      return { items: filtered, total: filtered.length };
-    } catch (err) {
-      const { displayMessage } = handleApiError(err, 'violation-records.load');
-      setListError(displayMessage);
-      return { items: [], total: 0 };
-    }
-  }, [buildRecordsQuery, listFilters, mapItems]);
+  }, [buildRecordsQuery, mapItems]);
 
   const {
     items,
@@ -260,10 +222,7 @@ export function useViolationCasesDirectoryModel() {
     pagination,
     reload,
   } = useServerDirectoryPagination<ViolationCaseRecord>(loadPage, {
-    bulkMode,
-    loadBulk: bulkMode ? loadBulk : undefined,
     resetDeps: [
-      apiEmployeeId,
       listFilters.dateFrom,
       listFilters.dateTo,
       listFilters.statusFilter,
@@ -272,10 +231,8 @@ export function useViolationCasesDirectoryModel() {
     ],
   });
 
-  const filteredItems = React.useMemo(
-    () => applyViolationCaseClientFilters(sourceCases, listFilters),
-    [listFilters, sourceCases],
-  );
+  // Server applies all list filters now; kept as an alias for existing consumers.
+  const filteredItems = items;
 
   const createCase = React.useCallback(
     async (payload: {

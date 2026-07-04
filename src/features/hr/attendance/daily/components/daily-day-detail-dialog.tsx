@@ -567,7 +567,7 @@ export function DailyDayDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[90vh] max-w-lg flex-col gap-0 overflow-hidden p-0" dir="rtl">
+        <DialogContent className="flex max-h-[90vh] max-w-lg flex-col gap-0 overflow-visible p-0" dir="rtl">
           <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-right">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <DialogTitle className="flex items-center gap-2 text-base">

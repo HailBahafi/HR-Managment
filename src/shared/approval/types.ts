@@ -18,9 +18,16 @@ export type ApproverStatesSnapshot = {
   approvers: ApproverStateEntry[];
 };
 
+export type ApproverAssignmentResponseLike = {
+  id: string;
+  approvalMode: ApprovalMode;
+  approvers: Array<Partial<ApproverStateEntry>>;
+};
+
 export type ApproverStatesCarrier = {
   approverStates?: ApproverStatesSnapshot | null;
   approver_states?: ApproverStatesSnapshot | null;
+  approvalAssignment?: ApproverAssignmentResponseLike | null;
 };
 
 export type ApproverAssignmentLike = {

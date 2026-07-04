@@ -97,6 +97,8 @@ export type ViolationRecordListQuery = {
   limit?: number;
   companyId?: string;
   employeeId?: string;
+  employeeIds?: string[];
+  status?: ViolationRecordStatus;
   violationTypeId?: string;
   violationDateFrom?: string;
   violationDateTo?: string;

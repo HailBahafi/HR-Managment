@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   ListFilterBar,
-  type ListFilterInlineSelect,
 } from '@/components/ui/list-filter-bar';
 import { useRoles } from '@/features/hr/permissions/hooks/useRoles';
 import { usePermissions } from '@/features/hr/permissions/hooks/usePermissions';
@@ -25,8 +24,6 @@ import { RoleFormPanel, type RoleFormValues } from '@/features/hr/permissions/co
 import { DeleteRoleDialog } from '@/features/hr/permissions/dialogs/delete-role-dialog';
 import type { RoleResponseDto } from '@/features/hr/permissions/lib/api/roles';
 import type { PermissionResponseDto } from '@/features/hr/permissions/lib/api/permissions';
-
-type RoleKindFilter = 'all' | 'system' | 'custom';
 
 function matchesRoleSearch(role: RoleResponseDto, query: string): boolean {
   const q = query.trim().toLowerCase();
@@ -50,7 +47,6 @@ export function PermissionsManagementPage() {
     refetch: refetchPermissions,
   } = usePermissions(appFromApi);
 
-  const applicationId = permissionsResult?.applicationId ?? appFromApi;
   const allPermissions: PermissionResponseDto[] = permissionsResult?.items ?? [];
   const roles = rolesResult?.items ?? [];
   const roleIds = React.useMemo(() => roles.map((r) => r.id), [roles]);
@@ -66,17 +62,13 @@ export function PermissionsManagementPage() {
   const [initialValues, setInitialValues] = React.useState<RoleFormValues | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<RoleResponseDto | null>(null);
   const [search, setSearch] = React.useState('');
-  const [roleKind, setRoleKind] = React.useState<RoleKindFilter>('all');
 
   const isCatalogReady = !permissionsLoading && !permissionsError;
 
-  const filteredRoles = React.useMemo(() => {
-    return roles.filter((role) => {
-      if (roleKind === 'system' && !role.isSystem) return false;
-      if (roleKind === 'custom' && role.isSystem) return false;
-      return matchesRoleSearch(role, search);
-    });
-  }, [roles, roleKind, search]);
+  const filteredRoles = React.useMemo(
+    () => roles.filter((role) => matchesRoleSearch(role, search)),
+    [roles, search],
+  );
 
   const openCreate = React.useCallback(() => {
     void refetchPermissions();
@@ -100,21 +92,6 @@ export function PermissionsManagementPage() {
     [openCreate],
   );
 
-  const inlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
-    {
-      id: 'roleKind',
-      value: roleKind,
-      onChange: (v) => setRoleKind((v || 'all') as RoleKindFilter),
-      placeholder: 'نوع الدور',
-      className: 'w-[9rem]',
-      options: [
-        { value: 'all', label: 'كل الأدوار' },
-        { value: 'custom', label: 'أدوار مخصصة' },
-        { value: 'system', label: 'أدوار نظامية' },
-      ],
-    },
-  ], [roleKind]);
-
   const searchFilter = (
     <div className="relative w-full min-w-[12rem] max-w-xs">
       <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -132,12 +109,12 @@ export function PermissionsManagementPage() {
       <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
+        showEmployeePicker={false}
         leadingFilters={searchFilter}
-        inlineSelects={inlineSelects}
         onDateBoundsChange={() => {}}
       />
     ),
-    [search, roleKind, inlineSelects],
+    [search],
   );
 
   async function openEdit(role: RoleResponseDto) {
@@ -162,6 +139,7 @@ export function PermissionsManagementPage() {
     }
   }
 
+  /** No client-side permission filtering — backend validates and returns errors. */
   async function handleSave(values: RoleFormValues) {
     try {
       if (editingRole) {
@@ -215,8 +193,8 @@ export function PermissionsManagementPage() {
         <RolesGridSkeleton />
       ) : filteredRoles.length === 0 ? (
         <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card/50 text-sm text-muted-foreground">
-          {search.trim() || roleKind !== 'all'
-            ? 'لا توجد أدوار مطابقة للفلاتر'
+          {search.trim()
+            ? 'لا توجد أدوار مطابقة للبحث'
             : 'لا توجد أدوار — أنشئ دوراً جديداً'}
         </div>
       ) : (

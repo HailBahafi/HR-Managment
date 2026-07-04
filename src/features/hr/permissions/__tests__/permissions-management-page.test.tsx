@@ -69,14 +69,18 @@ const mockPermissions = [
   },
 ];
 
-jest.mock('@/features/hr/permissions/hooks/usePermissions', () => ({
-  usePermissions: () => ({
-    data: { items: mockPermissions, applicationId: 'app-1' },
-    isLoading: false,
-    isError: false,
-    refetch: jest.fn(),
-  }),
-}));
+jest.mock('@/features/hr/permissions/hooks/usePermissions', () => {
+  const actual = jest.requireActual('@/features/hr/permissions/hooks/usePermissions');
+  return {
+    ...actual,
+    usePermissions: () => ({
+      data: { items: mockPermissions, applicationId: 'app-1' },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    }),
+  };
+});
 
 jest.mock('@/features/hr/permissions/hooks/useApplicationId', () => ({
   useApplicationId: () => ({ applicationId: 'app-1', isLoading: false }),

@@ -40,6 +40,8 @@ export type EntityActionCardWorkflow = {
   onReject?: () => void;
   approveLabel?: string;
   rejectLabel?: string;
+  disabled?: boolean;
+  waitingReason?: string;
 };
 
 export type EntityActionCardProps = {
@@ -94,15 +96,25 @@ export function EntityActionCardStatusBlock({ status, compact = false }: { statu
 
 export function EntityActionCardMetricsRow({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2', className)}>
+    <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-muted/30 px-3 py-2', className)}>
       {children}
     </div>
   );
 }
 
-export function EntityActionCardMetric({ label, value, dir }: { label: string; value: ReactNode; dir?: 'ltr' | 'rtl' }) {
+export function EntityActionCardMetric({
+  label,
+  value,
+  dir,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  dir?: 'ltr' | 'rtl';
+  className?: string;
+}) {
   return (
-    <div className="text-center">
+    <div className={cn('text-center', className)}>
       <p className="text-[9px] text-muted-foreground">{label}</p>
       <p className={cn('text-xs font-bold', dir === 'ltr' ? 'font-mono' : '')} dir={dir}>
         {value}
@@ -185,32 +197,39 @@ export function EntityActionCard({
 
       {showApproveReject ? (
         <div
-          className="flex items-center gap-1 border-t border-border/50 bg-muted/10 px-3 py-2"
+          className="space-y-1 border-t border-border/50 bg-muted/10 px-3 py-2"
           onClick={(e) => e.stopPropagation()}
         >
-          {workflow?.onApprove ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              type="button"
-              className="h-7 flex-1 gap-1 px-2 text-xs text-success hover:bg-success/10 hover:text-success"
-              onClick={(e) => { e.stopPropagation(); workflow.onApprove?.(); }}
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              {workflow.approveLabel ?? 'موافقة'}
-            </Button>
-          ) : null}
-          {workflow?.onReject ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              type="button"
-              className="h-7 flex-1 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={(e) => { e.stopPropagation(); workflow.onReject?.(); }}
-            >
-              <XCircle className="h-3.5 w-3.5" />
-              {workflow.rejectLabel ?? 'رفض'}
-            </Button>
+          <div className="flex items-center gap-1">
+            {workflow?.onApprove ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                disabled={workflow.disabled}
+                className="h-7 flex-1 gap-1 px-2 text-xs text-success hover:bg-success/10 hover:text-success disabled:opacity-50"
+                onClick={(e) => { e.stopPropagation(); if (!workflow.disabled) workflow.onApprove?.(); }}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {workflow.approveLabel ?? 'موافقة'}
+              </Button>
+            ) : null}
+            {workflow?.onReject ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                disabled={workflow.disabled}
+                className="h-7 flex-1 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                onClick={(e) => { e.stopPropagation(); if (!workflow.disabled) workflow.onReject?.(); }}
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                {workflow.rejectLabel ?? 'رفض'}
+              </Button>
+            ) : null}
+          </div>
+          {workflow?.disabled && workflow.waitingReason ? (
+            <p className="text-[10px] leading-snug text-muted-foreground">{workflow.waitingReason}</p>
           ) : null}
         </div>
       ) : null}

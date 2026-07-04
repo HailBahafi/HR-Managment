@@ -3,7 +3,7 @@
 import * as React from 'react';
 import {
   Plus,
-  CheckCircle2, XCircle, Clock, CalendarDays,
+  Clock, CalendarDays,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
-import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
+import { TableDateCell } from '@/components/ui/table-cells';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SingleDatePicker } from '@/components/ui/single-date-picker';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
@@ -29,7 +29,7 @@ import {
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import {
-  canActOnLeave, getApprovalStage,
+  canShowLeaveApprovalActions, getApprovalStage,
   LEAVE_TYPE_LABELS,
 } from '@/features/hr/leaves/unified-management/lib/leaves-utils';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
@@ -55,6 +55,8 @@ import {
   normalizeRequestApproverStates,
 } from '@/features/hr/requests/lib/request-approver-states';
 import { RequestApproverStatesPanel } from '@/features/hr/requests/components/request-approver-states-panel';
+import { RequestApproversInline } from '@/features/hr/requests/components/request-approvers-inline';
+import { RequestApprovalActionCell, RequestApprovalActionButtons } from '@/features/hr/requests/components/request-approval-actions';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { cn } from '@/shared/utils';
 import { AR_LEAVE_STATUS_LABELS } from '@/shared/i18n/ar';
@@ -180,49 +182,38 @@ function LeaveDecisionCell({
   onApprove: (l: UnifiedLeaveRecord) => void;
   onReject: (l: UnifiedLeaveRecord) => void;
 }) {
-  const canAct = canActOnLeave(leave, currentEmployeeId);
   const meta = leaveStatusMeta(leave);
 
-  if (canAct) {
+  if (leave.status !== 'pending') {
     return (
-      <TableRowActions
-        primaryActions={[
-          {
-            label: 'موافقة',
-            variant: 'success',
-            icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-            onClick: (e) => { e.stopPropagation(); onApprove(leave); },
-          },
-          {
-            label: 'رفض',
-            variant: 'destructive',
-            icon: <XCircle className="h-3.5 w-3.5" />,
-            onClick: (e) => { e.stopPropagation(); onReject(leave); },
-          },
-        ]}
-        menuItems={[]}
-      />
+      <div className="min-w-[6.5rem] space-y-0.5 text-[10px]">
+        {meta.dateValue ? (
+          <>
+            <p className="text-muted-foreground">{meta.dateLabel}</p>
+            <p className="font-mono text-xs font-semibold tabular-nums text-foreground" dir="ltr">
+              {meta.dateValue}
+            </p>
+          </>
+        ) : (
+          <p className="text-muted-foreground">{LEAVE_STATUS_LABELS[leave.status]}</p>
+        )}
+        {leave.decisionNotesAr?.trim() ? (
+          <p className="  text-muted-foreground" title={leave.decisionNotesAr}>
+            {leave.decisionNotesAr}
+          </p>
+        ) : null}
+      </div>
     );
   }
 
   return (
-    <div className="min-w-[6.5rem] space-y-0.5 text-[10px]">
-      {meta.dateValue ? (
-        <>
-          <p className="text-muted-foreground">{meta.dateLabel}</p>
-          <p className="font-mono text-xs font-semibold tabular-nums text-foreground" dir="ltr">
-            {meta.dateValue}
-          </p>
-        </>
-      ) : (
-        <p className="text-muted-foreground">{LEAVE_STATUS_LABELS[leave.status]}</p>
-      )}
-      {leave.decisionNotesAr?.trim() ? (
-        <p className="  text-muted-foreground" title={leave.decisionNotesAr}>
-          {leave.decisionNotesAr}
-        </p>
-      ) : null}
-    </div>
+    <RequestApprovalActionCell
+      states={leave.approverStates}
+      currentEmployeeId={currentEmployeeId}
+      onApprove={() => onApprove(leave)}
+      onReject={() => onReject(leave)}
+      fallback={<span className="text-xs text-muted-foreground">—</span>}
+    />
   );
 }
 
@@ -246,6 +237,7 @@ function mapApiLeave(r: ApiLeaveRequest, leaveTypes: LeaveTypeResponseDto[]): Un
     noteAr: r.reasonAr ?? undefined,
     subtypeSlug: r.subtypeSlug,
     subtypeNameAr: r.subtypeNameAr,
+    departmentNameAr: r.departmentNameAr,
     submittedAt: r.submittedAt,
     decidedAt: r.decidedAt ?? undefined,
     cancelledAt: r.cancelledAt ?? undefined,
@@ -799,7 +791,6 @@ export function UnifiedManagementClient() {
           employees={employeesList}
           open={!!detailLeave}
           onClose={() => setDetailLeave(null)}
-          onEdit={() => { setEditLeave(detailLeave); setAddOpen(true); setDetailLeave(null); }}
         />
       )}
 
@@ -847,7 +838,9 @@ function LeaveTable({ leaves, employees, branches, currentEmployeeId, onDetail, 
             </div>
             <div>
               <p className="font-medium">{name}</p>
-              {l.requestTypeNameAr ? (
+              {l.departmentNameAr ? (
+                <p className="text-[10px] text-muted-foreground">{l.departmentNameAr}</p>
+              ) : l.requestTypeNameAr ? (
                 <p className="text-[10px] text-muted-foreground">{l.requestTypeNameAr}</p>
               ) : null}
             </div>
@@ -889,10 +882,22 @@ function LeaveTable({ leaves, employees, branches, currentEmployeeId, onDetail, 
       render: (l) => <span className="font-mono text-xs number-ar">{l.workingDays}</span>,
     },
     {
-      key: 'branch',
-      title: 'الفرع',
+      key: 'submitted',
+      title: 'تاريخ التقديم',
       hideOnMobile: true,
-      render: (l) => <span className="text-xs text-muted-foreground">{branches.find((b) => b.id === l.requestBranchId)?.nameAr ?? l.requestBranchId ?? '—'}</span>,
+      render: (l) => <TableDateCell value={l.submittedAt} mode="datetime" />,
+    },
+    {
+      key: 'approvers',
+      title: 'مسار الموافقة',
+      hideOnMobile: true,
+      render: (l) => <RequestApproversInline states={l.approverStates} />,
+    },
+    {
+      key: 'department',
+      title: 'القسم',
+      hideOnMobile: true,
+      render: (l) => <span className="text-xs text-muted-foreground">{l.departmentNameAr || '—'}</span>,
     },
     {
       key: 'note',
@@ -923,7 +928,7 @@ function LeaveTable({ leaves, employees, branches, currentEmployeeId, onDetail, 
       mobileCard={(l) => {
         const name = employeeDisplayName(l, employees);
         const typeCfg = TYPE_STYLE[l.type];
-        const canAct = canActOnLeave(l, currentEmployeeId);
+        const showApproval = canShowLeaveApprovalActions(l, currentEmployeeId);
         return (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
@@ -950,17 +955,21 @@ function LeaveTable({ leaves, employees, branches, currentEmployeeId, onDetail, 
                 {l.noteAr}
               </p>
             ) : null}
-            {canAct && (
-              <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs text-success border-success/40 hover:bg-success/10" onClick={(e) => { e.stopPropagation(); onApprove(l); }}>
-                  <CheckCircle2 className="h-3.5 w-3.5" /> موافقة
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onReject(l); }}>
-                  <XCircle className="h-3.5 w-3.5" /> رفض
-                </Button>
-              </div>
-            )}
-            <RequestApproverStatesPanel states={l.approverStates} compact className="border-0 bg-transparent p-0" />
+            {l.decisionNotesAr?.trim() ? (
+              <p className="text-xs text-muted-foreground text-right" title={l.decisionNotesAr}>
+                ملاحظات القرار: {l.decisionNotesAr}
+              </p>
+            ) : null}
+            <RequestApproversInline states={l.approverStates} />
+            {showApproval ? (
+              <RequestApprovalActionButtons
+                states={l.approverStates}
+                currentEmployeeId={currentEmployeeId}
+                onApprove={() => onApprove(l)}
+                onReject={() => onReject(l)}
+                compact
+              />
+            ) : null}
           </div>
         );
       }}
@@ -992,14 +1001,14 @@ function LeaveCardGrid({ leaves, employees, currentEmployeeId, onDetail, onAppro
       {leaves.map((l) => {
         const name = employeeDisplayName(l, employees);
         const typeCfg = TYPE_STYLE[l.type];
-        const canAct = canActOnLeave(l, currentEmployeeId);
+        const showApproval = canShowLeaveApprovalActions(l, currentEmployeeId);
         const meta = leaveStatusMeta(l);
         return (
           <EntityActionCard
             key={l.id}
             onClick={() => onDetail(l)}
             title={name}
-            subtitle={leaveTypeDisplayLabel(l)}
+            subtitle={l.departmentNameAr || l.requestTypeNameAr || leaveTypeDisplayLabel(l)}
             avatarLetter={name}
             status={{
               label: LEAVE_STATUS_LABELS[l.status],
@@ -1011,10 +1020,17 @@ function LeaveCardGrid({ leaves, employees, currentEmployeeId, onDetail, onAppro
               ) : undefined,
             }}
             chips={
-              <EntityActionCardChip className={typeCfg.color}>
-                <span className={cn('h-1.5 w-1.5 rounded-full', typeCfg.dot)} />
-                {leaveTypeDisplayLabel(l)}
-              </EntityActionCardChip>
+              <>
+                <EntityActionCardChip className={typeCfg.color}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', typeCfg.dot)} />
+                  {leaveTypeDisplayLabel(l)}
+                </EntityActionCardChip>
+                {l.submittedAt ? (
+                  <EntityActionCardChip className="font-mono tabular-nums">
+                    <span dir="ltr">{formatIsoDate(l.submittedAt)}</span>
+                  </EntityActionCardChip>
+                ) : null}
+              </>
             }
             metrics={
               <EntityActionCardMetricsRow>
@@ -1025,30 +1041,21 @@ function LeaveCardGrid({ leaves, employees, currentEmployeeId, onDetail, onAppro
                 <EntityActionCardMetric label="أيام" value={l.workingDays} />
               </EntityActionCardMetricsRow>
             }
-            description={l.noteAr}
+            description={
+              [l.noteAr, l.decisionNotesAr?.trim() ? `ملاحظات القرار: ${l.decisionNotesAr}` : '']
+                .filter(Boolean)
+                .join(' — ') || undefined
+            }
             children={
               <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-                {canAct ? (
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 flex-1 text-xs text-success border-success/30 hover:bg-success/10"
-                      onClick={() => onApprove(l)}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5 me-1" />
-                      موافقة
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 flex-1 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-                      onClick={() => onReject(l)}
-                    >
-                      <XCircle className="h-3.5 w-3.5 me-1" />
-                      رفض
-                    </Button>
-                  </div>
+                {showApproval ? (
+                  <RequestApprovalActionButtons
+                    states={l.approverStates}
+                    currentEmployeeId={currentEmployeeId}
+                    onApprove={() => onApprove(l)}
+                    onReject={() => onReject(l)}
+                    compact
+                  />
                 ) : null}
                 {l.approverStates ? (
                   <RequestApproverStatesPanel states={l.approverStates} compact className="border-0 bg-transparent p-0" />
@@ -1064,12 +1071,11 @@ function LeaveCardGrid({ leaves, employees, currentEmployeeId, onDetail, onAppro
 
 // ─── Leave detail dialog ───────────────────────────────────────────────────────
 
-function LeaveDetailDialog({ leave, employees, open, onClose, onEdit }: {
+function LeaveDetailDialog({ leave, employees, open, onClose }: {
   leave: UnifiedLeaveRecord;
   employees: { id: string; nameAr: string }[];
   open: boolean;
   onClose: () => void;
-  onEdit: () => void;
 }) {
   const name = employeeDisplayName(leave, employees);
   const typeCfg = TYPE_STYLE[leave.type];
@@ -1077,7 +1083,7 @@ function LeaveDetailDialog({ leave, employees, open, onClose, onEdit }: {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden border-border p-0">
+      <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-visible border-border p-0">
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">تفاصيل الإجازة</DialogTitle>
@@ -1170,7 +1176,6 @@ function LeaveDetailDialog({ leave, employees, open, onClose, onEdit }: {
         </div>
 
         <DialogFooter className={dialogFormFooterClass}>
-          <Button variant="outline" onClick={onEdit}>تعديل</Button>
           <Button variant="outline" onClick={onClose}>إغلاق</Button>
         </DialogFooter>
       </DialogContent>
@@ -1266,7 +1271,7 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden border-border p-0">
+      <DialogContent className="flex max-h-[90vh] w-full max-w-md flex-col overflow-visible border-border p-0">
         <div className="shrink-0 border-b border-border px-6 py-5">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">{editLeave ? 'تعديل الإجازة' : 'إضافة إجازة'}</DialogTitle>
@@ -1323,11 +1328,11 @@ function AddLeaveDialog({ open, editLeave, employees, branches, leaveTypes, leav
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>من <span className="text-destructive">*</span></Label>
-              <SingleDatePicker value={start} onChange={setStart} placeholder="تاريخ البداية" />
+              <DatePickerInput value={start} onChange={setStart} placeholder="تاريخ البداية" />
             </div>
             <div className="space-y-2">
               <Label>إلى <span className="text-destructive">*</span></Label>
-              <SingleDatePicker value={end} onChange={setEnd} placeholder="تاريخ النهاية" min={start} />
+              <DatePickerInput value={end} onChange={setEnd} placeholder="تاريخ النهاية" minDate={start || undefined} />
             </div>
           </div>
 

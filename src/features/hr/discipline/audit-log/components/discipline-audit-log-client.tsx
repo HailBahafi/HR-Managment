@@ -37,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
-import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderActions, usePageHeaderActionsState } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import {
   useDisciplineAuditLogDirectoryModel,
@@ -105,7 +105,9 @@ export function DisciplineAuditLogClient() {
     listError: loadError,
     pagination,
     setListFilters,
+    loadActorDirectory,
   } = m;
+  const { filterPanelOpen } = usePageHeaderActionsState();
   const { data: defaultCompany } = useDefaultCompany();
   const companyNameAr = defaultCompany?.nameAr ?? '';
   const companyNameEn = defaultCompany?.nameEn ?? '';
@@ -144,6 +146,10 @@ export function DisciplineAuditLogClient() {
       dateTo: dateBounds.to,
     });
   }, [q, catFilter, selectedActorIds, statusFilter, dateBounds.from, dateBounds.to, setListFilters]);
+
+  React.useEffect(() => {
+    if (filterPanelOpen) void loadActorDirectory();
+  }, [filterPanelOpen, loadActorDirectory]);
 
   const listFiltered = filteredItems;
 

@@ -70,14 +70,15 @@ export function DailySmartTimeline({
 
   if (days === 1) {
     return (
-      <DailyTimelineScroll className={className}>
+      <PagedListViewport className={className ?? 'min-h-0 flex-1'}>
         <DailyOneDayView
+          className="h-full min-h-0"
           summaries={pageSummaries}
           initialEvents={pageEvents}
           workDate={dates[0]!}
           allEmployees={pageAllEmployees}
         />
-      </DailyTimelineScroll>
+      </PagedListViewport>
     );
   }
 

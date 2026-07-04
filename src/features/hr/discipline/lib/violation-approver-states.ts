@@ -111,6 +111,32 @@ export function isEmployeeInViolationApproverStates(
   return isEmployeeInApproverStates(states, employeeId);
 }
 
+/** UI state for approve/reject controls — shows disabled buttons while waiting in sequential mode. */
+export function getViolationApprovalUiState(
+  states: ViolationApproverStatesSnapshot | null | undefined,
+  employeeId: string | null | undefined,
+): { showActions: boolean; canAct: boolean; reasonAr: string | null } {
+  if (!states || !employeeId) {
+    return { showActions: false, canAct: false, reasonAr: null };
+  }
+
+  if (!isEmployeeInViolationApproverStates(states, employeeId)) {
+    return { showActions: false, canAct: false, reasonAr: null };
+  }
+
+  const self = states.approvers.find((a) => a.employeeId === employeeId);
+  if (!self || self.status !== 'pending') {
+    return { showActions: false, canAct: false, reasonAr: null };
+  }
+
+  const ctx = getViolationApproverActionContext(states, employeeId);
+  return {
+    showActions: true,
+    canAct: ctx.canAct,
+    reasonAr: ctx.reasonAr,
+  };
+}
+
 export function formatViolationApproverStatesSummary(states: ViolationApproverStatesSnapshot): string {
   return formatApproverStatesSummary(states);
 }

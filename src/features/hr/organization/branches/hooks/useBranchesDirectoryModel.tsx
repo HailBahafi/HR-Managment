@@ -94,7 +94,7 @@ export function useBranchesDirectoryModel() {
     pagination,
     reload: reloadList,
   } = useServerDirectoryPagination<BranchRow>(loadPage, {
-    enabled: !!defaultCompanyId,
+    enabled: !!defaultCompanyId && perms.canRead,
     resetDeps: [defaultCompanyId, layoutView, archiveScope],
   });
 

@@ -616,7 +616,7 @@ function NotificationDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col gap-0 overflow-hidden p-0" dir="rtl">
+      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col gap-0 overflow-visible p-0" dir="rtl">
 
         {/* ── header ── */}
         <DialogHeader className="shrink-0 border-b border-border bg-background px-6 pt-5 pb-4">

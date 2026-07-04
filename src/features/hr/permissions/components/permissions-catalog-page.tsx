@@ -28,7 +28,7 @@ import {
 export function PermissionsCatalogPage() {
   useSetPageTitle({
     titleAr: 'الصلاحيات',
-    descriptionAr: 'دليل صلاحيات نظام الموارد البشرية',
+    descriptionAr: 'دليل صلاحيات النظام — جميع التطبيقات',
     iconName: 'Shield',
   });
 
@@ -86,6 +86,7 @@ export function PermissionsCatalogPage() {
       <ListFilterBar
         showDateSection={false}
         showStatusSection={false}
+        showEmployeePicker={false}
         leadingFilters={searchFilter}
         onDateBoundsChange={() => {}}
       />

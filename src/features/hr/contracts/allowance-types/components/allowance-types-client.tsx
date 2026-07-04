@@ -6,7 +6,7 @@ import {
   LayoutGrid, List,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/shared/utils';
+import { cn, formatNumber } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,7 +50,7 @@ const CALC_TYPE_LABEL: Record<AllowanceCalculationType, string> = {
 
 function fmtAmount(item: AllowanceTypeDto): string {
   if (item.calculationType === 'fixed_amount' && item.typicalAmount) {
-    return `${parseFloat(item.typicalAmount).toLocaleString('ar-SA')} ${item.currency}`;
+    return `${formatNumber(parseFloat(item.typicalAmount))} ${item.currency}`;
   }
   if (item.calculationType === 'percent_of_basic' && item.typicalPercent) {
     return `${parseFloat(item.typicalPercent)}%`;

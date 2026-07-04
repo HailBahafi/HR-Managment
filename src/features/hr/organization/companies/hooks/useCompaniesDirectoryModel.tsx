@@ -65,7 +65,7 @@ export function useCompaniesDirectoryModel() {
     loading,
     pagination,
     reload: reloadList,
-  } = useServerDirectoryPagination<CompanyRow>(loadPage, { resetDeps: [layoutView] });
+  } = useServerDirectoryPagination<CompanyRow>(loadPage, { enabled: perms.canRead, resetDeps: [layoutView] });
 
   const patch = React.useCallback((p: Partial<CompanyDraftForm>) => {
     setForm((f) => ({ ...f, ...p }));
