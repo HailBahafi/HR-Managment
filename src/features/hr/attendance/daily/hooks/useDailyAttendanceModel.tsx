@@ -51,13 +51,16 @@ export function useDailyAttendanceModel() {
   const [companyNameAr, setCompanyNameAr] = React.useState('');
   const [companyNameEn, setCompanyNameEn] = React.useState('');
 
+  const todayPeriod = React.useMemo(() => {
+    const today = todayYMD();
+    return { from: today, to: today };
+  }, []);
+
   const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
     attendanceFiltersKey('daily', companyId, 'selectedEmpIds'),
   );
-  const [dateBounds, setDateBounds] = usePersistedFilterState(
-    attendanceFiltersKey('daily', companyId, 'dateBounds'),
-    { from: todayYMD(), to: todayYMD() },
-  );
+  // Always open on today — do not persist the day filter (attendance is day-centric).
+  const [dateBounds, setDateBounds] = React.useState(todayPeriod);
   const [statusFilter, setStatusFilter] = usePersistedFilterState(
     attendanceFiltersKey('daily', companyId, 'statusFilter'),
     'all',
@@ -256,7 +259,7 @@ export function useDailyAttendanceModel() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
-  const isDefaultDate = filterFrom === todayYMD() && filterTo === todayYMD();
+  const isDefaultDate = filterFrom === todayPeriod.from && filterTo === todayPeriod.to;
   const activeFilterCount =
     (statusFilter !== 'all' ? 1 : 0)
     + (selectedEmpIds.size > 0 ? 1 : 0)
@@ -327,13 +330,11 @@ export function useDailyAttendanceModel() {
         statusOrder={ATT_VISUAL_STATUS_ORDER}
         statusLabels={attendanceStatusLabels}
         statusCounts={attendanceStatusCounts}
-        onDateBoundsChange={(b) => {
+        periodValue={dateBounds}
+        defaultPeriod={todayPeriod}
+        onPeriodChange={(b) => {
           const normalized = normalizePeriodRange(b);
-          if (normalized) {
-            setDateBounds(normalized);
-            return;
-          }
-          setDateBounds({ from: todayYMD(), to: todayYMD() });
+          setDateBounds(normalized ?? todayPeriod);
         }}
         dataView={{
           value: viewMode,
@@ -352,6 +353,8 @@ export function useDailyAttendanceModel() {
       pickerEmployees.length,
       dateBounds.from,
       dateBounds.to,
+      todayPeriod.from,
+      todayPeriod.to,
       attendanceStatusCounts.all,
       attendanceStatusCounts.present,
       attendanceStatusCounts.late,
