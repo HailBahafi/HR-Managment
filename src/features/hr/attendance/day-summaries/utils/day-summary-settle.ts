@@ -8,6 +8,7 @@ export type DaySummarySettlePlan = {
   shortageMinutes: number;
   outsidePeriodMinutes: number;
   overtimeMinutes: number;
+  settleablePoolMinutes: number;
   transferMinutes: number;
   after: {
     shortageMinutes: number;
@@ -24,23 +25,36 @@ export function getDaySummaryOutsidePeriodMinutes(row: DaySummaryResponseDto): n
   return getDaySummaryMetricMinutes(row, 'outsidePeriods');
 }
 
-/** Net shortage against outside-period work: min(shortage, outsidePeriods). */
+export function getDaySummarySettleablePoolMinutes(row: DaySummaryResponseDto): number {
+  return (
+    getDaySummaryOutsidePeriodMinutes(row) +
+    getDaySummaryMetricMinutes(row, 'overtime')
+  );
+}
+
+/** Net shortage against overtime pool (outside + overtime). */
 export function computeDaySummarySettlePlan(row: DaySummaryResponseDto): DaySummarySettlePlan {
   const shortageMinutes = getDaySummaryShortageMinutes(row);
   const outsidePeriodMinutes = getDaySummaryOutsidePeriodMinutes(row);
   const overtimeMinutes = getDaySummaryMetricMinutes(row, 'overtime');
+  const settleablePoolMinutes = outsidePeriodMinutes + overtimeMinutes;
 
-  const transferMinutes = Math.min(shortageMinutes, outsidePeriodMinutes);
+  const transferMinutes = Math.min(shortageMinutes, settleablePoolMinutes);
+  let remaining = transferMinutes;
+  const fromOutside = Math.min(remaining, outsidePeriodMinutes);
+  remaining -= fromOutside;
+  const fromOvertime = remaining;
 
   return {
     shortageMinutes,
     outsidePeriodMinutes,
     overtimeMinutes,
+    settleablePoolMinutes,
     transferMinutes,
     after: {
       shortageMinutes: shortageMinutes - transferMinutes,
-      outsidePeriodMinutes: outsidePeriodMinutes - transferMinutes,
-      overtimeMinutes: Math.max(0, overtimeMinutes - transferMinutes),
+      outsidePeriodMinutes: outsidePeriodMinutes - fromOutside,
+      overtimeMinutes: Math.max(0, overtimeMinutes - fromOvertime),
     },
   };
 }
@@ -53,7 +67,7 @@ export function canSettleDaySummary(row: DaySummaryResponseDto): boolean {
   return (
     plan.transferMinutes > 0 &&
     plan.shortageMinutes > 0 &&
-    plan.outsidePeriodMinutes > 0 &&
+    plan.settleablePoolMinutes > 0 &&
     !row.isSettled &&
     !row.isFinalized
   );

@@ -66,7 +66,8 @@ export function DaySummarySettleConfirmDialog({
 
   const plan = computeDaySummarySettlePlan(row);
   const partialShortage = plan.after.shortageMinutes > 0;
-  const surplusOutside = plan.after.outsidePeriodMinutes > 0;
+  const surplusPool =
+    plan.after.outsidePeriodMinutes + plan.after.overtimeMinutes > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,7 +77,7 @@ export function DaySummarySettleConfirmDialog({
             <DialogTitle className="font-display text-base">تسوية الحضور</DialogTitle>
             <DialogDescription className="text-xs leading-relaxed">
               تسوية بين <span className="font-semibold text-destructive">النقص</span> و{' '}
-              <span className="font-semibold text-success">خارج الفترات</span>: يُنقَل{' '}
+              <span className="font-semibold text-success">رصيد الإضافي</span> (خارج الفترات + إضافي): يُنقَل{' '}
               <span className="font-semibold text-foreground">{minutesToHHMM(plan.transferMinutes)}</span>{' '}
               (أقلّ القيمتين).
             </DialogDescription>
@@ -98,11 +99,11 @@ export function DaySummarySettleConfirmDialog({
               <span className="font-mono font-semibold tabular-nums text-primary">
                 {minutesToHHMM(plan.transferMinutes)}
               </span>{' '}
-              من خارج الفترات → سد النقص
+              من الإضافي → سد النقص
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <MetricPreview
               label="نقص"
               before={plan.shortageMinutes}
@@ -115,30 +116,27 @@ export function DaySummarySettleConfirmDialog({
               after={plan.after.outsidePeriodMinutes}
               tone="success"
             />
-          </div>
-
-          {plan.overtimeMinutes > 0 ? (
             <MetricPreview
-              label="إضافي (مرتبط)"
+              label="إضافي"
               before={plan.overtimeMinutes}
               after={plan.after.overtimeMinutes}
               tone="default"
             />
-          ) : null}
+          </div>
 
           {partialShortage ? (
             <p className="text-xs leading-relaxed text-muted-foreground">
-              خارج الفترات أقل من النقص — تسوية جزئية، يبقى نقص{' '}
+              رصيد الإضافي أقل من النقص — تسوية جزئية، يبقى نقص{' '}
               <span className="font-mono font-medium text-destructive">
                 {minutesToHHMM(plan.after.shortageMinutes)}
               </span>
               .
             </p>
-          ) : surplusOutside ? (
+          ) : surplusPool ? (
             <p className="text-xs leading-relaxed text-muted-foreground">
-              بعد التسوية الكاملة للنقص، يبقى خارج الفترات{' '}
+              بعد التسوية الكاملة للنقص، يبقى رصيد إضافي{' '}
               <span className="font-mono font-medium text-success">
-                {minutesToHHMM(plan.after.outsidePeriodMinutes)}
+                {minutesToHHMM(plan.after.outsidePeriodMinutes + plan.after.overtimeMinutes)}
               </span>
               .
             </p>
