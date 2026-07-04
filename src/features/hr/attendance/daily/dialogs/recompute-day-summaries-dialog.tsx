@@ -203,7 +203,7 @@ export function RecomputeDaySummariesDialog({
                 استبدال التعديلات اليدوية
               </Label>
               <p className="text-xs text-muted-foreground">
-                إعادة الكتابة فوق الملخصات التي تم تعديلها يدوياً.
+                إعادة الكتابة فوق الملخصات التي عدّلها الموارد البشرية يدوياً (لا يشمل التسوية — تُلغى تلقائياً عند إعادة الحساب).
               </p>
             </div>
             <Switch
