@@ -187,7 +187,7 @@ export function AttendanceCorrectionRequestsClient() {
     if (!companyId) return { items: [] as AttendanceCorrectionRequest[], total: 0 };
     try {
       const res = await correctionRequestsApi.list(buildListQuery(page, pageSize));
-      const items = res.items.map(mapCorrectionRequest);
+      const items = res.items.map((r) => mapCorrectionRequest(r, res.approvalAssignments));
       return { items, total: res.pagination.total };
     } catch {
       return { items: [], total: 0 };

@@ -10,8 +10,9 @@ import {
 import { ApiError } from '@/features/hr/lib/api/client';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
+import type { RequestApprovalAssignmentCatalogDto } from './api/correction-requests';
 import type { RequestApproverStatesSnapshot } from './api/request-approver-states-types';
-import { normalizeRequestApproverStates } from './request-approver-states';
+import { buildRequestApproverStatesFromListItem, normalizeRequestApproverStates } from './request-approver-states';
 import type {
   AttendanceCorrectionPeriod,
   AttendanceCorrectionRequest,
@@ -81,7 +82,27 @@ function mapCorrectedPeriods(r: ApiCorrectionRequest): AttendanceCorrectionPerio
   return [];
 }
 
-export function mapCorrectionRequest(r: ApiCorrectionRequest): AttendanceCorrectionRequest {
+function resolveCorrectionApproverStates(
+  r: ApiCorrectionRequest,
+  approvalCatalog?: RequestApprovalAssignmentCatalogDto[],
+): RequestApproverStatesSnapshot | null {
+  if (approvalCatalog?.length) {
+    const fromList = buildRequestApproverStatesFromListItem(
+      {
+        approvalAssignmentId: r.approvalAssignmentId ?? null,
+        approverDecisions: r.approverDecisions ?? null,
+      },
+      approvalCatalog,
+    );
+    if (fromList) return fromList;
+  }
+  return normalizeRequestApproverStates(r);
+}
+
+export function mapCorrectionRequest(
+  r: ApiCorrectionRequest,
+  approvalCatalog?: RequestApprovalAssignmentCatalogDto[],
+): AttendanceCorrectionRequest {
   const correctedPeriods = mapCorrectedPeriods(r);
   const firstPeriod = correctedPeriods[0];
 
@@ -110,7 +131,7 @@ export function mapCorrectionRequest(r: ApiCorrectionRequest): AttendanceCorrect
     createdAt: r.createdAt,
     decidedAt: r.decidedAt,
     decidedByEmployeeId: r.decidedByEmployeeId,
-    approverStates: normalizeRequestApproverStates(r),
+    approverStates: resolveCorrectionApproverStates(r, approvalCatalog),
   };
 }
 
@@ -143,7 +164,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
     set({ isLoading: true, error: null });
     try {
       const result = await correctionRequestsApi.list({ companyId, limit: 200, ...params });
-      set({ items: result.items.map(mapCorrectionRequest), isLoading: false });
+      set({ items: result.items.map((r) => mapCorrectionRequest(r, result.approvalAssignments)), isLoading: false });
     } catch (e) {
       set({ error: { message: (e as Error).message, status: e instanceof ApiError ? e.status : 0 }, isLoading: false });
     }
