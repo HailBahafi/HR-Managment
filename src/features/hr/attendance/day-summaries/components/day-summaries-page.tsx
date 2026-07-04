@@ -89,6 +89,10 @@ function DaySummaryDetailDialog({
           <DetailRow label="فعلي" value={formatDaySummaryMetric(row, 'total') ?? '—'} />
           <DetailRow label="تأخير" value={formatDaySummaryMetric(row, 'late') ?? '00:00'} />
           <DetailRow label="انصراف مبكر" value={formatDaySummaryMetric(row, 'earlyLeave') ?? '00:00'} />
+          <DetailRow
+            label="نقص"
+            value={formatDaySummaryMetric(row, 'shortage') ?? '00:00'}
+          />
           <DetailRow label="إضافي" value={formatDaySummaryMetric(row, 'overtime') ?? '00:00'} />
           <DetailRow
             label="إضافي رواتب"
@@ -236,6 +240,13 @@ export function DaySummariesPage() {
       ),
     },
     {
+      key: 'shortage',
+      title: 'نقص',
+      render: (row) => (
+        <DaySummaryMetricCell row={row} metric="shortage" emptyWhenZero tone="danger" />
+      ),
+    },
+    {
       key: 'overtime',
       title: 'إضافي',
       render: (row) => (
@@ -279,7 +290,7 @@ export function DaySummariesPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <SetPageTitle
         titleAr="كشف الحضور"
-        descriptionAr="متوقع والفعلي مع تأخير، انصراف مبكر، وإضافي من الخادم."
+        descriptionAr="متوقع والفعلي مع تأخير، نقص، إضافي، وتسوية من الإضافي إلى النقص."
         iconName="CalendarRange"
       />
 

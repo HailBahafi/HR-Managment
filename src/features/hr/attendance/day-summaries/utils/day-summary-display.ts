@@ -6,19 +6,26 @@ export type DaySummaryDailyMetricKey =
   | 'total'
   | 'late'
   | 'earlyLeave'
+  | 'shortage'
   | 'overtime';
 
 const MINUTES_FIELD: Record<
   DaySummaryDailyMetricKey,
   keyof Pick<
     DaySummaryResponseDto,
-    'expectedMinutes' | 'workedMinutes' | 'lateMinutes' | 'earlyLeaveMinutes' | 'overtimeMinutes'
+    | 'expectedMinutes'
+    | 'workedMinutes'
+    | 'lateMinutes'
+    | 'earlyLeaveMinutes'
+    | 'shortageMinutes'
+    | 'overtimeMinutes'
   >
 > = {
   expected: 'expectedMinutes',
   total: 'workedMinutes',
   late: 'lateMinutes',
   earlyLeave: 'earlyLeaveMinutes',
+  shortage: 'shortageMinutes',
   overtime: 'overtimeMinutes',
 };
 
@@ -34,7 +41,17 @@ export function getDaySummaryMetricMinutes(
 
   const field = MINUTES_FIELD[key];
   const value = row[field];
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (key === 'shortage') {
+    const expected = getDaySummaryMetricMinutes(row, 'expected');
+    const total = getDaySummaryMetricMinutes(row, 'total');
+    return Math.max(0, expected - total);
+  }
+
+  return 0;
 }
 
 /** HH:MM display — prefers API `dailyTotals.display` (matches تفاصيل اليوم). */

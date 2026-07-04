@@ -18,16 +18,7 @@ export type DaySummarySettlePlan = {
 };
 
 export function getDaySummaryShortageMinutes(row: DaySummaryResponseDto): number {
-  const fromTotals = row.dailyTotals?.minutes?.shortage;
-  if (typeof fromTotals === 'number' && Number.isFinite(fromTotals)) {
-    return fromTotals;
-  }
-  if (typeof row.shortageMinutes === 'number' && Number.isFinite(row.shortageMinutes)) {
-    return row.shortageMinutes;
-  }
-  const expected = getDaySummaryMetricMinutes(row, 'expected');
-  const total = getDaySummaryMetricMinutes(row, 'total');
-  return Math.max(0, expected - total);
+  return getDaySummaryMetricMinutes(row, 'shortage');
 }
 
 /** Transfer from overtime to actual until actual reaches expected (partial if overtime is insufficient). */
