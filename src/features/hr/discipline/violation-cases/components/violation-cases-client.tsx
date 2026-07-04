@@ -658,7 +658,7 @@ export function ViolationCasesClient() {
       title: 'الرقم',
       headerClassName: 'whitespace-nowrap',
       className: 'font-mono text-xs font-medium tabular-nums text-muted-foreground',
-      render: (c) => <span dir="ltr">{c.caseNumber}</span>,
+      render: (c) => <span >{c.caseNumber}</span>,
     },
     {
       key: 'employee',

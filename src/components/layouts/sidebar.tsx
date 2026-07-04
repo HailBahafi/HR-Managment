@@ -13,6 +13,7 @@ import {
   UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,   KeyRound, Banknote, Timer,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
+import { isHrAppPath } from '@/shared/app-paths';
 import { Logo } from '@/components/layouts/logo';
 import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
 import { useSidebar } from '@/components/layouts/sidebar-context';
@@ -324,9 +325,14 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
 }
 
 export function Sidebar() {
+  const pathname = usePathname();
   const { open, setOpen } = useSidebar();
   const close = React.useCallback(() => setOpen(false), [setOpen]);
   const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isHrAppPath(pathname)) setOpen(false);
+  }, [pathname, setOpen]);
 
   React.useEffect(() => {
     setMounted(true);
@@ -360,18 +366,20 @@ export function Sidebar() {
     };
   }, [open]);
 
+  if (!isHrAppPath(pathname)) return null;
+
   if (!mounted || !open) return null;
 
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm xl:hidden"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
         onClick={close}
         aria-hidden
       />
       <aside
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex w-[min(100vw-2rem,18rem)] max-w-[85vw] flex-col shadow-luxe xl:hidden',
+          'fixed inset-y-0 right-0 z-50 flex w-[min(100vw-2rem,18rem)] max-w-[85vw] flex-col shadow-luxe lg:hidden',
         )}
         role="dialog"
         aria-modal="true"
