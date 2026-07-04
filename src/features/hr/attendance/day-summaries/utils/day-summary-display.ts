@@ -4,8 +4,10 @@ import { minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attend
 export type DaySummaryDailyMetricKey =
   | 'expected'
   | 'total'
+  | 'insidePeriods'
   | 'late'
   | 'earlyLeave'
+  | 'earlyArrival'
   | 'shortage'
   | 'outsidePeriods'
   | 'overtime';
@@ -16,8 +18,10 @@ const MINUTES_FIELD: Record<
     DaySummaryResponseDto,
     | 'expectedMinutes'
     | 'workedMinutes'
+    | 'workedMinutesInsidePeriods'
     | 'lateMinutes'
     | 'earlyLeaveMinutes'
+    | 'earlyArrivalMinutes'
     | 'shortageMinutes'
     | 'workedMinutesOutsidePeriods'
     | 'overtimeMinutes'
@@ -25,8 +29,10 @@ const MINUTES_FIELD: Record<
 > = {
   expected: 'expectedMinutes',
   total: 'workedMinutes',
+  insidePeriods: 'workedMinutesInsidePeriods',
   late: 'lateMinutes',
   earlyLeave: 'earlyLeaveMinutes',
+  earlyArrival: 'earlyArrivalMinutes',
   shortage: 'shortageMinutes',
   outsidePeriods: 'workedMinutesOutsidePeriods',
   overtime: 'overtimeMinutes',

@@ -30,6 +30,13 @@ import {
   usePersistedEmpIdSet,
   usePersistedFilterState,
 } from '@/features/hr/attendance/lib/use-persisted-filter-state';
+import { DaySummaryColumnsPicker } from '@/features/hr/attendance/day-summaries/components/day-summary-columns-picker';
+import {
+  DEFAULT_DAY_SUMMARY_COLUMN_VISIBILITY,
+  normalizeDaySummaryColumnVisibility,
+  type DaySummaryColumnVisibility,
+  type DaySummaryOptionalColumnKey,
+} from '@/features/hr/attendance/day-summaries/constants/day-summary-column-config';
 
 export type DaySummariesFilters = {
   status: 'all' | AttendanceDayStatus;
@@ -71,6 +78,27 @@ export function useDaySummariesDirectoryModel() {
       isManualOverride: 'all',
     },
   );
+
+  const [columnVisibility, setColumnVisibility] = usePersistedFilterState<DaySummaryColumnVisibility>(
+    attendanceFiltersKey('day-summaries', companyId, 'columnVisibility'),
+    DEFAULT_DAY_SUMMARY_COLUMN_VISIBILITY,
+  );
+
+  const normalizedColumnVisibility = React.useMemo(
+    () => normalizeDaySummaryColumnVisibility(columnVisibility),
+    [columnVisibility],
+  );
+
+  const toggleColumnVisibility = React.useCallback((key: DaySummaryOptionalColumnKey) => {
+    setColumnVisibility((prev) => {
+      const next = normalizeDaySummaryColumnVisibility(prev);
+      return { ...next, [key]: !next[key] };
+    });
+  }, [setColumnVisibility]);
+
+  const resetColumnVisibility = React.useCallback(() => {
+    setColumnVisibility(DEFAULT_DAY_SUMMARY_COLUMN_VISIBILITY);
+  }, [setColumnVisibility]);
 
   const defaultPeriod = React.useMemo(() => {
     const ym = currentYearMonth();
@@ -186,6 +214,11 @@ export function useDaySummariesDirectoryModel() {
   usePageHeaderActions(
     () => (
       <div className="flex shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2">
+        <DaySummaryColumnsPicker
+          visibility={normalizedColumnVisibility}
+          onToggle={toggleColumnVisibility}
+          onReset={resetColumnVisibility}
+        />
         <FilterToggleButton activeFilterCount={activeFilterCount} />
         <Button
           type="button"
@@ -199,7 +232,7 @@ export function useDaySummariesDirectoryModel() {
         </Button>
       </div>
     ),
-    [activeFilterCount],
+    [activeFilterCount, normalizedColumnVisibility, resetColumnVisibility, toggleColumnVisibility],
   );
 
   useEntityFilterSlot(
@@ -245,5 +278,6 @@ export function useDaySummariesDirectoryModel() {
     recomputeOpen,
     setRecomputeOpen,
     reload: load,
+    columnVisibility: normalizedColumnVisibility,
   };
 }
