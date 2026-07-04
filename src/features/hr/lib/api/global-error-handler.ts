@@ -9,6 +9,7 @@ import type { ApiErrorEnvelope } from '@/features/hr/lib/api/types';
 import { isApiErrorEnvelope } from '@/features/hr/lib/api/types';
 import { toast } from 'sonner';
 import { duplicateAdvanceNumberMessage, isDuplicateAdvanceNumberError } from '@/features/hr/contracts/lib/employee-advance-errors';
+import { reportError } from '@/shared/errors/report-error';
 
 export type ApiErrorHandleResult = {
   /** Human-readable backend message for toasts and inline UI. */
@@ -68,6 +69,13 @@ export function handleApiError(
     : isDuplicateAdvanceNumberError(error)
       ? rawMessage
       : resolveAuthDisplayMessage(rawMessage, context);
+
+  // 5xx: same toast as always, plus route it into the shared logging pipeline (correlation
+  // id, dev/prod formatting) so backend failures show up alongside render/route crashes.
+  // 4xx never reaches here — those are expected, user-actionable outcomes, not incidents.
+  if (status >= 500) {
+    reportError(error, context ?? 'api-error');
+  }
 
   const authContext = isAuthApiContext(context);
   const suppressRedirect = Boolean(options?.suppressRedirect);

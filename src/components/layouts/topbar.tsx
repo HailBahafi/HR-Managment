@@ -28,14 +28,19 @@ import { hrPayrollNavGroups, isHrPayrollNavPath } from '@/features/hr/payroll/co
 import { hrContractsOnlyNavGroups, isHrContractsOnlyNavPath } from '@/features/hr/contracts/constants/nav';
 import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
-import { hrPermissionsNavGroups, isHrPermissionsNavPath } from '@/features/hr/permissions/constants/nav';
 import {
-  hrOrganizationSettingsNavItems,
   hrOrganizationStructureNavItems,
   isHrOrganizationNavPath,
 } from '@/features/hr/organization/constants/nav';
+import { systemPermissionsNavGroups, isSystemPermissionsNavPath } from '@/features/system/permissions/constants/nav';
+import {
+  systemOrganizationSettingsNavItems,
+  systemOrganizationStructureNavItems,
+  isSystemOrganizationStructureNavPath,
+  isSystemOrganizationSettingsNavPath,
+} from '@/features/system/organization/constants/nav';
 import { UserMenuDropdown } from '@/components/layouts/user-menu-dropdown';
-import { isHrAppPath, isLauncherPath } from '@/shared/app-paths';
+import { isHrAppPath, isSystemAppPath, isLauncherPath } from '@/shared/app-paths';
 
 /* ── Icon registry ────────────────────────────────────────────────────── */
 export const PAGE_ICONS: Record<string, React.ElementType> = {
@@ -86,14 +91,6 @@ export const navConfig: NavItem[] = [
     groups: [
       {
         items: hrOrganizationStructureNavItems.map((item) => ({
-          label: item.labelAr,
-          href: item.href,
-          icon: item.icon,
-        })),
-      },
-      {
-        labelAr: 'الإعدادات',
-        items: hrOrganizationSettingsNavItems.map((item) => ({
           label: item.labelAr,
           href: item.href,
           icon: item.icon,
@@ -192,12 +189,41 @@ export const navConfig: NavItem[] = [
     isActive: isHrContractsOnlyNavPath,
     groups: mapContractsOnlyNavGroups(hrContractsOnlyNavGroups),
   },
+];
+
+export const systemNavConfig: NavItem[] = [
   {
-    key: 'permissions',
+    key: 'system-organization-structure', label: 'الهيكل التنظيمي', icon: Building2,
+    isActive: isSystemOrganizationStructureNavPath,
+    groups: [
+      {
+        items: systemOrganizationStructureNavItems.map((item) => ({
+          label: item.labelAr,
+          href: item.href,
+          icon: item.icon,
+        })),
+      },
+    ],
+  },
+  {
+    key: 'system-organization-settings', label: 'الإعدادات', icon: Settings,
+    isActive: isSystemOrganizationSettingsNavPath,
+    groups: [
+      {
+        items: systemOrganizationSettingsNavItems.map((item) => ({
+          label: item.labelAr,
+          href: item.href,
+          icon: item.icon,
+        })),
+      },
+    ],
+  },
+  {
+    key: 'system-permissions',
     label: 'الصلاحيات',
     icon: Shield,
-    isActive: isHrPermissionsNavPath,
-    groups: hrPermissionsNavGroups.map((g) => ({
+    isActive: isSystemPermissionsNavPath,
+    groups: systemPermissionsNavGroups.map((g) => ({
       labelAr: g.labelAr,
       items: g.items.map((item) => ({
         label: item.labelAr,
@@ -390,6 +416,9 @@ export function Topbar() {
   React.useEffect(() => { setActiveMenu(null); }, [pathname]);
 
   const inHrApp = isHrAppPath(pathname);
+  const inSystemApp = isSystemAppPath(pathname);
+  const inAppShell = inHrApp || inSystemApp;
+  const activeNavConfig = inSystemApp ? systemNavConfig : navConfig;
   const onLauncher = isLauncherPath(pathname);
   const PageIcon = meta.iconName ? PAGE_ICONS[meta.iconName] : null;
 
@@ -437,12 +466,12 @@ export function Topbar() {
           )}
         </div>
 
-        {inHrApp && <div className="mx-0.5 hidden h-5 w-px bg-border/70 lg:block" />}
+        {inAppShell && <div className="mx-0.5 hidden h-5 w-px bg-border/70 lg:block" />}
 
-        {/* Desktop nav — HR app only */}
-        {inHrApp && (
+        {/* Desktop nav — app shell only (HR or System) */}
+        {inAppShell && (
         <nav className="hidden min-w-0 flex-1 flex-nowrap items-center gap-0.5 overflow-visible min-[1400px]:gap-1 lg:flex" aria-label="التنقل الرئيسي">
-          {navConfig.map(item => (
+          {activeNavConfig.map(item => (
             <TopbarNavItem
               key={item.key}
               item={item}
@@ -455,21 +484,21 @@ export function Topbar() {
         </nav>
         )}
 
-        <div className={cn('flex-1', inHrApp && 'lg:hidden')} />
+        <div className={cn('flex-1', inAppShell && 'lg:hidden')} />
 
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
 
-          {inHrApp && <FilterTrigger />}
+          {inAppShell && <FilterTrigger />}
 
           {inHrApp && <NotificationBellPopover />}
 
-          {inHrApp && <div className="mx-1 h-5 w-px bg-border/70" />}
+          {inAppShell && <div className="mx-1 h-5 w-px bg-border/70" />}
 
           {/* User menu */}
           <UserMenuDropdown />
 
-          {inHrApp && (
+          {inAppShell && (
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl lg:hidden" onClick={toggle} aria-label="القائمة">
               <Menu className="h-4 w-4" />
             </Button>

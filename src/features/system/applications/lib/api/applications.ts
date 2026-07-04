@@ -28,7 +28,7 @@ export function resolveApplicationLaunchPath(app: ApplicationResponseDto): strin
   const base = app.routePath?.trim();
   if (app.code === 'hr') return '/hr/organization/employees';
   if (app.code === 'system' && (!base || base === '/system')) {
-    return '/hr/permissions';
+    return '/system/organization/departments';
   }
   return base || '/';
 }

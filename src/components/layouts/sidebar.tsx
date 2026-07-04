@@ -10,10 +10,10 @@ import {
   LayoutGrid, MapPin, Link2, CalendarRange, Activity,
   ListChecks, ShieldCheck, LayoutList, CirclePlus, CalendarClock,
   ChevronDown, X, LifeBuoy, FileSpreadsheet, FileSignature,
-  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,   KeyRound, Banknote, Timer,
+  UserCircle, Briefcase, UserPlus, Bell, Send, Inbox,   KeyRound, Banknote, Timer, Settings,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
-import { isHrAppPath } from '@/shared/app-paths';
+import { isHrAppPath, isSystemAppPath } from '@/shared/app-paths';
 import { Logo } from '@/components/layouts/logo';
 import { useDefaultCompanyBranding } from '@/features/auth/hooks/use-default-company-branding';
 import { useSidebar } from '@/components/layouts/sidebar-context';
@@ -23,11 +23,12 @@ import { hrPayrollNavGroups } from '@/features/hr/payroll/constants/nav';
 import { hrContractsOnlyNavGroups } from '@/features/hr/contracts/constants/nav';
 import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
-import { hrPermissionsNavGroups } from '@/features/hr/permissions/constants/nav';
+import { hrOrganizationStructureNavItems } from '@/features/hr/organization/constants/nav';
+import { systemPermissionsNavGroups } from '@/features/system/permissions/constants/nav';
 import {
-  hrOrganizationSettingsNavItems,
-  hrOrganizationStructureNavItems,
-} from '@/features/hr/organization/constants/nav';
+  systemOrganizationSettingsNavItems,
+  systemOrganizationStructureNavItems,
+} from '@/features/system/organization/constants/nav';
 
 type MobileNavChild =
   | { label: string; href: string; icon?: React.ElementType; match?: 'exact' | 'prefix' }
@@ -45,19 +46,11 @@ const mobileNav: MobileNavItem[] = [
   { key: 'apps', label: 'التطبيقات', href: '/', icon: LayoutGrid },
   {
     key: 'employees', label: 'الهيكل الإداري', href: '/hr/organization/employees', icon: Users,
-    children: [
-      ...hrOrganizationStructureNavItems.map((item) => ({
-        label: item.labelAr,
-        href: item.href,
-        icon: item.icon,
-      })),
-      { separator: true },
-      ...hrOrganizationSettingsNavItems.map((item) => ({
-        label: item.labelAr,
-        href: item.href,
-        icon: item.icon,
-      })),
-    ],
+    children: hrOrganizationStructureNavItems.map((item) => ({
+      label: item.labelAr,
+      href: item.href,
+      icon: item.icon,
+    })),
   },
   {
     key: 'recruitment', label: 'التوظيف', icon: UserPlus,
@@ -142,11 +135,31 @@ const mobileNav: MobileNavItem[] = [
       })),
     ),
   },
+];
+
+const systemMobileNav: MobileNavItem[] = [
+  { key: 'apps', label: 'التطبيقات', href: '/', icon: LayoutGrid },
+  {
+    key: 'organization-structure', label: 'الهيكل التنظيمي', icon: Building2,
+    children: systemOrganizationStructureNavItems.map((item) => ({
+      label: item.labelAr,
+      href: item.href,
+      icon: item.icon,
+    })),
+  },
+  {
+    key: 'organization-settings', label: 'الإعدادات', icon: Settings,
+    children: systemOrganizationSettingsNavItems.map((item) => ({
+      label: item.labelAr,
+      href: item.href,
+      icon: item.icon,
+    })),
+  },
   {
     key: 'permissions',
     label: 'الصلاحيات',
     icon: Shield,
-    children: hrPermissionsNavGroups.flatMap((g) =>
+    children: systemPermissionsNavGroups.flatMap((g) =>
       g.items.map((item) => ({
         label: item.labelAr,
         href: item.href,
@@ -156,7 +169,7 @@ const mobileNav: MobileNavItem[] = [
   },
 ];
 
-function MobileDrawer({ onClose }: { onClose: () => void }) {
+function MobileDrawer({ items, onClose }: { items: MobileNavItem[]; onClose: () => void }) {
   const { logoUrl, logoAlt } = useDefaultCompanyBranding();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -232,7 +245,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-        {mobileNav.map(item => {
+        {items.map(item => {
           const parentActive = isParentActive(item);
           const isExpanded = expanded.has(item.key) || parentActive;
 
@@ -330,9 +343,11 @@ export function Sidebar() {
   const close = React.useCallback(() => setOpen(false), [setOpen]);
   const [mounted, setMounted] = React.useState(false);
 
+  const inAppShell = isHrAppPath(pathname) || isSystemAppPath(pathname);
+
   React.useEffect(() => {
-    if (!isHrAppPath(pathname)) setOpen(false);
-  }, [pathname, setOpen]);
+    if (!inAppShell) setOpen(false);
+  }, [inAppShell, setOpen]);
 
   React.useEffect(() => {
     setMounted(true);
@@ -366,9 +381,11 @@ export function Sidebar() {
     };
   }, [open]);
 
-  if (!isHrAppPath(pathname)) return null;
+  if (!inAppShell) return null;
 
   if (!mounted || !open) return null;
+
+  const navItems = isSystemAppPath(pathname) ? systemMobileNav : mobileNav;
 
   return createPortal(
     <>
@@ -386,7 +403,7 @@ export function Sidebar() {
         aria-label="القائمة الرئيسية"
       >
         <React.Suspense fallback={null}>
-          <MobileDrawer onClose={close} />
+          <MobileDrawer items={navItems} onClose={close} />
         </React.Suspense>
       </aside>
     </>,
