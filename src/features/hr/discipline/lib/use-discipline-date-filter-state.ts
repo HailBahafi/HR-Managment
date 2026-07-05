@@ -10,7 +10,9 @@ import {
 export type DisciplineDateFilterMeta = { tab: DateFilterTab; hasRestriction: boolean };
 
 export function useDisciplineDateFilterState() {
-  const [dateBounds, setDateBounds] = React.useState(() => ({ ...EMPTY_PERIOD_RANGE }));
+  const [dateBounds, setDateBounds] = React.useState<{ from: string; to: string }>(() => ({
+    ...EMPTY_PERIOD_RANGE,
+  }));
   const [dateMeta, setDateMeta] = React.useState<DisciplineDateFilterMeta>(() => ({
     ...DEFAULT_DATE_FILTER_META,
   }));

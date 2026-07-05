@@ -429,7 +429,7 @@ export function Topbar() {
         'border-border/60',
         /* Light: crisp glass bar — cool white → parchment → whisper of primary teal */
         'bg-linear-to-b from-card via-background to-primary-50/35',
-        'shadow-[inset_0_1px_0_0_rgb(255_255_255_/0.92),0_10px_40px_-18px_hsl(var(--primary)/0.09)]',
+        'topbar-shell-shadow',
         /* Dark: flat frosted surface (unchanged character) */
         'dark:bg-none dark:bg-background/95 dark:shadow-none dark:backdrop-blur-2xl',
       )}

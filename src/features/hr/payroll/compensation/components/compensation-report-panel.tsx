@@ -150,7 +150,7 @@ const COMPENSATION_TABLE_HEADER_CELL =
   'sticky top-0 z-30 border-e border-border/60 bg-muted px-3 py-3';
 
 const COMPENSATION_TABLE_HEADER_ROW =
-  'border-b border-border bg-muted text-muted-foreground shadow-[0_1px_0_0_hsl(var(--border))]';
+  'border-b border-border bg-muted text-muted-foreground compensation-table-header-row-shadow';
 
 function CompensationTableShell({
   embedded,

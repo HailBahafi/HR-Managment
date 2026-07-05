@@ -1039,7 +1039,7 @@ export function DailyOneDayView({
 
       {/* Pinned time axis + legend */}
       {allRows.length > 0 && (
-        <div className="shrink-0 border-t border-border/50 bg-card shadow-[0_-6px_16px_-8px_rgba(0,0,0,0.12)]">
+        <div className="shrink-0 border-t border-border/50 bg-card one-day-view-shadow">
           <div className="hidden lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:items-center lg:gap-2 lg:px-4 lg:pt-2.5 lg:pb-1.5">
             <div aria-hidden />
             <HourAxis activeBucket={null} />
