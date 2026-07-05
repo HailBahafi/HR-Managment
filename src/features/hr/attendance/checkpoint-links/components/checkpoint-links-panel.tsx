@@ -25,6 +25,7 @@ import {
 import { useCheckpointLinksPanelModel } from '@/features/hr/attendance/checkpoint-links/hooks/useCheckpointLinksPanelModel';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
+import { ForbiddenState } from '@/components/shared/forbidden-state';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { ConfirmationModal } from '@/components/ui/shared-dialogs';
 
@@ -108,6 +109,10 @@ export function CheckpointLinksPanel() {
     ),
     [m.openBatchDialog],
   );
+
+  if (m.accessDenied) {
+    return <ForbiddenState title="لا تملك صلاحية الوصول لربط نقاط التحقق" />;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">

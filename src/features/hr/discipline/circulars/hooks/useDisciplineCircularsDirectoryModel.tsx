@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import type { HRDisciplineCircularAudience, HRDisciplineCircularRecord } from '@/features/hr/discipline/lib/types';
@@ -50,6 +51,7 @@ export function useDisciplineCircularsDirectoryModel() {
   const [departmentOptions, setDepartmentOptions] = React.useState<{ value: string; label: string }[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
 
   const companyIdRef = React.useRef<string | null>(null);
   const nameLookupRef = React.useRef<{ branchNameById: Record<string, string>; departmentNameById: Record<string, string> }>({
@@ -130,10 +132,12 @@ export function useDisciplineCircularsDirectoryModel() {
       const items = res.items.map((c: DisciplineCircularResponseDto) =>
         mapDisciplineCircularResponse(c, nameLookupRef.current),
       );
+      setApiAccessDenied(false);
       return { items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-circulars.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'discipline-circulars.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildListQuery]);
@@ -197,6 +201,7 @@ export function useDisciplineCircularsDirectoryModel() {
     loading,
     pagination,
     listError,
+    accessDenied: apiAccessDenied,
     listFilters,
     setListFilters,
     loadFilterDirectory,

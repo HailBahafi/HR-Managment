@@ -13,6 +13,7 @@ import { usePagePermissions } from '@/features/auth/permissions';
 import { COMPANIES_PAGE_PERMISSIONS } from '@/features/system/organization/companies/permissions';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import {
   companiesApi,
   type CreateCompanyDto,
@@ -36,7 +37,8 @@ export function useCompaniesDirectoryModel() {
   });
 
   const perms = usePagePermissions(COMPANIES_PAGE_PERMISSIONS);
-  const accessDenied = !perms.canRead;
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
+  const accessDenied = !perms.canRead || apiAccessDenied;
 
   const [listError, setListError] = React.useState<string | null>(null);
   const [layoutView, setLayoutView] = React.useState<'grid' | 'table'>('table');
@@ -52,10 +54,12 @@ export function useCompaniesDirectoryModel() {
     try {
       const res = await companiesApi.getAll({ page, limit: pageSize });
       setListError(null);
+      setApiAccessDenied(false);
       return { items: res.items as CompanyRow[], total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'companies.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'companies.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, []);

@@ -12,6 +12,7 @@ import { Can } from '@/components/shared/can';
 import { usePagePermissions } from '@/features/auth/permissions';
 import { BRANCHES_PAGE_PERMISSIONS } from '@/features/system/organization/branches/permissions';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { employeesApi, type EmployeeResponseDto } from '@/features/hr/organization/employees/lib/api/employees';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
@@ -43,7 +44,8 @@ export function useBranchesDirectoryModel() {
   useSetPageTitle({ titleAr: 'الفروع', descriptionAr: 'إدارة فروع الشركة وتوزيع الموظفين.', iconName: 'Building2' });
 
   const perms = usePagePermissions(BRANCHES_PAGE_PERMISSIONS);
-  const accessDenied = !perms.canRead;
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
+  const accessDenied = !perms.canRead || apiAccessDenied;
 
   const defaultCompanyId = useDefaultCompanyId();
   const { data: defaultCompany } = useDefaultCompany();
@@ -80,10 +82,12 @@ export function useBranchesDirectoryModel() {
         ...organizationListStatusQuery(archiveScope),
       });
       setListError(null);
+      setApiAccessDenied(false);
       return { items: res.items.map(mapBranchResponse), total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'branches.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'branches.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [defaultCompanyId, archiveScope]);

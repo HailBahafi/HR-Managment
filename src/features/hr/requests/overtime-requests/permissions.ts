@@ -13,5 +13,5 @@ export const OVERTIME_REQUESTS_PAGE_PERMISSIONS = {
  * Missing one of these must never lock the page — see `useFilterPermission`.
  */
 export const OVERTIME_REQUESTS_FILTER_PERMISSIONS = {
-  employee: 'hr.organization.employees.read',
+  employee: 'hr.employees.read',
 } as const;

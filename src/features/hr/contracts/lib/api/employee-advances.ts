@@ -122,6 +122,29 @@ export type PushAdvancesToPayrollResponseDto = {
   }>;
 };
 
+export type AdvanceInstallmentPreviewItemDto = {
+  advanceId: string;
+  advanceNumber: string;
+  employeeId: string;
+  employeeNameAr: string;
+  amount: string;
+  monthlyInstallmentAmount: string | null;
+  alreadyRepaid: string;
+  remaining: string;
+  installmentDue: string;
+  alreadyPostedThisPeriod: boolean;
+  status: string;
+};
+
+export type AdvanceInstallmentsPreviewResponseDto = {
+  payrollPeriodId: string;
+  periodYear: number;
+  periodMonth: number;
+  advancesCount: number;
+  totalInstallmentDue: string;
+  items: AdvanceInstallmentPreviewItemDto[];
+};
+
 export const employeeAdvancesApi = {
   list: (params?: { companyId?: string; employeeId?: string; status?: string; advanceDateFrom?: string; advanceDateTo?: string; page?: number; limit?: number }) =>
     apiRequest<EmployeeAdvanceListResponseDto>('/payroll/employee-advances', { query: params }),
@@ -148,6 +171,12 @@ export const employeeAdvancesApi = {
 
   pushToPayroll: (body: PushAdvancesToPayrollDto) =>
     apiRequest<PushAdvancesToPayrollResponseDto>('/payroll/employee-advances/push-to-payroll', {
+      method: 'POST',
+      body,
+    }),
+
+  previewInstallments: (body: Pick<PushAdvancesToPayrollDto, 'payrollPeriodId' | 'employeeIds' | 'includeApproved'>) =>
+    apiRequest<AdvanceInstallmentsPreviewResponseDto>('/payroll/employee-advances/installments/preview', {
       method: 'POST',
       body,
     }),

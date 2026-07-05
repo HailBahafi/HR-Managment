@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import type { HRDisciplinePayrollDeductionRecord } from '@/features/hr/discipline/lib/types';
@@ -62,6 +63,7 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
   const [cases, setCases] = React.useState<DeductionCaseOption[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
 
   const companyIdRef = React.useRef<string | null>(null);
   const employeeNameByIdRef = React.useRef<Record<string, string>>({});
@@ -140,10 +142,12 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
       }
       const res = await disciplinePayrollDeductionsApi.getAll(buildDeductionsQuery(page, pageSize));
       const items = mapItems(res.items);
+      setApiAccessDenied(false);
       return { items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-payroll-deductions.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'discipline-payroll-deductions.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildDeductionsQuery, mapItems]);
@@ -210,6 +214,7 @@ export function useDisciplinePayrollDeductionsDirectoryModel() {
     loading,
     pagination,
     listError,
+    accessDenied: apiAccessDenied,
     listFilters,
     setListFilters,
     reload,

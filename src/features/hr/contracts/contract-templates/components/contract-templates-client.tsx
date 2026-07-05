@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, formatNumber } from '@/shared/utils';
+import { MoneyAmount } from '@/components/ui/sar-amount';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -33,11 +34,11 @@ import {
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
 
-function fmtSalary(amount: string | null | undefined, currency: string): string {
+function fmtSalary(amount: string | null | undefined, currency: string): React.ReactNode {
   if (!amount) return '—';
   const n = parseFloat(amount);
   if (Number.isNaN(n)) return '—';
-  return `${formatNumber(n)} ${currency}`;
+  return <MoneyAmount value={n} currency={currency} fractionDigits={0} />;
 }
 
 function totalAllowances(lines: ContractTemplateDto['allowanceLines']): number {
@@ -221,7 +222,9 @@ export function ContractTemplatesClient() {
                     <div className="text-center">
                       <p className="text-[9px] text-muted-foreground">البدلات</p>
                       <p className="font-mono text-xs font-bold">
-                        {allowanceTotal > 0 ? `${formatNumber(allowanceTotal)} ${item.currency}` : '—'}
+                        {allowanceTotal > 0
+                          ? <MoneyAmount value={allowanceTotal} currency={item.currency} fractionDigits={0} />
+                          : '—'}
                       </p>
                     </div>
                     <div className="h-6 w-px bg-border/60" />

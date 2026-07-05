@@ -13,6 +13,7 @@ import {
 import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
@@ -30,6 +31,7 @@ export function useApprovalAssignmentModel() {
   const [requestTypes, setRequestTypes] = React.useState<ApiRequestType[]>([]);
   const [employees, setEmployees] = React.useState<{ id: string; nameAr: string }[]>([]);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
   const [archiveScope, setArchiveScope] = React.useState<OrganizationArchiveScope>(
     ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   );
@@ -44,10 +46,12 @@ export function useApprovalAssignmentModel() {
         ...organizationListArchiveQuery(archiveScope),
       });
       setListError(null);
+      setApiAccessDenied(false);
       return { items: tplRes.items, total: tplRes.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'request-approval-assignments.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'request-approval-assignments.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [companyId, archiveScope]);
@@ -115,6 +119,7 @@ export function useApprovalAssignmentModel() {
     employees,
     loading,
     listError,
+    accessDenied: apiAccessDenied,
     pagination,
     archiveScope,
     setArchiveScope,

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { SaudiRiyal } from 'lucide-react';
-import { cn } from '@/shared/utils';
+import { cn, formatMoneyDigits } from '@/shared/utils';
 
 export function isSarCurrency(currency?: string | null): boolean {
   const code = currency?.trim().toUpperCase();
@@ -44,5 +44,43 @@ export function SarAmount({
       />
       {suffix ? <span>{suffix}</span> : null}
     </span>
+  );
+}
+
+type MoneyAmountProps = {
+  value: number | string;
+  currency?: string | null;
+  fractionDigits?: number;
+  className?: string;
+  iconClassName?: string;
+  prefix?: ReactNode;
+  suffix?: ReactNode;
+};
+
+/** Formatted monetary value with Saudi riyal icon when currency is SAR (default). */
+export function MoneyAmount({
+  value,
+  currency,
+  fractionDigits = 2,
+  className,
+  iconClassName,
+  prefix,
+  suffix,
+}: MoneyAmountProps) {
+  const formatted = formatMoneyDigits(value, fractionDigits);
+  if (formatted === '—') {
+    return <span className={cn('tabular-nums', className)}>—</span>;
+  }
+
+  return (
+    <SarAmount
+      currency={currency}
+      className={className}
+      iconClassName={iconClassName}
+      suffix={suffix}
+    >
+      {prefix}
+      {formatted}
+    </SarAmount>
   );
 }

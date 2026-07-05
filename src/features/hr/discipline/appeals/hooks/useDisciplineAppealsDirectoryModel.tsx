@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
@@ -83,6 +84,7 @@ export function useDisciplineAppealsDirectoryModel() {
   const [cases, setCases] = React.useState<AppealCase[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
 
   const employeeMapRef = React.useRef<Map<string, string>>(new Map());
   const companyIdRef = React.useRef<string | null>(null);
@@ -142,10 +144,12 @@ export function useDisciplineAppealsDirectoryModel() {
       }
       const res = await disciplineAppealsApi.getAll(buildAppealsQuery(page, pageSize));
       const items = res.items.map((a) => mapAppeal(a, employeeMapRef.current));
+      setApiAccessDenied(false);
       return { items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-appeals.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'discipline-appeals.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildAppealsQuery]);
@@ -253,6 +257,7 @@ export function useDisciplineAppealsDirectoryModel() {
     loading,
     pagination,
     listError,
+    accessDenied: apiAccessDenied,
     listFilters,
     setListFilters,
     createAppeal,

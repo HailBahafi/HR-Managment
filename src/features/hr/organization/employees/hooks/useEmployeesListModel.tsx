@@ -30,6 +30,7 @@ import { departmentsApi, type DepartmentResponseDto } from '@/features/hr/organi
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useActiveCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { usePagePermissions } from '@/features/auth/permissions';
 import { useFilterPermission } from '@/features/auth/permissions/use-filter-permission';
 import {
@@ -62,7 +63,8 @@ export function useEmployeesListModel() {
   const router = useRouter();
   const companyId = useDefaultCompanyId();
   const perms = usePagePermissions(EMPLOYEES_PAGE_PERMISSIONS);
-  const accessDenied = !perms.canRead;
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
+  const accessDenied = !perms.canRead || apiAccessDenied;
   const branchFilterAccess = useFilterPermission(EMPLOYEES_FILTER_PERMISSIONS.branch);
   const deptFilterAccess = useFilterPermission(EMPLOYEES_FILTER_PERMISSIONS.department);
   // company details are optional (used only for PDF header); 403 is silently ignored
@@ -142,10 +144,12 @@ export function useEmployeesListModel() {
       const res = await employeesApi.getAll(buildListQuery(page, pageSize));
       setEmployees(res.items);
       setTotalCount(res.pagination.total);
+      setApiAccessDenied(false);
       return { items: res.items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'employees.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'employees.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildListQuery, companyId]);

@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/list-filter-bar';
 import { EMPTY_PERIOD_RANGE } from '@/features/hr/discipline/lib/discipline-date-filter';
 import { EmployeePicker } from '@/components/ui/employee-picker';
+import { DirectoryPageGate } from '@/components/shared/directory-page-gate';
+import { FILTER_PERMISSIONS } from '@/features/auth/permissions/filter-permissions';
 import { cn, formatDisplayDateTime } from '@/shared/utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
@@ -392,12 +394,13 @@ export function NotificationsAdminClient() {
         iconName="Bell"
       />
 
-      {m.listError ? (
-        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {m.listError}
-        </div>
-      ) : null}
-
+      <DirectoryPageGate
+        accessDenied={m.accessDenied}
+        listError={m.listError}
+        loading={m.loading && m.notifications.length === 0 && !m.accessDenied}
+        forbiddenTitle="لا تملك صلاحية الوصول لإدارة الإشعارات"
+        loadErrorTitle="تعذر تحميل الإشعارات"
+      >
       {!m.loading && m.notifications.length === 0 ? (
         <EmptyState
           title="لا توجد إشعارات"
@@ -431,6 +434,8 @@ export function NotificationsAdminClient() {
           </PaginatedListShell>
         </PagedListViewport>
       )}
+
+      </DirectoryPageGate>
 
       <HRSettingsFormDrawer
         open={drawerOpen}
@@ -485,6 +490,7 @@ export function NotificationsAdminClient() {
             employees={allEmployeeOptions}
             selected={form.employeeIds}
             onChange={(employeeIds) => setForm((f) => ({ ...f, employeeIds }))}
+            requirePermission={FILTER_PERMISSIONS.employee}
           />
         </FormField>
         <label className="flex cursor-pointer items-center gap-2 text-sm">

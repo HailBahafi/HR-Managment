@@ -18,6 +18,7 @@ import {
   OVERTIME_REQUESTS_PAGE_PERMISSIONS,
 } from '@/features/hr/requests/overtime-requests/permissions';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { overtimeRequestsApi } from '@/features/hr/requests/lib/api/overtime-requests';
 import type { OvertimeRequestStatusDto } from '@/features/hr/requests/lib/api/overtime-requests';
 import { requestTypesApi, type ApiRequestType } from '@/features/hr/requests/lib/api/request-types';
@@ -69,7 +70,9 @@ export function useOvertimeRequestsDirectoryModel() {
   const actor = authUser?.email ?? authUser?.id ?? undefined;
 
   const perms = usePagePermissions(OVERTIME_REQUESTS_PAGE_PERMISSIONS);
-  const accessDenied = !perms.canRead;
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
+  const accessDenied = !perms.canRead || apiAccessDenied;
+  const [listError, setListError] = React.useState<string | null>(null);
 
   const { employees: allEmployees, fetch: fetchEmployees } = useHREmployeeDirectoryStore();
   const employees = React.useMemo(() => allEmployees.filter((e) => e.status === 'active'), [allEmployees]);
@@ -181,12 +184,16 @@ export function useOvertimeRequestsDirectoryModel() {
 
   const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     if (!companyId) return { items: [] as OvertimeRequestRecord[], total: 0 };
+    setListError(null);
     try {
       const res = await overtimeRequestsApi.list(buildListQuery(page, pageSize));
       const items = res.items.map((item) => mapOvertimeRequestListItem(item, res.approvalAssignments));
+      setApiAccessDenied(false);
       return { items, total: res.pagination.total };
     } catch (err) {
-      handleApiError(err, 'overtime-requests.load');
+      const failure = resolveDirectoryLoadFailure(err, 'overtime-requests.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildListQuery, companyId]);
@@ -398,6 +405,7 @@ export function useOvertimeRequestsDirectoryModel() {
   return {
     perms,
     accessDenied,
+    listError,
     companyId,
     currentEmployeeId,
     items,

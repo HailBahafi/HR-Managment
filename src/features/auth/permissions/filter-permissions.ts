@@ -8,5 +8,5 @@
 export const FILTER_PERMISSIONS = {
   branch: 'hr.organization.branches.read',
   department: 'hr.organization.departments.read',
-  employee: 'hr.organization.employees.read',
+  employee: 'hr.employees.read',
 } as const;

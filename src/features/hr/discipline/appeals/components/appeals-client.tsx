@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { ForbiddenState } from '@/components/shared/forbidden-state';
 import { useDisciplineAppealsDirectoryModel, type AppealRecord } from '@/features/hr/discipline/appeals/hooks/useDisciplineAppealsDirectoryModel';
 import {
   canDeleteAppealRecord,
@@ -90,7 +91,7 @@ const EMPTY: DraftForm = { caseId: '', employeeNameAr: '', date: '', channel: 'i
 
 export function AppealsClient() {
   const hook = useDisciplineAppealsDirectoryModel();
-  const { employees, cases, loading, listError, createAppeal, updateAppeal, decideAppeal, deleteAppeal, setListFilters, items, pagination, filteredItems, sourceAppeals, companyId } = hook;
+  const { employees, cases, loading, listError, accessDenied, createAppeal, updateAppeal, decideAppeal, deleteAppeal, setListFilters, items, pagination, filteredItems, sourceAppeals, companyId } = hook;
 
   const { data: defaultCompany } = useDefaultCompany();
   const companyNameAr = defaultCompany?.nameAr ?? '';
@@ -465,6 +466,10 @@ export function AppealsClient() {
     ),
     [companyId, selectedEmpIds, statusFilter, statusCounts, viewMode, onDateBoundsChange, onDateFilterMetaChange],
   );
+
+  if (accessDenied) {
+    return <ForbiddenState title="لا تملك صلاحية الوصول للتظلمات" />;
+  }
 
   if (loading) {
     return <EntityActionCardGridSkeleton count={6} />;

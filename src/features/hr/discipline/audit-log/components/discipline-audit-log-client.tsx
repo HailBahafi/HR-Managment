@@ -37,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useEntityFilterSlot } from '@/components/layouts/entity-filter-slot-context';
-import { usePageHeaderActions, usePageHeaderActionsState } from '@/components/layouts/page-header-actions-context';
+import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { FilterToggleButton } from '@/components/layouts/filter-toggle-button';
 import {
   useDisciplineAuditLogDirectoryModel,
@@ -101,13 +101,13 @@ export function DisciplineAuditLogClient() {
     dateFilteredItems,
     searchFilteredItems,
     actorPickerList,
+    actorPickerLoading,
     loading,
     listError: loadError,
     pagination,
     setListFilters,
     loadActorDirectory,
   } = m;
-  const { filterPanelOpen } = usePageHeaderActionsState();
   const { data: defaultCompany } = useDefaultCompany();
   const companyNameAr = defaultCompany?.nameAr ?? '';
   const companyNameEn = defaultCompany?.nameEn ?? '';
@@ -148,8 +148,8 @@ export function DisciplineAuditLogClient() {
   }, [q, catFilter, selectedActorIds, statusFilter, dateBounds.from, dateBounds.to, setListFilters]);
 
   React.useEffect(() => {
-    if (filterPanelOpen) void loadActorDirectory();
-  }, [filterPanelOpen, loadActorDirectory]);
+    void loadActorDirectory();
+  }, [loadActorDirectory]);
 
   const listFiltered = filteredItems;
 
@@ -243,6 +243,9 @@ export function DisciplineAuditLogClient() {
         ref={filterToolbarRef}
         inlineSelects={inlineSelects}
         empPickerEmployees={actorPickerList}
+        employeePickerLoading={actorPickerLoading}
+        employeePickerRequirePermission={null}
+        onEmployeePickerOpen={() => { void loadActorDirectory(); }}
         selectedEmpIds={selectedActorIds}
         onSelectedEmpIdsChange={setSelectedActorIds}
         statusFilter={statusFilter}
@@ -262,7 +265,18 @@ export function DisciplineAuditLogClient() {
         }}
       />
     ),
-    [actorPickerList, selectedActorIds, statusFilter, statusCounts, viewMode, inlineSelects, onDateBoundsChange, onDateFilterMetaChange],
+    [
+      actorPickerList,
+      actorPickerLoading,
+      selectedActorIds,
+      statusFilter,
+      statusCounts,
+      viewMode,
+      inlineSelects,
+      loadActorDirectory,
+      onDateBoundsChange,
+      onDateFilterMetaChange,
+    ],
   );
 
   const columns = React.useMemo((): ColumnDef<AuditLogEntry>[] => [

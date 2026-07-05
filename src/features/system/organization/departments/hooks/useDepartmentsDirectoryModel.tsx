@@ -20,6 +20,7 @@ import { loadFilterOptions } from '@/features/hr/lib/load-filter-options';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import type { DeptTreeNode } from '@/features/hr/requests/lib/hierarchy-utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import type { CreateDepartmentDto, UpdateDepartmentDto } from '@/features/hr/organization/lib/api/departments';
@@ -48,7 +49,8 @@ export function useDepartmentsDirectoryModel() {
   useSetPageTitle({ titleAr: 'الأقسام', descriptionAr: 'الهيكل التنظيمي وإدارة الأقسام', iconName: 'Building2' });
 
   const perms = usePagePermissions(DEPARTMENTS_PAGE_PERMISSIONS);
-  const accessDenied = !perms.canRead;
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
+  const accessDenied = !perms.canRead || apiAccessDenied;
   const branchFilterAccess = useFilterPermission(DEPARTMENTS_FILTER_PERMISSIONS.branch);
 
   const defaultCompanyId = useDefaultCompanyId();
@@ -130,11 +132,13 @@ export function useDepartmentsDirectoryModel() {
         branchId: branchFilter === 'all' ? null : branchFilter,
       });
       setDepartments(data.departments);
+      setApiAccessDenied(false);
       const flat = flattenDepartmentsTree(buildDepartmentForest(data.departments));
       return { items: flat, total: flat.length };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'departments.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'departments.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [archiveScope, branchFilter, defaultCompanyId]);

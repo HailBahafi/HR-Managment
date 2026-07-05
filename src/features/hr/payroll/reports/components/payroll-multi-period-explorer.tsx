@@ -273,7 +273,7 @@ export function PayrollMultiPeriodExplorer() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 animate-fade-in" dir="rtl">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden animate-fade-in" dir="rtl">
       {pdfPrintMounted && payrollPrintData && (
         <div
           aria-hidden

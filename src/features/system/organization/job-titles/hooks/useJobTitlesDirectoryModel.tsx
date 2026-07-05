@@ -13,6 +13,7 @@ import { usePagePermissions } from '@/features/auth/permissions';
 import { JOB_TITLES_PAGE_PERMISSIONS } from '@/features/system/organization/job-titles/permissions';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useDefaultCompany } from '@/features/hr/organization/hooks/useActiveCompany';
 import { jobTitlesApi, type CreateJobTitleDto, type JobTitleResponseDto, type UpdateJobTitleDto } from '@/features/hr/organization/lib/api/jobTitles';
@@ -43,7 +44,8 @@ export function useJobTitlesDirectoryModel() {
   });
 
   const perms = usePagePermissions(JOB_TITLES_PAGE_PERMISSIONS);
-  const accessDenied = !perms.canRead;
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
+  const accessDenied = !perms.canRead || apiAccessDenied;
 
   const defaultCompanyId = useDefaultCompanyId();
   const { data: defaultCompany } = useDefaultCompany();
@@ -94,12 +96,14 @@ export function useJobTitlesDirectoryModel() {
         ...organizationListStatusQuery(archiveScope),
       });
       setListError(null);
+      setApiAccessDenied(false);
       const items = res.items.map((row, index) => mapTemplateRow(row, index, page, pageSize));
       setTemplates(items);
       return { items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'job-titles.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'job-titles.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [defaultCompanyId, archiveScope]);

@@ -15,6 +15,7 @@ import {
   DirectoryGridCardMetaRow,
   DirectoryGridCardTitle,
 } from '@/components/ui/directory-grid-card';
+import { ForbiddenState } from '@/components/shared/forbidden-state';
 import { EmptyState } from '@/components/ui/shared-dialogs';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { USER_TYPE_LABELS } from '@/features/system/organization/contacts/hooks/useContactsDirectoryModel';
@@ -49,7 +50,7 @@ function primaryBranchLabel(row: UserRecord, model: ContactsDirectoryModel) {
 }
 
 export function ContactsListViews({ model }: Props) {
-  const { users, loading, pagination, listError, layoutView, setViewRow, openEdit, setConfirmId, formatDate, perms } = model;
+  const { users, loading, pagination, listError, accessDenied, layoutView, setViewRow, openEdit, setConfirmId, formatDate, perms } = model;
 
   const columns = React.useMemo((): ColumnDef<UserRecord>[] => [
     {
@@ -112,6 +113,10 @@ export function ContactsListViews({ model }: Props) {
       ),
     },
   ], [formatDate, model, openEdit, perms.canDelete, perms.canUpdate, setConfirmId, setViewRow]);
+
+  if (accessDenied) {
+    return <ForbiddenState />;
+  }
 
   if (loading) {
     return (

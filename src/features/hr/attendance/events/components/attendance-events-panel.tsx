@@ -19,6 +19,7 @@ import {
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ForbiddenState } from '@/components/shared/forbidden-state';
 import { EmptyStateCard } from '@/components/shared/empty-state-card';
 import { useAttendanceEventsModel } from '@/features/hr/attendance/events/hooks/useAttendanceEventsModel';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
@@ -331,6 +332,10 @@ export function AttendanceEventsPanel() {
     }
     return [...map.entries()].sort(([a], [b]) => b.localeCompare(a));
   }, []);
+
+  if (m.accessDenied) {
+    return <ForbiddenState title="لا تملك صلاحية الوصول لأحداث الحضور" />;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">

@@ -14,6 +14,7 @@ import { CONTACTS_PAGE_PERMISSIONS } from '@/features/system/organization/contac
 import { branchesApi } from '@/features/hr/organization/lib/api/branches';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
@@ -68,7 +69,8 @@ export function useContactsDirectoryModel() {
   });
 
   const perms = usePagePermissions(CONTACTS_PAGE_PERMISSIONS);
-  const accessDenied = !perms.canRead;
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
+  const accessDenied = !perms.canRead || apiAccessDenied;
 
   const defaultCompanyId = useDefaultCompanyId();
   const { data: defaultCompany } = useDefaultCompany();
@@ -117,13 +119,15 @@ export function useContactsDirectoryModel() {
       const res = await fetchAllPaginatedItems((page, limit) =>
         usersApi.getAll({ page, limit, ...organizationListStatusQuery(archiveScope) }),
       );
+      setApiAccessDenied(false);
       const scopedUsers = defaultCompanyId
         ? res.items.filter((u) => userBelongsToCompany(u, defaultCompanyId))
         : res.items;
       return { items: scopedUsers, total: scopedUsers.length };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'users.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'users.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [archiveScope, defaultCompanyId]);

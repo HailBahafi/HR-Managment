@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { auditLogsApi, type AuditLogResponseDto } from '@/features/hr/discipline/lib/api/audit-logs';
@@ -108,7 +109,9 @@ function dtoToEntry(dto: AuditLogResponseDto): AuditLogEntry {
 export function useDisciplineAuditLogDirectoryModel() {
   const [listFilters, setListFilters] = React.useState<AuditLogListFilters>(DEFAULT_LIST_FILTERS);
   const [actorPickerList, setActorPickerList] = React.useState<{ id: string; name: string }[]>([]);
+  const [actorPickerLoading, setActorPickerLoading] = React.useState(false);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
 
   const companyIdRef = React.useRef<string | undefined>(undefined);
   const actorDirLoadedRef = React.useRef(false);
@@ -138,10 +141,12 @@ export function useDisciplineAuditLogDirectoryModel() {
       }
       const res = await auditLogsApi.getAll(buildListQuery(page, pageSize));
       const items = res.items.map(dtoToEntry);
+      setApiAccessDenied(false);
       return { items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'audit-logs.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'audit-logs.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildListQuery]);
@@ -162,12 +167,35 @@ export function useDisciplineAuditLogDirectoryModel() {
     ],
   });
 
+  const mergeActorPickerEntries = React.useCallback((entries: Iterable<{ id: string; name: string }>) => {
+    setActorPickerList((prev) => {
+      const merged = new Map(prev.map((entry) => [entry.id, entry]));
+      for (const entry of entries) merged.set(entry.id, entry);
+      const next = [...merged.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+      if (next.length === prev.length && next.every((entry, index) => entry.id === prev[index]?.id)) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const entries: { id: string; name: string }[] = [];
+    for (const item of items) {
+      const name = item.actorNameAr.trim();
+      if (!name || name === 'غير محدد') continue;
+      entries.push({ id: name, name });
+    }
+    if (entries.length > 0) mergeActorPickerEntries(entries);
+  }, [items, mergeActorPickerEntries]);
+
   // Lazily loads a bounded, recent window of actor names for the filter picker
   // (there is no dedicated distinct-actors endpoint — this is an approximation,
   // not an exhaustive list of every actor that has ever appeared in the log).
   const loadActorDirectory = React.useCallback(async () => {
     if (actorDirLoadedRef.current || actorDirLoadingRef.current) return;
     actorDirLoadingRef.current = true;
+    setActorPickerLoading(true);
     try {
       if (companyIdRef.current === undefined) {
         const scope = await resolveOrganizationScope();
@@ -184,7 +212,7 @@ export function useDisciplineAuditLogDirectoryModel() {
         const name = (dto.actorName ?? dto.actorEmail ?? '').trim();
         if (name) names.add(name);
       }
-      setActorPickerList(
+      mergeActorPickerEntries(
         [...names].sort((a, b) => a.localeCompare(b, 'ar')).map((name) => ({ id: name, name })),
       );
       actorDirLoadedRef.current = true;
@@ -192,8 +220,9 @@ export function useDisciplineAuditLogDirectoryModel() {
       // actor picker is optional — page still works without it
     } finally {
       actorDirLoadingRef.current = false;
+      setActorPickerLoading(false);
     }
-  }, []);
+  }, [mergeActorPickerEntries]);
 
   // Server applies all list filters now; kept as aliases for existing consumers.
   const filteredItems = items;
@@ -207,9 +236,11 @@ export function useDisciplineAuditLogDirectoryModel() {
     searchFilteredItems,
     allEntries: items,
     actorPickerList,
+    actorPickerLoading,
     loading,
     pagination,
     listError,
+    accessDenied: apiAccessDenied,
     listFilters,
     setListFilters,
     loadActorDirectory,

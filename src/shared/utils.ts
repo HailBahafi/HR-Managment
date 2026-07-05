@@ -37,14 +37,26 @@ export function toWesternDigits(input: string): string {
 
 const LATN: Pick<Intl.NumberFormatOptions, 'numberingSystem'> = { numberingSystem: 'latn' };
 
+export function formatMoneyDigits(
+  value: number | string,
+  fractionDigits = 2,
+): string {
+  const n = typeof value === 'string' ? parseFloat(value) : value;
+  if (Number.isNaN(n)) return '—';
+  return new Intl.NumberFormat('en-US', {
+    ...LATN,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(n);
+}
+
 export function formatCurrency(value: number): string {
   const n = Math.round(value);
-  const s = new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-US', {
     ...LATN,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(n);
-  return `${s} ر.س`;
 }
 
 export function formatNumber(value: number): string {

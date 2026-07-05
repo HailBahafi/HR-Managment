@@ -2,7 +2,9 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
+import { loadFilterOptionsAll } from '@/features/hr/lib/load-filter-options';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
@@ -129,6 +131,7 @@ export function useViolationCasesDirectoryModel() {
   const [violationTypes, setViolationTypes] = React.useState<ViolationCaseType[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
 
   const companyIdRef = React.useRef<string | null>(null);
   const employeeMapRef = React.useRef<Map<string, string>>(new Map());
@@ -140,15 +143,18 @@ export function useViolationCasesDirectoryModel() {
     setCompanyId(cid);
     companyIdRef.current = cid;
 
-    const [employeesRes, typesRes] = await Promise.all([
-      employeesApi.getAll(cid ? { companyId: cid, limit: 200 } : { limit: 200 }),
-      violationTypesApi.getAll(
-        cid ? { companyId: cid, limit: 200, ...organizationActiveListStatusQuery() } : { limit: 200, ...organizationActiveListStatusQuery() },
-      ),
-    ]);
+    const typesQuery = cid
+      ? { companyId: cid, limit: 200, ...organizationActiveListStatusQuery() }
+      : { limit: 200, ...organizationActiveListStatusQuery() };
+    const employeesQuery = cid ? { companyId: cid, limit: 200 } : { limit: 200 };
 
-    const employeeItems = ensurePaginatedResult(employeesRes).items;
-    const typeItems = ensurePaginatedResult(typesRes).items;
+    const refs = await loadFilterOptionsAll({
+      employees: () => employeesApi.getAll(employeesQuery),
+      violationTypes: () => violationTypesApi.getAll(typesQuery),
+    });
+
+    const employeeItems = ensurePaginatedResult(refs.employees).items;
+    const typeItems = ensurePaginatedResult(refs.violationTypes).items;
     const employeeMap = new Map(employeeItems.map((e) => [e.id, e.nameAr]));
     const typeMap = new Map(typeItems.map((t) => [t.id, t.nameAr]));
     employeeMapRef.current = employeeMap;
@@ -208,10 +214,12 @@ export function useViolationCasesDirectoryModel() {
       const res = await violationRecordsApi.getAll(buildRecordsQuery(page, pageSize));
       const items = mapItems(res.items);
       setSourceCases(items);
+      setApiAccessDenied(false);
       return { items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'violation-records.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'violation-records.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildRecordsQuery, mapItems]);
@@ -294,6 +302,7 @@ export function useViolationCasesDirectoryModel() {
     loading,
     pagination,
     listError,
+    accessDenied: apiAccessDenied,
     listFilters,
     setListFilters,
     createCase,

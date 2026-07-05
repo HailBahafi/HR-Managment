@@ -13,7 +13,7 @@ export function ReportsClient() {
   }, [fetchPeriodsCatalog]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col animate-fade-in">
+    <div className="-m-4 flex min-h-0 flex-1 flex-col overflow-hidden animate-fade-in">
       <SetPageTitle titleAr="مسير الرواتب" descriptionAr="إنشاء وطباعة تقارير مسيرات الرواتب وتصديرها PDF" iconName="FileText" />
       <PayrollMultiPeriodExplorer />
     </div>

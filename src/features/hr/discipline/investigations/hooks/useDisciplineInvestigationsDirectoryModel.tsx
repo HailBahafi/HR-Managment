@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { ensurePaginatedResult } from '@/features/hr/lib/api/client';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import type { HRDisciplineInvestigationRecord, HRInvestigationRecommendation, HRInvestigationResult } from '@/features/hr/discipline/lib/types';
@@ -60,6 +61,7 @@ export function useDisciplineInvestigationsDirectoryModel() {
   const [company, setCompany] = React.useState<{ id: string; nameAr: string; nameEn: string | null } | null>(null);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
 
   const companyIdRef = React.useRef<string | null>(null);
   const employeeNameByIdRef = React.useRef<Record<string, string>>({});
@@ -142,10 +144,12 @@ export function useDisciplineInvestigationsDirectoryModel() {
 
       const res = await disciplineInvestigationsApi.getAll(buildInvestigationsQuery(page, pageSize));
       const items = mapItems(res.items);
+      setApiAccessDenied(false);
       return { items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-investigations.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'discipline-investigations.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildInvestigationsQuery, mapItems]);
@@ -213,6 +217,7 @@ export function useDisciplineInvestigationsDirectoryModel() {
     loading,
     pagination,
     listError,
+    accessDenied: apiAccessDenied,
     listFilters,
     setListFilters,
     add,

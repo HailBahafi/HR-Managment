@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import {
   attendanceEventsApi,
@@ -50,6 +51,7 @@ export function useAttendanceEventsModel() {
   const [employees, setEmployees] = React.useState<EmployeeResponseDto[]>([]);
   const [checkpoints, setCheckpoints] = React.useState<AttendanceCheckInPoint[]>([]);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
 
   const [dateBounds, setDateBounds] = usePersistedFilterState(
     attendanceFiltersKey('events', companyId, 'dateBounds'),
@@ -105,10 +107,12 @@ export function useAttendanceEventsModel() {
     setListError(null);
     try {
       const res = await attendanceEventsApi.getAll(buildListQuery(page, pageSize));
+      setApiAccessDenied(false);
       return { items: res.items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'attendance-events.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'attendance-events.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildListQuery, companyId]);
@@ -247,6 +251,7 @@ export function useAttendanceEventsModel() {
     loading,
     pagination,
     listError,
+    accessDenied: apiAccessDenied,
     from,
     to,
     companyId,

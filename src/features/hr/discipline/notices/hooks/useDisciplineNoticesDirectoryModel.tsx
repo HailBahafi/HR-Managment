@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { resolveDirectoryLoadFailure } from '@/features/hr/lib/api/directory-load-error';
 import { useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { resolveOrganizationScope } from '@/features/hr/organization/lib/api/organization-context';
 import { employeesApi } from '@/features/hr/organization/employees/lib/api/employees';
@@ -104,6 +105,7 @@ export function useDisciplineNoticesDirectoryModel() {
   const [cases, setCases] = React.useState<NoticeCase[]>([]);
   const [companyId, setCompanyId] = React.useState<string | null>(null);
   const [listError, setListError] = React.useState<string | null>(null);
+  const [apiAccessDenied, setApiAccessDenied] = React.useState(false);
 
   const companyIdRef = React.useRef<string | null>(null);
   const employeeMapRef = React.useRef<Map<string, string>>(new Map());
@@ -161,10 +163,12 @@ export function useDisciplineNoticesDirectoryModel() {
 
       const res = await disciplineNoticesApi.getAll(buildNoticesQuery(page, pageSize));
       const items = res.items.map((n) => mapNotice(n, employeeMapRef.current));
+      setApiAccessDenied(false);
       return { items, total: res.pagination.total };
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'discipline-notices.load');
-      setListError(displayMessage);
+      const failure = resolveDirectoryLoadFailure(err, 'discipline-notices.load');
+      setApiAccessDenied(failure.accessDenied);
+      setListError(failure.listError);
       return { items: [], total: 0 };
     }
   }, [buildNoticesQuery]);
@@ -232,6 +236,7 @@ export function useDisciplineNoticesDirectoryModel() {
     loading,
     pagination,
     listError,
+    accessDenied: apiAccessDenied,
     listFilters,
     setListFilters,
     createNotice,

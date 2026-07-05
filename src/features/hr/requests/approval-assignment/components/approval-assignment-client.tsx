@@ -18,6 +18,7 @@ import {
   EmptyState, ActiveBadge, SearchableDropdown, MinimalDropdown,
 } from '@/components/ui/shared-dialogs';
 import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
+import { ForbiddenState } from '@/components/shared/forbidden-state';
 import { useApprovalAssignmentModel } from '@/features/hr/requests/approval-assignment/hooks/useApprovalAssignmentModel';
 import type { RequestApprovalMode } from '@/features/hr/requests/approval-assignment/hooks/useApprovalAssignmentModel';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
@@ -53,7 +54,7 @@ function buildNameAr(linkedIds: string[], requestTypes: { id: string; nameAr: st
 
 export function ApprovalAssignmentClient() {
   const {
-    templates, requestTypes, employees, loading, listError, pagination,
+    templates, requestTypes, employees, loading, listError, accessDenied, pagination,
     archiveScope, setArchiveScope,
     createTemplate, updateTemplate, deleteTemplate,
   } = useApprovalAssignmentModel();
@@ -191,6 +192,10 @@ export function ApprovalAssignmentClient() {
     ),
     [archiveScope],
   );
+
+  if (accessDenied) {
+    return <ForbiddenState title="لا تملك صلاحية الوصول لإسناد اعتماد الطلبات" />;
+  }
 
   if (loading) {
     return (

@@ -60,18 +60,51 @@ import {
   downloadCompensationExcel,
   downloadCompensationPdf,
 } from '@/features/hr/payroll/lib/compensation-period-export';
+import { CompensationCellDetailDialog } from '@/features/hr/payroll/compensation/components/compensation-cell-detail-dialog';
+import {
+  type CompensationCellDetailContext,
+  type CompensationDetailField,
+} from '@/features/hr/payroll/compensation/lib/compensation-cell-detail';
 
-function ReadOnlyAmountCell({ amount, colorClass }: { amount: number; colorClass?: string }) {
+function ReadOnlyAmountCell({
+  amount,
+  colorClass,
+  onOpenDetail,
+}: {
+  amount: number;
+  colorClass?: string;
+  onOpenDetail?: () => void;
+}) {
   return (
-    <td className="border-e border-border/40 px-3 py-2 text-center font-mono tabular-nums text-[11.5px]">
+    <td
+      className={cn(
+        'border-e border-border/40 px-3 py-2 text-center font-mono tabular-nums text-[11.5px]',
+        onOpenDetail && 'cursor-pointer select-none',
+      )}
+      onDoubleClick={onOpenDetail}
+      title={onOpenDetail ? 'انقر مرتين لعرض التفاصيل' : undefined}
+    >
       <span className={colorClass}>{formatLatinNumber(amount)}</span>
     </td>
   );
 }
 
-function AllowancesBreakdownCell({ row }: { row: PayrollLineCompensationPreview }) {
+function AllowancesBreakdownCell({
+  row,
+  onOpenDetail,
+}: {
+  row: PayrollLineCompensationPreview;
+  onOpenDetail?: () => void;
+}) {
   return (
-    <td className="border-e border-border/40 px-3 py-2 text-right">
+    <td
+      className={cn(
+        'border-e border-border/40 px-3 py-2 text-right',
+        onOpenDetail && 'cursor-pointer select-none',
+      )}
+      onDoubleClick={onOpenDetail}
+      title={onOpenDetail ? 'انقر مرتين لعرض التفاصيل' : undefined}
+    >
       {row.allowanceLines.length === 0 ? (
         <span className="text-muted-foreground text-[10px]">—</span>
       ) : (
@@ -112,6 +145,36 @@ function normalizePeriod(row: HRPayrollPeriodRecord): HRPayrollPeriodRecord {
 }
 
 const PERIOD_STATUS_BADGE: Record<string, string> = PERIOD_STATUS_COLORS;
+
+const COMPENSATION_TABLE_HEADER_CELL =
+  'sticky top-0 z-30 border-e border-border/60 bg-muted px-3 py-3';
+
+const COMPENSATION_TABLE_HEADER_ROW =
+  'border-b border-border bg-muted text-muted-foreground shadow-[0_1px_0_0_hsl(var(--border))]';
+
+function CompensationTableShell({
+  embedded,
+  children,
+}: {
+  embedded: boolean;
+  children: React.ReactNode;
+}) {
+  if (embedded) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border shadow-elevated animate-fade-in">
+        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      </div>
+    );
+  }
+
+  // Route page: no overflow wrapper here — it would break `position: sticky` on thead.
+  // Vertical scroll stays on the app shell; thead sticks once it reaches the top.
+  return (
+    <div className="rounded-2xl border border-border shadow-elevated animate-fade-in">
+      {children}
+    </div>
+  );
+}
 
 export function CompensationReportPanel({
   periodId,
@@ -161,6 +224,7 @@ export function CompensationReportPanel({
   const [togglingCol, setTogglingCol] = React.useState<keyof CompensationColumnVisibility | null>(null);
   const [adjustDialog, setAdjustDialog] = React.useState<IncrementAdjustDialogContext | null>(null);
   const [adjustSubmitting, setAdjustSubmitting] = React.useState(false);
+  const [cellDetailContext, setCellDetailContext] = React.useState<CompensationCellDetailContext | null>(null);
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => { setMounted(true); }, []);
 
@@ -216,6 +280,22 @@ export function CompensationReportPanel({
       currency: payrollSummary?.currency ?? 'SAR',
     });
   }, [payrollSummary?.currency]);
+
+  const openCellDetail = React.useCallback((
+    row: PayrollLineCompensationPreview,
+    field: CompensationDetailField,
+  ) => {
+    if (embedded || !companyId || !periodId || !period || !payrollSummary) return;
+    setCellDetailContext({
+      periodId,
+      companyId,
+      currency: payrollSummary.currency ?? 'SAR',
+      periodStartDate: payrollSummary.startDate,
+      periodEndDate: payrollSummary.endDate,
+      row,
+      field,
+    });
+  }, [embedded, companyId, periodId, period, payrollSummary]);
 
   const handleIncrementAdjustConfirm = React.useCallback(async (payload: {
     amount: number;
@@ -515,7 +595,7 @@ export function CompensationReportPanel({
       setAdvancesPushDialogOpen(false);
 
       toast.success(
-        `تم دفع السلف: ${result.inputsCreated} مدخل جديد، ${result.inputsDeleted} محذوف، ${result.advancesProcessed} سلفة، إجمالي ${result.totalDeducted} ر.س.`,
+        `تم دفع السلف: ${result.inputsCreated} مدخل جديد، ${result.inputsDeleted} محذوف، ${result.advancesProcessed} سلفة، إجمالي ${result.totalDeducted}.`,
       );
     } catch (err) {
       handleApiError(err, 'compensation.push-from-advances');
@@ -550,7 +630,7 @@ export function CompensationReportPanel({
       setViolationsPushDialogOpen(false);
 
       toast.success(
-        `تم دفع الجزاءات: ${result.inputsCreated} مدخل جديد، ${result.inputsDeleted} محذوف، ${result.violationsProcessed} مخالفة، إجمالي ${result.totalDeducted} ر.س.`,
+        `تم دفع الجزاءات: ${result.inputsCreated} مدخل جديد، ${result.inputsDeleted} محذوف، ${result.violationsProcessed} مخالفة، إجمالي ${result.totalDeducted}.`,
       );
     } catch (err) {
       handleApiError(err, 'compensation.push-from-violations');
@@ -576,7 +656,11 @@ export function CompensationReportPanel({
     <>
       {!embedded && <SetPageTitle titleAr={`تقرير المستحقات — ${period.nameAr || period.code}`} iconName="CalendarRange" />}
 
-      <div className={cn('space-y-5 overflow-x-hidden transition-opacity duration-500', mounted ? 'opacity-100' : 'opacity-0')}>
+      <div className={cn(
+        'transition-opacity duration-500',
+        embedded ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'space-y-5',
+        mounted ? 'opacity-100' : 'opacity-0',
+      )}>
 
         {/* ══ BACK BUTTON ══ */}
         {!embedded && (
@@ -648,6 +732,14 @@ export function CompensationReportPanel({
           busy={reviewAdvancing}
           onConfirm={() => void handleConfirmThirdReviewAndGenerate()}
         />
+
+        {!embedded && (
+          <CompensationCellDetailDialog
+            context={cellDetailContext}
+            open={cellDetailContext !== null}
+            onOpenChange={(open) => { if (!open) setCellDetailContext(null); }}
+          />
+        )}
 
         {/* ══ COLUMN TOGGLES + PUSH FROM ATTENDANCE ══ */}
         {!embedded && hasLines && (
@@ -725,24 +817,23 @@ export function CompensationReportPanel({
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-border shadow-elevated animate-fade-in">
-            <div className="overflow-x-auto">
-              <table className={cn('w-full border-collapse text-[11.5px]', embedded ? 'min-w-[1080px]' : 'min-w-[860px]')}>
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-border bg-gradient-to-b from-muted/80 to-muted/50 backdrop-blur-sm text-muted-foreground">
-                    <th className="w-9 border-e border-border/60 px-2 py-3 text-center font-semibold">#</th>
-                    <th className="min-w-[9.5rem] border-e border-border/60 px-3 py-3 text-right font-semibold">الموظف</th>
-                    <th className="min-w-[11rem] border-e border-border/60 px-3 py-3 text-right font-semibold">البدلات (شهري)</th>
-                    <th className="min-w-[5.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">الراتب الأساسي</th>
-                    {tableCols.colOvertime && <th className="min-w-[5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-primary/80">أوفر تايم</th>}
-                    {tableCols.colBonus && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-primary/80">مكافآت</th>}
-                    {embedded && <th className="min-w-[5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">الإجمالي</th>}
-                    {tableCols.colDedAdvances && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">السلف</th>}
-                    {tableCols.colDedAbsence && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-warning">غياب</th>}
-                    {tableCols.colDedLate && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">تأخير</th>}
-                    {tableCols.colDedPenalties && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold text-destructive">جزاءات</th>}
-                    {tableCols.colDedAdmin && <th className="min-w-[4.5rem] border-e border-border/60 px-3 py-3 text-center font-semibold">إضافة/خصم مباشر</th>}
-                    <th className="min-w-[6rem] bg-primary/6 px-3 py-3 text-center font-bold text-primary">الصافي</th>
+          <CompensationTableShell embedded={embedded}>
+                <table className={cn('w-full border-separate border-spacing-0 text-[11.5px]', embedded ? 'min-w-[1080px]' : 'min-w-[860px]')}>
+                <thead>
+                  <tr className={COMPENSATION_TABLE_HEADER_ROW}>
+                    <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'w-9 px-2 text-center font-semibold')}>#</th>
+                    <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[9.5rem] text-right font-semibold')}>الموظف</th>
+                    <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[11rem] text-right font-semibold')}>البدلات (شهري)</th>
+                    <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[5.5rem] text-center font-semibold')}>الراتب الأساسي</th>
+                    {tableCols.colOvertime && <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[5rem] text-center font-semibold text-primary/80')}>أوفر تايم</th>}
+                    {tableCols.colBonus && <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[4.5rem] text-center font-semibold text-primary/80')}>مكافآت</th>}
+                    {embedded && <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[5rem] text-center font-semibold')}>الإجمالي</th>}
+                    {tableCols.colDedAdvances && <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[4.5rem] text-center font-semibold text-destructive')}>السلف</th>}
+                    {tableCols.colDedAbsence && <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[4.5rem] text-center font-semibold text-warning')}>غياب</th>}
+                    {tableCols.colDedLate && <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[4.5rem] text-center font-semibold text-destructive')}>تأخير</th>}
+                    {tableCols.colDedPenalties && <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[4.5rem] text-center font-semibold text-destructive')}>جزاءات</th>}
+                    {tableCols.colDedAdmin && <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[4.5rem] text-center font-semibold')}>إضافة/خصم مباشر</th>}
+                    <th className={cn(COMPENSATION_TABLE_HEADER_CELL, 'min-w-[6rem] text-center font-bold text-primary')}>الصافي</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -757,11 +848,27 @@ export function CompensationReportPanel({
                         <td className="border-e border-border/40 px-3 py-2 text-right">
                           <span className="font-semibold text-foreground">{row.namePrimary}</span>
                         </td>
-                        <AllowancesBreakdownCell row={row} />
-                        <td className="border-e border-border/40 px-3 py-2 text-center font-mono font-semibold tabular-nums">
+                        <AllowancesBreakdownCell
+                          row={row}
+                          onOpenDetail={!embedded ? () => openCellDetail(row, 'allowances') : undefined}
+                        />
+                        <td
+                          className={cn(
+                            'border-e border-border/40 px-3 py-2 text-center font-mono font-semibold tabular-nums',
+                            !embedded && 'cursor-pointer select-none',
+                          )}
+                          onDoubleClick={!embedded ? () => openCellDetail(row, 'baseSalary') : undefined}
+                          title={!embedded ? 'انقر مرتين لعرض التفاصيل' : undefined}
+                        >
                           {fmt(row.baseSalary)}
                         </td>
-                        {tableCols.colOvertime && <ReadOnlyAmountCell amount={row.entitlementOvertimeSar} colorClass="text-primary" />}
+                        {tableCols.colOvertime && (
+                          <ReadOnlyAmountCell
+                            amount={row.entitlementOvertimeSar}
+                            colorClass="text-primary"
+                            onOpenDetail={!embedded ? () => openCellDetail(row, 'overtime') : undefined}
+                          />
+                        )}
                         {tableCols.colBonus && (
                           embedded ? (
                             <ReadOnlyAmountCell amount={row.entitlementBonusSar} colorClass="text-primary" />
@@ -771,6 +878,7 @@ export function CompensationReportPanel({
                               colorClass="text-primary"
                               disabled={isReviewLocked}
                               onEditClick={() => openAdjustDialog(row, 'bonus')}
+                              onDoubleClick={() => openCellDetail(row, 'bonus')}
                             />
                           )
                         )}
@@ -779,10 +887,34 @@ export function CompensationReportPanel({
                             {fmt(row.grossSar)}
                           </td>
                         )}
-                        {tableCols.colDedAdvances && <ReadOnlyAmountCell amount={row.dedAdvancesSar} colorClass="text-destructive" />}
-                        {tableCols.colDedAbsence && <ReadOnlyAmountCell amount={row.dedAbsenceSar} colorClass="text-warning" />}
-                        {tableCols.colDedLate && <ReadOnlyAmountCell amount={row.dedLateSar} colorClass="text-destructive" />}
-                        {tableCols.colDedPenalties && <ReadOnlyAmountCell amount={row.dedPenaltiesSar} colorClass="text-destructive" />}
+                        {tableCols.colDedAdvances && (
+                          <ReadOnlyAmountCell
+                            amount={row.dedAdvancesSar}
+                            colorClass="text-destructive"
+                            onOpenDetail={!embedded ? () => openCellDetail(row, 'advances') : undefined}
+                          />
+                        )}
+                        {tableCols.colDedAbsence && (
+                          <ReadOnlyAmountCell
+                            amount={row.dedAbsenceSar}
+                            colorClass="text-warning"
+                            onOpenDetail={!embedded ? () => openCellDetail(row, 'absence') : undefined}
+                          />
+                        )}
+                        {tableCols.colDedLate && (
+                          <ReadOnlyAmountCell
+                            amount={row.dedLateSar}
+                            colorClass="text-destructive"
+                            onOpenDetail={!embedded ? () => openCellDetail(row, 'lateness') : undefined}
+                          />
+                        )}
+                        {tableCols.colDedPenalties && (
+                          <ReadOnlyAmountCell
+                            amount={row.dedPenaltiesSar}
+                            colorClass="text-destructive"
+                            onOpenDetail={!embedded ? () => openCellDetail(row, 'penalties') : undefined}
+                          />
+                        )}
                         {tableCols.colDedAdmin && (
                           embedded ? (
                             <ReadOnlyAmountCell
@@ -807,13 +939,19 @@ export function CompensationReportPanel({
                               }
                               disabled={isReviewLocked}
                               onEditClick={() => openAdjustDialog(row, 'admin')}
+                              onDoubleClick={() => openCellDetail(row, 'admin')}
                             />
                           )
                         )}
-                        <td className={cn(
-                          'bg-primary/5 px-3 py-2 text-center font-mono font-bold tabular-nums',
-                          row.lineNetSar < 0 ? 'text-destructive' : 'text-foreground',
-                        )}>
+                        <td
+                          className={cn(
+                            'bg-primary/5 px-3 py-2 text-center font-mono font-bold tabular-nums',
+                            row.lineNetSar < 0 ? 'text-destructive' : 'text-foreground',
+                            !embedded && 'cursor-pointer select-none',
+                          )}
+                          onDoubleClick={!embedded ? () => openCellDetail(row, 'net') : undefined}
+                          title={!embedded ? 'انقر مرتين لعرض التفاصيل' : undefined}
+                        >
                           {fmt(row.lineNetSar)}
                         </td>
                       </tr>
@@ -843,9 +981,8 @@ export function CompensationReportPanel({
                     </td>
                   </tr>
                 </tfoot>
-              </table>
-            </div>
-          </div>
+                </table>
+          </CompensationTableShell>
         )}
 
       </div>

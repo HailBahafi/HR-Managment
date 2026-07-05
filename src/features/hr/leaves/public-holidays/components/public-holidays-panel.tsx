@@ -17,6 +17,7 @@ import {
   usePublicHolidaysPanelModel,
   type PublicHolidayDraft,
 } from '@/features/hr/leaves/public-holidays/hooks/usePublicHolidaysPanelModel';
+import { ForbiddenState } from '@/components/shared/forbidden-state';
 import { DirectoryPagedViews } from '@/components/ui/paged-list';
 import { usePageHeaderActions } from '@/components/layouts/page-header-actions-context';
 import { cn, formatDisplayDate } from '@/shared/utils';
@@ -39,6 +40,10 @@ export function PublicHolidaysPanel() {
     ),
     [m.openCreate, m.loading],
   );
+
+  if (m.accessDenied) {
+    return <ForbiddenState title="لا تملك صلاحية الوصول للعطل الرسمية" />;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">

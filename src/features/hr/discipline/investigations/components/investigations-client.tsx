@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
+import { ForbiddenState } from '@/components/shared/forbidden-state';
 import {
   ConfirmationModal, HRSettingsFormDrawer, FormField,
   EmptyState, MinimalDropdown, SearchableDropdown,
@@ -497,6 +498,10 @@ export function InvestigationsClient() {
       onDateFilterMetaChange,
     ],
   );
+
+  if (m.accessDenied) {
+    return <ForbiddenState title="لا تملك صلاحية الوصول للتحقيقات" />;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">

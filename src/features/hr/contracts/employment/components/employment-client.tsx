@@ -37,6 +37,7 @@ import { applyContractTemplateToForm, computeTemplateEndDate } from '@/features/
 import { useAllowanceTypes } from '@/features/hr/contracts/lib/hooks/use-allowance-types';
 import { useContractArticles } from '@/features/hr/contracts/lib/hooks/use-contract-articles';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import { MoneyAmount } from '@/components/ui/sar-amount';
 import { cn, formatNumber } from '@/shared/utils';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
 import {
@@ -778,8 +779,7 @@ export function EmploymentContractsClient() {
               </div>
               <div className="flex items-center gap-1 text-sm font-bold tabular-nums text-foreground">
                 <Coins className="h-3.5 w-3.5 text-gold" />
-                {formatNumber(c.baseSalary)}
-                <span className="text-[10px] font-normal text-muted-foreground">{c.currency}</span>
+                <MoneyAmount value={c.baseSalary} currency={c.currency} fractionDigits={0} className="text-sm font-bold" />
               </div>
               <EmploymentContractSignatureCard
                 signed={c.employeeSigned}

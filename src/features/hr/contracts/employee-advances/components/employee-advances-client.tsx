@@ -275,6 +275,11 @@ export function EmployeeAdvancesClient() {
     [employees],
   );
 
+  const empPickerEmployees = React.useMemo(
+    () => employees.map((e) => ({ id: e.id, name: e.nameAr })),
+    [employees],
+  );
+
   const employeeNameLookup = React.useCallback(
     (employeeId: string) => employees.find((e) => e.id === employeeId)?.nameAr,
     [employees],
@@ -804,6 +809,7 @@ export function EmployeeAdvancesClient() {
         onPeriodChange={setDateBounds}
         onDateBoundsChange={setDateBounds}
         companyId={companyId}
+        empPickerEmployees={empPickerEmployees}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         statusFilter={statusFilter}
@@ -831,6 +837,7 @@ export function EmployeeAdvancesClient() {
     [
       statusFilter,
       selectedEmpKey,
+      empPickerEmployees,
       dateBounds.from,
       dateBounds.to,
       advanceStatusCounts.all,
