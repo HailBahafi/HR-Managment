@@ -237,6 +237,7 @@ export async function apiFormRequest<T>(path: string, formData: FormData, signal
 export type ApiDownloadResult = {
   blob: Blob;
   fileName: string;
+  headers: Record<string, string>;
 };
 
 /** Binary download — parses filename from Content-Disposition when present. */
@@ -303,15 +304,25 @@ export async function apiDownloadRequest(
     parseContentDispositionFilename(response.headers.get('content-disposition'))
     ?? defaultFileName;
 
-  return { blob, fileName };
+  const responseHeaders: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    responseHeaders[key.toLowerCase()] = value;
+  });
+
+  return { blob, fileName, headers: responseHeaders };
 }
+
+export type ApiDownloadToDeviceResult = {
+  fileName: string;
+  headers: Record<string, string>;
+};
 
 /** Fetch a binary file and trigger browser download. */
 export async function apiDownloadToDevice(
   path: string,
   options: RequestOptions & { defaultFileName?: string } = {},
-): Promise<string> {
-  const { blob, fileName } = await apiDownloadRequest(path, options);
+): Promise<ApiDownloadToDeviceResult> {
+  const { blob, fileName, headers } = await apiDownloadRequest(path, options);
   triggerBrowserDownload(blob, fileName);
-  return fileName;
+  return { fileName, headers };
 }
