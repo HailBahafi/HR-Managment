@@ -267,37 +267,44 @@ export function useServerDirectoryPagination<T>(
 
   const loadPageRef = useRef(loadPage);
   const loadBulkRef = useRef(options?.loadBulk);
+  const fetchGenRef = useRef(0);
   loadPageRef.current = loadPage;
   loadBulkRef.current = options?.loadBulk;
 
   const reloadBulk = React.useCallback(async () => {
     const loadBulkFn = loadBulkRef.current;
     if (!enabled || !bulkMode || !loadBulkFn) return;
+    const gen = ++fetchGenRef.current;
     setLoading(true);
     try {
       const res = await loadBulkFn();
+      if (gen !== fetchGenRef.current) return;
       setBulkItems(res.items);
       setTotal(res.total);
     } catch {
+      if (gen !== fetchGenRef.current) return;
       setBulkItems([]);
       setTotal(0);
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current) setLoading(false);
     }
   }, [bulkMode, enabled]);
 
   const reloadPage = React.useCallback(async () => {
     if (!enabled || bulkMode) return;
+    const gen = ++fetchGenRef.current;
     setLoading(true);
     try {
       const res = await loadPageRef.current(page, pageSize);
+      if (gen !== fetchGenRef.current) return;
       setItems(res.items);
       setTotal(res.total);
     } catch {
+      if (gen !== fetchGenRef.current) return;
       setItems([]);
       setTotal(0);
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current) setLoading(false);
     }
   }, [bulkMode, enabled, page, pageSize]);
 

@@ -41,7 +41,7 @@ function NotificationToggleRows({
           <div
             key={item.key}
             className={cn(
-              'flex items-start justify-between gap-3 rounded-xl border bg-card px-3.5 py-3 transition-all',
+              'flex items-start justify-between gap-3 rounded-xl border bg-card px-3.5 py-3 transition-colors',
               isMaster
                 ? 'border-primary/25 shadow-soft sm:col-span-2'
                 : 'border-border/70 shadow-soft hover:border-primary/15',
@@ -91,10 +91,10 @@ export function NotificationTogglesCard({
   const defaultTab = tabGroups[0] ? tabValue(tabGroups[0].label) : undefined;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       <div className="border-b border-border/80 px-4 py-4 sm:px-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <BellRing className="h-4 w-4" />
           </div>
           <div>
@@ -119,12 +119,12 @@ export function NotificationTogglesCard({
 
         {tabGroups.length > 0 && defaultTab ? (
           <Tabs defaultValue={defaultTab} dir="rtl" className="w-full">
-            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1.5 bg-transparent p-0">
+            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-muted/40 p-1">
               {tabGroups.map((group) => (
                   <TabsTrigger
                     key={group.label}
                     value={tabValue(group.label)}
-                    className="rounded-lg border border-transparent px-3 py-2 text-xs data-[state=active]:border-border data-[state=active]:bg-muted/40 data-[state=active]:shadow-none sm:text-sm"
+                    className="rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-card data-[state=active]:shadow-soft sm:text-sm"
                   >
                     {group.label}
                   </TabsTrigger>

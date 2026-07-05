@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Ban, CalendarDays, CheckCircle2, Plus, XCircle } from 'lucide-react';
+import { Ban, CalendarDays, CheckCircle2, Loader2, Plus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,13 +30,27 @@ import {
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/shared-dialogs';
 import { AttendanceCorrectionRequestDialog } from '@/features/hr/requests/attendance-corrections/components/attendance-correction-request-dialog';
+import {
+  attendanceEventsApi,
+  type DailyBreakdownResponseDto,
+} from '@/features/hr/attendance/lib/api/attendance-events';
+import {
+  ActualRegistrationBlock,
+  PeriodCard,
+  StatChip,
+  WEEKDAY_AR,
+  defaultTimezoneOffsetMinutes,
+  resolveDayActualWithoutPeriods,
+  statusCfg,
+} from '@/features/hr/attendance/daily/components/daily-day-detail-dialog';
+import { fmtFull, minutesToHHMM } from '@/features/hr/attendance/daily/utils/daily-attendance-format';
 import { useHRConfigurationStore } from '@/features/hr/requests/lib/configuration-store';
 import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { useCurrentEmployee } from '@/features/hr/organization/employees/hooks/useCurrentEmployee';
-import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { checkRequestApprovalAccess } from '@/features/hr/requests/lib/request-approval-access';
+import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   buildRequestCorrectionDecisionPayload,
   getRequestApprovalUiState,
@@ -82,6 +96,92 @@ function statusBadgeClass(s: AttendanceCorrectionRequest['status']) {
   return 'bg-destructive/10 text-destructive border-destructive/30';
 }
 
+function DetailBreakdownPanel({ breakdown }: { breakdown: DailyBreakdownResponseDto }) {
+  const offsetMinutes = breakdown.timezoneOffsetMinutes;
+  const dayCfg = statusCfg(breakdown.status);
+  const { totals } = breakdown;
+  const dayActualWithoutPeriods =
+    breakdown.periods.length === 0 ? resolveDayActualWithoutPeriods(breakdown) : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-muted/10 px-4 py-3 space-y-1.5">
+        <p className="text-xs text-muted-foreground">
+          {fmtFull(breakdown.workDate)} · {WEEKDAY_AR[breakdown.weekDay] ?? ''}
+        </p>
+        <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold', dayCfg.color)}>
+          <span className={cn('h-1.5 w-1.5 rounded-full', dayCfg.dot)} />
+          {dayCfg.label}
+        </span>
+      </div>
+
+      {breakdown.shiftTemplate ? (
+        <div className="flex items-center gap-3 rounded-xl border border-border/60 px-3 py-2.5">
+          <span
+            className="h-3 w-3 shrink-0 rounded-full"
+            style={{ backgroundColor: breakdown.shiftTemplate.colorHex ?? '#64748b' }}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{breakdown.shiftTemplate.nameAr}</p>
+            {breakdown.shiftAssignment ? (
+              <p className="text-[11px] text-muted-foreground">
+                ساري من {breakdown.shiftAssignment.effectiveFrom}
+                {breakdown.shiftAssignment.effectiveTo ? ` إلى ${breakdown.shiftAssignment.effectiveTo}` : ''}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : breakdown.isUnscheduled ? (
+        <p className="rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+          لا يوجد قالب دوام نشط لهذا اليوم
+        </p>
+      ) : null}
+
+      {totals ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground">إجماليات اليوم</p>
+          <div className="grid grid-cols-3 gap-2">
+            <StatChip label="متوقع" value={minutesToHHMM(totals.expectedMinutes)} />
+            <StatChip label="فعلي" value={minutesToHHMM(totals.workedMinutes)} />
+            <StatChip label="داخل الفترات" value={minutesToHHMM(totals.workedMinutesInsidePeriods ?? 0)} />
+            <StatChip label="خارج الفترات" value={minutesToHHMM(totals.workedMinutesOutsidePeriods ?? 0)} />
+            <StatChip label="استراحات" value={minutesToHHMM(totals.breakMinutes)} />
+            <StatChip label="حضور مبكر" value={minutesToHHMM(totals.earlyArrivalMinutes ?? 0)} />
+            <StatChip label="تأخير" value={minutesToHHMM(totals.lateMinutes)} tone={totals.lateMinutes > 0 ? 'warn' : 'default'} />
+            <StatChip label="انصراف مبكر" value={minutesToHHMM(totals.earlyLeaveMinutes)} tone={totals.earlyLeaveMinutes > 0 ? 'warn' : 'default'} />
+            <StatChip label="إضافي" value={minutesToHHMM(totals.overtimeMinutes)} tone={totals.overtimeMinutes > 0 ? 'success' : 'default'} />
+            <StatChip label="نقص" value={minutesToHHMM(totals.shortageMinutes)} tone={totals.shortageMinutes > 0 ? 'danger' : 'default'} />
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            <StatChip label="فترات" value={String(totals.periodsTotal)} />
+            <StatChip label="حضر" value={String(totals.periodsAttended)} tone="success" />
+            <StatChip label="تأخر" value={String(totals.periodsLate)} tone="warn" />
+            <StatChip label="فائت" value={String(totals.periodsMissed)} tone="danger" />
+          </div>
+        </div>
+      ) : null}
+
+      {breakdown.periods.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground">تحليل الفترات</p>
+          {breakdown.periods.map((period, index) => (
+            <PeriodCard
+              key={period.expected.periodId}
+              period={period}
+              index={index}
+              offsetMinutes={offsetMinutes}
+              unmatchedEvents={breakdown.unmatchedEvents}
+              singlePeriod={breakdown.periods.length === 1}
+            />
+          ))}
+        </div>
+      ) : dayActualWithoutPeriods ? (
+        <ActualRegistrationBlock actual={dayActualWithoutPeriods} offsetMinutes={offsetMinutes} />
+      ) : null}
+    </div>
+  );
+}
+
 export function AttendanceCorrectionRequestsClient() {
   const companyId = useDefaultCompanyId();
   const authUser = useAuthStore((s) => s.user);
@@ -120,6 +220,39 @@ export function AttendanceCorrectionRequestsClient() {
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [detailRow, setDetailRow] = React.useState<AttendanceCorrectionRequest | null>(null);
+  const [detailBreakdown, setDetailBreakdown] = React.useState<DailyBreakdownResponseDto | null>(null);
+  const [detailBreakdownLoading, setDetailBreakdownLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!detailRow || !companyId) {
+      setDetailBreakdown(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailBreakdownLoading(true);
+    attendanceEventsApi
+      .getDailyBreakdown({
+        employeeId: detailRow.employeeId,
+        workDate: detailRow.workDate,
+        companyId,
+        timezoneOffsetMinutes: defaultTimezoneOffsetMinutes(),
+      })
+      .then((data) => {
+        if (!cancelled) setDetailBreakdown(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          handleApiError(err, 'attendance/events/daily-breakdown');
+          setDetailBreakdown(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDetailBreakdownLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailRow, companyId]);
   const [viewMode, setViewMode] = usePersistedFilterState<ViewMode>(
     hrFiltersKey('requests', 'attendance-corrections', companyId, 'viewMode'),
     'cards',
@@ -571,12 +704,12 @@ export function AttendanceCorrectionRequestsClient() {
       />
 
       <Dialog open={detailRow != null} onOpenChange={(o) => !o && setDetailRow(null)}>
-        <DialogContent className="max-w-lg" dir="rtl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90vh] max-w-lg flex-col gap-0 overflow-visible p-0" dir="rtl">
+          <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-right">
             <DialogTitle>تفاصيل طلب تصحيح الحضور</DialogTitle>
           </DialogHeader>
           {detailRow ? (
-            <div className="space-y-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div><p className="text-xs text-muted-foreground">الموظف</p><p className="text-sm font-medium">{detailRow.employeeNameAr}</p></div>
                 <div><p className="text-xs text-muted-foreground">القسم</p><p className="text-sm font-medium">{detailRow.departmentNameAr || '—'}</p></div>
@@ -593,6 +726,7 @@ export function AttendanceCorrectionRequestsClient() {
                 <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">السبب</p><p className="text-sm">{detailRow.reasonAr || '—'}</p></div>
                 <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">ملاحظات القرار</p><p className="text-sm">{detailRow.decisionNotesAr || '—'}</p></div>
               </div>
+
               <RequestApproverStatesPanel states={detailRow.approverStates} />
               {canShowApprovalActions(detailRow) ? (
                 <RequestApprovalActionButtons
@@ -602,6 +736,20 @@ export function AttendanceCorrectionRequestsClient() {
                   onReject={() => void handleReject(detailRow)}
                 />
               ) : null}
+
+              {/* Daily attendance breakdown for the corrected day */}
+              <div className="space-y-3 border-t border-border/60 pt-4">
+                <p className="text-xs font-semibold text-muted-foreground">تحليل يوم الحضور</p>
+                {detailBreakdownLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : detailBreakdown ? (
+                  <DetailBreakdownPanel breakdown={detailBreakdown} />
+                ) : (
+                  <p className="py-4 text-center text-xs text-muted-foreground">تعذّر تحميل التحليل التفصيلي</p>
+                )}
+              </div>
             </div>
           ) : null}
         </DialogContent>

@@ -20,15 +20,31 @@ export function timePickerToIso(
 ): string | null {
   const trimmed = time.trim();
   if (!trimmed || !/^\d{1,2}:\d{2}$/.test(trimmed)) return null;
+  const [hStr, mStr] = trimmed.split(':');
+  const clock = `${hStr!.padStart(2, '0')}:${mStr!.padStart(2, '0')}`;
   const sign = timezoneOffsetMinutes >= 0 ? '+' : '-';
   const abs = Math.abs(timezoneOffsetMinutes);
   const offH = String(Math.floor(abs / 60)).padStart(2, '0');
   const offM = String(abs % 60).padStart(2, '0');
-  return `${workDate}T${trimmed}:00${sign}${offH}:${offM}`;
+  return `${workDate}T${clock}:00${sign}${offH}:${offM}`;
 }
 
 export function defaultTimezoneOffsetMinutes(): number {
   return -new Date().getTimezoneOffset();
+}
+
+export function formatWallClock12FromHHmm(time: string): string {
+  const match = time.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return time;
+  const h24 = Number(match[1]);
+  const mm = match[2] ?? '00';
+  const period = h24 < 12 ? 'ص' : 'م';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${mm}${period}`;
+}
+
+export function formatShiftRangeAr(startTime: string, endTime: string): string {
+  return `${formatWallClock12FromHHmm(startTime)} — ${formatWallClock12FromHHmm(endTime)}`;
 }
 
 export function formatClockLabel(
@@ -37,11 +53,5 @@ export function formatClockLabel(
 ): string {
   const value = isoToTimePickerValue(iso, timezoneOffsetMinutes);
   if (!value) return '—';
-  const [hStr, mStr] = value.split(':');
-  const h = parseInt(hStr ?? '0', 10);
-  const m = mStr ?? '00';
-  if (Number.isNaN(h)) return value;
-  const period = h < 12 ? 'ص' : 'م';
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${m} ${period}`;
+  return formatWallClock12FromHHmm(value);
 }

@@ -59,8 +59,10 @@ export function useDailyAttendanceModel() {
   const [selectedEmpIds, setSelectedEmpIds] = usePersistedEmpIdSet(
     attendanceFiltersKey('daily', companyId, 'selectedEmpIds'),
   );
-  // Always open on today — do not persist the day filter (attendance is day-centric).
-  const [dateBounds, setDateBounds] = React.useState(todayPeriod);
+  const [dateBounds, setDateBounds] = usePersistedFilterState(
+    attendanceFiltersKey('daily', companyId, 'dateBounds'),
+    todayPeriod,
+  );
   const [statusFilter, setStatusFilter] = usePersistedFilterState(
     attendanceFiltersKey('daily', companyId, 'statusFilter'),
     'all',

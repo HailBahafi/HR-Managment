@@ -9,6 +9,10 @@ import type { ApiErrorEnvelope } from '@/features/hr/lib/api/types';
 import { isApiErrorEnvelope } from '@/features/hr/lib/api/types';
 import { toast } from 'sonner';
 import { duplicateAdvanceNumberMessage, isDuplicateAdvanceNumberError } from '@/features/hr/contracts/lib/employee-advance-errors';
+import {
+  isCorrectionRequestContext,
+  translateCorrectionRequestMessage,
+} from '@/features/hr/requests/attendance-corrections/lib/correction-request-errors';
 import { reportError } from '@/shared/errors/report-error';
 
 export type ApiErrorHandleResult = {
@@ -68,7 +72,9 @@ export function handleApiError(
     ? 'ليس لديك صلاحية للوصول إلى هذا المورد'
     : isDuplicateAdvanceNumberError(error)
       ? rawMessage
-      : resolveAuthDisplayMessage(rawMessage, context);
+      : isCorrectionRequestContext(context)
+        ? translateCorrectionRequestMessage(rawMessage)
+        : resolveAuthDisplayMessage(rawMessage, context);
 
   // 5xx: same toast as always, plus route it into the shared logging pipeline (correlation
   // id, dev/prod formatting) so backend failures show up alongside render/route crashes.

@@ -42,7 +42,7 @@ import {
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { AttendanceCorrectionRequestDialog } from '@/features/hr/requests/attendance-corrections/components/attendance-correction-request-dialog';
 
-const WEEKDAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+export const WEEKDAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 const BREAKDOWN_STATUS: Record<string, { label: string; color: string; dot: string }> = {
   present: STATUS.present,
@@ -61,7 +61,7 @@ const EVENT_META: Record<AttendanceEventType, { labelAr: string; icon: React.Ele
   break_end: { labelAr: 'نهاية استراحة', icon: Coffee, color: 'text-orange-600' },
 };
 
-function defaultTimezoneOffsetMinutes() {
+export function defaultTimezoneOffsetMinutes() {
   return -new Date().getTimezoneOffset();
 }
 
@@ -96,7 +96,7 @@ function formatWallClock12(t: string | null | undefined) {
   return `${h12}:${mm} ${period}`;
 }
 
-function statusCfg(status: string) {
+export function statusCfg(status: string) {
   return BREAKDOWN_STATUS[status] ?? STATUS.unscheduled;
 }
 
@@ -132,7 +132,7 @@ function resolvePeriodActualDisplay(
   return { ...actual, checkInAt, checkOutAt };
 }
 
-function ActualRegistrationBlock({
+export function ActualRegistrationBlock({
   actual,
   offsetMinutes,
 }: {
@@ -166,7 +166,7 @@ function ActualRegistrationBlock({
 }
 
 /** Day-level actual when breakdown has no periods — from daily-breakdown unmatched + totals only. */
-function resolveDayActualWithoutPeriods(
+export function resolveDayActualWithoutPeriods(
   breakdown: DailyBreakdownResponseDto,
 ): PeriodActual | null {
   const checkInAt = punchAt(breakdown.unmatchedEvents, 'check_in', false);
@@ -187,7 +187,7 @@ function resolveDayActualWithoutPeriods(
   };
 }
 
-function StatChip({
+export function StatChip({
   label,
   value,
   tone = 'default',
@@ -224,7 +224,7 @@ function DetailRow({ label, value, hint }: { label: string; value: React.ReactNo
   );
 }
 
-function EventRow({ evt, offsetMinutes }: { evt: AttendanceEventResponseDto; offsetMinutes: number }) {
+export function EventRow({ evt, offsetMinutes }: { evt: AttendanceEventResponseDto; offsetMinutes: number }) {
   const meta = EVENT_META[evt.eventType];
   const Icon = meta.icon;
   const warning = evt.warningMessage ?? evt.exclusionMessage;
@@ -284,7 +284,7 @@ function WindowStatusBadge({
   );
 }
 
-function PeriodCard({
+export function PeriodCard({
   period,
   index,
   offsetMinutes,
@@ -308,7 +308,7 @@ function PeriodCard({
         <div className="flex items-center gap-2">
         <Layers className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-sm font-semibold">{periodLabel}</span>
-          <span className="text-xs text-muted-foreground tabular-nums" >
+          <span className="text-xs text-muted-foreground" >
             {formatWallClock12(expected.startTime)} — {formatWallClock12(expected.endTime)}
           </span>
         </div>
