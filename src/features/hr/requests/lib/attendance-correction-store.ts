@@ -8,6 +8,7 @@ import {
   type CorrectionRequestStatus,
 } from './api/correction-requests';
 import { ApiError } from '@/features/hr/lib/api/client';
+import { translateCorrectionRequestError } from '@/features/hr/requests/attendance-corrections/lib/correction-request-errors';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import type { RequestApprovalAssignmentCatalogDto } from './api/correction-requests';
@@ -165,8 +166,8 @@ interface State {
     subtypeSlug?: string;
     periods: Array<{
       periodId: string;
-      recorded: { checkInAt: string | null; checkOutAt: string | null };
-      corrected: { checkInAt: string | null; checkOutAt: string | null };
+      checkInAt: string | null;
+      checkOutAt: string | null;
     }>;
     reasonAr?: string;
   }) => Promise<{ ok: true } | { ok: false; error: string }>;
@@ -200,7 +201,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
     if (!input.workDate.trim()) return { ok: false, error: 'أدخل تاريخ اليوم.' };
 
     const hasCorrectedPunch = input.periods.some(
-      (p) => p.corrected.checkInAt || p.corrected.checkOutAt,
+      (p) => p.checkInAt || p.checkOutAt,
     );
     if (!hasCorrectedPunch) {
       return { ok: false, error: 'أدخل وقت حضور أو انصراف مصحّحاً لفترة واحدة على الأقل.' };
@@ -222,14 +223,8 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
         correctedTimes: {
           periods: input.periods.map((p) => ({
             periodId: p.periodId,
-            recorded: {
-              checkInAt: p.recorded.checkInAt,
-              checkOutAt: p.recorded.checkOutAt,
-            },
-            corrected: {
-              checkInAt: p.corrected.checkInAt,
-              checkOutAt: p.corrected.checkOutAt,
-            },
+            checkInAt: p.checkInAt,
+            checkOutAt: p.checkOutAt,
           })),
         },
         reasonAr,
@@ -238,7 +233,7 @@ export const useAttendanceCorrectionRequestsStore = create<State>()((set) => ({
       set(s => ({ items: [mapCorrectionRequest(created), ...s.items] }));
       return { ok: true };
     } catch (e) {
-      return { ok: false, error: (e as Error).message };
+      return { ok: false, error: translateCorrectionRequestError(e) };
     }
   },
 

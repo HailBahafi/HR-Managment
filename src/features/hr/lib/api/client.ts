@@ -129,6 +129,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     body: body === undefined ? undefined : JSON.stringify(body),
     signal,
     credentials: 'include',
+    cache: 'no-store',
   });
 
   if (response.status === 204) {

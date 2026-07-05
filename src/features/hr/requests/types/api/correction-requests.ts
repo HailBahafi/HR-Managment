@@ -16,11 +16,11 @@ export type CorrectionPeriodPunchesDto = {
 
 export type CorrectionPeriodTimeDto = {
   periodId: string;
-  recorded: CorrectionPeriodPunchesDto;
-  corrected: CorrectionPeriodPunchesDto;
-  /** @deprecated legacy flat corrected punches */
   checkInAt?: string | null;
   checkOutAt?: string | null;
+  /** @deprecated legacy nested punches — read-only from old payloads */
+  recorded?: CorrectionPeriodPunchesDto;
+  corrected?: CorrectionPeriodPunchesDto;
 };
 
 export type CorrectionTimesDto = {

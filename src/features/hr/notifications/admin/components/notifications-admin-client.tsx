@@ -2,10 +2,14 @@
 
 import * as React from 'react';
 import {
+  Bell,
+  CheckCircle2,
+  Circle,
   Clock,
   Mail,
   Plus,
   Trash2,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -31,8 +35,8 @@ import {
   HRSettingsFormDrawer,
   MinimalDropdown,
 } from '@/components/ui/shared-dialogs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { Dialog, DialogBody, DialogContent, DialogTitle, dialogShellBodyClass, dialogShellContentClass } from '@/components/ui/dialog';
+import { DataTable, AppPagination, usePagination, type ColumnDef } from '@/components/ui/data-table';
 import { PagedListViewport, PaginatedListShell } from '@/components/ui/paged-list';
 import { TableDateCell, TableRowActions } from '@/components/ui/table-cells';
 import { useNotificationsAdminDirectoryModel } from '@/features/hr/notifications/admin/hooks/useNotificationsAdminDirectoryModel';
@@ -514,75 +518,101 @@ export function NotificationsAdminClient() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function ReadStatusBadge({ isRead }: { isRead: boolean }) {
+  if (isRead) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-success/25 bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+        <CheckCircle2 className="h-3 w-3" />
+        نعم
+      </span>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+      <Circle className="h-3 w-3" />
+      لا
+    </span>
   );
 }
 
-// ─── Recipient state helpers ──────────────────────────────────────────────────
+function buildRecipientColumns(showAcknowledgment: boolean): ColumnDef<NotificationRecipientDto>[] {
+  const headerClassName = 'bg-background shadow-none';
 
-// ─── Recipient columns ────────────────────────────────────────────────────────
-
-const RECIPIENT_COLUMNS: ColumnDef<NotificationRecipientDto>[] = [
-  {
-    key: 'employee',
-    title: 'الموظف',
-    render: (r) => (
-      <div>
-        <p className="font-medium leading-tight">{r.employeeNameAr || '—'}</p>
-        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{r.employeeCode || '—'}</p>
-      </div>
-    ),
-  },
-  {
-    key: 'email',
-    title: 'البريد الإلكتروني',
-    render: (r) =>
-      r.userEmail ? (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Mail className="h-3 w-3 shrink-0 opacity-60" />
-          {r.userEmail}
-        </span>
-      ) : (
-        <span className="text-xs text-muted-foreground">—</span>
+  const columns: ColumnDef<NotificationRecipientDto>[] = [
+    {
+      key: 'employee',
+      title: 'الموظف',
+      headerClassName,
+      render: (r) => (
+        <div className="min-w-[120px]">
+          <p className="font-medium leading-tight">{r.employeeNameAr || r.userFullNameAr || '—'}</p>
+          <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{r.employeeCode || '—'}</p>
+        </div>
       ),
-  },
-  {
-    key: 'isRead',
-    title: 'مقروء',
-    render: (r) => r.isRead
-      ? <span className="inline-flex items-center rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">نعم</span>
-      : <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">لا</span>,
-  },
-  {
-    key: 'deliveredAt',
-    title: 'وقت التسليم',
-    className: 'text-xs tabular-nums text-muted-foreground',
-    render: (r) => formatDisplayDateTime(r.deliveredAt),
-  },
-  {
-    key: 'readAt',
-    title: 'وقت القراءة',
-    className: 'text-xs tabular-nums text-muted-foreground',
-    render: (r) => formatDisplayDateTime(r.readAt),
-  },
-  {
-    key: 'acknowledgedAt',
-    title: 'وقت القبول',
-    className: 'text-xs tabular-nums text-muted-foreground',
-    render: (r) => formatDisplayDateTime(r.acknowledgedAt),
-  },
-  {
-    key: 'dismissedAt',
-    title: 'وقت الرفض',
-    className: 'text-xs tabular-nums text-muted-foreground',
-    render: (r) => formatDisplayDateTime(r.dismissedAt),
-  },
-];
+    },
+    {
+      key: 'email',
+      title: 'البريد الإلكتروني',
+      hideOnMobile: true,
+      headerClassName,
+      render: (r) =>
+        r.userEmail ? (
+          <span className="inline-flex max-w-[220px] items-center gap-1 truncate text-xs text-muted-foreground">
+            <Mail className="h-3 w-3 shrink-0 opacity-60" />
+            <span className="truncate">{r.userEmail}</span>
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        ),
+    },
+    {
+      key: 'isRead',
+      title: 'مقروء',
+      headerClassName,
+      render: (r) => <ReadStatusBadge isRead={r.isRead} />,
+    },
+    {
+      key: 'deliveredAt',
+      title: 'وقت التسليم',
+      hideOnMobile: true,
+      headerClassName,
+      className: 'whitespace-nowrap text-xs tabular-nums text-muted-foreground',
+      render: (r) => formatDisplayDateTime(r.deliveredAt),
+    },
+    {
+      key: 'readAt',
+      title: 'وقت القراءة',
+      hideOnMobile: true,
+      headerClassName,
+      className: 'whitespace-nowrap text-xs tabular-nums text-muted-foreground',
+      render: (r) => formatDisplayDateTime(r.readAt),
+    },
+  ];
+
+  if (showAcknowledgment) {
+    columns.push(
+      {
+        key: 'acknowledgedAt',
+        title: 'وقت القبول',
+        hideOnMobile: true,
+        headerClassName,
+        className: 'whitespace-nowrap text-xs tabular-nums text-muted-foreground',
+        render: (r) => formatDisplayDateTime(r.acknowledgedAt),
+      },
+      {
+        key: 'dismissedAt',
+        title: 'وقت الرفض',
+        hideOnMobile: true,
+        headerClassName,
+        className: 'whitespace-nowrap text-xs tabular-nums text-muted-foreground',
+        render: (r) => formatDisplayDateTime(r.dismissedAt),
+      },
+    );
+  }
+
+  return columns;
+}
 
 // ─── Detail dialog ────────────────────────────────────────────────────────────
 
@@ -612,87 +642,158 @@ function NotificationDetailDialog({
     return recipients;
   }, [recipients, readFilter]);
 
-  const d = detail;
+  const readCount = recipients.filter((r) => r.isRead).length;
+  const unreadCount = recipients.length - readCount;
+  const showAcknowledgment = record?.requiresAcknowledgment === true;
+
+  const recipientColumns = React.useMemo(
+    () => buildRecipientColumns(showAcknowledgment),
+    [showAcknowledgment],
+  );
+
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    slice: pagedRecipients,
+    total: filteredTotal,
+  } = usePagination(filteredRecipients, 10);
+
+  React.useEffect(() => { setPage(1); }, [readFilter, setPage]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col gap-0 overflow-visible p-0" dir="rtl">
-
-        {/* ── header ── */}
-        <DialogHeader className="shrink-0 border-b border-border bg-background px-6 pt-5 pb-4">
-          <DialogTitle className="text-base leading-snug">{record?.titleAr || '—'}</DialogTitle>
-          {record?.bodyAr ? (
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{record.bodyAr}</p>
-          ) : null}
-          {/* badges + sent date in one row */}
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="secondary">{record ? NOTIFICATION_CATEGORY_LABELS[record.category] : '—'}</Badge>
-              <Badge variant="outline" className={record ? severityBadgeClass(record.severity) : ''}>
-                {record ? NOTIFICATION_SEVERITY_LABELS[record.severity] : '—'}
-              </Badge>
-              {record?.requiresAcknowledgment ? (
-                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary text-[11px]">يتطلب إقراراً</Badge>
-              ) : null}
-              {record?.sourceKind ? (
-                <Badge variant="outline" className="font-mono text-[11px]">{record.sourceKind}</Badge>
-              ) : null}
+      <DialogContent className={cn(dialogShellContentClass, 'w-[min(96vw,80rem)] max-w-none overflow-hidden sm:rounded-2xl')} dir="rtl">
+        <div className="relative shrink-0 border-b border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-background px-6 pb-5 pt-8">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-sm">
+              <Bell className="h-5 w-5" />
             </div>
-            {record?.createdAt ? (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3 shrink-0" />
-                {formatDisplayDateTime(record.createdAt)}
-              </span>
-            ) : null}
+            <div className="min-w-0 flex-1 pe-8">
+              <DialogTitle className="text-lg font-bold leading-snug">
+                {record?.titleAr || '—'}
+              </DialogTitle>
+              {record?.bodyAr ? (
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{record.bodyAr}</p>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <Badge variant="secondary">
+                  {record ? NOTIFICATION_CATEGORY_LABELS[record.category] : '—'}
+                </Badge>
+                <Badge variant="outline" className={record ? severityBadgeClass(record.severity) : ''}>
+                  {record ? NOTIFICATION_SEVERITY_LABELS[record.severity] : '—'}
+                </Badge>
+                {showAcknowledgment ? (
+                  <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[11px] text-primary">
+                    يتطلب إقراراً
+                  </Badge>
+                ) : null}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {record?.createdAt ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    {formatDisplayDateTime(record.createdAt)}
+                  </span>
+                ) : null}
+                {record?.sourceKind ? (
+                  <span className="font-mono text-[10px] text-muted-foreground/70" title={record.sourceKind}>
+                    {record.sourceKind}
+                  </span>
+                ) : null}
+              </div>
+            </div>
           </div>
-        </DialogHeader>
+        </div>
 
-        {/* ── scrollable body ── */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <DialogBody className={cn(dialogShellBodyClass, 'space-y-4')}>
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-sm text-muted-foreground">جارٍ التحميل…</div>
+            <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+              جارٍ التحميل…
+            </div>
           ) : (
-            <div className="px-6 py-5">
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium text-muted-foreground">المستلمون</p>
+                  <p className="mt-0.5 text-lg font-bold tabular-nums">{recipients.length}</p>
+                </div>
+                <div className="rounded-xl border border-success/20 bg-success/5 px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium text-success/80">مقروء</p>
+                  <p className="mt-0.5 text-lg font-bold tabular-nums text-success">{readCount}</p>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 text-center">
+                  <p className="text-[10px] font-medium text-muted-foreground">لم يُقرأ</p>
+                  <p className="mt-0.5 text-lg font-bold tabular-nums">{unreadCount}</p>
+                </div>
+              </div>
 
-              {/* ── recipients section ── */}
-              <div className="rounded-xl border border-border bg-muted/20">
-                <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-3">
-                
-                  {/* read / unread filter */}
-                  <div className="flex items-center gap-1 border rounded-md p-0.5">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span>المستلمون</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      ({filteredRecipients.length})
+                    </span>
+                  </div>
+
+                  <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                     {(['all', 'read', 'unread'] as ReadFilter[]).map((f) => (
                       <button
                         key={f}
                         type="button"
                         onClick={() => setReadFilter(f)}
                         className={cn(
-                          'inline-flex h-6 items-center rounded-md px-2.5 text-[11px] font-medium transition-colors',
+                          'inline-flex h-7 items-center rounded-md px-3 text-[11px] font-medium transition-colors',
                           readFilter === f
-                            ? 'bg-foreground text-background'
-                            : 'text-muted-foreground hover:bg-muted',
+                            ? 'bg-background text-foreground ring-1 ring-border/60'
+                            : 'text-muted-foreground hover:text-foreground',
                         )}
                       >
-                        {f === 'all' ? 'الكل' : f === 'read' ? 'قرأ' : 'لم يقرأ'}
+                        {f === 'all' ? 'الكل' : f === 'read' ? 'مقروء' : 'لم يُقرأ'}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="p-2">
-                  <DataTable
-                    variant="directory"
-                    alwaysShowTable
-                    loading={false}
-                    columns={RECIPIENT_COLUMNS}
-                    data={filteredRecipients}
-                    keyExtractor={(r) => r.recipientId}
-                    emptyText="لا يوجد مستلمون"
-                  />
-                </div>
-              </div>
 
-            </div>
+                {filteredRecipients.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/10 py-12 text-center">
+                    <Users className="mb-2 h-8 w-8 text-muted-foreground/40" />
+                    <p className="text-sm font-medium text-muted-foreground">لا يوجد مستلمون</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <DataTable
+                      variant="directory"
+                      alwaysShowTable
+                      loading={false}
+                      columns={recipientColumns}
+                      data={pagedRecipients}
+                      keyExtractor={(r) => r.recipientId}
+                      emptyText="لا يوجد مستلمون"
+                      className="rounded-none border-0 bg-transparent shadow-none"
+                      tableClassName="w-full"
+                    />
+                    {filteredTotal > pageSize ? (
+                      <AppPagination
+                        page={page}
+                        pageSize={pageSize}
+                        total={filteredTotal}
+                        onPageChange={setPage}
+                        onPageSizeChange={setPageSize}
+                        pageSizeOptions={[10, 20, 50]}
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </>
           )}
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

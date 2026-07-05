@@ -493,6 +493,19 @@ export function Topbar() {
 
           {inHrApp && <NotificationBellPopover />}
 
+          {inAppShell && !onLauncher && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 shrink-0 rounded-xl border-primary/25 bg-background/80 shadow-xs"
+              asChild
+            >
+              <Link href="/" aria-label="التطبيقات" title="التطبيقات">
+                <LayoutGrid className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
+
           {inAppShell && <div className="mx-1 h-5 w-px bg-border/70" />}
 
           {/* User menu */}
