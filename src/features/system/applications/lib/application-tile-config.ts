@@ -14,18 +14,26 @@ const ICON_BY_KEY: Record<string, LucideIcon> = {
   'layout-grid': LayoutGrid,
 };
 
+/** Design-token icon surfaces — no hardcoded palette colors. */
 const TILE_BY_CODE: Record<string, { tileClass: string }> = {
-  hr: { tileClass: 'bg-emerald-600 shadow-emerald-900/40' },
-  accounting: { tileClass: 'bg-slate-500 shadow-slate-900/40' },
-  system: { tileClass: 'bg-amber-500 shadow-amber-900/40' },
+  hr: { tileClass: 'bg-primary text-primary-foreground shadow-soft' },
+  accounting: { tileClass: 'bg-primary-700 text-primary-foreground shadow-soft' },
+  system: { tileClass: 'bg-gold text-gold-foreground shadow-soft' },
 };
 
 const FALLBACK_TILES = [
-  'bg-violet-600 shadow-violet-900/40',
-  'bg-sky-600 shadow-sky-900/40',
-  'bg-rose-600 shadow-rose-900/40',
-  'bg-teal-600 shadow-teal-900/40',
+  'bg-primary text-primary-foreground shadow-soft',
+  'bg-gold text-gold-foreground shadow-soft',
+  'bg-success text-success-foreground shadow-soft',
+  'bg-accent text-accent-foreground shadow-soft',
 ];
+
+/** Card gradient accents aligned with global tokens. */
+export const TILE_SURFACE_ACCENT = [
+  'from-primary/12 via-card to-card group-hover:border-primary/30',
+  'from-gold/12 via-card to-card group-hover:border-gold/40',
+  'from-accent via-card to-card group-hover:border-primary/20',
+] as const;
 
 export function resolveApplicationIcon(app: ApplicationResponseDto): LucideIcon {
   const key = app.icon?.trim().toLowerCase();
@@ -40,4 +48,8 @@ export function resolveApplicationTileClass(
   const preset = TILE_BY_CODE[app.code];
   if (preset) return preset.tileClass;
   return FALLBACK_TILES[index % FALLBACK_TILES.length]!;
+}
+
+export function resolveApplicationSurfaceAccent(index: number): string {
+  return TILE_SURFACE_ACCENT[index % TILE_SURFACE_ACCENT.length]!;
 }
