@@ -20,6 +20,7 @@ import {
   SettingsPageLoading,
 } from '@/features/system/organization/pages/_shared/components/settings-page-states';
 import { useOrganizationCompanySettings } from '@/features/system/organization/pages/organization/hooks/useOrganizationSettings';
+import { DatabaseBackupSection } from '@/features/system/organization/pages/organization/components/database-backup-section';
 import type {
   OrganizationCompanySettings,
   UpdateOrganizationCompanySettingsDto,
@@ -132,6 +133,7 @@ export default function OrganizationSettingsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <DatabaseBackupSection />
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         <div className="border-b border-border/80 px-4 py-4 sm:px-5">
           <div className="flex items-start gap-3">
