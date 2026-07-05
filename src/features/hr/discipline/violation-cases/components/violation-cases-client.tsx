@@ -906,7 +906,11 @@ export function ViolationCasesClient() {
                 }}
                 children={
                   c.approverStates ? (
-                    <RequestApproversInline states={c.approverStates} />
+                    <ViolationApproverStatesPanel
+                      states={c.approverStates}
+                      compact
+                      className="border-0 bg-transparent p-0"
+                    />
                   ) : undefined
                 }
                 chips={
@@ -1087,6 +1091,9 @@ export function ViolationCasesClient() {
                   needsWarning={viewCase.typeNeedsWarning}
                   needsInvestigation={viewCase.typeNeedsInvestigation}
                 />
+              ) : null}
+              {viewCase.approverStates ? (
+                <RequestApproversInline states={viewCase.approverStates} />
               ) : null}
               <ViolationApproverStatesPanel states={viewCase.approverStates} />
               <div><span className="text-muted-foreground text-xs">الوصف</span><p className="mt-1">{viewCase.description}</p></div>

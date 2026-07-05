@@ -2,6 +2,10 @@ import { getAccessTokenFromCookie } from '@/features/auth/lib/auth-cookie';
 import { extractApiErrorMessage } from '@/features/auth/lib/auth-api-messages';
 import { resolveApiBaseUrl } from '@/shared/api-base-url';
 import { publicConfig } from '@/shared/config';
+import {
+  parseContentDispositionFilename,
+  triggerBrowserDownload,
+} from '@/shared/export/download-blob';
 import type { ApiErrorEnvelope, ApiSuccessEnvelope } from '@/features/hr/lib/api/types';
 import { isApiErrorEnvelope, isApiSuccessEnvelope } from '@/features/hr/lib/api/types';
 import { reportError } from '@/shared/errors/report-error';
@@ -259,4 +263,97 @@ export async function apiFormRequest<T>(path: string, formData: FormData, signal
   }
 
   return unwrapEnvelope<T>(payload);
+}
+
+export type ApiDownloadResult = {
+  blob: Blob;
+  fileName: string;
+  headers: Record<string, string>;
+};
+
+/** Binary download — parses filename from Content-Disposition when present. */
+export async function apiDownloadRequest(
+  path: string,
+  options: RequestOptions & { defaultFileName?: string } = {},
+): Promise<ApiDownloadResult> {
+  const { method = 'GET', query, body, signal, defaultFileName = 'download' } = options;
+  const headers: Record<string, string> = { Accept: '*/*' };
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const token = getAccessTokenFromCookie();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(buildUrl(path, query), {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal,
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+    let envelope: ApiErrorEnvelope;
+    if (isApiErrorEnvelope(payload)) {
+      envelope = payload;
+    } else if (payload && typeof payload === 'object') {
+      const errBody = payload as Record<string, unknown>;
+      const nestedMsg = errBody.message;
+      const message =
+        typeof nestedMsg === 'string'
+          ? nestedMsg
+          : Array.isArray(nestedMsg)
+            ? nestedMsg.map(String).join('; ')
+            : response.statusText || 'Request failed';
+      envelope = {
+        status: typeof errBody.status === 'number' ? errBody.status : response.status,
+        message,
+        data: null,
+        error: errBody.error ?? errBody,
+      };
+    } else {
+      envelope = {
+        status: response.status,
+        message: response.statusText || 'Request failed',
+        data: null,
+        error: payload,
+      };
+    }
+    throw new ApiError(envelope, response.status, payload);
+  }
+
+  const blob = await response.blob();
+  const fileName =
+    parseContentDispositionFilename(response.headers.get('content-disposition'))
+    ?? defaultFileName;
+
+  const responseHeaders: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    responseHeaders[key.toLowerCase()] = value;
+  });
+
+  return { blob, fileName, headers: responseHeaders };
+}
+
+export type ApiDownloadToDeviceResult = {
+  fileName: string;
+  headers: Record<string, string>;
+};
+
+/** Fetch a binary file and trigger browser download. */
+export async function apiDownloadToDevice(
+  path: string,
+  options: RequestOptions & { defaultFileName?: string } = {},
+): Promise<ApiDownloadToDeviceResult> {
+  const { blob, fileName, headers } = await apiDownloadRequest(path, options);
+  triggerBrowserDownload(blob, fileName);
+  return { fileName, headers };
 }

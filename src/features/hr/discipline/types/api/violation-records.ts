@@ -1,4 +1,8 @@
 import type { ApprovalMode } from '@/features/hr/discipline/types/api/discipline-approval-templates';
+import type {
+  RequestApprovalAssignmentCatalogDto,
+  RequestApproverDecisionOverlayDto,
+} from '@/features/hr/requests/types/api/request-approver-states-types';
 
 export type ViolationRecordStatus = 'pending' | 'approved' | 'rejected' | 'needs_edit';
 
@@ -74,6 +78,23 @@ export type ViolationRecordResponseDto = {
   updatedAt: string;
   createdBy: string | null;
   updatedBy: string | null;
+};
+
+/** List item — approval chain via catalog + overlay (same pattern as leaves/advances). */
+export type ViolationRecordListItemDto = ViolationRecordResponseDto & {
+  approvalAssignmentId?: string | null;
+  approverDecisions?: RequestApproverDecisionOverlayDto[] | null;
+};
+
+export type ViolationRecordListResponseDto = {
+  items: ViolationRecordListItemDto[];
+  approvalAssignments: RequestApprovalAssignmentCatalogDto[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 export type UpdateViolationRecordDto = {
