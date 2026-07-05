@@ -11,14 +11,15 @@ import { organizationActiveListStatusQuery } from '@/features/hr/organization/li
 import {
   violationRecordsApi,
   type ViolationInvestigationDto,
-  type ViolationRecordResponseDto,
+  type ViolationRecordListItemDto,
   type ViolationRecordStatus,
   type ViolationApproverStatesSnapshot,
   type CreateViolationRecordDto,
   type UpdateViolationRecordDto,
   type DecideViolationRecordDto,
 } from '@/features/hr/discipline/lib/api/violation-records';
-import { normalizeViolationApproverStates } from '@/features/hr/discipline/lib/violation-approver-states';
+import { resolveViolationApproverStates } from '@/features/hr/discipline/lib/violation-records-mapper';
+import type { RequestApprovalAssignmentCatalogDto } from '@/features/hr/requests/types/api/request-approver-states-types';
 
 export type ViolationCaseRecord = {
   id: string;
@@ -84,9 +85,10 @@ function pickLatestInvestigation(investigations: ViolationInvestigationDto[]): V
 }
 
 function mapRecord(
-  dto: ViolationRecordResponseDto,
+  dto: ViolationRecordListItemDto,
   employeesById: Map<string, string>,
   typesById: Map<string, string>,
+  approvalCatalog?: RequestApprovalAssignmentCatalogDto[],
 ): ViolationCaseRecord {
   const vt = dto.violationType;
   const investigations = dto.investigations ?? [];
@@ -112,7 +114,7 @@ function mapRecord(
     hasInvestigations: dto.hasInvestigations ?? investigations.length > 0,
     decisionNotes: dto.decisionNotes ?? null,
     decidedAt: dto.decidedAt ?? null,
-    approverStates: normalizeViolationApproverStates(dto),
+    approverStates: resolveViolationApproverStates(dto, approvalCatalog),
     investigations,
     investigationCount: investigations.length,
     latestInvestigationResult: latestInvestigation?.result ?? null,
@@ -192,8 +194,8 @@ export function useViolationCasesDirectoryModel() {
   );
 
   const mapItems = React.useCallback(
-    (raw: ViolationRecordResponseDto[]) =>
-      raw.map((r) => mapRecord(r, employeeMapRef.current, typeMapRef.current)),
+    (raw: ViolationRecordListItemDto[], approvalCatalog?: RequestApprovalAssignmentCatalogDto[]) =>
+      raw.map((r) => mapRecord(r, employeeMapRef.current, typeMapRef.current, approvalCatalog)),
     [],
   );
 
@@ -206,7 +208,7 @@ export function useViolationCasesDirectoryModel() {
         setCompanyId(companyIdRef.current);
       }
       const res = await violationRecordsApi.getAll(buildRecordsQuery(page, pageSize));
-      const items = mapItems(res.items);
+      const items = mapItems(res.items, res.approvalAssignments);
       setSourceCases(items);
       return { items, total: res.pagination.total };
     } catch (err) {

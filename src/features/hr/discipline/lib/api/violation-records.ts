@@ -1,7 +1,7 @@
-import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
+import { apiRequest } from '@/features/hr/lib/api/client';
 import type { ApprovalMode } from '@/features/hr/discipline/lib/api/discipline-approval-templates';
-import type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationApproverStateEntry, ViolationApproverStatesSnapshot, ViolationTypeSummaryDto, ViolationInvestigationDto, ViolationRecordResponseDto, UpdateViolationRecordDto, DecideViolationRecordDto, ViolationRecordListQuery, CreateViolationRecordDto, PushViolationsToPayrollDto, PushViolationsToPayrollResponseDto } from '@/features/hr/discipline/types/api/violation-records';
-export type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationApproverStateEntry, ViolationApproverStatesSnapshot, ViolationTypeSummaryDto, ViolationInvestigationDto, ViolationRecordResponseDto, UpdateViolationRecordDto, DecideViolationRecordDto, ViolationRecordListQuery, CreateViolationRecordDto, PushViolationsToPayrollDto, PushViolationsToPayrollResponseDto } from '@/features/hr/discipline/types/api/violation-records';
+import type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationApproverStateEntry, ViolationApproverStatesSnapshot, ViolationTypeSummaryDto, ViolationInvestigationDto, ViolationRecordResponseDto, ViolationRecordListResponseDto, UpdateViolationRecordDto, DecideViolationRecordDto, ViolationRecordListQuery, CreateViolationRecordDto, PushViolationsToPayrollDto, PushViolationsToPayrollResponseDto } from '@/features/hr/discipline/types/api/violation-records';
+export type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationApproverStateEntry, ViolationApproverStatesSnapshot, ViolationTypeSummaryDto, ViolationInvestigationDto, ViolationRecordResponseDto, ViolationRecordListResponseDto, UpdateViolationRecordDto, DecideViolationRecordDto, ViolationRecordListQuery, CreateViolationRecordDto, PushViolationsToPayrollDto, PushViolationsToPayrollResponseDto } from '@/features/hr/discipline/types/api/violation-records';
 
 
 
@@ -18,7 +18,7 @@ export type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationAppr
 
 export const violationRecordsApi = {
   getAll(query?: ViolationRecordListQuery) {
-    return apiRequest<PaginatedResult<ViolationRecordResponseDto>>('/discipline/violation-records', { query });
+    return apiRequest<ViolationRecordListResponseDto>('/discipline/violation-records', { query });
   },
   getById(id: string) {
     return apiRequest<ViolationRecordResponseDto>(`/discipline/violation-records/${id}`);
