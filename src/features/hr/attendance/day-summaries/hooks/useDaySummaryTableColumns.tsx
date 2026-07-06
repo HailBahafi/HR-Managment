@@ -111,6 +111,19 @@ export function useDaySummaryTableColumns({
         hideOnMobile: true,
         render: (row) => (row.isManualOverride ? 'نعم' : '—'),
       },
+      finalized: {
+        key: 'finalized',
+        title: 'مقفل',
+        hideOnMobile: true,
+        render: (row) =>
+          row.isFinalized ? (
+            <Badge variant="secondary" className="text-[10px] font-normal">
+              مقفل
+            </Badge>
+          ) : (
+            '—'
+          ),
+      },
       overtimePayroll: {
         key: 'overtimePayroll',
         title: 'إضافي رواتب',
