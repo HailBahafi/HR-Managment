@@ -182,8 +182,10 @@ export const ListFilterBar = React.forwardRef<ListFilterBarHandle, ListFilterBar
     },
     ref,
   ) {
+    const skipAutoEmployeeLoad =
+      empPickerEmployees !== undefined || onEmployeePickerOpen != null;
     const autoEmployeePicker = useEmployeeFilterPicker(
-      empPickerEmployees === undefined ? companyId : null,
+      skipAutoEmployeeLoad ? null : companyId,
     );
     const resolvedEmpPickerEmployees = empPickerEmployees ?? autoEmployeePicker.employees;
     const resolvedEmployeePickerLoading = employeePickerLoading || autoEmployeePicker.loading;

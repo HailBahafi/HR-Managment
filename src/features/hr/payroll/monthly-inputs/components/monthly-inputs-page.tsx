@@ -26,7 +26,6 @@ import {
 } from '@/features/hr/payroll/monthly-inputs/constants/monthly-input-labels';
 import { MoneyAmount } from '@/components/ui/sar-amount';
 import { useMonthlyInputsDirectoryModel } from '@/features/hr/payroll/monthly-inputs/hooks/useMonthlyInputsDirectoryModel';
-import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { TableDateCell } from '@/components/ui/table-cells';
 import { cn } from '@/shared/utils';
 
@@ -77,11 +76,10 @@ function MonthlyInputDetailDialog({
 export function MonthlyInputsPage() {
   const {
     items, total, page, setPage, limit, setLimit, loading,
-    filters, patchFilters, periodOptions, selectedEmpIds, setSelectedEmpIds,
+    filters, patchFilters, periodOptions, loadPeriods, selectedEmpIds, setSelectedEmpIds,
+    empPickerEmployees, employeePickerLoading, loadEmployeePicker,
     activeFilterCount, clearFilters,
   } = useMonthlyInputsDirectoryModel();
-
-  const companyId = useDefaultCompanyId();
 
   const [detailRow, setDetailRow] = React.useState<MonthlyInputResponseDto | null>(null);
 
@@ -90,6 +88,7 @@ export function MonthlyInputsPage() {
       id: 'period',
       value: filters.payrollPeriodId,
       onChange: (v) => patchFilters({ payrollPeriodId: v || 'all' }),
+      onOpen: loadPeriods,
       placeholder: 'فترة الراتب',
       className: 'w-[10rem]',
       options: [
@@ -143,7 +142,7 @@ export function MonthlyInputsPage() {
         { value: 'false', label: 'لا' },
       ],
     },
-  ], [filters, patchFilters, periodOptions]);
+  ], [filters, patchFilters, periodOptions, loadPeriods]);
 
   useEntityFilterSlot(
     () => (
@@ -151,13 +150,15 @@ export function MonthlyInputsPage() {
         showDateSection={false}
         showStatusSection={false}
         inlineSelects={inlineSelects}
-        companyId={companyId}
+        empPickerEmployees={empPickerEmployees}
+        employeePickerLoading={employeePickerLoading}
+        onEmployeePickerOpen={loadEmployeePicker}
         selectedEmpIds={selectedEmpIds}
         onSelectedEmpIdsChange={setSelectedEmpIds}
         onDateBoundsChange={() => {}}
       />
     ),
-    [inlineSelects, companyId, selectedEmpIds, setSelectedEmpIds],
+    [inlineSelects, empPickerEmployees, employeePickerLoading, loadEmployeePicker, selectedEmpIds, setSelectedEmpIds],
   );
 
   usePageHeaderActions(

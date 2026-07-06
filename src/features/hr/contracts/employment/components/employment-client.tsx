@@ -53,13 +53,11 @@ import {
   EMPLOYMENT_KIND_FILTER_OPTIONS,
 } from '@/features/hr/contracts/employment/utils/employment-contract-form';
 import { EmploymentContractTerminateModal as TerminateModal } from '@/features/hr/contracts/employment/components/employment-contract-terminate-modal';
-import { EmploymentContractSignatureCard } from '@/features/hr/contracts/employment/components/employment-contract-signature-card';
 import { EmploymentContractDetailDialog } from '@/features/hr/contracts/employment/components/employment-contract-detail-dialog';
 import { EmploymentContractFormDialog } from '@/features/hr/contracts/employment/components/employment-contract-form-dialog';
 import { ContractLeaveTypePickerDialog } from '@/features/hr/contracts/employment/components/contract-leave-type-picker-dialog';
 import {
   canActivateEmploymentContract,
-  canRecordEmployeeContractAcceptance,
   contractCreditsLeaveDays,
   isTerminatedEmploymentContract,
 } from '@/features/hr/contracts/employment/utils/contract-leave-credit';
@@ -99,7 +97,7 @@ export function EmploymentContractsClient() {
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
   const companyId = useDefaultCompanyId();
-  const { add, update, activate, employeeAccept, terminate, archive, createAmendmentDraft } = useHRContractsStore();
+  const { add, update, activate, terminate, archive, createAmendmentDraft } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { data: allowanceTypes = [] } = useAllowanceTypes();
   const { data: articles = [] } = useContractArticles();
@@ -521,14 +519,6 @@ export function EmploymentContractsClient() {
     await reloadList();
   };
 
-  const runEmployeeAccept = async (id: string) => {
-    const res = await employeeAccept(id);
-    if (!res.ok) throw new Error(res.message);
-    toast.success('تم تسجيل موافقة الموظف على العقد.');
-    setDetailRefreshKey((k) => k + 1);
-    await reloadList();
-  };
-
   const handleActivate = (contract: HRContractRecord) => {
     if (contractCreditsLeaveDays(contract)) {
       setLeavePicker({
@@ -538,10 +528,6 @@ export function EmploymentContractsClient() {
       return;
     }
     void runActivate(contract.id);
-  };
-
-  const handleEmployeeAccept = (contract: HRContractRecord) => {
-    void runEmployeeAccept(contract.id);
   };
 
   const handleLeavePickerConfirm = async (leaveTypeId: string) => {
@@ -708,16 +694,6 @@ export function EmploymentContractsClient() {
 
     return (
       <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-        {canRecordEmployeeContractAcceptance(c) ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs text-primary hover:text-primary"
-            onClick={() => handleEmployeeAccept(c)}
-          >
-            موافقة الموظف
-          </Button>
-        ) : null}
         {canActivateEmploymentContract(c) ? (
           <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c)}>تفعيل</Button>
         ) : null}
@@ -781,12 +757,6 @@ export function EmploymentContractsClient() {
                 <Coins className="h-3.5 w-3.5 text-gold" />
                 <MoneyAmount value={c.baseSalary} currency={c.currency} fractionDigits={0} className="text-sm font-bold" />
               </div>
-              <EmploymentContractSignatureCard
-                signed={c.employeeSigned}
-                rejectionReason={c.rejectionReason}
-                contractStatus={c.status}
-                variant="compact"
-              />
               <div className="mt-auto flex flex-wrap items-center justify-end gap-1 border-t border-border pt-3" onClick={e => e.stopPropagation()}>
                 <ContractActions c={c} />
               </div>

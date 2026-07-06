@@ -79,3 +79,12 @@ export function mapEmployeesToPickerOptions(
     branchNameAr: e.branchNameAr ?? undefined,
   }));
 }
+
+/** Lazy-load employee picker options (call from `onEmployeePickerOpen` only). */
+export async function fetchEmployeeFilterPickerOptions(
+  companyId: string,
+  limit = DEFAULT_LIMIT,
+): Promise<EmployeePickerOption[]> {
+  const res = await employeesApi.getAll({ companyId, limit });
+  return mapEmployeesToPickerOptions(res.items);
+}
