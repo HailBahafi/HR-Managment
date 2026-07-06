@@ -10,6 +10,7 @@ import {
   Loader2,
   ShieldAlert,
   Layers,
+  Lock,
   Unlink,
   Wrench,
 } from 'lucide-react';
@@ -18,6 +19,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
@@ -502,6 +504,7 @@ export function DailyDayDetailDialog({
 
   if (!summary) return null;
 
+  const isFinalized = Boolean(summary.isFinalized);
   const offsetMinutes = breakdown?.timezoneOffsetMinutes ?? defaultTimezoneOffsetMinutes();
   const dayCfg = breakdown ? statusCfg(breakdown.status) : STATUS.unscheduled;
   const totals = breakdown?.totals;
@@ -522,8 +525,11 @@ export function DailyDayDetailDialog({
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 تفاصيل يوم الحضور
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                تفاصيل حضور {summary.employeeName} ليوم {summary.date}
+              </DialogDescription>
 
-              {!loading && breakdown && breakdown.periods.length > 0 && companyId ? (
+              {!loading && breakdown && breakdown.periods.length > 0 && companyId && !isFinalized ? (
                 <div className="flex flex-wrap gap-1.5 sm:justify-end">
                   {breakdown.periods.map((period, index) => {
                     const multi = breakdown.periods.length > 1;
@@ -555,10 +561,18 @@ export function DailyDayDetailDialog({
                 {fmtFull(displayDate)}
                 {breakdown ? ` · ${WEEKDAY_AR[breakdown.weekDay] ?? ''}` : ''}
               </p>
-              <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold', dayCfg.color)}>
-                <span className={cn('h-1.5 w-1.5 rounded-full', dayCfg.dot)} />
-                {dayCfg.label}
-              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold', dayCfg.color)}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', dayCfg.dot)} />
+                  {dayCfg.label}
+                </span>
+                {isFinalized ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-muted-foreground/30 bg-muted/30 px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                    <Lock className="h-3 w-3" />
+                    اليوم مقفل نهائياً
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             {loading ? (
@@ -687,7 +701,7 @@ export function DailyDayDetailDialog({
             )}
           </div>
 
-          {companyId ? (
+          {companyId && !isFinalized ? (
             <DialogFooter className={dialogFormFooterClass}>
               <Button
                 type="button"
