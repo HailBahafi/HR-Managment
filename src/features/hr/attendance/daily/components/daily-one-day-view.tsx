@@ -10,7 +10,7 @@ import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, dialogFormFooterClass } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, dialogFormFooterClass } from '@/components/ui/dialog';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
   attendanceEventsApi,
@@ -699,6 +699,7 @@ export function RegisterEventComboDialog({
       <DialogContent className="max-w-sm border-border" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-right font-display text-base">تسجيل حدث حضور</DialogTitle>
+          <DialogDescription className="sr-only">تسجيل حدث حضور يدوي لموظف في تاريخ محدد</DialogDescription>
           {!showDatePicker && <p className="text-right text-xs text-muted-foreground" dir="ltr">{selectedDate}</p>}
         </DialogHeader>
 
@@ -896,7 +897,29 @@ export function DailyOneDayView({
     })).sort((a, b) => a.employeeName.localeCompare(b.employeeName, 'ar'));
   }, [sorted, eventsMap, allEmployees, workDate]);
 
-  const allRows = React.useMemo(() => [...sorted, ...eventOnlyRows], [sorted, eventOnlyRows]);
+  const allRows = React.useMemo(() => {
+    const rows = [...sorted, ...eventOnlyRows];
+    const existing = new Set(rows.map((r) => r.employeeId));
+    const stubs = allEmployees
+      .filter((e) => !existing.has(e.id))
+      .map((e) => ({
+        id: `stub-${e.id}`,
+        employeeId: e.id,
+        employeeName: e.name,
+        date: workDate,
+        templateId: null,
+        status: 'unscheduled' as AttendanceDaySummary['status'],
+        lateMinutes: 0,
+        earlyLeaveMinutes: 0,
+        overtimeMinutes: 0,
+        workedMinutes: 0,
+        actualCheckInAt: null,
+        actualCheckOutAt: null,
+        expectedStartAt: null,
+        expectedEndAt: null,
+      }));
+    return [...rows, ...stubs].sort((a, b) => a.employeeName.localeCompare(b.employeeName, 'ar'));
+  }, [sorted, eventOnlyRows, allEmployees, workDate]);
 
   const totalEvents = React.useMemo(
     () => [...eventsMap.values()].reduce((acc, arr) => acc + arr.filter((e) => !e.isVoided).length, 0),

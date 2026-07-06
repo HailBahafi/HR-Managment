@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import ModernTimePicker from '@/components/ui/modern-time-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, dialogFormFooterClass } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, dialogFormFooterClass } from '@/components/ui/dialog';
 import { attendanceEventsApi, type AttendanceEventResponseDto } from '@/features/hr/attendance/lib/api/attendance-events';
 import { useNextEventType } from '@/features/hr/attendance/daily/hooks/useNextEventType';
 import {
@@ -87,9 +87,9 @@ export function DailyRegisterEventDialog({ open, onOpenChange, employeeId, emplo
       <DialogContent className="max-w-sm border-border" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-right font-display text-base">تسجيل حدث حضور</DialogTitle>
-          <p className="text-xs text-muted-foreground text-right">
+          <DialogDescription className="text-xs text-muted-foreground text-right">
             {employeeName} · <span dir="ltr">{workDate}</span>
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-1">

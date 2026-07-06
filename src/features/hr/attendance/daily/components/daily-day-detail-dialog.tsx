@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   dialogFormFooterClass,
 } from '@/components/ui/dialog';
@@ -522,6 +523,9 @@ export function DailyDayDetailDialog({
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 تفاصيل يوم الحضور
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                تفاصيل حضور {summary.employeeName} ليوم {summary.date}
+              </DialogDescription>
 
               {!loading && breakdown && breakdown.periods.length > 0 && companyId ? (
                 <div className="flex flex-wrap gap-1.5 sm:justify-end">
