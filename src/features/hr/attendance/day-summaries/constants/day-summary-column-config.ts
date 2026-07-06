@@ -10,6 +10,7 @@ import {
   LogOut,
   PenLine,
   PlusCircle,
+  Lock,
   Sunrise,
   Timer,
   TrendingDown,
@@ -28,6 +29,7 @@ export type DaySummaryOptionalColumnKey =
   | 'shortage'
   | 'overtime'
   | 'manual'
+  | 'finalized'
   | 'overtimePayroll'
   | 'settle';
 
@@ -53,6 +55,7 @@ export const DAY_SUMMARY_COLUMN_OPTIONS: DaySummaryColumnOption[] = [
   { key: 'shortage', label: 'نقص', icon: TrendingDown, group: 'metrics' },
   { key: 'overtime', label: 'إضافي', icon: PlusCircle, group: 'metrics' },
   { key: 'manual', label: 'تعديل يدوي', shortLabel: 'يدوي', icon: PenLine, group: 'actions' },
+  { key: 'finalized', label: 'مقفل (رواتب)', shortLabel: 'مقفل', icon: Lock, group: 'actions' },
   { key: 'overtimePayroll', label: 'إضافي رواتب', shortLabel: 'رواتب', icon: Banknote, group: 'actions' },
   { key: 'settle', label: 'تسوية', icon: ArrowLeftRight, group: 'actions' },
 ];
@@ -69,6 +72,7 @@ export const DEFAULT_DAY_SUMMARY_COLUMN_VISIBILITY: DaySummaryColumnVisibility =
   shortage: true,
   overtime: true,
   manual: false,
+  finalized: true,
   overtimePayroll: true,
   settle: true,
 };
