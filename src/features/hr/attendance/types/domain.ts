@@ -131,6 +131,8 @@ export interface AttendanceDaySummary {
   actualCheckOutAt?: string | null;
   expectedStartAt?: string | null;
   expectedEndAt?: string | null;
+  /** اليوم مقفل نهائياً — لا يمكن التصحيح أو تسجيل أحداث جديدة */
+  isFinalized?: boolean;
 }
 
 export interface DailyAttendanceSegment {

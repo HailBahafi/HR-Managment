@@ -10,32 +10,39 @@ import { DailyWeekGrid } from '@/features/hr/attendance/daily/components/daily-w
 import { DailyMonthHeatmap } from '@/features/hr/attendance/daily/components/daily-month-heatmap';
 import type { AttendanceViewMode } from '@/features/hr/attendance/daily/hooks/useDailyAttendanceModel';
 import { DAILY_ATTENDANCE_NO_RECORDS } from '@/features/hr/attendance/daily/constants/daily-attendance-empty';
+import { StickyPagination } from '@/components/ui/sticky-pagination';
 import {
-  DirectoryPagedViews,
   PagedListViewport,
   PagedShell,
+  useListPagination,
   type PaginationBarState,
 } from '@/components/ui/paged-list';
-
-// The sticky pagination bar (`DirectoryPagedViews`) renders as a sibling AFTER
-// this viewport, so `useViewportFillHeight` (which only knows this element's own
-// top offset) would otherwise size the scroll box to the full remaining height
-// and let the pagination bar cover the last visible row. Reserve room for it.
-const PAGINATION_BAR_GAP = 56;
-
-function DailyTimelineScroll({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <PagedListViewport className={className ?? 'min-h-0 flex-1'} bottomGap={PAGINATION_BAR_GAP}>
-      <PagedShell>{children}</PagedShell>
-    </PagedListViewport>
-  );
-}
 
 type EmployeeRow = { id: string; name: string };
 
 function filterByEmployees<T extends { employeeId: string }>(items: T[], pageEmployees: EmployeeRow[]) {
   const ids = new Set(pageEmployees.map((e) => e.id));
   return items.filter((item) => ids.has(item.employeeId));
+}
+
+// Renders the pagination bar as a `shrink-0` row INSIDE the same fixed-height,
+// overflow-hidden box as the scrollable content (via `PagedShell`'s `footer`
+// slot), instead of as a sibling rendered after it. That way flexbox — not a
+// guessed pixel gap — reserves exactly the space the bar actually needs, and
+// the whole block can never exceed the viewport height and leak into the
+// outer app-shell scrollbar (the "two scrollbars" bug).
+function paginationFooter(pagination: PaginationBarState) {
+  if (pagination.total === 0) return undefined;
+  return (
+    <StickyPagination
+      page={pagination.page}
+      pageSize={pagination.pageSize}
+      total={pagination.total}
+      totalPages={pagination.totalPages}
+      onPageChange={pagination.setPage}
+      onPageSizeChange={pagination.setPageSize}
+    />
+  );
 }
 
 function renderTimelineView({
@@ -46,6 +53,7 @@ function renderTimelineView({
   dates,
   viewMode,
   className,
+  pagination,
 }: {
   days: number;
   pageEmployees: EmployeeRow[];
@@ -54,41 +62,36 @@ function renderTimelineView({
   dates: string[];
   viewMode: AttendanceViewMode;
   className?: string;
+  pagination: PaginationBarState;
 }) {
   if (days === 1) {
+    const footer = paginationFooter(pagination);
     return (
-      <PagedListViewport className={className ?? 'min-h-0 flex-1'} bottomGap={PAGINATION_BAR_GAP}>
-        <DailyOneDayView
-          className="h-full min-h-0"
-          summaries={pageSummaries}
-          initialEvents={pageEvents}
-          workDate={dates[0]!}
-          allEmployees={pageEmployees}
-        />
+      <PagedListViewport className={className ?? 'min-h-0 flex-1'}>
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
+          <DailyOneDayView
+            className="min-h-0 flex-1"
+            summaries={pageSummaries}
+            initialEvents={pageEvents}
+            workDate={dates[0]!}
+            allEmployees={pageEmployees}
+          />
+          {footer ? <div className="shrink-0">{footer}</div> : null}
+        </div>
       </PagedListViewport>
     );
   }
 
-  if (days <= 3) {
-    return (
-      <DailyTimelineScroll className={className}>
-        <DailyGanttTimeline summaries={pageSummaries} events={pageEvents} dates={dates} />
-      </DailyTimelineScroll>
-    );
-  }
-
-  if (days <= 14) {
-    return (
-      <DailyTimelineScroll className={className}>
-        <DailyWeekGrid summaries={pageSummaries} dates={dates} />
-      </DailyTimelineScroll>
-    );
-  }
+  const grid = days <= 3
+    ? <DailyGanttTimeline summaries={pageSummaries} events={pageEvents} dates={dates} />
+    : days <= 14
+      ? <DailyWeekGrid summaries={pageSummaries} dates={dates} />
+      : <DailyMonthHeatmap summaries={pageSummaries} dates={dates} viewMode={viewMode} />;
 
   return (
-    <DailyTimelineScroll className={className}>
-      <DailyMonthHeatmap summaries={pageSummaries} dates={dates} viewMode={viewMode} />
-    </DailyTimelineScroll>
+    <PagedListViewport className={className ?? 'min-h-0 flex-1'}>
+      <PagedShell footer={paginationFooter(pagination)}>{grid}</PagedShell>
+    </PagedListViewport>
   );
 }
 
@@ -128,10 +131,11 @@ export function DailySmartTimeline({
       .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
   }, [summaries, events, allEmployees, days, serverPagination]);
 
-  const paginationResetDeps = React.useMemo(
-    () => [summaries, events, dates.join('|'), viewMode, allEmployees.length, serverPagination?.total],
-    [summaries, events, dates, viewMode, allEmployees.length, serverPagination?.total],
+  const clientResetDeps = React.useMemo(
+    () => [summaries, events, dates.join('|'), viewMode, allEmployees.length],
+    [summaries, events, dates, viewMode, allEmployees.length],
   );
+  const clientPagination = useListPagination(employeeRows, clientResetDeps);
 
   if (days === 0) {
     return (
@@ -143,25 +147,38 @@ export function DailySmartTimeline({
     return <EmptyStateCard icon={Clock3} {...DAILY_ATTENDANCE_NO_RECORDS} />;
   }
 
-  return (
-    <DirectoryPagedViews
-      items={employeeRows}
-      resetDeps={paginationResetDeps}
-      serverPagination={serverPagination}
-      loading={loading}
-      empty={<EmptyStateCard icon={Clock3} {...DAILY_ATTENDANCE_NO_RECORDS} />}
-    >
-      {(pageEmployees) =>
-        renderTimelineView({
-          days,
-          pageEmployees,
-          pageSummaries: filterByEmployees(summaries, pageEmployees),
-          pageEvents: filterByEmployees(events, pageEmployees),
-          dates,
-          viewMode,
-          className,
-        })
-      }
-    </DirectoryPagedViews>
-  );
+  if (serverPagination) {
+    if (loading && employeeRows.length === 0) {
+      return <div className="py-12 text-center text-sm text-muted-foreground">جاري التحميل…</div>;
+    }
+    return renderTimelineView({
+      days,
+      pageEmployees: employeeRows,
+      pageSummaries: filterByEmployees(summaries, employeeRows),
+      pageEvents: filterByEmployees(events, employeeRows),
+      dates,
+      viewMode,
+      className,
+      pagination: serverPagination,
+    });
+  }
+
+  const pageEmployees = clientPagination.pageItems;
+  return renderTimelineView({
+    days,
+    pageEmployees,
+    pageSummaries: filterByEmployees(summaries, pageEmployees),
+    pageEvents: filterByEmployees(events, pageEmployees),
+    dates,
+    viewMode,
+    className,
+    pagination: {
+      page: clientPagination.page,
+      pageSize: clientPagination.pageSize,
+      total: clientPagination.total,
+      totalPages: clientPagination.totalPages,
+      setPage: clientPagination.setPage,
+      setPageSize: clientPagination.setPageSize,
+    },
+  });
 }

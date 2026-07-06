@@ -77,6 +77,7 @@ function mapDaySummary(s: DaySummaryResponseDto): AttendanceDaySummary {
     actualCheckOutAt: s.actualCheckOutAt ?? null,
     expectedStartAt: s.expectedStartAt ?? null,
     expectedEndAt: s.expectedEndAt ?? null,
+    isFinalized: s.isFinalized,
   };
 }
 
