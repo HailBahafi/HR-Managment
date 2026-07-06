@@ -3,7 +3,6 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, LayoutGrid } from 'lucide-react';
-import { useSetPageTitle } from '@/components/layouts/page-title-context';
 import { useAuthUserDisplay } from '@/features/auth/hooks/use-auth-user-display';
 import { useLoginPageBranding } from '@/features/auth/hooks/use-default-company-branding';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -105,22 +104,11 @@ function CompanyHero({
           {companyNameAr}
         </p>
       ) : null}
-      {companyNameEn ? (
-        <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground sm:text-sm" dir="ltr">
-          {companyNameEn}
-        </p>
-      ) : null}
     </div>
   );
 }
 
 export function AppsLauncherPage() {
-  useSetPageTitle({
-    titleAr: 'التطبيقات',
-    descriptionAr: 'اختر التطبيق للبدء',
-    iconName: 'LayoutGrid',
-  });
-
   const { displayName } = useAuthUserDisplay();
   const branding = useLoginPageBranding();
   const [apps, setApps] = React.useState<ApplicationResponseDto[]>([]);

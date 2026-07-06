@@ -550,9 +550,10 @@ function buildRecipientColumns(showAcknowledgment: boolean): ColumnDef<Notificat
       key: 'employee',
       title: 'الموظف',
       headerClassName,
+      className: 'align-top',
       render: (r) => (
-        <div className="min-w-[120px]">
-          <p className="font-medium leading-tight">{r.employeeNameAr || r.userFullNameAr || '—'}</p>
+        <div>
+          <p className="font-medium leading-snug">{r.employeeNameAr || r.userFullNameAr || '—'}</p>
           <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{r.employeeCode || '—'}</p>
         </div>
       ),
@@ -560,38 +561,37 @@ function buildRecipientColumns(showAcknowledgment: boolean): ColumnDef<Notificat
     {
       key: 'email',
       title: 'البريد الإلكتروني',
-      hideOnMobile: true,
       headerClassName,
+      className: 'align-top text-xs text-muted-foreground',
       render: (r) =>
         r.userEmail ? (
-          <span className="inline-flex max-w-[220px] items-center gap-1 truncate text-xs text-muted-foreground">
-            <Mail className="h-3 w-3 shrink-0 opacity-60" />
-            <span className="truncate">{r.userEmail}</span>
+          <span className="inline-flex items-start gap-1 break-all">
+            <Mail className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
+            <span>{r.userEmail}</span>
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground">—</span>
+          <span>—</span>
         ),
     },
     {
       key: 'isRead',
       title: 'مقروء',
       headerClassName,
+      className: 'align-top',
       render: (r) => <ReadStatusBadge isRead={r.isRead} />,
     },
     {
       key: 'deliveredAt',
       title: 'وقت التسليم',
-      hideOnMobile: true,
       headerClassName,
-      className: 'whitespace-nowrap text-xs tabular-nums text-muted-foreground',
+      className: 'align-top text-xs tabular-nums text-muted-foreground',
       render: (r) => formatDisplayDateTime(r.deliveredAt),
     },
     {
       key: 'readAt',
       title: 'وقت القراءة',
-      hideOnMobile: true,
       headerClassName,
-      className: 'whitespace-nowrap text-xs tabular-nums text-muted-foreground',
+      className: 'align-top text-xs tabular-nums text-muted-foreground',
       render: (r) => formatDisplayDateTime(r.readAt),
     },
   ];
@@ -601,23 +601,66 @@ function buildRecipientColumns(showAcknowledgment: boolean): ColumnDef<Notificat
       {
         key: 'acknowledgedAt',
         title: 'وقت القبول',
-        hideOnMobile: true,
         headerClassName,
-        className: 'whitespace-nowrap text-xs tabular-nums text-muted-foreground',
+        className: 'align-top text-xs tabular-nums text-muted-foreground',
         render: (r) => formatDisplayDateTime(r.acknowledgedAt),
       },
       {
         key: 'dismissedAt',
         title: 'وقت الرفض',
-        hideOnMobile: true,
         headerClassName,
-        className: 'whitespace-nowrap text-xs tabular-nums text-muted-foreground',
+        className: 'align-top text-xs tabular-nums text-muted-foreground',
         render: (r) => formatDisplayDateTime(r.dismissedAt),
       },
     );
   }
 
   return columns;
+}
+
+function RecipientMobileCard({
+  recipient,
+  showAcknowledgment,
+}: {
+  recipient: NotificationRecipientDto;
+  showAcknowledgment: boolean;
+}) {
+  const rows = [
+    { label: 'البريد الإلكتروني', value: recipient.userEmail ?? '—' },
+    { label: 'وقت التسليم', value: formatDisplayDateTime(recipient.deliveredAt) },
+    { label: 'وقت القراءة', value: formatDisplayDateTime(recipient.readAt) },
+  ];
+
+  if (showAcknowledgment) {
+    rows.push(
+      { label: 'وقت القبول', value: formatDisplayDateTime(recipient.acknowledgedAt) },
+      { label: 'وقت الرفض', value: formatDisplayDateTime(recipient.dismissedAt) },
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="font-medium leading-snug">
+          {recipient.employeeNameAr || recipient.userFullNameAr || '—'}
+        </p>
+        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+          {recipient.employeeCode || '—'}
+        </p>
+      </div>
+
+      <ReadStatusBadge isRead={recipient.isRead} />
+
+      <dl className="space-y-2 text-xs">
+        {rows.map((row) => (
+          <div key={row.label} className="grid gap-1">
+            <dt className="font-medium text-muted-foreground">{row.label}</dt>
+            <dd className="break-words text-foreground">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
 }
 
 // ─── Detail dialog ────────────────────────────────────────────────────────────
@@ -648,8 +691,6 @@ function NotificationDetailDialog({
     return recipients;
   }, [recipients, readFilter]);
 
-  const readCount = recipients.filter((r) => r.isRead).length;
-  const unreadCount = recipients.length - readCount;
   const showAcknowledgment = record?.requiresAcknowledgment === true;
 
   const recipientColumns = React.useMemo(
@@ -670,93 +711,107 @@ function NotificationDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className={cn(dialogShellContentClass, 'w-[min(96vw,80rem)] max-w-none overflow-hidden sm:rounded-2xl')} dir="rtl">
-        <div className="relative shrink-0 border-b border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-background px-6 pb-5 pt-8">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-sm">
-              <Bell className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1 pe-8">
-              <DialogTitle className="text-lg font-bold leading-snug">
-                {record?.titleAr || '—'}
-              </DialogTitle>
-              {record?.bodyAr ? (
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{record.bodyAr}</p>
-              ) : null}
+      <DialogContent
+        className={cn(
+          dialogShellContentClass,
+          'overflow-hidden sm:rounded-2xl',
+          'w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)]',
+          'sm:w-[min(96vw,72rem)] sm:max-w-[min(96vw,72rem)]',
+          'lg:w-[min(94vw,84rem)] lg:max-w-[min(94vw,84rem)]',
+          'xl:w-[min(92vw,96rem)] xl:max-w-[min(92vw,96rem)]',
+        )}
+        dir="rtl"
+      >
+        <div className="relative shrink-0 overflow-hidden border-b border-border/50 bg-muted/20 px-5 pb-4 pt-6">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-l from-primary/50 via-primary/20 to-transparent" />
 
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                <Badge variant="secondary">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm ring-1 ring-border/60">
+              <Bell className="h-4 w-4" />
+            </div>
+
+            <div className="min-w-0 flex-1 pe-8">
+              <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                <DialogTitle className="font-display text-base font-semibold leading-snug tracking-tight">
+                  {record?.titleAr || '—'}
+                </DialogTitle>
+
+                {record?.createdAt ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground backdrop-blur-sm">
+                    <Clock className="h-3 w-3 shrink-0 opacity-70" />
+                    {formatDisplayDateTime(record.createdAt)}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[10px] font-normal">
                   {record ? NOTIFICATION_CATEGORY_LABELS[record.category] : '—'}
                 </Badge>
-                <Badge variant="outline" className={record ? severityBadgeClass(record.severity) : ''}>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'h-5 rounded-md px-1.5 text-[10px] font-normal',
+                    record ? severityBadgeClass(record.severity) : '',
+                  )}
+                >
                   {record ? NOTIFICATION_SEVERITY_LABELS[record.severity] : '—'}
                 </Badge>
                 {showAcknowledgment ? (
-                  <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[11px] text-primary">
+                  <Badge
+                    variant="outline"
+                    className="h-5 rounded-md border-primary/25 bg-primary/5 px-1.5 text-[10px] font-normal text-primary"
+                  >
                     يتطلب إقراراً
+                  </Badge>
+                ) : null}
+                {record?.sourceKind ? (
+                  <Badge
+                    variant="outline"
+                    className="h-5 rounded-md px-1.5 font-mono text-[10px] font-normal text-muted-foreground"
+                    title={record.sourceKind}
+                  >
+                    {record.sourceKind}
                   </Badge>
                 ) : null}
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                {record?.createdAt ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 shrink-0" />
-                    {formatDisplayDateTime(record.createdAt)}
-                  </span>
-                ) : null}
-                {record?.sourceKind ? (
-                  <span className="font-mono text-[10px] text-muted-foreground/70" title={record.sourceKind}>
-                    {record.sourceKind}
-                  </span>
-                ) : null}
-              </div>
+              {record?.bodyAr ? (
+                <p className="mt-2.5 rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                  {record.bodyAr}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
 
-        <DialogBody className={cn(dialogShellBodyClass, 'space-y-4')}>
+        <DialogBody className={cn(dialogShellBodyClass, 'min-w-0 space-y-3 px-5 py-4')}>
           {loading ? (
             <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
               جارٍ التحميل…
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 text-center">
-                  <p className="text-[10px] font-medium text-muted-foreground">المستلمون</p>
-                  <p className="mt-0.5 text-lg font-bold tabular-nums">{recipients.length}</p>
-                </div>
-                <div className="rounded-xl border border-success/20 bg-success/5 px-3 py-2.5 text-center">
-                  <p className="text-[10px] font-medium text-success/80">مقروء</p>
-                  <p className="mt-0.5 text-lg font-bold tabular-nums text-success">{readCount}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 text-center">
-                  <p className="text-[10px] font-medium text-muted-foreground">لم يُقرأ</p>
-                  <p className="mt-0.5 text-lg font-bold tabular-nums">{unreadCount}</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Users className="h-4 w-4 text-muted-foreground" />
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <Users className="h-3.5 w-3.5" />
                     <span>المستلمون</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      ({filteredRecipients.length})
+                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">
+                      {filteredRecipients.length}
                     </span>
                   </div>
 
-                  <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+                  <div className="inline-flex items-center rounded-md border border-border/60 bg-muted/20 p-0.5">
                     {(['all', 'read', 'unread'] as ReadFilter[]).map((f) => (
                       <button
                         key={f}
                         type="button"
                         onClick={() => setReadFilter(f)}
                         className={cn(
-                          'inline-flex h-7 items-center rounded-md px-3 text-[11px] font-medium transition-colors',
+                          'inline-flex h-6 items-center rounded px-2.5 text-[10px] font-medium transition-colors',
                           readFilter === f
-                            ? 'bg-background text-foreground ring-1 ring-border/60'
+                            ? 'bg-background text-foreground shadow-sm'
                             : 'text-muted-foreground hover:text-foreground',
                         )}
                       >
@@ -775,14 +830,16 @@ function NotificationDetailDialog({
                   <div className="space-y-2">
                     <DataTable
                       variant="directory"
-                      alwaysShowTable
                       loading={false}
                       columns={recipientColumns}
                       data={pagedRecipients}
                       keyExtractor={(r) => r.recipientId}
                       emptyText="لا يوجد مستلمون"
-                      className="rounded-none border-0 bg-transparent shadow-none"
+                      className="rounded-xl border border-border/60 bg-card shadow-none md:rounded-none md:border-0 md:bg-transparent"
                       tableClassName="w-full"
+                      mobileCard={(r) => (
+                        <RecipientMobileCard recipient={r} showAcknowledgment={showAcknowledgment} />
+                      )}
                     />
                     {filteredTotal > pageSize ? (
                       <AppPagination

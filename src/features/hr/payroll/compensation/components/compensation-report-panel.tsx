@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import {
-  ArrowRight, FileSpreadsheet, FileText, Loader2,
+  ArrowRight, Loader2,
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -53,13 +53,7 @@ import { PayrollPeriodReviewBar } from '@/features/hr/payroll/compensation/compo
 import { CompleteReviewPayslipsDialog } from '@/features/hr/payroll/compensation/components/complete-review-payslips-dialog';
 import { sendPayslipGeneratedNotification } from '@/features/hr/payroll/compensation/services/payslip-notification.service';
 import { payslipsApi } from '@/features/hr/payroll/lib/api/payslips';
-import { CompensationPrintHtml } from '@/features/hr/payroll/compensation/components/compensation-print-html';
-import {
-  buildCompensationExportLines,
-  buildCompensationPrintPayload,
-  downloadCompensationExcel,
-  downloadCompensationPdf,
-} from '@/features/hr/payroll/lib/compensation-period-export';
+import { CompensationPeriodExportActions } from '@/features/hr/payroll/compensation/components/compensation-period-export-actions';
 import { CompensationCellDetailDialog } from '@/features/hr/payroll/compensation/components/compensation-cell-detail-dialog';
 import {
   type CompensationCellDetailContext,
@@ -217,10 +211,6 @@ export function CompensationReportPanel({
   const [reviewAdvancing, setReviewAdvancing] = React.useState(false);
   const [reviewReverting, setReviewReverting] = React.useState(false);
   const [thirdReviewConfirmOpen, setThirdReviewConfirmOpen] = React.useState(false);
-  const [excelExporting, setExcelExporting] = React.useState(false);
-  const [pdfExporting, setPdfExporting] = React.useState(false);
-  const [pdfPrintMounted, setPdfPrintMounted] = React.useState(false);
-  const payrollPrintRef = React.useRef<HTMLDivElement>(null);
   const [togglingCol, setTogglingCol] = React.useState<keyof CompensationColumnVisibility | null>(null);
   const [adjustDialog, setAdjustDialog] = React.useState<IncrementAdjustDialogContext | null>(null);
   const [adjustSubmitting, setAdjustSubmitting] = React.useState(false);
@@ -332,18 +322,6 @@ export function CompensationReportPanel({
     }
   }, [adjustDialog, companyId, periodId, invalidatePayrollSummary]);
 
-  const exportLines = React.useMemo(
-    () => buildCompensationExportLines(previews),
-    [previews],
-  );
-
-  const payrollPrintData = React.useMemo(
-    () => (period && exportLines.length > 0
-      ? buildCompensationPrintPayload(period, exportLines, cols, footerTotals)
-      : null),
-    [period, exportLines, cols, footerTotals],
-  );
-
   const fmt = (n: number, f = 2) => formatLatinNumber(n, f);
   const backHref = hrPayrollRoutes.payrollPeriods;
 
@@ -398,48 +376,6 @@ export function CompensationReportPanel({
 
   const filterActive = Boolean(filterKey);
   const isReviewLocked = period.isReviewCompleted;
-
-  const handleDownloadExcel = async () => {
-    if (!hasLines || exportLines.length === 0) {
-      toast.error('لا توجد بيانات للتصدير.');
-      return;
-    }
-    setExcelExporting(true);
-    try {
-      await downloadCompensationExcel(period, exportLines, cols, footerTotals);
-      toast.success('تم تحميل ملف Excel.');
-    } catch (err) {
-      toast.error('حدث خطأ أثناء إنشاء ملف Excel.');
-    } finally {
-      setExcelExporting(false);
-    }
-  };
-
-  const handleDownloadPdf = async () => {
-    if (!payrollPrintData || !period) {
-      toast.error('لا توجد بيانات للتصدير.');
-      return;
-    }
-    setPdfExporting(true);
-    setPdfPrintMounted(true);
-    try {
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
-      const el = payrollPrintRef.current;
-      if (!el) {
-        toast.error('تعذر العثور على منطقة الطباعة.');
-        return;
-      }
-      await downloadCompensationPdf(el, period.code);
-      toast.success('تم تحميل ملف PDF.');
-    } catch (err) {
-      toast.error('حدث خطأ أثناء تصدير PDF.');
-    } finally {
-      setPdfExporting(false);
-      setPdfPrintMounted(false);
-    }
-  };
 
   const handleAdvanceReview = async () => {
     if (!period || !hasLines) {
@@ -667,49 +603,11 @@ export function CompensationReportPanel({
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
             {backBtn}
             {hasLines && previews.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 lg:flex lg:items-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-10 gap-1.5 text-xs lg:h-9"
-                  disabled={excelExporting || pdfExporting}
-                  onClick={() => void handleDownloadExcel()}
-                >
-                  {excelExporting
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <FileSpreadsheet className="h-3.5 w-3.5" />}
-                  تحميل Excel
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-10 gap-1.5 text-xs lg:h-9"
-                  disabled={excelExporting || pdfExporting}
-                  onClick={() => void handleDownloadPdf()}
-                >
-                  {pdfExporting
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <FileText className="h-3.5 w-3.5" />}
-                  تحميل PDF
-                </Button>
-              </div>
+              <CompensationPeriodExportActions
+                periodId={periodId}
+                employeeIdsFilter={employeeIdsFilter}
+              />
             )}
-          </div>
-        )}
-
-        {pdfPrintMounted && payrollPrintData && (
-          <div
-            aria-hidden
-            className="pointer-events-none fixed start-0 top-0 -z-[9999] size-0 overflow-hidden"
-          >
-            <CompensationPrintHtml
-              ref={payrollPrintRef}
-              monthNameAr={payrollPrintData.monthNameAr}
-              branchNameAr={payrollPrintData.branchNameAr}
-              table={payrollPrintData.table}
-            />
           </div>
         )}
 

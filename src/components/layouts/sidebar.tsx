@@ -23,7 +23,7 @@ import { hrPayrollNavGroups } from '@/features/hr/payroll/constants/nav';
 import { hrContractsOnlyNavGroups } from '@/features/hr/contracts/constants/nav';
 import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
-import { hrOrganizationStructureNavItems } from '@/features/hr/organization/constants/nav';
+import { hrOrganizationRoutes } from '@/features/hr/organization/constants/routes';
 import { systemPermissionsNavGroups } from '@/features/system/permissions/constants/nav';
 import {
   systemOrganizationSettingsNavItems,
@@ -44,14 +44,7 @@ type MobileNavItem = {
 
 const mobileNav: MobileNavItem[] = [
   { key: 'apps', label: 'التطبيقات', href: '/', icon: LayoutGrid },
-  {
-    key: 'employees', label: 'الهيكل الإداري', href: '/hr/organization/employees', icon: Users,
-    children: hrOrganizationStructureNavItems.map((item) => ({
-      label: item.labelAr,
-      href: item.href,
-      icon: item.icon,
-    })),
-  },
+  { key: 'employees', label: 'سجل الموظفين', href: hrOrganizationRoutes.employees, icon: Users },
   {
     key: 'recruitment', label: 'التوظيف', icon: UserPlus,
     children: [

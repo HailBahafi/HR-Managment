@@ -28,10 +28,8 @@ import { hrPayrollNavGroups, isHrPayrollNavPath } from '@/features/hr/payroll/co
 import { hrContractsOnlyNavGroups, isHrContractsOnlyNavPath } from '@/features/hr/contracts/constants/nav';
 import { hrPayrollSectionHref } from '@/features/hr/payroll/constants/routes';
 import { hrContractsSectionHref } from '@/features/hr/contracts/constants/routes';
-import {
-  hrOrganizationStructureNavItems,
-  isHrOrganizationNavPath,
-} from '@/features/hr/organization/constants/nav';
+import { isHrOrganizationNavPath } from '@/features/hr/organization/constants/nav';
+import { hrOrganizationRoutes } from '@/features/hr/organization/constants/routes';
 import { systemPermissionsNavGroups, isSystemPermissionsNavPath } from '@/features/system/permissions/constants/nav';
 import {
   systemOrganizationSettingsNavItems,
@@ -86,17 +84,9 @@ function mapContractsOnlyNavGroups(groups: typeof hrContractsOnlyNavGroups): Nav
 
 export const navConfig: NavItem[] = [
   {
-    key: 'employees', label: 'الهيكل الإداري', icon: Users,
+    key: 'employees', label: 'سجل الموظفين', icon: Users,
+    href: hrOrganizationRoutes.employees,
     isActive: isHrOrganizationNavPath,
-    groups: [
-      {
-        items: hrOrganizationStructureNavItems.map((item) => ({
-          label: item.labelAr,
-          href: item.href,
-          icon: item.icon,
-        })),
-      },
-    ],
   },
   {
     key: 'recruitment', label: 'التوظيف', icon: UserPlus,
@@ -493,22 +483,22 @@ export function Topbar() {
 
           {inHrApp && <NotificationBellPopover />}
 
-          {inAppShell && !onLauncher && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 shrink-0 rounded-xl border-primary/25 bg-background/80 shadow-xs"
-              asChild
-            >
-              <Link href="/" aria-label="التطبيقات" title="التطبيقات">
-                <LayoutGrid className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="icon"
+            className={cn(
+              'h-8 w-8 shrink-0 rounded-xl border-primary/25 bg-background/80 shadow-xs',
+              onLauncher && 'border-primary/40 bg-primary/10 text-primary',
+            )}
+            asChild
+          >
+            <Link href="/" aria-label="التطبيقات" title="التطبيقات">
+              <LayoutGrid className="h-4 w-4" />
+            </Link>
+          </Button>
 
-          {inAppShell && <div className="mx-1 h-5 w-px bg-border/70" />}
+          <div className="mx-1 h-5 w-px bg-border/70" />
 
-          {/* User menu */}
           <UserMenuDropdown />
 
           {inAppShell && (
@@ -519,38 +509,40 @@ export function Topbar() {
         </div>
       </div>
 
-      {/* ── Row 2: page title + page-level actions ── */}
-      <div
-        className={cn(
-          'flex flex-row flex-nowrap items-center justify-between gap-2 border-t px-3 py-2 sm:gap-3 sm:px-5 sm:py-2.5',
-          'border-border/25 bg-white/55 backdrop-blur-sm dark:border-border/30 dark:bg-muted/15',
-        )}
-      >
-        {meta.titleAr ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:items-start sm:gap-2.5">
-            {PageIcon && <PageIcon className="h-4 w-4 shrink-0 text-primary sm:mt-0.5" />}
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-sm font-bold leading-tight tracking-tight text-foreground sm:text-[17px]">
-                {meta.titleAr}
-              </h1>
-              {meta.descriptionAr && (
-                <p className="mt-0.5 hidden truncate text-[11px] leading-snug text-muted-foreground sm:block sm:text-xs">
-                  {meta.descriptionAr}
-                </p>
-              )}
+      {/* ── Row 2: page title + page-level actions (hidden on apps launcher) ── */}
+      {!onLauncher && (
+        <div
+          className={cn(
+            'flex flex-row flex-nowrap items-center justify-between gap-2 border-t px-3 py-2 sm:gap-3 sm:px-5 sm:py-2.5',
+            'border-border/25 bg-white/55 backdrop-blur-sm dark:border-border/30 dark:bg-muted/15',
+          )}
+        >
+          {meta.titleAr ? (
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:items-start sm:gap-2.5">
+              {PageIcon && <PageIcon className="h-4 w-4 shrink-0 text-primary sm:mt-0.5" />}
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-sm font-bold leading-tight tracking-tight text-foreground sm:text-[17px]">
+                  {meta.titleAr}
+                </h1>
+                {meta.descriptionAr && (
+                  <p className="mt-0.5 hidden truncate text-[11px] leading-snug text-muted-foreground sm:block sm:text-xs">
+                    {meta.descriptionAr}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            <div className="h-4 w-4 shrink-0 rounded bg-muted" />
-            <div className="h-3 w-40 animate-pulse rounded-full bg-muted" />
-          </div>
-        )}
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <div className="h-4 w-4 shrink-0 rounded bg-muted" />
+              <div className="h-3 w-40 animate-pulse rounded-full bg-muted" />
+            </div>
+          )}
 
-        {headerActionsSlot ? (
-          <PageHeaderActionsRow>{headerActionsSlot}</PageHeaderActionsRow>
-        ) : null}
-      </div>
+          {headerActionsSlot ? (
+            <PageHeaderActionsRow>{headerActionsSlot}</PageHeaderActionsRow>
+          ) : null}
+        </div>
+      )}
     </header>
   );
 }
