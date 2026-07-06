@@ -113,6 +113,22 @@ export type DecideViolationRecordDto = {
   decidedBy?: string | null;
 };
 
+export type ViolationRecordByPeriodQuery = {
+  employeeId: string;
+  companyId: string;
+  startDate: string;
+  endDate: string;
+};
+
+export type ViolationRecordByPeriodResult = {
+  companyId: string;
+  employeeId: string;
+  startDate: string;
+  endDate: string;
+  totalRecords: number;
+  items: ViolationRecordResponseDto[];
+};
+
 export type ViolationRecordListQuery = {
   page?: number;
   limit?: number;

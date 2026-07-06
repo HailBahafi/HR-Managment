@@ -88,6 +88,22 @@ export type DaySummaryListQuery = {
   isManualOverride?: boolean;
 };
 
+export type DaySummaryByPeriodQuery = {
+  employeeId: string;
+  companyId: string;
+  startDate: string;
+  endDate: string;
+};
+
+export type DaySummaryByPeriodResult = {
+  companyId: string;
+  employeeId: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  items: DaySummaryResponseDto[];
+};
+
 export type UpdateDaySummaryDto = {
   status?: AttendanceDayStatus;
   lateMinutes?: number;

@@ -40,7 +40,7 @@ import {
   formatMinutesAr,
 } from '@/features/hr/attendance/components/attendance-punch-pair';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
-import { AttendanceCorrectionRequestDialog } from '@/features/hr/requests/attendance-corrections/components/attendance-correction-request-dialog';
+import { DailyShiftCorrectionDialog } from '@/features/hr/attendance/daily/components/daily-shift-correction-dialog';
 
 export const WEEKDAY_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -719,18 +719,20 @@ export function DailyDayDetailDialog({
       ) : null}
 
       {companyId ? (
-        <AttendanceCorrectionRequestDialog
+        <DailyShiftCorrectionDialog
           open={correctionOpen}
           onOpenChange={(open) => {
             setCorrectionOpen(open);
             if (!open) setCorrectionPeriodIndex(undefined);
           }}
           companyId={companyId}
-          employees={[{ id: summary.employeeId, nameAr: summary.employeeName }]}
-          initialEmployeeId={summary.employeeId}
-          initialWorkDate={summary.date}
-          initialAttendanceDaySummaryId={summary.id}
-          initialPeriodIndex={correctionPeriodIndex}
+          employeeId={summary.employeeId}
+          employeeName={summary.employeeName}
+          workDate={summary.date}
+          periodIndex={correctionPeriodIndex}
+          onSuccess={() => {
+            void loadBreakdown();
+          }}
         />
       ) : null}
     </>

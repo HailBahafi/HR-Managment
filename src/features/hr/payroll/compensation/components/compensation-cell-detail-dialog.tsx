@@ -27,7 +27,6 @@ import {
   type CompensationCellDetailResult,
 } from '@/features/hr/payroll/compensation/lib/compensation-cell-detail';
 import { fetchCompensationCellDetail } from '@/features/hr/payroll/compensation/services/fetch-compensation-cell-detail';
-import { formatShiftRangeAr } from '@/features/hr/requests/attendance-corrections/lib/correction-period-time';
 import type { ViolationRecordResponseDto } from '@/features/hr/discipline/types/api/violation-records';
 import type { AdvanceKindDto, AdvanceStatusDto } from '@/features/hr/contracts/lib/api/employee-advances';
 
@@ -201,26 +200,16 @@ function AbsenceDetail({
     return <EmptyDetail message="لا توجد أيام غياب لهذا الموظف في هذه الفترة." />;
   }
   return (
-    <DetailTable headers={['التاريخ', 'الوردية', 'النقص', 'الحالة']}>
+    <DetailTable headers={['التاريخ', 'النقص', 'الحالة']}>
       {result.days.map((day) => {
-        const firstPeriod = day.periods[0]?.expected;
-        const shiftLabel = day.shiftTemplate?.nameAr ?? '—';
-        const shiftRange = firstPeriod
-          ? formatShiftRangeAr(firstPeriod.startTime, firstPeriod.endTime)
-          : null;
+        const shortage = day.shortageMinutes ?? day.dailyTotals?.minutes.shortage ?? 0;
         return (
-          <tr key={day.workDate} className="border-b border-border/40 last:border-0 even:bg-muted/10">
+          <tr key={day.id} className="border-b border-border/40 last:border-0 even:bg-muted/10">
             <td className="px-3 py-2 text-center">
               <TableDateCell value={day.workDate} mode="date" />
             </td>
-            <td className="px-3 py-2 text-right text-muted-foreground">
-              <span className="font-medium text-foreground">{shiftLabel}</span>
-              {shiftRange ? (
-                <span className="mt-0.5 block font-mono text-[10px] tabular-nums">{shiftRange}</span>
-              ) : null}
-            </td>
             <td className="px-3 py-2 text-center font-mono tabular-nums text-warning">
-              {day.totals.shortageMinutes > 0 ? `${day.totals.shortageMinutes} د` : '—'}
+              {shortage > 0 ? `${shortage} د` : '—'}
             </td>
             <td className="px-3 py-2 text-center text-warning">غياب</td>
           </tr>
@@ -239,30 +228,17 @@ function LatenessDetail({
     return <EmptyDetail message="لا يوجد تأخير مسجّل لهذا الموظف في هذه الفترة." />;
   }
   return (
-    <DetailTable headers={['التاريخ', 'الوردية', 'دقائق التأخير']}>
-      {result.days.map((day) => {
-        const firstPeriod = day.periods[0]?.expected;
-        const shiftLabel = day.shiftTemplate?.nameAr ?? '—';
-        const shiftRange = firstPeriod
-          ? formatShiftRangeAr(firstPeriod.startTime, firstPeriod.endTime)
-          : null;
-        return (
-          <tr key={day.workDate} className="border-b border-border/40 last:border-0 even:bg-muted/10">
-            <td className="px-3 py-2 text-center">
-              <TableDateCell value={day.workDate} mode="date" />
-            </td>
-            <td className="px-3 py-2 text-right text-muted-foreground">
-              <span className="font-medium text-foreground">{shiftLabel}</span>
-              {shiftRange ? (
-                <span className="mt-0.5 block font-mono text-[10px] tabular-nums">{shiftRange}</span>
-              ) : null}
-            </td>
-            <td className="px-3 py-2 text-center font-mono tabular-nums text-destructive">
-              {day.totals.lateMinutes}
-            </td>
-          </tr>
-        );
-      })}
+    <DetailTable headers={['التاريخ', 'دقائق التأخير']}>
+      {result.days.map((day) => (
+        <tr key={day.id} className="border-b border-border/40 last:border-0 even:bg-muted/10">
+          <td className="px-3 py-2 text-center">
+            <TableDateCell value={day.workDate} mode="date" />
+          </td>
+          <td className="px-3 py-2 text-center font-mono tabular-nums text-destructive">
+            {day.lateMinutes}
+          </td>
+        </tr>
+      ))}
     </DetailTable>
   );
 }

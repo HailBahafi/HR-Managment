@@ -146,23 +146,12 @@ const COMPENSATION_TABLE_HEADER_CELL =
 const COMPENSATION_TABLE_HEADER_ROW =
   'border-b border-border bg-muted text-muted-foreground compensation-table-header-row-shadow';
 
-function CompensationTableShell({
-  embedded,
-  children,
-}: {
-  embedded: boolean;
-  children: React.ReactNode;
-}) {
-  if (embedded) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border shadow-elevated animate-fade-in">
-        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
-      </div>
-    );
-  }
-
-  // Route page: no overflow wrapper here — it would break `position: sticky` on thead.
-  // Vertical scroll stays on the app shell; thead sticks once it reaches the top.
+// No overflow wrapper here on purpose: scrolling (both axes) is owned by the
+// single ancestor set up in the render body below, so `position: sticky` on
+// thead binds to that one real scroll container instead of a second,
+// non-scrolling scroll-container ancestor (which would trap the sticky
+// calculation and stop the header from catching at the top).
+function CompensationTableShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-border shadow-elevated animate-fade-in">
       {children}
@@ -593,103 +582,113 @@ export function CompensationReportPanel({
       {!embedded && <SetPageTitle titleAr={`تقرير المستحقات — ${period.nameAr || period.code}`} iconName="CalendarRange" />}
 
       <div className={cn(
-        'transition-opacity duration-500',
-        embedded ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'space-y-5',
+        'flex min-h-0 flex-1 flex-col transition-opacity duration-500',
         mounted ? 'opacity-100' : 'opacity-0',
       )}>
 
-        {/* ══ BACK BUTTON ══ */}
-        {!embedded && (
-          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
-            {backBtn}
-            {hasLines && previews.length > 0 && (
-              <CompensationPeriodExportActions
-                periodId={periodId}
-                employeeIdsFilter={employeeIdsFilter}
+        {/*
+          Single scroll container for chrome + table. Chrome scrolls away
+          normally as the user scrolls down; once the table's thead reaches
+          the top of this box it sticks there (position: sticky binds to the
+          nearest ancestor scroll container — keeping chrome and table in the
+          SAME container, instead of a separate fixed area above a boxed
+          table, is what makes the header "catch" instead of the whole table
+          living in its own mini scroll pane).
+        */}
+        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="space-y-5">
+          {/* ══ BACK BUTTON ══ */}
+          {!embedded && (
+            <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+              {backBtn}
+              {hasLines && previews.length > 0 && (
+                <CompensationPeriodExportActions
+                  periodId={periodId}
+                  employeeIdsFilter={employeeIdsFilter}
+                />
+              )}
+            </div>
+          )}
+
+          {!embedded && (
+            <PayrollPeriodReviewBar
+              period={period}
+              hasLines={hasLines}
+              advancing={reviewAdvancing}
+              reverting={reviewReverting}
+              onAdvance={handleAdvanceReviewClick}
+              onRevert={() => void handleRevertReview()}
+            />
+          )}
+
+          <CompleteReviewPayslipsDialog
+            open={thirdReviewConfirmOpen}
+            onOpenChange={setThirdReviewConfirmOpen}
+            periodLabel={`${period.nameAr} (${period.code})`}
+            employeeCount={payrollSummary?.employeesCount ?? previews.length}
+            busy={reviewAdvancing}
+            onConfirm={() => void handleConfirmThirdReviewAndGenerate()}
+          />
+
+          {!embedded && (
+            <CompensationCellDetailDialog
+              context={cellDetailContext}
+              open={cellDetailContext !== null}
+              onOpenChange={(open) => { if (!open) setCellDetailContext(null); }}
+            />
+          )}
+
+          {/* ══ COLUMN TOGGLES + PUSH FROM ATTENDANCE ══ */}
+          {!embedded && hasLines && (
+            <>
+              <CompensationDataToolbar
+                cols={cols}
+                isReviewLocked={isReviewLocked}
+                togglingCol={togglingCol}
+                pushing={pushing}
+                onToggleCol={toggleCol}
+                onPushAttendance={() => setPushDialogOpen(true)}
+                onPushAdvances={() => setAdvancesPushDialogOpen(true)}
+                onPushViolations={() => setViolationsPushDialogOpen(true)}
               />
-            )}
-          </div>
-        )}
 
-        {!embedded && (
-          <PayrollPeriodReviewBar
-            period={period}
-            hasLines={hasLines}
-            advancing={reviewAdvancing}
-            reverting={reviewReverting}
-            onAdvance={handleAdvanceReviewClick}
-            onRevert={() => void handleRevertReview()}
-          />
-        )}
+              <PushFromAttendanceDialog
+                open={pushDialogOpen}
+                onOpenChange={setPushDialogOpen}
+                pushing={pushing}
+                disabled={isReviewLocked}
+                onConfirm={options => void handlePushFromAttendance(options)}
+              />
 
-        <CompleteReviewPayslipsDialog
-          open={thirdReviewConfirmOpen}
-          onOpenChange={setThirdReviewConfirmOpen}
-          periodLabel={`${period.nameAr} (${period.code})`}
-          employeeCount={payrollSummary?.employeesCount ?? previews.length}
-          busy={reviewAdvancing}
-          onConfirm={() => void handleConfirmThirdReviewAndGenerate()}
-        />
+              <PushFromAdvancesDialog
+                open={advancesPushDialogOpen}
+                onOpenChange={setAdvancesPushDialogOpen}
+                pushing={pushing}
+                disabled={isReviewLocked}
+                employees={pushDialogEmployees}
+                defaultEmployeeIds={employeeIdsFilter}
+                onConfirm={options => void handlePushFromAdvances(options)}
+              />
 
-        {!embedded && (
-          <CompensationCellDetailDialog
-            context={cellDetailContext}
-            open={cellDetailContext !== null}
-            onOpenChange={(open) => { if (!open) setCellDetailContext(null); }}
-          />
-        )}
+              <PushFromViolationsDialog
+                open={violationsPushDialogOpen}
+                onOpenChange={setViolationsPushDialogOpen}
+                pushing={pushing}
+                disabled={isReviewLocked}
+                employees={pushDialogEmployees}
+                defaultEmployeeIds={employeeIdsFilter}
+                onConfirm={options => void handlePushFromViolations(options)}
+              />
 
-        {/* ══ COLUMN TOGGLES + PUSH FROM ATTENDANCE ══ */}
-        {!embedded && hasLines && (
-          <>
-            <CompensationDataToolbar
-              cols={cols}
-              isReviewLocked={isReviewLocked}
-              togglingCol={togglingCol}
-              pushing={pushing}
-              onToggleCol={toggleCol}
-              onPushAttendance={() => setPushDialogOpen(true)}
-              onPushAdvances={() => setAdvancesPushDialogOpen(true)}
-              onPushViolations={() => setViolationsPushDialogOpen(true)}
-            />
-
-            <PushFromAttendanceDialog
-              open={pushDialogOpen}
-              onOpenChange={setPushDialogOpen}
-              pushing={pushing}
-              disabled={isReviewLocked}
-              onConfirm={options => void handlePushFromAttendance(options)}
-            />
-
-            <PushFromAdvancesDialog
-              open={advancesPushDialogOpen}
-              onOpenChange={setAdvancesPushDialogOpen}
-              pushing={pushing}
-              disabled={isReviewLocked}
-              employees={pushDialogEmployees}
-              defaultEmployeeIds={employeeIdsFilter}
-              onConfirm={options => void handlePushFromAdvances(options)}
-            />
-
-            <PushFromViolationsDialog
-              open={violationsPushDialogOpen}
-              onOpenChange={setViolationsPushDialogOpen}
-              pushing={pushing}
-              disabled={isReviewLocked}
-              employees={pushDialogEmployees}
-              defaultEmployeeIds={employeeIdsFilter}
-              onConfirm={options => void handlePushFromViolations(options)}
-            />
-
-            <CompensationIncrementAdjustDialog
-              open={adjustDialog !== null}
-              context={adjustDialog}
-              submitting={adjustSubmitting}
-              onConfirm={(payload) => void handleIncrementAdjustConfirm(payload)}
-              onCancel={() => { if (!adjustSubmitting) setAdjustDialog(null); }}
-            />
-          </>
-        )}
+              <CompensationIncrementAdjustDialog
+                open={adjustDialog !== null}
+                context={adjustDialog}
+                submitting={adjustSubmitting}
+                onConfirm={(payload) => void handleIncrementAdjustConfirm(payload)}
+                onCancel={() => { if (!adjustSubmitting) setAdjustDialog(null); }}
+              />
+            </>
+          )}
 
         {/* ══ TABLE / EMPTY STATE ══ */}
         {!hasLines ? (
@@ -715,7 +714,7 @@ export function CompensationReportPanel({
             </p>
           </div>
         ) : (
-          <CompensationTableShell embedded={embedded}>
+          <CompensationTableShell>
                 <table className={cn('w-full border-separate border-spacing-0 text-[11.5px]', embedded ? 'min-w-[1080px]' : 'min-w-[860px]')}>
                 <thead>
                   <tr className={COMPENSATION_TABLE_HEADER_ROW}>
@@ -882,6 +881,8 @@ export function CompensationReportPanel({
                 </table>
           </CompensationTableShell>
         )}
+        </div>
+        </div>
 
       </div>
     </>

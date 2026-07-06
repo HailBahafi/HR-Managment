@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
-  BarChart2, Bell, Loader2, Lock, Receipt, Trash2, Undo2,
+  BarChart2, Bell, Loader2, Lock, Receipt,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import { DirectoryPagedViews, useServerDirectoryPagination } from '@/components/ui/paged-list';
 import { fetchAllPaginatedItems } from '@/features/hr/lib/api/client';
 import { TableRowActions } from '@/components/ui/table-cells';
-import { EmptyState, ConfirmationModal } from '@/components/ui/shared-dialogs';
+import { EmptyState } from '@/components/ui/shared-dialogs';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import {
@@ -190,7 +190,6 @@ export function PayrollSalaryApprovalClient() {
 
   const [finalizeOpen, setFinalizeOpen] = React.useState(false);
   const [replaceExisting, setReplaceExisting] = React.useState(false);
-  const [deleteId, setDeleteId] = React.useState<string | null>(null);
   const [detailId, setDetailId] = React.useState<string | null>(null);
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [notificationOpen, setNotificationOpen] = React.useState(false);
@@ -394,21 +393,6 @@ export function PayrollSalaryApprovalClient() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    setBusy(deleteId);
-    try {
-      await payslipsApi.delete(deleteId);
-      setDeleteId(null);
-      await loadPayslips();
-      toast.success('تم حذف القسيمة.');
-    } catch (err) {
-      handleApiError(err, 'payslips.delete');
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const openDetail = (id: string) => {
     setDetailId(id);
     setDetailOpen(true);
@@ -481,7 +465,6 @@ export function PayrollSalaryApprovalClient() {
       headerClassName: 'text-center',
       render: (row) => {
         const rowBusy = busy === row.id || employeeDecision.busyId === row.id;
-        const canDelete = row.status !== 'paid' && period && period.status !== 'closed' && period.status !== 'cancelled';
         const acceptanceActions = employeeDecision.canDecide(row)
           ? [
               { label: 'موافقة', variant: 'success' as const, onClick: () => employeeDecision.accept(row), disabled: rowBusy },
@@ -493,26 +476,12 @@ export function PayrollSalaryApprovalClient() {
           : row.status === 'approved'
             ? [{ label: 'دفع', variant: 'primary' as const, onClick: () => void updateStatus(row.id, 'paid'), disabled: rowBusy }]
             : undefined;
-        const menuItems = [
-          ...(row.status === 'approved'
-            ? [{ label: 'تراجع', onClick: () => { if (!rowBusy) void updateStatus(row.id, 'draft'); }, icon: <Undo2 className="h-3.5 w-3.5" /> }]
-            : []),
-          ...(canDelete
-            ? [{
-              label: 'حذف',
-              onClick: () => { if (!rowBusy) setDeleteId(row.id); },
-              icon: <Trash2 className="h-3.5 w-3.5" />,
-              destructive: true,
-              separator: row.status === 'approved',
-            }]
-            : []),
-        ];
         const mergedPrimary = [...acceptanceActions, ...(primaryActions ?? [])];
-        if (!mergedPrimary.length && !menuItems.length) return null;
-        return <TableRowActions primaryActions={mergedPrimary} menuItems={menuItems} />;
+        if (!mergedPrimary.length) return null;
+        return <TableRowActions primaryActions={mergedPrimary} />;
       },
     },
-  ], [busy, period, employeeDecision]);
+  ], [busy, employeeDecision]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -644,14 +613,6 @@ export function PayrollSalaryApprovalClient() {
         </DialogContent>
       </Dialog>
 
-      <ConfirmationModal
-        open={deleteId !== null}
-        onOpenChange={v => { if (!v) setDeleteId(null); }}
-        title="حذف القسيمة"
-        description="هل أنت متأكد من حذف هذه القسيمة؟ لا يمكن التراجع."
-        confirmLabel="حذف"
-        onConfirm={() => void handleDelete()}
-      />
 
       <PayslipDetailDialog
         payslipId={detailId}

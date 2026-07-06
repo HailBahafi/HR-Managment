@@ -1,7 +1,7 @@
 import { apiRequest } from '@/features/hr/lib/api/client';
 import type { ApprovalMode } from '@/features/hr/discipline/lib/api/discipline-approval-templates';
-import type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationApproverStateEntry, ViolationApproverStatesSnapshot, ViolationTypeSummaryDto, ViolationInvestigationDto, ViolationRecordResponseDto, ViolationRecordListItemDto, ViolationRecordListResponseDto, UpdateViolationRecordDto, DecideViolationRecordDto, ViolationRecordListQuery, CreateViolationRecordDto, PushViolationsToPayrollDto, PushViolationsToPayrollResponseDto } from '@/features/hr/discipline/types/api/violation-records';
-export type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationApproverStateEntry, ViolationApproverStatesSnapshot, ViolationTypeSummaryDto, ViolationInvestigationDto, ViolationRecordResponseDto, ViolationRecordListItemDto, ViolationRecordListResponseDto, UpdateViolationRecordDto, DecideViolationRecordDto, ViolationRecordListQuery, CreateViolationRecordDto, PushViolationsToPayrollDto, PushViolationsToPayrollResponseDto } from '@/features/hr/discipline/types/api/violation-records';
+import type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationApproverStateEntry, ViolationApproverStatesSnapshot, ViolationTypeSummaryDto, ViolationInvestigationDto, ViolationRecordResponseDto, ViolationRecordListItemDto, ViolationRecordListResponseDto, UpdateViolationRecordDto, DecideViolationRecordDto, ViolationRecordListQuery, ViolationRecordByPeriodQuery, ViolationRecordByPeriodResult, CreateViolationRecordDto, PushViolationsToPayrollDto, PushViolationsToPayrollResponseDto } from '@/features/hr/discipline/types/api/violation-records';
+export type { ViolationRecordStatus, ViolationApproverEntryStatus, ViolationApproverStateEntry, ViolationApproverStatesSnapshot, ViolationTypeSummaryDto, ViolationInvestigationDto, ViolationRecordResponseDto, ViolationRecordListItemDto, ViolationRecordListResponseDto, UpdateViolationRecordDto, DecideViolationRecordDto, ViolationRecordListQuery, ViolationRecordByPeriodQuery, ViolationRecordByPeriodResult, CreateViolationRecordDto, PushViolationsToPayrollDto, PushViolationsToPayrollResponseDto } from '@/features/hr/discipline/types/api/violation-records';
 
 
 
@@ -37,6 +37,10 @@ export const violationRecordsApi = {
   },
   remove(id: string) {
     return apiRequest<void>(`/discipline/violation-records/${id}`, { method: 'DELETE' });
+  },
+
+  byPeriod(query: ViolationRecordByPeriodQuery) {
+    return apiRequest<ViolationRecordByPeriodResult>('/discipline/violation-records/by-period', { query });
   },
 
   pushToPayroll: (body: PushViolationsToPayrollDto) =>

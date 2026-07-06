@@ -1,45 +1,14 @@
 import { employeeAdvancesApi } from '@/features/hr/contracts/lib/api/employee-advances';
-import { attendanceEventsApi } from '@/features/hr/attendance/lib/api/attendance-events';
-import { enumerateDates } from '@/features/hr/attendance/lib/utils';
 import { attendanceDaySummariesApi } from '@/features/hr/attendance/lib/api/attendance-day-summaries';
-import { defaultTimezoneOffsetMinutes } from '@/features/hr/requests/attendance-corrections/lib/correction-period-time';
 import { violationRecordsApi } from '@/features/hr/discipline/lib/api/violation-records';
 import {
   monthlyInputsApi,
   type MonthlyInputKindDto,
 } from '@/features/hr/payroll/lib/api/monthly-inputs';
-import type { DailyBreakdownResponseDto } from '@/features/hr/attendance/types/api/attendance-events';
 import type {
   CompensationCellDetailContext,
   CompensationCellDetailResult,
 } from '@/features/hr/payroll/compensation/lib/compensation-cell-detail';
-
-function isScheduledWorkDay(day: DailyBreakdownResponseDto): boolean {
-  return !day.isRestDay && !day.isUnscheduled;
-}
-
-async function listPeriodDailyBreakdowns(
-  context: CompensationCellDetailContext,
-): Promise<DailyBreakdownResponseDto[]> {
-  const dates = enumerateDates(context.periodStartDate, context.periodEndDate);
-  const timezoneOffsetMinutes = defaultTimezoneOffsetMinutes();
-
-  const results = await Promise.allSettled(
-    dates.map((workDate) =>
-      attendanceEventsApi.getDailyBreakdown({
-        companyId: context.companyId,
-        employeeId: context.row.employeeId,
-        workDate,
-        timezoneOffsetMinutes,
-      }),
-    ),
-  );
-
-  return results
-    .filter((r): r is PromiseFulfilledResult<DailyBreakdownResponseDto> => r.status === 'fulfilled')
-    .map((r) => r.value)
-    .sort((a, b) => a.workDate.localeCompare(b.workDate));
-}
 
 async function listMonthlyInputsForEmployee(
   context: CompensationCellDetailContext,
@@ -60,29 +29,13 @@ async function listMonthlyInputsForEmployee(
   return responses.flatMap((res) => res.items);
 }
 
-async function listAttendanceDays(context: CompensationCellDetailContext) {
-  const res = await attendanceDaySummariesApi.getAll({
-    companyId: context.companyId,
+function byPeriodQuery(context: CompensationCellDetailContext) {
+  return {
     employeeId: context.row.employeeId,
-    from: context.periodStartDate,
-    to: context.periodEndDate,
-    limit: 200,
-  });
-  return res.items;
-}
-
-async function listAbsenceDailyBreakdowns(context: CompensationCellDetailContext) {
-  const days = await listPeriodDailyBreakdowns(context);
-  return days.filter(
-    (day) => day.status === 'absent' && isScheduledWorkDay(day),
-  );
-}
-
-async function listLatenessDailyBreakdowns(context: CompensationCellDetailContext) {
-  const days = await listPeriodDailyBreakdowns(context);
-  return days.filter(
-    (day) => isScheduledWorkDay(day) && day.totals.lateMinutes > 0,
-  );
+    companyId: context.companyId,
+    startDate: context.periodStartDate,
+    endDate: context.periodEndDate,
+  };
 }
 
 export async function fetchCompensationCellDetail(
@@ -108,43 +61,34 @@ export async function fetchCompensationCellDetail(
   }
 
   if (field === 'absence') {
-    const days = await listAbsenceDailyBreakdowns(context);
+    const res = await attendanceDaySummariesApi.absentDaysByPeriod(byPeriodQuery(context));
     return {
       kind: 'absence',
-      days,
+      days: res.items,
     };
   }
 
   if (field === 'lateness') {
-    const days = await listLatenessDailyBreakdowns(context);
+    const res = await attendanceDaySummariesApi.lateDaysByPeriod(byPeriodQuery(context));
     return {
       kind: 'lateness',
-      days,
+      days: res.items,
     };
   }
 
   if (field === 'overtime') {
-    const days = await listAttendanceDays(context);
+    const res = await attendanceDaySummariesApi.overtimeDaysByPeriod(byPeriodQuery(context));
     return {
       kind: 'overtime',
-      days: days.filter(
-        (day) => day.overtimePayrollAllowed && (day.payrollOvertimeMinutes ?? day.overtimeMinutes) > 0,
-      ),
+      days: res.items,
     };
   }
 
   if (field === 'penalties') {
-    const violations = await violationRecordsApi.getAll({
-      companyId: context.companyId,
-      employeeId: context.row.employeeId,
-      status: 'approved',
-      violationDateFrom: context.periodStartDate,
-      violationDateTo: context.periodEndDate,
-      limit: 200,
-    });
+    const res = await violationRecordsApi.byPeriod(byPeriodQuery(context));
     return {
       kind: 'penalties',
-      violations: violations.items,
+      violations: res.items.filter((v) => v.status === 'approved'),
     };
   }
 

@@ -1,6 +1,5 @@
 import type { PayrollLineCompensationPreview } from '@/features/hr/payroll/lib/compensation-preview';
 import type { EmployeeAdvanceListItemDto } from '@/features/hr/contracts/lib/api/employee-advances';
-import type { DailyBreakdownResponseDto } from '@/features/hr/attendance/types/api/attendance-events';
 import type { DaySummaryResponseDto } from '@/features/hr/attendance/types/api/attendance-day-summaries';
 import type { MonthlyInputResponseDto } from '@/features/hr/payroll/lib/api/monthly-inputs';
 import type { ViolationRecordResponseDto } from '@/features/hr/discipline/types/api/violation-records';
@@ -73,8 +72,8 @@ export type CompensationCellDetailResult =
   | { kind: 'allowances' }
   | { kind: 'net' }
   | { kind: 'advances'; items: EmployeeAdvanceListItemDto[] }
-  | { kind: 'absence'; days: DailyBreakdownResponseDto[] }
-  | { kind: 'lateness'; days: DailyBreakdownResponseDto[] }
+  | { kind: 'absence'; days: DaySummaryResponseDto[] }
+  | { kind: 'lateness'; days: DaySummaryResponseDto[] }
   | { kind: 'overtime'; days: DaySummaryResponseDto[] }
   | { kind: 'penalties'; violations: ViolationRecordResponseDto[] }
   | { kind: 'bonus'; items: MonthlyInputResponseDto[] }
