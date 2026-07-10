@@ -154,12 +154,6 @@ export function PermissionsManagementPage() {
   }
 
   async function handleDelete(roleId: string) {
-    const target = roles.find((r) => r.id === roleId);
-    if (target?.isSystem) {
-      toast.error('لا يمكن حذف الأدوار النظامية');
-      setDeleteTarget(null);
-      return;
-    }
     await remove.mutateAsync(roleId);
     setDeleteTarget(null);
     if (editingRole?.id === roleId) {

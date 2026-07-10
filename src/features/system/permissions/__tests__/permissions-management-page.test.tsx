@@ -181,17 +181,17 @@ describe('PermissionsManagementPage', () => {
     });
   });
 
-  it('opens edit panel when a role card is clicked', async () => {
+  it('opens edit panel when edit button is clicked', async () => {
     renderPage();
-    await userEvent.click(screen.getByText('مدير الموارد البشرية'));
+    await userEvent.click(screen.getByRole('button', { name: /^تعديل$/i }));
     await waitFor(() => {
       expect(screen.getByText(/تعديل:/i)).toBeInTheDocument();
     });
   });
 
-  it('opens delete dialog when card delete button is clicked', async () => {
+  it('opens delete dialog when delete button is clicked', async () => {
     renderPage();
-    await userEvent.click(screen.getByRole('button', { name: /حذف مدير الموارد البشرية/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^حذف$/i }));
     await waitFor(() => {
       expect(screen.getByText(/هل أنت متأكد من حذف/i)).toBeInTheDocument();
     });
