@@ -265,7 +265,6 @@ function AllowanceCard({
             <p className="truncate text-sm font-semibold leading-tight group-hover:text-primary transition-colors">
               {item.nameAr}
             </p>
-            <p className="font-mono text-[10px] text-muted-foreground/70" dir="ltr">{item.code}</p>
           </div>
           <Badge variant={item.isActive ? 'success' : 'secondary'} className="shrink-0 text-[9px] px-1.5 py-px">
             {item.isActive ? 'نشط' : 'موقوف'}
@@ -382,11 +381,6 @@ export function AllowanceTypesClient() {
           <span className="font-medium">{item.nameAr}</span>
         </div>
       ),
-    },
-    {
-      key: 'code',
-      title: 'الكود',
-      render: (item) => <span className="font-mono text-xs text-muted-foreground" dir="ltr">{item.code}</span>,
     },
     {
       key: 'calcType',
