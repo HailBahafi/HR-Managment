@@ -68,30 +68,29 @@ function fmtAmount(item: AllowanceTypeDto): React.ReactNode {
 // ── form types ────────────────────────────────────────────────────────────────
 
 type DraftForm = {
-  code: string;
   nameAr: string;
   calculationType: AllowanceCalculationType;
   typicalAmount: string;
   typicalPercent: string;
-  currency: string;
   isActive: boolean;
   notes: string;
 };
 
 const EMPTY_FORM: DraftForm = {
-  code: '', nameAr: '', calculationType: 'fixed_amount',
-  typicalAmount: '', typicalPercent: '', currency: 'SAR',
-  isActive: true, notes: '',
+  nameAr: '',
+  calculationType: 'fixed_amount',
+  typicalAmount: '',
+  typicalPercent: '',
+  isActive: true,
+  notes: '',
 };
 
 function formFromDto(dto: AllowanceTypeDto): DraftForm {
   return {
-    code: dto.code,
     nameAr: dto.nameAr,
     calculationType: dto.calculationType,
     typicalAmount: dto.typicalAmount ?? '',
     typicalPercent: dto.typicalPercent ?? '',
-    currency: dto.currency,
     isActive: dto.isActive,
     notes: dto.notes ?? '',
   };
@@ -120,17 +119,14 @@ function AllowanceTypeDialog({
 
   const handleSave = async () => {
     if (!form.nameAr.trim()) { setError('الاسم العربي مطلوب'); return; }
-    if (!form.code.trim()) { setError('الكود مطلوب'); return; }
     setSaving(true); setError(null);
     try {
       const fields: UpdateAllowanceTypeDto = {
-        code: form.code.trim(),
         nameAr: form.nameAr.trim(),
         nameEn: null,
         calculationType: form.calculationType,
         typicalAmount: form.calculationType === 'fixed_amount' && form.typicalAmount ? Number(form.typicalAmount) : null,
         typicalPercent: form.calculationType === 'percent_of_basic' && form.typicalPercent ? Number(form.typicalPercent) : null,
-        currency: form.currency || 'SAR',
         isActive: form.isActive,
         notes: form.notes.trim() || null,
       };
@@ -140,13 +136,11 @@ function AllowanceTypeDialog({
       } else {
         const createPayload: CreateAllowanceTypeDto = {
           companyId,
-          code: fields.code!,
           nameAr: fields.nameAr!,
           nameEn: fields.nameEn,
           calculationType: fields.calculationType!,
           typicalAmount: fields.typicalAmount,
           typicalPercent: fields.typicalPercent,
-          currency: fields.currency,
           isActive: fields.isActive,
           notes: fields.notes,
         };
@@ -174,16 +168,9 @@ function AllowanceTypeDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-1">
-          {/* Name + Code */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">الاسم العربي <span className="text-destructive">*</span></Label>
-              <Input value={form.nameAr} onChange={(e) => patch({ nameAr: e.target.value })} placeholder="بدل سكن" className="h-9" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">الكود <span className="text-destructive">*</span></Label>
-              <Input value={form.code} onChange={(e) => patch({ code: e.target.value.toLowerCase().replace(/\s+/g, '-') })} placeholder="housing" className="h-9 font-mono" dir="ltr" />
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">الاسم العربي <span className="text-destructive">*</span></Label>
+            <Input value={form.nameAr} onChange={(e) => patch({ nameAr: e.target.value })} placeholder="بدل سكن" className="h-9" />
           </div>
 
           {/* Calc type */}
@@ -198,24 +185,18 @@ function AllowanceTypeDialog({
             </Select>
           </div>
 
-          {/* Amount + Currency */}
-          <div className="grid grid-cols-2 gap-3">
-            {form.calculationType === 'fixed_amount' ? (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">المبلغ الافتراضي</Label>
-                <Input type="number" value={form.typicalAmount} onChange={(e) => patch({ typicalAmount: e.target.value })} placeholder="2500" className="h-9" dir="ltr" />
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">النسبة الافتراضية (%)</Label>
-                <Input type="number" value={form.typicalPercent} onChange={(e) => patch({ typicalPercent: e.target.value })} placeholder="10" className="h-9" dir="ltr" />
-              </div>
-            )}
+          {/* Amount */}
+          {form.calculationType === 'fixed_amount' ? (
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">العملة</Label>
-              <Input value={form.currency} onChange={(e) => patch({ currency: e.target.value })} placeholder="SAR" className="h-9 font-mono" dir="ltr" />
+              <Label className="text-xs font-medium text-muted-foreground">المبلغ الافتراضي</Label>
+              <Input type="number" value={form.typicalAmount} onChange={(e) => patch({ typicalAmount: e.target.value })} placeholder="2500" className="h-9" dir="ltr" />
             </div>
-          </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">النسبة الافتراضية (%)</Label>
+              <Input type="number" value={form.typicalPercent} onChange={(e) => patch({ typicalPercent: e.target.value })} placeholder="10" className="h-9" dir="ltr" />
+            </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-1.5">
