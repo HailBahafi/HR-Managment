@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Building2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { cn } from '@/shared/utils';
 import { Button } from '@/components/ui/button';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Label } from '@/components/ui/label';
@@ -15,12 +16,16 @@ import {
 } from '@/components/ui/select';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   dialogFormFooterClass,
+  dialogShellBodyClass,
+  dialogShellContentClass,
+  dialogShellHeaderClass,
 } from '@/components/ui/dialog';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { CreateEmployeeAssignmentDto, EmployeeAssignmentStatusDto } from '@/features/hr/organization/employees/lib/api/employee-assignments';
@@ -75,7 +80,7 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
     assignmentCompanyContext,
   } = model;
 
-  const dialogBodyRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const defaultCompanyId = useDefaultCompanyId();
   const accessProfile = useAuthStore((s) => s.accessProfile);
@@ -228,8 +233,8 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
 
   return (
     <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-      <DialogContent className="sm:max-w-lg" dir="rtl">
-        <DialogHeader>
+      <DialogContent ref={containerRef} className={cn(dialogShellContentClass, 'sm:max-w-lg')} dir="rtl">
+        <DialogHeader className={dialogShellHeaderClass}>
           <DialogTitle className="font-arabic-display">إسناد موظف</DialogTitle>
           <DialogDescription>
             ربط{' '}
@@ -239,7 +244,7 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div ref={dialogBodyRef} className="grid gap-4 py-2">
+        <DialogBody className={cn(dialogShellBodyClass, 'grid gap-4')}>
           {formError ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
               {formError}
@@ -358,7 +363,7 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
                   onChange={(v) => patch('startDate', v)}
                   placeholder="اختر تاريخ البداية"
                   maxDate={form.endDate || undefined}
-                  popoverContainer={dialogBodyRef.current}
+                  popoverContainer={containerRef.current}
                 />
               </div>
               <div className="space-y-2">
@@ -368,7 +373,7 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
                   onChange={(v) => patch('endDate', v)}
                   placeholder="اختياري — مفتوح"
                   minDate={form.startDate || undefined}
-                  popoverContainer={dialogBodyRef.current}
+                  popoverContainer={containerRef.current}
                 />
                 <p className="text-[10px] text-muted-foreground">
                   اتركه فارغاً إذا كان الإسناد مستمراً بدون تاريخ انتهاء.
@@ -376,11 +381,12 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
               </div>
             </div>
           </div>
-        </div>
+        </DialogBody>
 
         <DialogFooter className={dialogFormFooterClass}>
           <Button
             type="button"
+            variant="luxe"
             className="gap-2"
             disabled={savingAssignment || loadingRefs || loadingCompanies || !form.companyId}
             onClick={() => void handleSubmit()}
@@ -388,11 +394,11 @@ export function EmployeeAssignmentDialog({ employee, model }: Props) {
             {savingAssignment ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
             ) : (
-              <Building2 className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
             )}
-            حفظ الإسناد
+            إضافة الإسناد
           </Button>
-          <Button type="button" variant="ghost" onClick={() => setAssignmentDialogOpen(false)}>
+          <Button type="button" variant="outline" onClick={() => setAssignmentDialogOpen(false)}>
             إلغاء
           </Button>
         </DialogFooter>
