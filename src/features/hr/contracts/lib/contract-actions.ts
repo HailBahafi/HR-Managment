@@ -23,11 +23,12 @@ export function deriveContractActions(contract: ActionsSource): ContractUiAction
     canSendToEmployee: draft || (pending && !signed),
     canEmployeeDecide: pending && !signed,
     canActivate: pending && signed,
-    canCancel: draft || pending || active,
+    canCancel: false,
     canClose: active,
   };
 }
 
 export function resolveContractActions(contract: ActionsSource): ContractUiActions {
-  return contract.actions ?? deriveContractActions(contract);
+  const actions = contract.actions ?? deriveContractActions(contract);
+  return { ...actions, canCancel: false };
 }

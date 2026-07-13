@@ -36,7 +36,7 @@ import { contractTemplatesApi } from '@/features/hr/contracts/contract-templates
 import { applyContractTemplateToForm, computeTemplateEndDate } from '@/features/hr/contracts/employment/utils/apply-contract-template';
 import { useAllowanceTypes } from '@/features/hr/contracts/lib/hooks/use-allowance-types';
 import { useContractArticles } from '@/features/hr/contracts/lib/hooks/use-contract-articles';
-import { useHREmployeeDirectoryStore } from '@/features/hr/requests/lib/employee-directory-store';
+import { useEmployees } from '@/features/hr/organization/employees/hooks/useEmployees';
 import { MoneyAmount } from '@/components/ui/sar-amount';
 import { cn, formatNumber } from '@/shared/utils';
 import { hrContractsRoutes } from '@/features/hr/contracts/constants/routes';
@@ -93,24 +93,19 @@ export function EmploymentContractsClient() {
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
   const companyId = useDefaultCompanyId();
-  const { add, update, send, activate, terminate, cancel } = useHRContractsStore();
+  const { add, update, send, activate, terminate } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { data: allowanceTypes = [] } = useAllowanceTypes();
   const { data: articles = [] } = useContractArticles();
-  const {
-    employees: allEmployees,
-    fetch: fetchEmployees,
-    isLoading: employeesLoading,
-  } = useHREmployeeDirectoryStore();
-  const employees = React.useMemo(() => allEmployees.filter(e => e.status === 'active'), [allEmployees]);
+  /** قائمة الموظفين من GET /hr/employees (employeesApi.getAll). */
+  const { data: employeesPage, refetch: refetchEmployees } = useEmployees();
+  const employees = employeesPage?.items ?? [];
 
   const ensureFormEmployeesLoaded = React.useCallback(() => {
     if (!companyId) return;
-    const emps = useHREmployeeDirectoryStore.getState();
-    if (emps.loadedCompanyId === companyId && emps.employees.length > 0) return;
-    if (emps.isLoading) return;
-    void fetchEmployees();
-  }, [companyId, fetchEmployees]);
+    if (employees.length > 0) return;
+    void refetchEmployees();
+  }, [companyId, employees.length, refetchEmployees]);
 
   const ensureFormCatalogLoaded = React.useCallback(async () => {
     if (!companyId) return;
@@ -131,7 +126,13 @@ export function EmploymentContractsClient() {
     [articles],
   );
 
-  const empOptions = React.useMemo(() => employees.map(e => ({ value: e.id, label: `${e.nameAr} — ${e.jobTitleAr}` })), [employees]);
+  const empLabel = (e: { nameAr: string; position?: string | null; employeeCode?: string }) =>
+    `${e.nameAr}${e.position ? ` — ${e.position}` : e.employeeCode ? ` — ${e.employeeCode}` : ''}`;
+
+  const empOptions = React.useMemo(
+    () => employees.map((e) => ({ value: e.id, label: empLabel(e) })),
+    [employees],
+  );
   const templateOptions = React.useMemo(
     () => [
       { value: '', label: 'بدون قالب' },
@@ -266,7 +267,7 @@ export function EmploymentContractsClient() {
 
   const getEmpName = (id: string, fallback?: string) =>
     fallback?.trim()
-    || allEmployees.find(e => e.id === id)?.nameAr
+    || employees.find(e => e.id === id)?.nameAr
     || id;
 
   React.useEffect(() => {
@@ -360,7 +361,7 @@ export function EmploymentContractsClient() {
 
   const copySourceEmpOptions = React.useMemo(() => {
     const ids = new Set(filtered.map(c => c.employeeId));
-    return employees.filter(e => ids.has(e.id)).map(e => ({ value: e.id, label: `${e.nameAr} — ${e.jobTitleAr}` }));
+    return employees.filter(e => ids.has(e.id)).map(e => ({ value: e.id, label: empLabel(e) }));
   }, [filtered, employees]);
 
   const copySourceContractOptions = React.useMemo(() => {
@@ -564,20 +565,6 @@ export function EmploymentContractsClient() {
     }
   };
 
-  const handleCancel = async (c: HRContractRecord) => {
-    if (!resolveContractActions(c).canCancel) {
-      toast.error('إلغاء العقد غير متاح حالياً.');
-      return;
-    }
-    const res = await cancel(c.id);
-    if (!res.ok) toast.error(res.message);
-    else {
-      toast.success('تم إلغاء العقد.');
-      setDetailRefreshKey((k) => k + 1);
-      await reloadList();
-    }
-  };
-
   const handleTerminate = async () => {
     if (!terminateId) return;
     const target = filtered.find((c) => c.id === terminateId)
@@ -756,16 +743,6 @@ export function EmploymentContractsClient() {
             onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}
           >
             إنهاء
-          </Button>
-        ) : null}
-        {actions.canCancel ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs text-muted-foreground hover:text-destructive"
-            onClick={() => { void handleCancel(c); }}
-          >
-            إلغاء
           </Button>
         ) : null}
       </div>

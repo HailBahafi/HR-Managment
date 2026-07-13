@@ -153,10 +153,9 @@ export type EmploymentWorkArrangementFilter = 'all' | HRWorkArrangement;
 
 export const EMPLOYMENT_STATUS_FILTER_OPTIONS: { value: EmploymentStatusFilter; label: string }[] = [
   { value: 'all', label: 'كل الحالات' },
-  ...(Object.entries(CONTRACT_STATUS_LABELS) as [HRContractLifecycleStatus, string][]).map(([v, l]) => ({
-    value: v,
-    label: l,
-  })),
+  ...(Object.entries(CONTRACT_STATUS_LABELS) as [HRContractLifecycleStatus, string][])
+    .filter(([status]) => status !== 'superseded' && status !== 'cancelled')
+    .map(([value, label]) => ({ value, label })),
 ];
 
 export const EMPLOYMENT_KIND_FILTER_OPTIONS: { value: EmploymentKindFilter; label: string }[] = [
