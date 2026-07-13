@@ -3,6 +3,7 @@ import {
   Calculator,
   LayoutGrid,
   Settings,
+  ShoppingCart,
   Users,
 } from 'lucide-react';
 import type { ApplicationResponseDto } from '@/features/system/applications/lib/api/applications';
@@ -12,6 +13,7 @@ const ICON_BY_KEY: Record<string, LucideIcon> = {
   calculator: Calculator,
   settings: Settings,
   'layout-grid': LayoutGrid,
+  'shopping-cart': ShoppingCart,
 };
 
 /** Design-token icon surfaces — no hardcoded palette colors. */
@@ -19,6 +21,7 @@ const TILE_BY_CODE: Record<string, { tileClass: string }> = {
   hr: { tileClass: 'bg-primary text-primary-foreground shadow-soft' },
   accounting: { tileClass: 'bg-primary-700 text-primary-foreground shadow-soft' },
   system: { tileClass: 'bg-gold text-gold-foreground shadow-soft' },
+  ecommerce: { tileClass: 'bg-success text-success-foreground shadow-soft' },
 };
 
 const FALLBACK_TILES = [
@@ -38,6 +41,7 @@ export const TILE_SURFACE_ACCENT = [
 export function resolveApplicationIcon(app: ApplicationResponseDto): LucideIcon {
   const key = app.icon?.trim().toLowerCase();
   if (key && ICON_BY_KEY[key]) return ICON_BY_KEY[key]!;
+  if (app.code === 'ecommerce') return ShoppingCart;
   return LayoutGrid;
 }
 

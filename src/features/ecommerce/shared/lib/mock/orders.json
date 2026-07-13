@@ -1,0 +1,30 @@
+[
+  {
+    "id": "order-1",
+    "companyId": "demo-company",
+    "orderNumber": "ORD-1001",
+    "customerId": "cust-1",
+    "customerNameAr": "عبدالله الحربي",
+    "status": "processing",
+    "items": [
+      { "productId": "prod-1", "productNameAr": "خزانة مطبخ عصرية", "quantity": 1, "unitPrice": { "amount": 2500, "currency": "SAR" } }
+    ],
+    "totalAmount": { "amount": 2500, "currency": "SAR" },
+    "createdAt": "2026-02-20T08:00:00.000Z",
+    "updatedAt": "2026-02-20T08:00:00.000Z"
+  },
+  {
+    "id": "order-2",
+    "companyId": "demo-company",
+    "orderNumber": "ORD-1002",
+    "customerId": "cust-2",
+    "customerNameAr": "سارة القحطاني",
+    "status": "pending",
+    "items": [
+      { "productId": "prod-2", "productNameAr": "خزانة ملابس بأبواب سحب", "quantity": 1, "unitPrice": { "amount": 3200, "currency": "SAR" } }
+    ],
+    "totalAmount": { "amount": 3200, "currency": "SAR" },
+    "createdAt": "2026-02-22T08:00:00.000Z",
+    "updatedAt": "2026-02-22T08:00:00.000Z"
+  }
+]

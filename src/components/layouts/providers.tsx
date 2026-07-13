@@ -1,12 +1,23 @@
 'use client';
 
 import * as React from 'react';
+import { usePathname } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CompanyThemeProvider } from '@/components/layouts/company-theme-provider';
 import { DynamicFavicon } from '@/components/layouts/dynamic-favicon';
 import { ThemeProvider } from '@/components/layouts/theme-provider';
 
+function isStorefrontPath(pathname: string): boolean {
+  return (
+    pathname === '/store' ||
+    pathname.startsWith('/store/') ||
+    /^\/(ar|en)\/store(\/|$)/.test(pathname)
+  );
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isStorefront = isStorefrontPath(pathname);
 
   const [queryClient] = React.useState(
     () =>
@@ -22,9 +33,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DynamicFavicon />
+      {!isStorefront ? <DynamicFavicon /> : null}
       <ThemeProvider>
-        <CompanyThemeProvider>{children}</CompanyThemeProvider>
+        {isStorefront ? children : <CompanyThemeProvider>{children}</CompanyThemeProvider>}
       </ThemeProvider>
     </QueryClientProvider>
   );

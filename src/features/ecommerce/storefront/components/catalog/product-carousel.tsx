@@ -1,0 +1,87 @@
+'use client';
+
+import * as React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { SectionHeader } from '@/features/ecommerce/storefront/components/catalog/section-header';
+import { ProductGrid } from '@/features/ecommerce/storefront/components/catalog/product-grid';
+import { cn } from '@/shared/utils';
+
+type ProductCarouselProps = {
+  title: string;
+  subtitle?: string;
+  viewAllHref?: `/store${string}`;
+  viewAllLabel: string;
+  layout?: 'carousel' | 'grid';
+  gridColumns?: { mobile?: number; tablet?: number; desktop?: number };
+  children: React.ReactNode;
+  className?: string;
+};
+
+export function ProductCarousel({
+  title,
+  subtitle,
+  viewAllHref,
+  viewAllLabel,
+  layout = 'carousel',
+  gridColumns,
+  children,
+  className,
+}: ProductCarouselProps) {
+  const t = useTranslations('storefront.a11y');
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  function scroll(direction: 'prev' | 'next') {
+    const element = scrollRef.current;
+    if (!element) return;
+    const amount = direction === 'next' ? element.clientWidth * 0.85 : -element.clientWidth * 0.85;
+    element.scrollBy({ left: amount, behavior: 'smooth' });
+  }
+
+  const navButtons = (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => scroll('prev')}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={t('paginationPrevious')}
+      >
+        <ChevronRight className="h-4 w-4" aria-hidden />
+      </button>
+      <button
+        type="button"
+        onClick={() => scroll('next')}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={t('paginationNext')}
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  );
+
+  return (
+    <section className={cn('flex flex-col gap-4', className)}>
+      <SectionHeader
+        title={title}
+        subtitle={subtitle}
+        viewAllHref={viewAllHref}
+        viewAllLabel={viewAllLabel}
+        actions={layout === 'carousel' ? navButtons : undefined}
+      />
+
+      {layout === 'grid' ? (
+        <ProductGrid columns={gridColumns}>{children}</ProductGrid>
+      ) : (
+        <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function ProductCarouselItem({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('w-[168px] shrink-0 snap-start sm:w-[188px] md:w-[200px]', className)}>{children}</div>
+  );
+}

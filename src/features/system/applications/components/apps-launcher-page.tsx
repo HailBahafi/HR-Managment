@@ -8,6 +8,7 @@ import { useLoginPageBranding } from '@/features/auth/hooks/use-default-company-
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   applicationsApi,
+  enrichLauncherApplications,
   resolveApplicationLaunchPath,
   type ApplicationResponseDto,
 } from '@/features/system/applications/lib/api/applications';
@@ -16,6 +17,7 @@ import {
   resolveApplicationSurfaceAccent,
   resolveApplicationTileClass,
 } from '@/features/system/applications/lib/application-tile-config';
+import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { cn } from '@/shared/utils';
 
 function AppTile({
@@ -111,6 +113,7 @@ function CompanyHero({
 export function AppsLauncherPage() {
   const { displayName } = useAuthUserDisplay();
   const branding = useLoginPageBranding();
+  const activeCompanyId = useAuthStore((s) => s.activeCompanyId);
   const [apps, setApps] = React.useState<ApplicationResponseDto[]>([]);
   const [loading, setLoading] = React.useState(true);
 
@@ -120,10 +123,10 @@ export function AppsLauncherPage() {
       setLoading(true);
       try {
         const items = await applicationsApi.getLauncher();
-        if (!cancelled) setApps(items);
+        if (!cancelled) setApps(enrichLauncherApplications(items, activeCompanyId));
       } catch (err) {
         handleApiError(err, 'applications.launcher');
-        if (!cancelled) setApps([]);
+        if (!cancelled) setApps(enrichLauncherApplications([], activeCompanyId));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -131,7 +134,7 @@ export function AppsLauncherPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeCompanyId]);
 
   const greeting = displayName ? `مرحباً، ${displayName}` : 'مرحباً بك';
 

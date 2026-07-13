@@ -1,0 +1,75 @@
+[
+  {
+    "id": "brand-almarai",
+    "companyId": "demo-company",
+    "slug": "almarai",
+    "nameAr": "المراعي",
+    "nameEn": "Almarai",
+    "description": "رائدة منتجات الألبان في المنطقة",
+    "websiteUrl": "https://www.almarai.com",
+    "seo": { "metaTitle": "المراعي", "metaDescription": "منتجات ألبان طازجة" },
+    "isActive": true,
+    "createdAt": "2026-01-04T08:00:00.000Z",
+    "updatedAt": "2026-01-04T08:00:00.000Z"
+  },
+  {
+    "id": "brand-pepsi",
+    "companyId": "demo-company",
+    "slug": "pepsi",
+    "nameAr": "بيبسي",
+    "nameEn": "Pepsi",
+    "description": "مشروبات غازية عالمية",
+    "seo": { "metaTitle": "بيبسي", "metaDescription": "مشروبات غازية" },
+    "isActive": true,
+    "createdAt": "2026-01-04T08:00:00.000Z",
+    "updatedAt": "2026-01-04T08:00:00.000Z"
+  },
+  {
+    "id": "brand-lays",
+    "companyId": "demo-company",
+    "slug": "lays",
+    "nameAr": "ليز",
+    "nameEn": "Lay's",
+    "description": "شيبس بنكهات متنوعة",
+    "seo": { "metaTitle": "ليز", "metaDescription": "شيبس ومقرمشات" },
+    "isActive": true,
+    "createdAt": "2026-01-04T08:00:00.000Z",
+    "updatedAt": "2026-01-04T08:00:00.000Z"
+  },
+  {
+    "id": "brand-nadec",
+    "companyId": "demo-company",
+    "slug": "nadec",
+    "nameAr": "نادك",
+    "nameEn": "Nadec",
+    "description": "ألبان وعصائر طازجة",
+    "seo": { "metaTitle": "نادك", "metaDescription": "منتجات ألبان" },
+    "isActive": true,
+    "createdAt": "2026-01-04T08:00:00.000Z",
+    "updatedAt": "2026-01-04T08:00:00.000Z"
+  },
+  {
+    "id": "brand-dove",
+    "companyId": "demo-company",
+    "slug": "dove",
+    "nameAr": "دوف",
+    "nameEn": "Dove",
+    "description": "عناية شخصية ومستحضرات تجميل",
+    "seo": { "metaTitle": "دوف", "metaDescription": "عناية شخصية" },
+    "isActive": true,
+    "createdAt": "2026-01-04T08:00:00.000Z",
+    "updatedAt": "2026-01-04T08:00:00.000Z"
+  },
+  {
+    "id": "brand-tide",
+    "companyId": "demo-company",
+    "slug": "tide",
+    "nameAr": "تايد",
+    "nameEn": "Tide",
+    "description": "منظفات غسيل فعّالة",
+    "seo": { "metaTitle": "تايد", "metaDescription": "منظفات غسيل" },
+    "isActive": true,
+    "createdAt": "2026-01-04T08:00:00.000Z",
+    "updatedAt": "2026-01-04T08:00:00.000Z"
+  }
+]

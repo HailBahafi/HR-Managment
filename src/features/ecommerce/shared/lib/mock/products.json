@@ -1,0 +1,681 @@
+[
+  {
+    "id": "prod-1",
+    "companyId": "demo-company",
+    "sku": "BEV-001",
+    "slug": "pepsi-cola-330ml",
+    "nameAr": "بيبسي كولا 330 مل",
+    "nameEn": "Pepsi Cola 330ml",
+    "description": "مشروب غازي منعش",
+    "brandId": "brand-pepsi",
+    "categoryId": "cat-bev-soft",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 120,
+      "lowStockThreshold": 20,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 2.5,
+      "currency": "SAR"
+    },
+    "compareAtPrice": {
+      "amount": 3.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m1",
+        "url": "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&q=80",
+        "alt": "بيبسي",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "بيبسي كولا",
+      "metaDescription": "مشروب غازي"
+    },
+    "tags": [
+      "best-seller",
+      "deals"
+    ],
+    "createdAt": "2026-03-01T08:00:00.000Z",
+    "updatedAt": "2026-03-01T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-2",
+    "companyId": "demo-company",
+    "sku": "BEV-002",
+    "slug": "orange-juice-1l",
+    "nameAr": "عصير برتقال طازج 1 لتر",
+    "nameEn": "Fresh orange juice 1L",
+    "brandId": "brand-nadec",
+    "categoryId": "cat-bev-juice",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 45,
+      "lowStockThreshold": 10,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 12.95,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m2",
+        "url": "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&q=80",
+        "alt": "عصير برتقال",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "عصير برتقال",
+      "metaDescription": "عصير طبيعي"
+    },
+    "tags": [
+      "best-seller"
+    ],
+    "createdAt": "2026-03-02T08:00:00.000Z",
+    "updatedAt": "2026-03-02T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-3",
+    "companyId": "demo-company",
+    "sku": "SNK-001",
+    "slug": "lays-classic-170g",
+    "nameAr": "ليز كلاسيك 170 جرام",
+    "nameEn": "Lay's Classic 170g",
+    "brandId": "brand-lays",
+    "categoryId": "cat-snacks",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 80,
+      "lowStockThreshold": 15,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 8.5,
+      "currency": "SAR"
+    },
+    "compareAtPrice": {
+      "amount": 11,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m3",
+        "url": "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&q=80",
+        "alt": "ليز",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "ليز كلاسيك",
+      "metaDescription": "شيبس بطاطس"
+    },
+    "tags": [
+      "deals",
+      "best-seller"
+    ],
+    "createdAt": "2026-03-03T08:00:00.000Z",
+    "updatedAt": "2026-03-03T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-4",
+    "companyId": "demo-company",
+    "sku": "BAK-001",
+    "slug": "fresh-bread-loaf",
+    "nameAr": "خبز توست طازج",
+    "nameEn": "Fresh toast bread",
+    "categoryId": "cat-bakery",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 30,
+      "lowStockThreshold": 5,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 5.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m4",
+        "url": "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&q=80",
+        "alt": "خبز",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "خبز توست",
+      "metaDescription": "خبز طازج"
+    },
+    "tags": [],
+    "createdAt": "2026-03-04T08:00:00.000Z",
+    "updatedAt": "2026-03-04T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-5",
+    "companyId": "demo-company",
+    "sku": "DRY-001",
+    "slug": "almarai-milk-2l",
+    "nameAr": "حليب المراعي طازج 2 لتر",
+    "nameEn": "Almarai fresh milk 2L",
+    "brandId": "brand-almarai",
+    "categoryId": "cat-dairy",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 60,
+      "lowStockThreshold": 10,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 14.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m5",
+        "url": "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&q=80",
+        "alt": "حليب",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "حليب المراعي",
+      "metaDescription": "حليب طازج"
+    },
+    "tags": [
+      "best-seller"
+    ],
+    "createdAt": "2026-03-05T08:00:00.000Z",
+    "updatedAt": "2026-03-05T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-6",
+    "companyId": "demo-company",
+    "sku": "FRZ-001",
+    "slug": "frozen-mixed-vegetables-400g",
+    "nameAr": "خضار مشكلة مجمدة 400 جرام",
+    "nameEn": "Frozen mixed vegetables 400g",
+    "categoryId": "cat-frozen",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 40,
+      "lowStockThreshold": 8,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 9.95,
+      "currency": "SAR"
+    },
+    "compareAtPrice": {
+      "amount": 13.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m6",
+        "url": "https://images.unsplash.com/photo-1574484284002-952d92456975?w=400&q=80",
+        "alt": "خضار مجمدة",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "خضار مجمدة",
+      "metaDescription": "خضار مشكلة"
+    },
+    "tags": [
+      "deals"
+    ],
+    "createdAt": "2026-03-06T08:00:00.000Z",
+    "updatedAt": "2026-03-06T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-7",
+    "companyId": "demo-company",
+    "sku": "GRC-001",
+    "slug": "basmati-rice-5kg",
+    "nameAr": "أرز بسمتي 5 كجم",
+    "nameEn": "Basmati rice 5kg",
+    "categoryId": "cat-grocery",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 25,
+      "lowStockThreshold": 5,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 42,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m7",
+        "url": "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&q=80",
+        "alt": "أرز بسمتي",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "أرز بسمتي",
+      "metaDescription": "أرز فاخر"
+    },
+    "tags": [
+      "best-seller"
+    ],
+    "createdAt": "2026-03-07T08:00:00.000Z",
+    "updatedAt": "2026-03-07T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-8",
+    "companyId": "demo-company",
+    "sku": "CLN-001",
+    "slug": "tide-detergent-3kg",
+    "nameAr": "مسحوق غسيل تايد 3 كجم",
+    "nameEn": "Tide detergent 3kg",
+    "brandId": "brand-tide",
+    "categoryId": "cat-cleaning",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 35,
+      "lowStockThreshold": 5,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 49.95,
+      "currency": "SAR"
+    },
+    "compareAtPrice": {
+      "amount": 59.95,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m8",
+        "url": "https://images.unsplash.com/photo-1585421514284-efb74c228eeb?w=400&q=80",
+        "alt": "تايد",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "تايد",
+      "metaDescription": "مسحوق غسيل"
+    },
+    "tags": [
+      "deals"
+    ],
+    "createdAt": "2026-03-08T08:00:00.000Z",
+    "updatedAt": "2026-03-08T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-9",
+    "companyId": "demo-company",
+    "sku": "PC-001",
+    "slug": "dove-shampoo-400ml",
+    "nameAr": "شامبو دوف 400 مل",
+    "nameEn": "Dove shampoo 400ml",
+    "brandId": "brand-dove",
+    "categoryId": "cat-personal",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 50,
+      "lowStockThreshold": 10,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 24.95,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m9",
+        "url": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&q=80",
+        "alt": "دوف",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "شامبو دوف",
+      "metaDescription": "عناية بالشعر"
+    },
+    "tags": [],
+    "createdAt": "2026-03-09T08:00:00.000Z",
+    "updatedAt": "2026-03-09T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-10",
+    "companyId": "demo-company",
+    "sku": "BEV-003",
+    "slug": "mineral-water-6pack",
+    "nameAr": "مياه معدنية 6 عبوات",
+    "nameEn": "Mineral water 6-pack",
+    "categoryId": "cat-bev",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 100,
+      "lowStockThreshold": 20,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 7.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m10",
+        "url": "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400&q=80",
+        "alt": "مياه",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "مياه معدنية",
+      "metaDescription": "مياه صحية"
+    },
+    "tags": [
+      "best-seller"
+    ],
+    "createdAt": "2026-03-10T08:00:00.000Z",
+    "updatedAt": "2026-03-10T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-11",
+    "companyId": "demo-company",
+    "sku": "SNK-002",
+    "slug": "chocolate-bar-100g",
+    "nameAr": "شوكولاتة بالحليب 100 جرام",
+    "nameEn": "Milk chocolate bar 100g",
+    "categoryId": "cat-snacks",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 70,
+      "lowStockThreshold": 15,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 6.5,
+      "currency": "SAR"
+    },
+    "compareAtPrice": {
+      "amount": 8.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m11",
+        "url": "https://images.unsplash.com/photo-1511381939411-440f16d2720e?w=400&q=80",
+        "alt": "شوكولاتة",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "شوكولاتة",
+      "metaDescription": "شوكولاتة بالحليب"
+    },
+    "tags": [
+      "deals"
+    ],
+    "createdAt": "2026-03-11T08:00:00.000Z",
+    "updatedAt": "2026-03-11T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-12",
+    "companyId": "demo-company",
+    "sku": "DRY-002",
+    "slug": "yogurt-strawberry-6pack",
+    "nameAr": "لبن زبادي فراولة 6 قطع",
+    "nameEn": "Strawberry yogurt 6-pack",
+    "brandId": "brand-almarai",
+    "categoryId": "cat-dairy",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 40,
+      "lowStockThreshold": 8,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 11.95,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m12",
+        "url": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&q=80",
+        "alt": "زبادي",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "زبادي فراولة",
+      "metaDescription": "لبن زبادي"
+    },
+    "tags": [],
+    "createdAt": "2026-03-12T08:00:00.000Z",
+    "updatedAt": "2026-03-12T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-13",
+    "companyId": "demo-company",
+    "sku": "BAK-002",
+    "slug": "croissant-4pack",
+    "nameAr": "كرواسون 4 قطع",
+    "nameEn": "Croissant 4-pack",
+    "categoryId": "cat-bakery",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 20,
+      "lowStockThreshold": 5,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 12,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m13",
+        "url": "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&q=80",
+        "alt": "كرواسون",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "كرواسون",
+      "metaDescription": "معجنات طازجة"
+    },
+    "tags": [],
+    "createdAt": "2026-03-13T08:00:00.000Z",
+    "updatedAt": "2026-03-13T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-14",
+    "companyId": "demo-company",
+    "sku": "GRC-002",
+    "slug": "pasta-spaghetti-500g",
+    "nameAr": "معكرونة سباغيتي 500 جرام",
+    "nameEn": "Spaghetti pasta 500g",
+    "categoryId": "cat-grocery",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 55,
+      "lowStockThreshold": 10,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 4.95,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m14",
+        "url": "https://images.unsplash.com/photo-1551462147-ff29053b360c?w=400&q=80",
+        "alt": "معكرونة",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "معكرونة",
+      "metaDescription": "سباغيتي"
+    },
+    "tags": [],
+    "createdAt": "2026-03-14T08:00:00.000Z",
+    "updatedAt": "2026-03-14T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-15",
+    "companyId": "demo-company",
+    "sku": "BEV-004",
+    "slug": "energy-drink-250ml",
+    "nameAr": "مشروب طاقة 250 مل",
+    "nameEn": "Energy drink 250ml",
+    "categoryId": "cat-bev-soft",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 90,
+      "lowStockThreshold": 15,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 5.95,
+      "currency": "SAR"
+    },
+    "compareAtPrice": {
+      "amount": 7.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m15",
+        "url": "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=400&q=80",
+        "alt": "مشروب طاقة",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "مشروب طاقة",
+      "metaDescription": "منعش ومنشط"
+    },
+    "tags": [
+      "deals",
+      "best-seller"
+    ],
+    "createdAt": "2026-03-15T08:00:00.000Z",
+    "updatedAt": "2026-03-15T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-16",
+    "companyId": "demo-company",
+    "sku": "SNK-003",
+    "slug": "mixed-nuts-200g",
+    "nameAr": "مكسرات مشكلة 200 جرام",
+    "nameEn": "Mixed nuts 200g",
+    "categoryId": "cat-snacks",
+    "status": "active",
+    "stockStatus": "out_of_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 0,
+      "lowStockThreshold": 5,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 18.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m16",
+        "url": "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=400&q=80",
+        "alt": "مكسرات",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "مكسرات",
+      "metaDescription": "مكسرات مشكلة"
+    },
+    "tags": [],
+    "createdAt": "2026-03-16T08:00:00.000Z",
+    "updatedAt": "2026-03-16T08:00:00.000Z",
+    "archivedAt": null
+  }
+]
