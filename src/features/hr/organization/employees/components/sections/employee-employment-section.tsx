@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/features/hr/organization/employees/components/EmployeeProfilePrimitives';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { EmployeeAssignmentList } from '@/features/hr/organization/employees/components/sections/employee-assignment-list';
+import { EmployeePrimaryAssignmentCard } from '@/features/hr/organization/employees/components/sections/employee-primary-assignment-card';
 
 export function EmployeeEmploymentSection({ model }: { model: EmployeeProfileModel }) {
   const {
     hrAssignments,
+    primaryAssignment,
     assignmentsLoading,
     assignmentsError,
     setAssignmentDialogOpen,
@@ -38,6 +40,11 @@ export function EmployeeEmploymentSection({ model }: { model: EmployeeProfileMod
           إضافة إسناد
         </Button>
       </div>
+
+      <EmployeePrimaryAssignmentCard
+        assignment={primaryAssignment}
+        loading={assignmentsLoading}
+      />
 
       <FieldGroup
         title="سجل الإسنادات التنظيمية"
