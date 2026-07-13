@@ -51,7 +51,9 @@ import {
   mergeEssentialArticleIds,
   EMPLOYMENT_STATUS_FILTER_OPTIONS,
   EMPLOYMENT_KIND_FILTER_OPTIONS,
+  EMPLOYMENT_WORK_ARRANGEMENT_FILTER_OPTIONS,
 } from '@/features/hr/contracts/employment/utils/employment-contract-form';
+import { buildEmployeeContractsListQuery } from '@/features/hr/contracts/lib/employee-contracts-list-query';
 import { EmploymentContractTerminateModal as TerminateModal } from '@/features/hr/contracts/employment/components/employment-contract-terminate-modal';
 import { EmploymentContractDetailDialog } from '@/features/hr/contracts/employment/components/employment-contract-detail-dialog';
 import { EmploymentContractFormDialog } from '@/features/hr/contracts/employment/components/employment-contract-form-dialog';
@@ -69,7 +71,6 @@ import { getSessionCompanyDisplay } from '@/features/hr/organization/lib/session
 import {
   ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
   ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
-  payrollListArchiveQuery,
   type OrganizationArchiveScope,
 } from '@/features/hr/organization/lib/archive-scope';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -83,6 +84,7 @@ const formToDraft = employmentFormToDraft;
 type PanelMode = 'create' | 'edit';
 type StatusFilter = 'all' | HRContractLifecycleStatus;
 type KindFilter = 'all' | HRContractNature;
+type WorkFilter = 'all' | HRWorkArrangement;
 type DraftFilter = 'all' | 'draft' | 'undraft';
 
 const DRAFT_FILTER_OPTIONS: { value: DraftFilter; label: string }[] = [
@@ -162,14 +164,26 @@ export function EmploymentContractsClient() {
       options: EMPLOYMENT_KIND_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
     },
     {
+      key: 'work', label: 'نظام العمل', type: 'select',
+      options: EMPLOYMENT_WORK_ARRANGEMENT_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
+    },
+    {
       key: 'draft', label: 'المسودات', type: 'select',
       options: DRAFT_FILTER_OPTIONS,
+    },
+    {
+      key: 'contractNumber',
+      label: 'رقم العقد',
+      type: 'text',
+      placeholder: 'بحث جزئي برقم العقد…',
     },
   ]);
 
   const statusFilter = (values.status as StatusFilter) || 'all';
   const kindFilter = (values.kind as KindFilter) || 'all';
+  const workFilter = (values.work as WorkFilter) || 'all';
   const draftFilter = (values.draft as DraftFilter) || 'all';
+  const contractNumberFilter = typeof values.contractNumber === 'string' ? values.contractNumber : '';
 
   const [archiveScope, setArchiveScope] = React.useState<OrganizationArchiveScope>(
     ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
@@ -179,16 +193,19 @@ export function EmploymentContractsClient() {
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
 
-  const buildListQuery = React.useCallback((page: number, pageSize: number) => ({
-    companyId: companyId!,
-    page,
-    limit: pageSize,
-    ...payrollListArchiveQuery(),
-    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
-    ...(kindFilter !== 'all' ? { contractNature: kindFilter } : {}),
-    ...(draftFilter !== 'all' ? { isDraft: draftFilter === 'draft' } : {}),
-    ...(selectedEmpIds.size > 0 ? { employeeIds: [...selectedEmpIds] } : {}),
-  }), [companyId, archiveScope, statusFilter, kindFilter, draftFilter, selectedEmpIds]);
+  const buildListQuery = React.useCallback((page: number, pageSize: number) => (
+    buildEmployeeContractsListQuery({
+      companyId: companyId!,
+      page,
+      limit: pageSize,
+      status: statusFilter,
+      draftMode: draftFilter,
+      contractNature: kindFilter,
+      workArrangement: workFilter,
+      contractNumber: contractNumberFilter,
+      employeeIds: selectedEmpIds,
+    })
+  ), [companyId, statusFilter, kindFilter, workFilter, draftFilter, contractNumberFilter, selectedEmpIds]);
 
   const loadPage = React.useCallback(async (page: number, pageSize: number) => {
     if (!companyId) return { items: [] as HRContractRecord[], total: 0 };
@@ -208,7 +225,16 @@ export function EmploymentContractsClient() {
     reload: reloadList,
   } = useServerDirectoryPagination<HRContractRecord>(loadPage, {
     enabled: !!companyId,
-    resetDeps: [companyId, statusFilter, kindFilter, draftFilter, archiveScope, selectedEmpKey],
+    resetDeps: [
+      companyId,
+      statusFilter,
+      kindFilter,
+      workFilter,
+      draftFilter,
+      contractNumberFilter,
+      archiveScope,
+      selectedEmpKey,
+    ],
   });
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -408,7 +434,12 @@ export function EmploymentContractsClient() {
     router.push(`${hrContractsRoutes.employment}?${HR_CONTRACTS_MODE_PARAM}=createContract`);
   }, [router]);
 
-  const activeFilterCount = (kindFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0) + (draftFilter !== 'all' ? 1 : 0) + (selectedEmpIds.size > 0 ? 1 : 0);
+  const activeFilterCount = (kindFilter !== 'all' ? 1 : 0)
+    + (workFilter !== 'all' ? 1 : 0)
+    + (statusFilter !== 'all' ? 1 : 0)
+    + (draftFilter !== 'all' ? 1 : 0)
+    + (contractNumberFilter.trim() ? 1 : 0)
+    + (selectedEmpIds.size > 0 ? 1 : 0);
 
   usePageHeaderActions(
     () => (
@@ -640,13 +671,20 @@ export function EmploymentContractsClient() {
       placeholder: 'نوع العقد',
     },
     {
+      id: 'work-arrangement',
+      value: workFilter,
+      onChange: (v) => setValue('work', v),
+      options: EMPLOYMENT_WORK_ARRANGEMENT_FILTER_OPTIONS.map(({ value, label }) => ({ value, label })),
+      placeholder: 'نظام العمل',
+    },
+    {
       id: 'draft',
       value: draftFilter,
       onChange: (v) => setValue('draft', v),
       options: DRAFT_FILTER_OPTIONS,
       placeholder: 'المسودات',
     },
-  ], [archiveScope, kindFilter, draftFilter, setValue]);
+  ], [archiveScope, kindFilter, workFilter, draftFilter, setValue]);
 
   const handleStatusFilterChange = React.useCallback(
     (v: string) => setValue('status', v),
@@ -672,7 +710,9 @@ export function EmploymentContractsClient() {
     [
       statusFilter,
       kindFilter,
+      workFilter,
       draftFilter,
+      contractNumberFilter,
       archiveScope,
       selectedEmpKey,
       statusCounts,
