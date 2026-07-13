@@ -61,7 +61,6 @@ import { ContractLeaveTypePickerDialog } from '@/features/hr/contracts/employmen
 import {
   canActivateEmploymentContract,
   contractCreditsLeaveDays,
-  isTerminatedEmploymentContract,
 } from '@/features/hr/contracts/employment/utils/contract-leave-credit';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
@@ -94,7 +93,7 @@ export function EmploymentContractsClient() {
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
   const companyId = useDefaultCompanyId();
-  const { add, update, activate, terminate, archive, createAmendmentDraft } = useHRContractsStore();
+  const { add, update, activate, terminate, createAmendmentDraft } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { data: allowanceTypes = [] } = useAllowanceTypes();
   const { data: articles = [] } = useContractArticles();
@@ -450,6 +449,10 @@ export function EmploymentContractsClient() {
   };
 
   const openEditFromDetail = (c: HRContractRecord) => {
+    if (c.status !== 'draft') {
+      toast.error('التعديل متاح فقط للعقود في حالة المسودة.');
+      return;
+    }
     setDetailContractId(null);
     setSelected(c);
     setForm({
@@ -522,6 +525,10 @@ export function EmploymentContractsClient() {
             : 'تم إنشاء العقد كمسودة.',
         );
       } else if (panelMode === 'edit' && selected) {
+        if (selected.status !== 'draft') {
+          setError('التعديل متاح فقط للعقود في حالة المسودة.');
+          return;
+        }
         const res = await update(selected.id, formToDraft(payload, selected.status));
         if (!res.ok) { setError(res.message); return; }
       }
@@ -558,20 +565,20 @@ export function EmploymentContractsClient() {
 
   const handleTerminate = async () => {
     if (!terminateId) return;
+    const target = filtered.find((c) => c.id === terminateId)
+      ?? useHRContractsStore.getState().contracts.find((c) => c.id === terminateId);
+    if (target && target.status !== 'active') {
+      toast.error('الإنهاء متاح فقط للعقود النشطة.');
+      setTerminateId(null);
+      setTerminateReason('');
+      return;
+    }
     const res = await terminate(terminateId, terminateReason);
     if (!res.ok) toast.error(res.message); else {
       toast.success('تم إنهاء العقد.');
       await reloadList();
     }
     setTerminateId(null); setTerminateReason('');
-  };
-
-  const handleArchive = async (id: string) => {
-    const res = await archive(id);
-    if (!res.ok) toast.error(res.message); else {
-      toast.success('تم أرشفة العقد.');
-      await reloadList();
-    }
   };
 
   const patch = (p: Partial<FormValues>) => setForm(f => ({ ...f, ...p }));
@@ -706,22 +713,30 @@ export function EmploymentContractsClient() {
   );
 
   const ContractActions = ({ c }: { c: HRContractRecord }) => {
-    if (isTerminatedEmploymentContract(c)) {
-      return (
-        <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleArchive(c.id)}>أرشفة</Button>
-        </div>
-      );
-    }
+    const isDraft = c.status === 'draft';
+    const isActive = c.status === 'active';
 
     return (
       <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
         {canActivateEmploymentContract(c) ? (
           <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c)}>تفعيل</Button>
         ) : null}
-        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openAmendment(c)}>تعديل رسمي</Button>
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}>إنهاء</Button>
-        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleArchive(c.id)}>أرشفة</Button>
+        {isDraft ? (
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEditFromDetail(c)}>تعديل</Button>
+        ) : null}
+        {isActive ? (
+          <>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openAmendment(c)}>تعديل رسمي</Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-destructive hover:text-destructive"
+              onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}
+            >
+              إنهاء
+            </Button>
+          </>
+        ) : null}
       </div>
     );
   };

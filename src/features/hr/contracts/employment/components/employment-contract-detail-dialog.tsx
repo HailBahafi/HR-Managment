@@ -286,7 +286,7 @@ export function EmploymentContractDetailDialog({
 
         {contract ? (
           <DialogFooter className={dialogFormFooterClass}>
-            {onEditDraft ? (
+            {onEditDraft && contract.status === 'draft' ? (
               <Button
                 type="button"
                 variant="secondary"
