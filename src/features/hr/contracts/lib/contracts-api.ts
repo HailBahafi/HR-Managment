@@ -109,6 +109,16 @@ export type ApiContractArticleRef = {
   sortOrder: number;
 };
 
+/** أعلام الواجهة من API — ابنِ الأزرار عليها وليس بتخمين الحالة فقط. */
+export type EmployeeContractActionsDto = {
+  canEditTerms: boolean;
+  canSendToEmployee: boolean;
+  canEmployeeDecide: boolean;
+  canActivate: boolean;
+  canCancel: boolean;
+  canClose: boolean;
+};
+
 export type ApiEmployeeContract = {
   id: string;
   companyId: string;
@@ -137,6 +147,8 @@ export type ApiEmployeeContract = {
   terminatedAt: string | null;
   employeeSigned: boolean;
   rejectionReason: string | null;
+  signatureNoticeSent?: boolean;
+  actions?: EmployeeContractActionsDto;
   allowanceLines: ApiContractAllowanceLine[];
   articles: ApiContractArticleRef[];
   createdAt: string;
@@ -187,8 +199,16 @@ export type UpdateEmployeeContractDto = {
   articleIds?: string[];
   allowanceLines?: { allowanceTypeId: string; amount: number; sortOrder?: number }[];
   updatedBy?: string;
-  /** Required when activating a contract that credits annualLeaveDays */
+};
+
+export type SendEmployeeContractDto = {
+  updatedBy?: string;
+};
+
+export type ActivateEmployeeContractDto = {
+  /** مطلوب إذا annualLeaveDays > 0 ولم يُضف الرصيد من قبل */
   leaveTypeId?: string;
+  updatedBy?: string;
 };
 
 export type EmployeeContractDecisionDto = {
@@ -214,6 +234,18 @@ export const employeeContractsApi = {
 
   delete: (id: string) =>
     apiRequest<void>(`/payroll/contracts/${id}`, { method: 'DELETE' }),
+
+  send: (id: string, body?: SendEmployeeContractDto) =>
+    apiRequest<ApiEmployeeContract>(`/payroll/contracts/${id}/send`, {
+      method: 'POST',
+      body: body ?? {},
+    }),
+
+  activate: (id: string, body?: ActivateEmployeeContractDto) =>
+    apiRequest<ApiEmployeeContract>(`/payroll/contracts/${id}/activate`, {
+      method: 'POST',
+      body: body ?? {},
+    }),
 
   employeeDecision: (id: string, body: EmployeeContractDecisionDto) =>
     apiRequest<ApiEmployeeContract>(`/payroll/contracts/${id}/employee-decision`, {

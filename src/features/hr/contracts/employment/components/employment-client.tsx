@@ -59,8 +59,8 @@ import { EmploymentContractDetailDialog } from '@/features/hr/contracts/employme
 import { EmploymentContractFormDialog } from '@/features/hr/contracts/employment/components/employment-contract-form-dialog';
 import { ContractLeaveTypePickerDialog } from '@/features/hr/contracts/employment/components/contract-leave-type-picker-dialog';
 import {
-  canActivateEmploymentContract,
   contractCreditsLeaveDays,
+  resolveContractActions,
 } from '@/features/hr/contracts/employment/utils/contract-leave-credit';
 import { PdfPreviewExportDialog } from '@/components/pdf/pdf-preview-export-dialog';
 import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-contract-print-html';
@@ -93,7 +93,7 @@ export function EmploymentContractsClient() {
   const modeParam = searchParams.get(HR_CONTRACTS_MODE_PARAM);
 
   const companyId = useDefaultCompanyId();
-  const { add, update, activate, terminate, createAmendmentDraft } = useHRContractsStore();
+  const { add, update, send, activate, terminate, cancel } = useHRContractsStore();
   const { templates, fetch: fetchTemplates } = useHRContractTemplatesStore();
   const { data: allowanceTypes = [] } = useAllowanceTypes();
   const { data: articles = [] } = useContractArticles();
@@ -449,8 +449,8 @@ export function EmploymentContractsClient() {
   };
 
   const openEditFromDetail = (c: HRContractRecord) => {
-    if (c.status !== 'draft') {
-      toast.error('التعديل متاح فقط للعقود في حالة المسودة.');
+    if (!resolveContractActions(c).canEditTerms) {
+      toast.error('تعديل البنود غير متاح في هذه المرحلة (بعد موافقة الموظف أو بعد التفعيل).');
       return;
     }
     setDetailContractId(null);
@@ -462,23 +462,6 @@ export function EmploymentContractsClient() {
     setPanelMode('edit');
     setError(null);
     setDrawerOpen(true);
-  };
-
-  const openAmendment = async (c: HRContractRecord) => {
-    const res = await createAmendmentDraft(c.id);
-    if (!res.ok) { toast.error(res.message); return; }
-    const draft = useHRContractsStore.getState().contracts.find(x => x.id === res.id);
-    if (draft) {
-      setSelected(draft);
-      setForm({
-        ...recordToForm(draft),
-        articleIds: mergeEssentialArticleIds(draft.articleIds, essentialArticleIds),
-      });
-      setPanelMode('edit');
-      setError(null);
-      setDrawerOpen(true);
-    }
-    toast.success('تم إنشاء مسودة التعديل الرسمي.');
   };
 
   const handleSave = async () => {
@@ -525,8 +508,8 @@ export function EmploymentContractsClient() {
             : 'تم إنشاء العقد كمسودة.',
         );
       } else if (panelMode === 'edit' && selected) {
-        if (selected.status !== 'draft') {
-          setError('التعديل متاح فقط للعقود في حالة المسودة.');
+        if (!resolveContractActions(selected).canEditTerms) {
+          setError('تعديل البنود غير متاح في هذه المرحلة.');
           return;
         }
         const res = await update(selected.id, formToDraft(payload, selected.status));
@@ -548,6 +531,10 @@ export function EmploymentContractsClient() {
   };
 
   const handleActivate = (contract: HRContractRecord) => {
+    if (!resolveContractActions(contract).canActivate) {
+      toast.error('التفعيل متاح فقط بعد موافقة الموظف (بانتظار التوقيع + موافقة).');
+      return;
+    }
     if (contractCreditsLeaveDays(contract)) {
       setLeavePicker({
         contractId: contract.id,
@@ -563,12 +550,40 @@ export function EmploymentContractsClient() {
     await runActivate(leavePicker.contractId, leaveTypeId);
   };
 
+  const handleSend = async (c: HRContractRecord) => {
+    if (!resolveContractActions(c).canSendToEmployee) {
+      toast.error('إرسال العقد للموظف غير متاح حالياً.');
+      return;
+    }
+    const res = await send(c.id);
+    if (!res.ok) toast.error(res.message);
+    else {
+      toast.success('تم إرسال العقد للموظف بانتظار الموافقة.');
+      setDetailRefreshKey((k) => k + 1);
+      await reloadList();
+    }
+  };
+
+  const handleCancel = async (c: HRContractRecord) => {
+    if (!resolveContractActions(c).canCancel) {
+      toast.error('إلغاء العقد غير متاح حالياً.');
+      return;
+    }
+    const res = await cancel(c.id);
+    if (!res.ok) toast.error(res.message);
+    else {
+      toast.success('تم إلغاء العقد.');
+      setDetailRefreshKey((k) => k + 1);
+      await reloadList();
+    }
+  };
+
   const handleTerminate = async () => {
     if (!terminateId) return;
     const target = filtered.find((c) => c.id === terminateId)
       ?? useHRContractsStore.getState().contracts.find((c) => c.id === terminateId);
-    if (target && target.status !== 'active') {
-      toast.error('الإنهاء متاح فقط للعقود النشطة.');
+    if (target && !resolveContractActions(target).canClose) {
+      toast.error('إغلاق العقد متاح فقط للعقود النشطة.');
       setTerminateId(null);
       setTerminateReason('');
       return;
@@ -713,29 +728,45 @@ export function EmploymentContractsClient() {
   );
 
   const ContractActions = ({ c }: { c: HRContractRecord }) => {
-    const isDraft = c.status === 'draft';
-    const isActive = c.status === 'active';
+    const actions = resolveContractActions(c);
 
     return (
       <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-        {canActivateEmploymentContract(c) ? (
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c)}>تفعيل</Button>
-        ) : null}
-        {isDraft ? (
+        {actions.canEditTerms ? (
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEditFromDetail(c)}>تعديل</Button>
         ) : null}
-        {isActive ? (
-          <>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openAmendment(c)}>تعديل رسمي</Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-destructive hover:text-destructive"
-              onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}
-            >
-              إنهاء
-            </Button>
-          </>
+        {actions.canSendToEmployee ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs text-primary hover:text-primary"
+            onClick={() => { void handleSend(c); }}
+          >
+            إرسال
+          </Button>
+        ) : null}
+        {actions.canActivate ? (
+          <Button size="sm" variant="ghost" className="h-7 text-xs text-success hover:text-success" onClick={() => handleActivate(c)}>تفعيل</Button>
+        ) : null}
+        {actions.canClose ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs text-destructive hover:text-destructive"
+            onClick={() => { setTerminateId(c.id); setTerminateReason(''); }}
+          >
+            إنهاء
+          </Button>
+        ) : null}
+        {actions.canCancel ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs text-muted-foreground hover:text-destructive"
+            onClick={() => { void handleCancel(c); }}
+          >
+            إلغاء
+          </Button>
         ) : null}
       </div>
     );
@@ -771,9 +802,18 @@ export function EmploymentContractsClient() {
                     <p className="font-mono text-[10px] text-muted-foreground">{c.contractNumber}</p>
                   </div>
                 </div>
-                <Badge variant="outline" className={cn('shrink-0 text-[10px]', CONTRACT_STATUS_COLORS[c.status])}>
-                  {CONTRACT_STATUS_LABELS[c.status]}
-                </Badge>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Badge variant="outline" className={cn('text-[10px]', CONTRACT_STATUS_COLORS[c.status])}>
+                    {CONTRACT_STATUS_LABELS[c.status]}
+                  </Badge>
+                  {c.employeeSigned ? (
+                    <span className="text-[10px] font-medium text-success">وافق الموظف</span>
+                  ) : c.rejectionReason ? (
+                    <span className="text-[10px] font-medium text-destructive">رفض الموظف</span>
+                  ) : c.status === 'pending_signature' ? (
+                    <span className="text-[10px] text-muted-foreground">بانتظار الموظف</span>
+                  ) : null}
+                </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
