@@ -68,11 +68,6 @@ import { EmploymentContractPrintHtml } from '@/components/pdf/print/employment-c
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { getDefaultCompanyId, useDefaultCompanyId } from '@/features/hr/organization/lib/default-company-id';
 import { getSessionCompanyDisplay } from '@/features/hr/organization/lib/session-company-display';
-import {
-  ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
-  ORGANIZATION_ARCHIVE_SCOPE_OPTIONS,
-  type OrganizationArchiveScope,
-} from '@/features/hr/organization/lib/archive-scope';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { sendEmploymentContractCreatedNotification } from '@/features/hr/contracts/employment/services/contract-created-notification.service';
 
@@ -185,10 +180,6 @@ export function EmploymentContractsClient() {
   const draftFilter = (values.draft as DraftFilter) || 'all';
   const contractNumberFilter = typeof values.contractNumber === 'string' ? values.contractNumber : '';
 
-  const [archiveScope, setArchiveScope] = React.useState<OrganizationArchiveScope>(
-    ORGANIZATION_ARCHIVE_SCOPE_DEFAULT,
-  );
-
   const [selectedEmpIds, setSelectedEmpIds] = React.useState<Set<string>>(new Set());
 
   const selectedEmpKey = React.useMemo(() => [...selectedEmpIds].sort().join(','), [selectedEmpIds]);
@@ -232,7 +223,6 @@ export function EmploymentContractsClient() {
       workFilter,
       draftFilter,
       contractNumberFilter,
-      archiveScope,
       selectedEmpKey,
     ],
   });
@@ -657,13 +647,6 @@ export function EmploymentContractsClient() {
 
   const employmentInlineSelects = React.useMemo((): ListFilterInlineSelect[] => [
     {
-      id: 'archive',
-      value: archiveScope,
-      onChange: (v) => setArchiveScope(v as OrganizationArchiveScope),
-      placeholder: 'العرض',
-      options: ORGANIZATION_ARCHIVE_SCOPE_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
-    },
-    {
       id: 'contract-kind',
       value: kindFilter,
       onChange: (v) => setValue('kind', v),
@@ -684,7 +667,7 @@ export function EmploymentContractsClient() {
       options: DRAFT_FILTER_OPTIONS,
       placeholder: 'المسودات',
     },
-  ], [archiveScope, kindFilter, workFilter, draftFilter, setValue]);
+  ], [kindFilter, workFilter, draftFilter, setValue]);
 
   const handleStatusFilterChange = React.useCallback(
     (v: string) => setValue('status', v),
@@ -713,7 +696,6 @@ export function EmploymentContractsClient() {
       workFilter,
       draftFilter,
       contractNumberFilter,
-      archiveScope,
       selectedEmpKey,
       statusCounts,
       companyId,
