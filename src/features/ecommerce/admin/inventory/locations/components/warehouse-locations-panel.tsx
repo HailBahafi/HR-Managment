@@ -8,6 +8,8 @@ import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/stor
 import { useWarehouseLocations } from '@/features/ecommerce/admin/inventory/locations/hooks/use-warehouse-locations';
 import { useWarehouseLocationMutations } from '@/features/ecommerce/admin/inventory/locations/hooks/use-warehouse-location-mutations';
 import {
+  LOCATION_TYPE_OPTIONS,
+  REMOVAL_STRATEGY_OPTIONS,
   WAREHOUSE_LOCATION_FORM_DEFAULT_VALUES,
   warehouseLocationFormSchema,
   type WarehouseLocationFormValues,
@@ -29,19 +31,34 @@ import {
   DialogTitle,
   dialogMaxHeightClass,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type Props = {
   warehouseId: string;
 };
 
+const NO_PARENT = '__none__';
+
+const TYPE_LABEL: Record<string, string> = {
+  internal: 'داخلي',
+  view: 'عرض',
+  supplier: 'مورد',
+  customer: 'عميل',
+  inventory: 'جرد',
+};
+
 function toFormValues(location: WarehouseLocation): WarehouseLocationFormValues {
   return {
-    code: location.code,
     nameAr: location.nameAr,
-    nameEn: location.nameEn ?? '',
-    aisle: location.aisle ?? '',
-    rack: location.rack ?? '',
-    bin: location.bin ?? '',
+    parentLocationId: location.parentLocationId ?? '',
+    locationType: location.locationType ?? 'internal',
+    storageCategory: location.storageCategory ?? '',
+    barcode: location.barcode ?? '',
+    replenish: location.replenish ?? false,
+    cycleCountFrequencyDays: location.cycleCountFrequencyDays ?? 0,
+    lastCountAt: location.lastCountAt ? location.lastCountAt.slice(0, 10) : '',
+    nextCountAt: location.nextCountAt ? location.nextCountAt.slice(0, 10) : '',
+    removalStrategy: location.removalStrategy ?? 'fifo',
     isActive: location.isActive,
   };
 }
@@ -66,9 +83,12 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
     warehouseId,
     search: search || undefined,
     page: 1,
-    limit: 100,
+    limit: 200,
   });
   const { create, update, remove } = useWarehouseLocationMutations(warehouseId);
+  const locations = data?.items ?? [];
+  const parentOptions = locations.filter((location) => location.id !== formState.location?.id);
+  const nameById = React.useMemo(() => new Map(locations.map((location) => [location.id, location.nameAr])), [locations]);
 
   const form = useForm<WarehouseLocationFormValues>({
     resolver: zodResolver(warehouseLocationFormSchema),
@@ -84,16 +104,29 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
 
   const onSubmit = async (values: WarehouseLocationFormValues) => {
     if (!companyId) return;
+    const code =
+      formState.location?.code ??
+      values.nameAr
+        .trim()
+        .replace(/\s+/g, '-')
+        .slice(0, 32);
+
     const payload = {
       companyId,
       warehouseId,
-      code: values.code.trim(),
+      code,
       nameAr: values.nameAr.trim(),
-      nameEn: values.nameEn?.trim() || undefined,
-      aisle: values.aisle?.trim() || undefined,
-      rack: values.rack?.trim() || undefined,
-      bin: values.bin?.trim() || undefined,
+      parentLocationId: values.parentLocationId || null,
+      locationType: values.locationType,
+      storageCategory: values.storageCategory?.trim() || undefined,
+      barcode: values.barcode?.trim() || undefined,
+      replenish: values.replenish,
+      cycleCountFrequencyDays: values.cycleCountFrequencyDays,
+      lastCountAt: values.lastCountAt ? new Date(values.lastCountAt).toISOString() : undefined,
+      nextCountAt: values.nextCountAt ? new Date(values.nextCountAt).toISOString() : undefined,
+      removalStrategy: values.removalStrategy,
       isActive: values.isActive,
+      isSystem: formState.location?.isSystem ?? false,
     };
 
     if (formState.location) {
@@ -118,18 +151,24 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
       ),
     },
     {
-      key: 'coords',
-      title: 'ممر / رف / بن',
+      key: 'parent',
+      title: 'الموقع الرئيسي',
       render: (row) => (
-        <span className="text-sm text-muted-foreground" dir="ltr">
-          {[row.aisle, row.rack, row.bin].filter(Boolean).join(' / ') || '—'}
+        <span className="text-sm text-muted-foreground">
+          {row.parentLocationId ? (nameById.get(row.parentLocationId) ?? '—') : '—'}
         </span>
       ),
     },
     {
-      key: 'status',
-      title: 'الحالة',
-      render: (row) => <Badge variant={row.isActive ? 'success' : 'subtle'}>{row.isActive ? 'نشط' : 'معطّل'}</Badge>,
+      key: 'type',
+      title: 'النوع',
+      render: (row) => <Badge variant="subtle">{TYPE_LABEL[row.locationType] ?? 'داخلي'}</Badge>,
+    },
+    {
+      key: 'system',
+      title: '',
+      render: (row) =>
+        row.isSystem ? <Badge variant="outline">تلقائي</Badge> : null,
     },
     {
       key: 'actions',
@@ -145,7 +184,13 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
           >
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="حذف الموقع" onClick={() => setToDelete(row)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="حذف الموقع"
+            disabled={Boolean(row.isSystem)}
+            onClick={() => setToDelete(row)}
+          >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </>
@@ -172,7 +217,7 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
 
       <DataTable
         columns={columns}
-        data={data?.items ?? []}
+        data={locations}
         keyExtractor={(row) => row.id}
         loading={isLoading}
         emptyText="لا توجد مواقع لهذا المستودع بعد."
@@ -185,7 +230,7 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
         <DialogContent className={`${dialogMaxHeightClass} max-w-lg overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>{formState.location ? 'تعديل الموقع' : 'إضافة موقع'}</DialogTitle>
-            <DialogDescription>المواقع تحدد أماكن التخزين داخل المستودع (ممر، رف، بن).</DialogDescription>
+            <DialogDescription>مثال: رف 1 داخل ممر 1 — اختر الموقع الرئيسي ونوع التخزين باختصار.</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -194,50 +239,134 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
             }}
             className="space-y-4"
           >
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="loc-code">الرمز</Label>
-                <Input id="loc-code" dir="ltr" {...form.register('code')} />
-                {form.formState.errors.code ? (
-                  <p className="text-xs text-destructive">{form.formState.errors.code.message}</p>
-                ) : null}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="loc-name-ar">الاسم</Label>
-                <Input id="loc-name-ar" {...form.register('nameAr')} />
-                {form.formState.errors.nameAr ? (
-                  <p className="text-xs text-destructive">{form.formState.errors.nameAr.message}</p>
-                ) : null}
-              </div>
-            </div>
             <div className="space-y-1.5">
-              <Label htmlFor="loc-name-en">الاسم بالإنجليزية</Label>
-              <Input id="loc-name-en" dir="ltr" {...form.register('nameEn')} />
+              <Label htmlFor="loc-name">اسم الموقع</Label>
+              <Input id="loc-name" placeholder="مثال: رف 1" {...form.register('nameAr')} />
+              {form.formState.errors.nameAr ? (
+                <p className="text-xs text-destructive">{form.formState.errors.nameAr.message}</p>
+              ) : null}
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="loc-aisle">الممر</Label>
-                <Input id="loc-aisle" dir="ltr" {...form.register('aisle')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="loc-rack">الرف</Label>
-                <Input id="loc-rack" dir="ltr" {...form.register('rack')} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="loc-bin">البن</Label>
-                <Input id="loc-bin" dir="ltr" {...form.register('bin')} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
-              <p className="text-sm font-medium">موقع نشط</p>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="loc-parent">الموقع الرئيسي</Label>
               <Controller
                 control={form.control}
-                name="isActive"
+                name="parentLocationId"
                 render={({ field }) => (
-                  <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="حالة الموقع" />
+                  <Select
+                    value={field.value || NO_PARENT}
+                    onValueChange={(value) => field.onChange(value === NO_PARENT ? '' : value)}
+                  >
+                    <SelectTrigger id="loc-parent" aria-label="الموقع الرئيسي">
+                      <SelectValue placeholder="بدون موقع رئيسي" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_PARENT}>بدون موقع رئيسي</SelectItem>
+                      {parentOptions.map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.nameAr}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               />
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="loc-type">نوع الموقع</Label>
+                <Controller
+                  control={form.control}
+                  name="locationType"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="loc-type" aria-label="نوع الموقع">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LOCATION_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="loc-category">فئة التخزين</Label>
+                <Input id="loc-category" placeholder="اختياري" {...form.register('storageCategory')} />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="loc-barcode">باركود</Label>
+                <Input id="loc-barcode" dir="ltr" {...form.register('barcode')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="loc-removal">استراتيجية الإزالة</Label>
+                <Controller
+                  control={form.control}
+                  name="removalStrategy"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="loc-removal" aria-label="استراتيجية الإزالة">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {REMOVAL_STRATEGY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">تجديد المخزون</p>
+                <p className="text-xs text-muted-foreground">اقتراح إعادة التعبئة لهذا الموقع</p>
+              </div>
+              <Controller
+                control={form.control}
+                name="replenish"
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="تجديد المخزون" />
+                )}
+              />
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-border p-3">
+              <p className="text-sm font-semibold">العد الدوري</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="loc-freq">كل كم يوم؟</Label>
+                  <Input
+                    id="loc-freq"
+                    type="number"
+                    min={0}
+                    dir="ltr"
+                    {...form.register('cycleCountFrequencyDays', { valueAsNumber: true })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="loc-last-count">آخر جرد</Label>
+                  <Input id="loc-last-count" type="date" dir="ltr" {...form.register('lastCountAt')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="loc-next-count">الجرد التالي</Label>
+                  <Input id="loc-next-count" type="date" dir="ltr" {...form.register('nextCountAt')} />
+                </div>
+              </div>
+            </div>
+
             <DialogFooter>
               <Button
                 type="button"

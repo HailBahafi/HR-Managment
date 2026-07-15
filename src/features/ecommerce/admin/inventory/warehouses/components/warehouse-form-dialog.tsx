@@ -6,25 +6,28 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useWarehouseMutations } from '@/features/ecommerce/admin/inventory/warehouses/hooks/use-warehouse-mutations';
 import {
+  INCOMING_STEP_OPTIONS,
+  OUTGOING_STEP_OPTIONS,
   WAREHOUSE_FORM_DEFAULT_VALUES,
   warehouseFormSchema,
   type WarehouseFormValues,
 } from '@/features/ecommerce/admin/inventory/schemas/warehouse-schemas';
+import { EntityFormRow } from '@/features/ecommerce/admin/shared/components/entity-form-row';
 import type { Warehouse } from '@/features/ecommerce/domain/types/warehouse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
   DialogFooter,
-  dialogMaxHeightClass,
+  DialogTitle,
+  dialogShellBodyClass,
+  dialogShellContentClass,
+  dialogShellHeaderClass,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/shared/utils';
 
 type Props = {
   warehouse?: Warehouse | null;
@@ -36,10 +39,11 @@ function toFormValues(warehouse: Warehouse): WarehouseFormValues {
   return {
     code: warehouse.code,
     nameAr: warehouse.nameAr,
-    nameEn: warehouse.nameEn ?? '',
-    description: warehouse.description ?? '',
     address: warehouse.address ?? '',
     status: warehouse.status,
+    incomingSteps: warehouse.incomingSteps ?? 1,
+    outgoingSteps: warehouse.outgoingSteps ?? 1,
+    buyToResupply: warehouse.buyToResupply ?? false,
   };
 }
 
@@ -65,10 +69,11 @@ export function WarehouseFormDialog({ warehouse, open, onOpenChange }: Props) {
       companyId,
       code: values.code.trim(),
       nameAr: values.nameAr.trim(),
-      nameEn: values.nameEn?.trim() || undefined,
-      description: values.description?.trim() || undefined,
       address: values.address?.trim() || undefined,
       status: values.status,
+      incomingSteps: values.incomingSteps,
+      outgoingSteps: values.outgoingSteps,
+      buyToResupply: values.buyToResupply,
     };
 
     if (warehouse) {
@@ -81,77 +86,136 @@ export function WarehouseFormDialog({ warehouse, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${dialogMaxHeightClass} max-w-lg overflow-y-auto`}>
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'تعديل المستودع' : 'إضافة مستودع'}</DialogTitle>
-          <DialogDescription>
-            {isEditing ? 'حدّث بيانات المستودع ثم احفظ.' : 'أنشئ مستودعًا جديدًا لإدارة المواقع والعمليات.'}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className={cn(dialogShellContentClass, 'max-w-2xl sm:max-w-2xl')}>
+        <div className={dialogShellHeaderClass}>
+          <DialogTitle className="text-base font-semibold">
+            {isEditing ? 'تعديل المستودع' : 'مستودع جديد'}
+          </DialogTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            عند الإنشاء تُنشأ مواقع تلقائية باسم المختصر (مثل: فثسف/المخزون).
+          </p>
+        </div>
 
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void form.handleSubmit(onSubmit)(e);
           }}
-          className="space-y-4"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="wh-code">الرمز</Label>
-              <Input id="wh-code" dir="ltr" {...form.register('code')} />
-              {form.formState.errors.code ? (
-                <p className="text-xs text-destructive">{form.formState.errors.code.message}</p>
-              ) : null}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="wh-name-ar">الاسم</Label>
-              <Input id="wh-name-ar" {...form.register('nameAr')} />
+          <div className={cn(dialogShellBodyClass, 'space-y-1')}>
+            <EntityFormRow label="اسم المستودع" htmlFor="wh-name-ar">
+              <Input
+                id="wh-name-ar"
+                className="max-w-sm border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0"
+                placeholder="مثال: المستودع المركزي"
+                {...form.register('nameAr')}
+              />
               {form.formState.errors.nameAr ? (
                 <p className="text-xs text-destructive">{form.formState.errors.nameAr.message}</p>
               ) : null}
-            </div>
-          </div>
+            </EntityFormRow>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="wh-name-en">الاسم بالإنجليزية</Label>
-            <Input id="wh-name-en" dir="ltr" {...form.register('nameEn')} />
-          </div>
+            <EntityFormRow label="الاسم المختصر" htmlFor="wh-code" hint>
+              <div className="space-y-1">
+                <Input id="wh-code" className="max-w-xs" placeholder="مثال: فثسف أو WH" {...form.register('code')} />
+                {form.formState.errors.code ? (
+                  <p className="text-xs text-destructive">{form.formState.errors.code.message}</p>
+                ) : null}
+                <p className="text-xs text-muted-foreground">يُستخدم لإنشاء المواقع التلقائية.</p>
+              </div>
+            </EntityFormRow>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="wh-address">العنوان</Label>
-            <Input id="wh-address" {...form.register('address')} />
-          </div>
+            <EntityFormRow label="العنوان" htmlFor="wh-address">
+              <Input id="wh-address" className="max-w-lg" {...form.register('address')} />
+            </EntityFormRow>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="wh-description">الوصف</Label>
-            <Textarea id="wh-description" className="min-h-[72px] resize-none" {...form.register('description')} />
-          </div>
+            <EntityFormRow label="الشحنات الواردة" htmlFor="wh-incoming">
+              <Controller
+                control={form.control}
+                name="incomingSteps"
+                render={({ field }) => (
+                  <Select
+                    value={String(field.value)}
+                    onValueChange={(value) => field.onChange(Number(value) as 1 | 2 | 3)}
+                  >
+                    <SelectTrigger id="wh-incoming" aria-label="الشحنات الواردة" className="max-w-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INCOMING_STEP_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={String(option.value)}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </EntityFormRow>
 
-          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
-            <div>
-              <p className="text-sm font-medium">مستودع نشط</p>
-              <p className="text-xs text-muted-foreground">المستودعات غير النشطة لا تُستخدم في العمليات الجديدة</p>
-            </div>
-            <Controller
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <Switch
-                  checked={field.value === 'active'}
-                  onCheckedChange={(checked) => field.onChange(checked ? 'active' : 'inactive')}
-                  aria-label="حالة المستودع"
+            <EntityFormRow label="الشحنات الصادرة" htmlFor="wh-outgoing">
+              <Controller
+                control={form.control}
+                name="outgoingSteps"
+                render={({ field }) => (
+                  <Select
+                    value={String(field.value)}
+                    onValueChange={(value) => field.onChange(Number(value) as 1 | 2 | 3)}
+                  >
+                    <SelectTrigger id="wh-outgoing" aria-label="الشحنات الصادرة" className="max-w-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OUTGOING_STEP_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={String(option.value)}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </EntityFormRow>
+
+            <EntityFormRow label="إعادة التزويد">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">اقتراح أوامر شراء عند انخفاض المخزون</p>
+                <Controller
+                  control={form.control}
+                  name="buyToResupply"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      aria-label="الشراء لإعادة التزويد"
+                    />
+                  )}
                 />
-              )}
-            />
+              </div>
+            </EntityFormRow>
+
+            <EntityFormRow label="مستودع نشط">
+              <Controller
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <Switch
+                    checked={field.value === 'active'}
+                    onCheckedChange={(checked) => field.onChange(checked ? 'active' : 'inactive')}
+                    aria-label="حالة المستودع"
+                  />
+                )}
+              />
+            </EntityFormRow>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 gap-2 border-t border-border px-6 py-4 sm:justify-start">
+            <Button type="submit" disabled={isSaving || !companyId}>
+              {isSaving ? 'جاري الحفظ…' : isEditing ? 'حفظ' : 'إنشاء المستودع'}
+            </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
               إلغاء
-            </Button>
-            <Button type="submit" disabled={isSaving || !companyId}>
-              {isSaving ? 'جاري الحفظ…' : isEditing ? 'حفظ التغييرات' : 'إضافة'}
             </Button>
           </DialogFooter>
         </form>

@@ -7,7 +7,7 @@
     "appsHome": "التطبيقات",
     "groups": {
       "website": "🌐 الموقع",
-      "catalog": "الكتالوج",
+      "products": "المنتجات",
       "sales": "المبيعات",
       "inventory": "المخازن",
       "finance": "المالية",
@@ -15,7 +15,8 @@
     },
     "sections": {
       "content": "المحتوى",
-      "appearance": "المظهر"
+      "appearance": "المظهر",
+      "catalog": "الكتالوج"
     },
     "overview": "نظرة عامة",
     "homepage": "الصفحة الرئيسية",
@@ -29,6 +30,8 @@
     "appearanceAnnouncement": "شريط الإعلانات",
     "websiteSettings": "إعدادات الموقع",
     "products": "المنتجات",
+    "lotsSerials": "أرقام المجموعات / الأرقام التسلسلية",
+    "packages": "الطرود",
     "categories": "التصنيفات",
     "brands": "العلامات التجارية",
     "orders": "الطلبات",

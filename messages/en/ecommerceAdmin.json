@@ -7,7 +7,7 @@
     "appsHome": "Applications",
     "groups": {
       "website": "🌐 Website",
-      "catalog": "Catalog",
+      "products": "Products",
       "sales": "Sales",
       "inventory": "Warehouses",
       "finance": "Finance",
@@ -15,7 +15,8 @@
     },
     "sections": {
       "content": "Content",
-      "appearance": "Appearance"
+      "appearance": "Appearance",
+      "catalog": "Catalog"
     },
     "overview": "Overview",
     "homepage": "Homepage",
@@ -29,6 +30,8 @@
     "appearanceAnnouncement": "Announcement Bar",
     "websiteSettings": "Website Settings",
     "products": "Products",
+    "lotsSerials": "Lots / Serial Numbers",
+    "packages": "Packages",
     "categories": "Categories",
     "brands": "Brands",
     "orders": "Orders",

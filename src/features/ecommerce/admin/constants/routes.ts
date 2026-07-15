@@ -12,6 +12,8 @@ export const ecommerceAdminRoutes = {
   content: '/cms/content',
   settings: '/cms/settings',
   products: '/products',
+  lotsSerials: '/products/lots-serials',
+  packages: '/products/packages',
   categories: '/categories',
   brands: '/brands',
   orders: '/orders',

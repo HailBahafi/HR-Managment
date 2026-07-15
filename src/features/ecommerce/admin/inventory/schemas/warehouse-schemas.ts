@@ -1,12 +1,41 @@
 import { z } from 'zod';
 
+export const INCOMING_STEP_OPTIONS = [
+  { value: 1, label: 'خطوة واحدة — استلام وتخزين معًا' },
+  { value: 2, label: 'خطوتان — استلام ثم تخزين' },
+  { value: 3, label: '3 خطوات — استلام، فحص جودة، ثم تخزين' },
+] as const;
+
+export const OUTGOING_STEP_OPTIONS = [
+  { value: 1, label: 'خطوة واحدة — توصيل مباشر' },
+  { value: 2, label: 'خطوتان — تجهيز ثم توصيل' },
+  { value: 3, label: '3 خطوات — تجهيز، رزم، ثم توصيل' },
+] as const;
+
+export const LOCATION_TYPE_OPTIONS = [
+  { value: 'internal', label: 'داخلي' },
+  { value: 'view', label: 'عرض' },
+  { value: 'supplier', label: 'مورد' },
+  { value: 'customer', label: 'عميل' },
+  { value: 'inventory', label: 'جرد' },
+] as const;
+
+export const REMOVAL_STRATEGY_OPTIONS = [
+  { value: 'fifo', label: 'الوارد أولاً يخرج أولاً (FIFO)' },
+  { value: 'lifo', label: 'الوارد أخيراً يخرج أولاً (LIFO)' },
+  { value: 'closest', label: 'أقرب موقع' },
+  { value: 'fewest_packages', label: 'أقل عدد طرود' },
+  { value: 'fefo', label: 'ما تنتهي صلاحيته أولاً (FEFO)' },
+] as const;
+
 export const warehouseFormSchema = z.object({
-  code: z.string().min(1, 'رمز المستودع مطلوب').max(32),
+  code: z.string().min(1, 'الاسم المختصر مطلوب').max(32),
   nameAr: z.string().min(1, 'اسم المستودع مطلوب').max(120),
-  nameEn: z.string().max(120).optional().or(z.literal('')),
-  description: z.string().max(500).optional().or(z.literal('')),
   address: z.string().max(250).optional().or(z.literal('')),
   status: z.enum(['active', 'inactive']),
+  incomingSteps: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  outgoingSteps: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  buyToResupply: z.boolean(),
 });
 
 export type WarehouseFormValues = z.infer<typeof warehouseFormSchema>;
@@ -14,31 +43,40 @@ export type WarehouseFormValues = z.infer<typeof warehouseFormSchema>;
 export const WAREHOUSE_FORM_DEFAULT_VALUES: WarehouseFormValues = {
   code: '',
   nameAr: '',
-  nameEn: '',
-  description: '',
   address: '',
   status: 'active',
+  incomingSteps: 1,
+  outgoingSteps: 1,
+  buyToResupply: false,
 };
 
 export const warehouseLocationFormSchema = z.object({
-  code: z.string().min(1, 'رمز الموقع مطلوب').max(32),
   nameAr: z.string().min(1, 'اسم الموقع مطلوب').max(120),
-  nameEn: z.string().max(120).optional().or(z.literal('')),
-  aisle: z.string().max(32).optional().or(z.literal('')),
-  rack: z.string().max(32).optional().or(z.literal('')),
-  bin: z.string().max(32).optional().or(z.literal('')),
+  parentLocationId: z.string().optional().or(z.literal('')),
+  locationType: z.enum(['internal', 'view', 'supplier', 'customer', 'inventory']),
+  storageCategory: z.string().max(80).optional().or(z.literal('')),
+  barcode: z.string().max(64).optional().or(z.literal('')),
+  replenish: z.boolean(),
+  cycleCountFrequencyDays: z.number().int().min(0),
+  lastCountAt: z.string().optional().or(z.literal('')),
+  nextCountAt: z.string().optional().or(z.literal('')),
+  removalStrategy: z.enum(['fifo', 'lifo', 'closest', 'fewest_packages', 'fefo']),
   isActive: z.boolean(),
 });
 
 export type WarehouseLocationFormValues = z.infer<typeof warehouseLocationFormSchema>;
 
 export const WAREHOUSE_LOCATION_FORM_DEFAULT_VALUES: WarehouseLocationFormValues = {
-  code: '',
   nameAr: '',
-  nameEn: '',
-  aisle: '',
-  rack: '',
-  bin: '',
+  parentLocationId: '',
+  locationType: 'internal',
+  storageCategory: '',
+  barcode: '',
+  replenish: false,
+  cycleCountFrequencyDays: 0,
+  lastCountAt: '',
+  nextCountAt: '',
+  removalStrategy: 'fifo',
   isActive: true,
 };
 

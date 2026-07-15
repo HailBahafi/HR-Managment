@@ -2,14 +2,28 @@ import type { TenantScoped } from '@/features/ecommerce/domain/types/common';
 
 export type WarehouseStatus = 'active' | 'inactive';
 
+/** Incoming flow: 1 = receive+store, 2 = receive then store, 3 = receive + QC + store */
+export type WarehouseIncomingSteps = 1 | 2 | 3;
+
+/** Outgoing flow: 1 = deliver, 2 = pick+deliver, 3 = pick+pack+deliver */
+export type WarehouseOutgoingSteps = 1 | 2 | 3;
+
+export type WarehouseLocationType = 'internal' | 'view' | 'supplier' | 'customer' | 'inventory';
+
+export type WarehouseRemovalStrategy = 'fifo' | 'lifo' | 'closest' | 'fewest_packages' | 'fefo';
+
 export type Warehouse = TenantScoped & {
   id: string;
+  /** Short code used for auto locations, e.g. فثسف or WH */
   code: string;
   nameAr: string;
   nameEn?: string;
   description?: string;
   address?: string;
   status: WarehouseStatus;
+  incomingSteps: WarehouseIncomingSteps;
+  outgoingSteps: WarehouseOutgoingSteps;
+  buyToResupply: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -30,10 +44,22 @@ export type WarehouseLocation = TenantScoped & {
   code: string;
   nameAr: string;
   nameEn?: string;
+  parentLocationId?: string | null;
+  locationType: WarehouseLocationType;
+  storageCategory?: string;
+  barcode?: string;
+  replenish: boolean;
+  cycleCountFrequencyDays: number;
+  lastCountAt?: string;
+  nextCountAt?: string;
+  removalStrategy: WarehouseRemovalStrategy;
+  /** Legacy shelf fields — kept for display compatibility */
   aisle?: string;
   rack?: string;
   bin?: string;
   isActive: boolean;
+  /** True when seeded automatically on warehouse create */
+  isSystem?: boolean;
   createdAt: string;
   updatedAt: string;
 };

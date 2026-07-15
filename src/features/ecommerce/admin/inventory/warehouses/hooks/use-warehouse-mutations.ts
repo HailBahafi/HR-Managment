@@ -4,21 +4,29 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { warehousesApi } from '@/features/ecommerce/admin/inventory/warehouses/lib/api/warehouses';
-import { warehousesQueryKeys } from '@/features/ecommerce/admin/inventory/hooks/query-keys';
+import {
+  warehouseLocationsQueryKeys,
+  warehousesQueryKeys,
+} from '@/features/ecommerce/admin/inventory/hooks/query-keys';
 import type { CreateWarehouseInput, UpdateWarehouseInput } from '@/features/ecommerce/domain/types/warehouse';
 
 export function useWarehouseMutations() {
   const queryClient = useQueryClient();
 
-  function invalidate(companyId: string) {
+  function invalidate(companyId: string, warehouseId?: string) {
     void queryClient.invalidateQueries({ queryKey: warehousesQueryKeys.all(companyId) });
+    if (warehouseId) {
+      void queryClient.invalidateQueries({
+        queryKey: warehouseLocationsQueryKeys.all(companyId, warehouseId),
+      });
+    }
   }
 
   const create = useMutation({
     mutationFn: (input: CreateWarehouseInput) => warehousesApi.create(input),
-    onSuccess: (_data, input) => {
-      invalidate(input.companyId);
-      toast.success('تم إضافة المستودع بنجاح');
+    onSuccess: (data, input) => {
+      invalidate(input.companyId, data.id);
+      toast.success('تم إنشاء المستودع مع مواقعه التلقائية');
     },
     onError: (err) => {
       const { displayMessage } = handleApiError(err, 'ecommerce.warehouses.create');

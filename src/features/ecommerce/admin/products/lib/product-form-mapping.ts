@@ -39,6 +39,25 @@ export function productToFormValues(product: Product): ProductFormInput {
       .map((item) => ({ url: item.url, alt: item.alt, isPrimary: item.isPrimary })),
     metaTitle: product.seo.metaTitle ?? '',
     metaDescription: product.seo.metaDescription ?? '',
+    productType: product.productType ?? 'goods',
+    tracking: product.tracking ?? 'none',
+    barcode: product.barcode ?? '',
+    uom: product.uom ?? 'وحدات',
+    salesTax: product.salesTax ?? '',
+    purchaseTax: product.purchaseTax ?? '',
+    costAmount: product.cost?.amount ?? 0,
+    posAvailable: product.posAvailable ?? false,
+    saleOk: product.saleOk ?? true,
+    purchaseOk: product.purchaseOk ?? true,
+    attributeNotes: product.attributeNotes ?? '',
+    weightKg: product.weightKg ?? 0,
+    volumeM3: product.volumeM3 ?? 0,
+    responsible: product.responsible ?? '',
+    receiptDescription: product.receiptDescription ?? '',
+    deliveryDescription: product.deliveryDescription ?? '',
+    internalMoveDescription: product.internalMoveDescription ?? '',
+    priceLines: product.priceLines ?? [],
+    purchaseLines: product.purchaseLines ?? [],
   };
 }
 
@@ -54,8 +73,6 @@ export function formValuesToCreateInput(
     alt: item.alt || values.nameAr,
     type: 'image',
     position: index,
-    // If no image was explicitly marked primary, the first one wins — the storefront/admin
-    // always needs exactly one primary image to pick a thumbnail from.
     isPrimary: hasPrimary ? item.isPrimary : index === 0,
   }));
 
@@ -86,6 +103,25 @@ export function formValuesToCreateInput(
       metaDescription: values.metaDescription || undefined,
     },
     tags: parseTagsInput(values.tagsInput),
+    productType: values.productType,
+    tracking: values.tracking,
+    barcode: values.barcode || undefined,
+    uom: values.uom || undefined,
+    salesTax: values.salesTax || undefined,
+    purchaseTax: values.purchaseTax || undefined,
+    cost: { amount: values.costAmount, currency: values.priceCurrency },
+    posAvailable: values.posAvailable,
+    saleOk: values.saleOk,
+    purchaseOk: values.purchaseOk,
+    attributeNotes: values.attributeNotes || undefined,
+    weightKg: values.weightKg,
+    volumeM3: values.volumeM3,
+    responsible: values.responsible || undefined,
+    receiptDescription: values.receiptDescription || undefined,
+    deliveryDescription: values.deliveryDescription || undefined,
+    internalMoveDescription: values.internalMoveDescription || undefined,
+    priceLines: values.priceLines,
+    purchaseLines: values.purchaseLines,
   };
 }
 

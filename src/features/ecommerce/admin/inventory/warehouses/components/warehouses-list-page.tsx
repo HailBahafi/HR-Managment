@@ -96,8 +96,8 @@ export function WarehousesListPage() {
           </span>
           <span className="flex flex-col">
             <span className="font-medium text-foreground">{row.nameAr}</span>
-            <span className="text-xs text-muted-foreground" dir="ltr">
-              {row.code}
+            <span className="text-xs text-muted-foreground">
+              مختصر: <span dir="ltr">{row.code}</span>
             </span>
           </span>
         </button>

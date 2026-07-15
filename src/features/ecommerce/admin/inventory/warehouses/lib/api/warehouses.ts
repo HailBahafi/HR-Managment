@@ -1,4 +1,8 @@
-import { mockWarehousesStore } from '@/features/ecommerce/shared/lib/adapters/mock-inventory-store';
+import {
+  mockWarehouseLocationsStore,
+  mockWarehousesStore,
+} from '@/features/ecommerce/shared/lib/adapters/mock-inventory-store';
+import { buildDefaultWarehouseLocations } from '@/features/ecommerce/admin/inventory/warehouses/lib/default-warehouse-locations';
 import type {
   CreateWarehouseInput,
   UpdateWarehouseInput,
@@ -25,14 +29,28 @@ export const warehousesApi: AdminWarehousesPort = {
   getById(companyId, id) {
     return mockWarehousesStore.getById(companyId, id);
   },
-  create(input: CreateWarehouseInput) {
+  async create(input: CreateWarehouseInput) {
     const now = new Date().toISOString();
-    return mockWarehousesStore.create({
+    const warehouse = await mockWarehousesStore.create({
       ...input,
       id: newId('wh'),
       createdAt: now,
       updatedAt: now,
     });
+
+    const defaults = buildDefaultWarehouseLocations(warehouse);
+    await Promise.all(
+      defaults.map((location) =>
+        mockWarehouseLocationsStore.create({
+          ...location,
+          id: newId('loc'),
+          createdAt: now,
+          updatedAt: now,
+        }),
+      ),
+    );
+
+    return warehouse;
   },
   update(companyId, id, patch: UpdateWarehouseInput) {
     return mockWarehousesStore.update(companyId, id, { ...patch, updatedAt: new Date().toISOString() });

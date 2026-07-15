@@ -4,26 +4,75 @@ import type { StockStatus } from '@/features/ecommerce/domain/constants/stock-st
 
 export type { ProductStatus, StockStatus };
 
-export type Product = TenantScoped & Slugged & {
+/** Odoo-style product type. */
+export type ProductType = 'goods' | 'service' | 'combo';
+
+/** Inventory tracking mode (lot / serial deferred for warehouse ops linkage). */
+export type ProductTracking = 'none' | 'lot' | 'serial';
+
+export type ProductPriceLine = {
   id: string;
-  sku: string;
-  nameAr: string;
-  nameEn?: string;
-  description?: string;
-  brandId?: string | null;
-  categoryId?: string | null;
-  status: ProductStatus;
-  stockStatus: StockStatus;
-  inventory: Inventory;
-  price: Money;
-  compareAtPrice?: Money;
-  media: MediaItem[];
-  seo: SeoFields;
-  tags?: string[];
-  createdAt: string;
-  updatedAt: string;
-  archivedAt?: string | null;
+  priceList: string;
+  minQty: number;
+  packaging?: string;
+  unitPrice: number;
 };
+
+export type ProductPurchaseLine = {
+  id: string;
+  supplier: string;
+  supplierProductName?: string;
+  supplierProductCode?: string;
+  startDate?: string;
+  endDate?: string;
+  quantity: number;
+  uom?: string;
+  unitPrice: number;
+  discountPercent?: number;
+  leadTimeDays?: number;
+};
+
+export type Product = TenantScoped &
+  Slugged & {
+    id: string;
+    sku: string;
+    nameAr: string;
+    nameEn?: string;
+    description?: string;
+    brandId?: string | null;
+    categoryId?: string | null;
+    status: ProductStatus;
+    stockStatus: StockStatus;
+    inventory: Inventory;
+    price: Money;
+    compareAtPrice?: Money;
+    media: MediaItem[];
+    seo: SeoFields;
+    tags?: string[];
+    /** Extended catalog fields (Odoo-inspired). Optional for legacy seed compatibility. */
+    productType?: ProductType;
+    tracking?: ProductTracking;
+    barcode?: string;
+    uom?: string;
+    salesTax?: string;
+    purchaseTax?: string;
+    cost?: Money;
+    posAvailable?: boolean;
+    saleOk?: boolean;
+    purchaseOk?: boolean;
+    attributeNotes?: string;
+    weightKg?: number;
+    volumeM3?: number;
+    responsible?: string;
+    receiptDescription?: string;
+    deliveryDescription?: string;
+    internalMoveDescription?: string;
+    priceLines?: ProductPriceLine[];
+    purchaseLines?: ProductPurchaseLine[];
+    createdAt: string;
+    updatedAt: string;
+    archivedAt?: string | null;
+  };
 
 export type ProductListQuery = {
   companyId: string;

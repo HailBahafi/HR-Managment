@@ -20,6 +20,8 @@ import {
   Warehouse,
   Landmark,
   MonitorCog,
+  Hash,
+  Boxes,
 } from 'lucide-react';
 import {
   ecommerceAdminRoutes,
@@ -36,12 +38,12 @@ export type EcommerceAdminNavItem = {
 
 export type EcommerceAdminNavSection = {
   /** Optional section label key under `ecommerceAdmin.nav.sections.*` */
-  sectionKey?: 'content' | 'appearance';
+  sectionKey?: 'content' | 'appearance' | 'catalog';
   items: EcommerceAdminNavItem[];
 };
 
 export type EcommerceAdminNavGroup = {
-  key: 'website' | 'catalog' | 'sales' | 'inventory' | 'finance' | 'system';
+  key: 'website' | 'products' | 'sales' | 'inventory' | 'finance' | 'system';
   labelKey: string;
   icon: LucideIcon;
   sections: EcommerceAdminNavSection[];
@@ -96,13 +98,20 @@ export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
     ],
   },
   {
-    key: 'catalog',
-    labelKey: 'groups.catalog',
+    key: 'products',
+    labelKey: 'groups.products',
     icon: Package,
     sections: [
       {
         items: [
           { labelKey: 'products', href: ecommerceAdminRoutes.products, icon: Package },
+          { labelKey: 'lotsSerials', href: ecommerceAdminRoutes.lotsSerials, icon: Hash },
+          { labelKey: 'packages', href: ecommerceAdminRoutes.packages, icon: Boxes },
+        ],
+      },
+      {
+        sectionKey: 'catalog',
+        items: [
           { labelKey: 'categories', href: ecommerceAdminRoutes.categories, icon: FolderTree },
           { labelKey: 'brands', href: ecommerceAdminRoutes.brands, icon: Tag },
         ],
