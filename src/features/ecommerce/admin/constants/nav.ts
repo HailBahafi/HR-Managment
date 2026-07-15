@@ -13,16 +13,14 @@ import {
   Image,
   Newspaper,
   CircleHelp,
-  PanelTop,
   PanelBottom,
   Megaphone,
   Globe,
   Warehouse,
-  Landmark,
-  MonitorCog,
   MapPinned,
   MapPin,
   SlidersHorizontal,
+  Library,
 } from 'lucide-react';
 import {
   ecommerceAdminRoutes,
@@ -39,20 +37,20 @@ export type EcommerceAdminNavItem = {
 
 export type EcommerceAdminNavSection = {
   /** Optional section label key under `ecommerceAdmin.nav.sections.*` */
-  sectionKey?: 'content' | 'appearance' | 'catalog';
+  sectionKey?: 'content' | 'appearance' | 'catalogSetup' | 'inventorySetup';
   items: EcommerceAdminNavItem[];
 };
 
 export type EcommerceAdminNavGroup = {
-  key: 'website' | 'products' | 'sales' | 'inventory' | 'finance' | 'system';
+  key: 'products' | 'catalogSetup' | 'inventory' | 'sales' | 'website';
   labelKey: string;
   icon: LucideIcon;
   sections: EcommerceAdminNavSection[];
 };
 
 /**
- * Dashboard nav: Website is one storefront dropdown; remaining groups are business domains.
- * Nested Content / Appearance items deep-link into existing page tabs — not new domains.
+ * Order: operational catalog → master setup → inventory setup → sales → website.
+ * Empty future domains (finance/system) are omitted until they have real screens.
  */
 export const ecommerceAdminOverviewItem: EcommerceAdminNavItem = {
   labelKey: 'overview',
@@ -61,6 +59,59 @@ export const ecommerceAdminOverviewItem: EcommerceAdminNavItem = {
 };
 
 export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
+  {
+    key: 'products',
+    labelKey: 'groups.products',
+    icon: Package,
+    sections: [
+      {
+        items: [{ labelKey: 'products', href: ecommerceAdminRoutes.products, icon: Package }],
+      },
+    ],
+  },
+  {
+    key: 'catalogSetup',
+    labelKey: 'groups.catalogSetup',
+    icon: Library,
+    sections: [
+      {
+        sectionKey: 'catalogSetup',
+        items: [
+          { labelKey: 'categories', href: ecommerceAdminRoutes.categories, icon: FolderTree },
+          { labelKey: 'attributes', href: ecommerceAdminRoutes.attributes, icon: SlidersHorizontal },
+          { labelKey: 'brands', href: ecommerceAdminRoutes.brands, icon: Tag },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'inventory',
+    labelKey: 'groups.inventory',
+    icon: Warehouse,
+    sections: [
+      {
+        sectionKey: 'inventorySetup',
+        items: [
+          { labelKey: 'warehouses', href: ecommerceAdminRoutes.warehouses, icon: Warehouse },
+          { labelKey: 'locations', href: ecommerceAdminRoutes.locations, icon: MapPin },
+          { labelKey: 'putawayRules', href: ecommerceAdminRoutes.putawayRules, icon: MapPinned },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'sales',
+    labelKey: 'groups.sales',
+    icon: ShoppingCart,
+    sections: [
+      {
+        items: [
+          { labelKey: 'orders', href: ecommerceAdminRoutes.orders, icon: ShoppingCart },
+          { labelKey: 'customers', href: ecommerceAdminRoutes.customers, icon: Users },
+        ],
+      },
+    ],
+  },
   {
     key: 'website',
     labelKey: 'groups.website',
@@ -84,7 +135,6 @@ export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
       {
         sectionKey: 'appearance',
         items: [
-          { labelKey: 'appearanceHeader', href: ecommerceNavigationHref('header'), icon: PanelTop },
           { labelKey: 'appearanceFooter', href: ecommerceNavigationHref('footer'), icon: PanelBottom },
           {
             labelKey: 'appearanceAnnouncement',
@@ -97,65 +147,6 @@ export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
         items: [{ labelKey: 'websiteSettings', href: ecommerceAdminRoutes.settings, icon: Settings }],
       },
     ],
-  },
-  {
-    key: 'products',
-    labelKey: 'groups.products',
-    icon: Package,
-    sections: [
-      {
-        items: [
-          { labelKey: 'products', href: ecommerceAdminRoutes.products, icon: Package },
-        ],
-      },
-      {
-        sectionKey: 'catalog',
-        items: [
-          { labelKey: 'categories', href: ecommerceAdminRoutes.categories, icon: FolderTree },
-          { labelKey: 'attributes', href: ecommerceAdminRoutes.attributes, icon: SlidersHorizontal },
-          { labelKey: 'brands', href: ecommerceAdminRoutes.brands, icon: Tag },
-        ],
-      },
-    ],
-  },
-  {
-    key: 'sales',
-    labelKey: 'groups.sales',
-    icon: ShoppingCart,
-    sections: [
-      {
-        items: [
-          { labelKey: 'orders', href: ecommerceAdminRoutes.orders, icon: ShoppingCart },
-          { labelKey: 'customers', href: ecommerceAdminRoutes.customers, icon: Users },
-        ],
-      },
-    ],
-  },
-  {
-    key: 'inventory',
-    labelKey: 'groups.inventory',
-    icon: Warehouse,
-    sections: [
-      {
-        items: [
-          { labelKey: 'warehouses', href: ecommerceAdminRoutes.warehouses, icon: Warehouse },
-          { labelKey: 'locations', href: ecommerceAdminRoutes.locations, icon: MapPin },
-          { labelKey: 'putawayRules', href: ecommerceAdminRoutes.putawayRules, icon: MapPinned },
-        ],
-      },
-    ],
-  },
-  {
-    key: 'finance',
-    labelKey: 'groups.finance',
-    icon: Landmark,
-    sections: [],
-  },
-  {
-    key: 'system',
-    labelKey: 'groups.system',
-    icon: MonitorCog,
-    sections: [],
   },
 ];
 

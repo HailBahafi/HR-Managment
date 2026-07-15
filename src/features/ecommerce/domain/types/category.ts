@@ -24,7 +24,10 @@ export type Category = TenantScoped &
     seo: SeoFields;
     displayOrder: number;
     isActive: boolean;
-    /** Inventory defaults for products in this category (Odoo-style settings). */
+    /**
+     * Legacy optional payload. Inventory policy is configured via putaway rules /
+     * locations — not edited on the category form.
+     */
     logistics?: CategoryLogistics;
     createdAt: string;
     updatedAt: string;

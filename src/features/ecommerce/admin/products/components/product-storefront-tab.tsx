@@ -12,11 +12,12 @@ type Props = {
   register: UseFormRegister<ProductFormInput>;
 };
 
-export function ProductSalesTab({ register }: Props) {
+/** Storefront presentation / SEO — sales channels stay on the product header. */
+export function ProductStorefrontTab({ register }: Props) {
   return (
     <div className="space-y-1">
       <p className="mb-3 text-xs text-muted-foreground">
-        قنوات البيع تُضبط من أعلى النموذج (المبيعات / نقطة البيع). هنا بيانات العرض والمتجر فقط.
+        قنوات البيع تُضبط من أعلى النموذج (المبيعات / نقطة البيع). هنا بيانات العرض في المتجر وSEO فقط.
       </p>
 
       <EntityFormRow label="الاسم الإنجليزي" htmlFor="product-name-en">

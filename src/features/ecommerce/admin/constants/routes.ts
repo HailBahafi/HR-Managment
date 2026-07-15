@@ -1,8 +1,7 @@
 /**
  * Ecommerce admin routes live under the `(ecommerce)` route group inside `(app)`.
  *
- * Website storefront tooling is grouped under one nav dropdown; other areas are
- * business domains (Catalog, Sales, …).
+ * Nav domains: Products → Catalog setup → Inventory → Sales → Website.
  */
 export const ecommerceAdminRoutes = {
   overview: '/overview',

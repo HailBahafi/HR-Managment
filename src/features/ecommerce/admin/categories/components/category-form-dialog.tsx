@@ -12,8 +12,6 @@ import { useProducts } from '@/features/ecommerce/admin/products/hooks/use-produ
 import { usePutawayRules } from '@/features/ecommerce/admin/inventory/putaway-rules/hooks/use-putaway-rules';
 import {
   CATEGORY_FORM_DEFAULT_VALUES,
-  PACKAGE_RESERVATION_OPTIONS,
-  REMOVAL_STRATEGY_OPTIONS,
   categoryFormSchema,
   type CategoryFormValues,
 } from '@/features/ecommerce/admin/categories/schemas/category-schema';
@@ -28,7 +26,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -53,9 +50,6 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
-
-const TAB_TRIGGER_CLASS =
-  'rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none';
 
 export function CategoryFormDialog({ category, categories, open, onOpenChange }: Props) {
   const companyId = getStorefrontCompanyId();
@@ -95,7 +89,7 @@ export function CategoryFormDialog({ category, categories, open, onOpenChange }:
 
   const onSubmit = async (values: CategoryFormValues) => {
     if (!companyId) return;
-    const input = formValuesToCreateCategoryInput(values, companyId);
+    const input = formValuesToCreateCategoryInput(values, companyId, category);
 
     if (category) {
       await update.mutateAsync({ companyId, id: category.id, patch: input });
@@ -182,203 +176,122 @@ export function CategoryFormDialog({ category, categories, open, onOpenChange }:
               <p className="text-xs text-muted-foreground">{parentLabel}</p>
             </div>
 
-            <Tabs defaultValue="general" className="w-full">
-              <TabsList className="h-auto w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
-                <TabsTrigger value="general" className={TAB_TRIGGER_CLASS}>
-                  عامة
-                </TabsTrigger>
-                <TabsTrigger value="logistics" className={TAB_TRIGGER_CLASS}>
-                  اللوجستيات
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="general" className="mt-4 space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nameEn">الاسم (إنجليزي)</Label>
-                    <Input id="nameEn" {...form.register('nameEn')} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="slug">الرابط المختصر</Label>
-                    <Input id="slug" dir="ltr" {...form.register('slug')} />
-                    {form.formState.errors.slug ? (
-                      <p className="text-xs text-destructive">{form.formState.errors.slug.message}</p>
-                    ) : null}
-                  </div>
-                </div>
-
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label>التصنيف الأب</Label>
+                  <Label htmlFor="nameEn">الاسم (إنجليزي)</Label>
+                  <Input id="nameEn" {...form.register('nameEn')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="slug">الرابط المختصر</Label>
+                  <Input id="slug" dir="ltr" {...form.register('slug')} />
+                  {form.formState.errors.slug ? (
+                    <p className="text-xs text-destructive">{form.formState.errors.slug.message}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>التصنيف الأب</Label>
+                <Controller
+                  control={form.control}
+                  name="parentId"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ?? 'root'}
+                      onValueChange={(value) => field.onChange(value === 'root' ? null : value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="تصنيف جذري" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="root">— بدون أب —</SelectItem>
+                        {parentOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.nameAr}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="description">الوصف</Label>
+                <Textarea id="description" rows={3} {...form.register('description')} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="imageUrl">رابط الصورة</Label>
+                <Input id="imageUrl" dir="ltr" {...form.register('imageUrl')} />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="displayOrder">ترتيب العرض</Label>
                   <Controller
                     control={form.control}
-                    name="parentId"
+                    name="displayOrder"
                     render={({ field }) => (
-                      <Select
-                        value={field.value ?? 'root'}
-                        onValueChange={(value) => field.onChange(value === 'root' ? null : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="تصنيف جذري" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="root">— بدون أب —</SelectItem>
-                          {parentOptions.map((option) => (
-                            <SelectItem key={option.id} value={option.id}>
-                              {option.nameAr}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        id="displayOrder"
+                        type="number"
+                        value={field.value}
+                        onChange={(event) => field.onChange(Number(event.target.value) || 0)}
+                      />
                     )}
                   />
                 </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="description">الوصف</Label>
-                  <Textarea id="description" rows={3} {...form.register('description')} />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="imageUrl">رابط الصورة</Label>
-                  <Input id="imageUrl" dir="ltr" {...form.register('imageUrl')} />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="displayOrder">ترتيب العرض</Label>
-                    <Controller
-                      control={form.control}
-                      name="displayOrder"
-                      render={({ field }) => (
-                        <Input
-                          id="displayOrder"
-                          type="number"
-                          value={field.value}
-                          onChange={(event) => field.onChange(Number(event.target.value) || 0)}
-                        />
-                      )}
-                    />
-                  </div>
-                  <div className="flex items-end gap-2 pb-1">
-                    <Controller
-                      control={form.control}
-                      name="isActive"
-                      render={({ field }) => (
-                        <div className="flex items-center gap-2">
-                          <Switch checked={field.value} onCheckedChange={field.onChange} id="isActive" />
-                          <Label htmlFor="isActive">مفعّل</Label>
-                        </div>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>ماركات مميزة (للتصنيف الجذري)</Label>
-                  <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto rounded-lg border border-border p-2">
-                    {(brandsQuery.data?.items ?? []).map((brand) => {
-                      const selected = featuredBrandIds.includes(brand.id);
-                      return (
-                        <button
-                          key={brand.id}
-                          type="button"
-                          onClick={() => toggleBrand(brand.id)}
-                          className={cn(
-                            'rounded-full border px-3 py-1 text-xs transition-colors',
-                            selected
-                              ? 'border-primary bg-primary/10 font-semibold text-primary'
-                              : 'border-border text-muted-foreground hover:bg-muted',
-                          )}
-                        >
-                          {brand.nameAr}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="metaTitle">عنوان SEO</Label>
-                    <Input id="metaTitle" {...form.register('metaTitle')} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="metaDescription">وصف SEO</Label>
-                    <Input id="metaDescription" {...form.register('metaDescription')} />
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="logistics" className="mt-4 space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="routesNote">المسارات</Label>
-                  <Textarea
-                    id="routesNote"
-                    rows={2}
-                    placeholder="ملاحظات مسارات الاستلام/التسليم لهذه الفئة…"
-                    {...form.register('routesNote')}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="removalStrategy">استراتيجية فرض الإزالة</Label>
+                <div className="flex items-end gap-2 pb-1">
                   <Controller
                     control={form.control}
-                    name="removalStrategy"
+                    name="isActive"
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger id="removalStrategy">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {REMOVAL_STRATEGY_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>حجز التعبئات</Label>
-                  <Controller
-                    control={form.control}
-                    name="packageReservation"
-                    render={({ field }) => (
-                      <div className="flex flex-col gap-2" role="radiogroup" aria-label="حجز التعبئات">
-                        {PACKAGE_RESERVATION_OPTIONS.map((option) => {
-                          const selected = field.value === option.value;
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              role="radio"
-                              aria-checked={selected}
-                              onClick={() => field.onChange(option.value)}
-                              className={cn(
-                                'rounded-lg border px-3 py-2.5 text-start text-sm transition-colors',
-                                selected
-                                  ? 'border-primary bg-primary/10 font-medium text-primary'
-                                  : 'border-border text-muted-foreground hover:text-foreground',
-                              )}
-                            >
-                              {option.labelAr}
-                            </button>
-                          );
-                        })}
+                      <div className="flex items-center gap-2">
+                        <Switch checked={field.value} onCheckedChange={field.onChange} id="isActive" />
+                        <Label htmlFor="isActive">مفعّل</Label>
                       </div>
                     )}
                   />
                 </div>
+              </div>
 
-                <p className="text-xs text-muted-foreground">
-                  إعدادات اللوجستيات هنا تهيئة للفئة، وتُستخدم كافتراضيات عند ربط المنتجات بهذه الفئة.
-                </p>
-              </TabsContent>
-            </Tabs>
+              <div className="space-y-2">
+                <Label>ماركات مميزة (للتصنيف الجذري)</Label>
+                <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto rounded-lg border border-border p-2">
+                  {(brandsQuery.data?.items ?? []).map((brand) => {
+                    const selected = featuredBrandIds.includes(brand.id);
+                    return (
+                      <button
+                        key={brand.id}
+                        type="button"
+                        onClick={() => toggleBrand(brand.id)}
+                        className={cn(
+                          'rounded-full border px-3 py-1 text-xs transition-colors',
+                          selected
+                            ? 'border-primary bg-primary/10 font-semibold text-primary'
+                            : 'border-border text-muted-foreground hover:bg-muted',
+                        )}
+                      >
+                        {brand.nameAr}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="metaTitle">عنوان SEO</Label>
+                  <Input id="metaTitle" {...form.register('metaTitle')} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="metaDescription">وصف SEO</Label>
+                  <Input id="metaDescription" {...form.register('metaDescription')} />
+                </div>
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="shrink-0 gap-2 border-t border-border px-6 py-4 sm:justify-start">

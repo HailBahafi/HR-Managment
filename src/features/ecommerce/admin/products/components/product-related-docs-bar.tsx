@@ -1,10 +1,10 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { Globe2, MapPinned } from 'lucide-react';
+import { MapPinned } from 'lucide-react';
 import { cn } from '@/shared/utils';
 
-export type ProductRelatedDocKey = 'putaway' | 'foreignPurchase';
+export type ProductRelatedDocKey = 'putaway';
 
 export type ProductRelatedDocChip = {
   key: ProductRelatedDocKey;
@@ -16,7 +16,6 @@ export type ProductRelatedDocChip = {
 
 const DOC_ICONS: Record<ProductRelatedDocKey, LucideIcon> = {
   putaway: MapPinned,
-  foreignPurchase: Globe2,
 };
 
 type Props = {
@@ -26,7 +25,7 @@ type Props = {
   className?: string;
 };
 
-/** Odoo-style smart buttons: icon + count + label on the product form. */
+/** Smart buttons: icon + count + label — open related config screens, not embedded editors. */
 export function ProductRelatedDocsBar({ chips, activeKey, onSelect, className }: Props) {
   return (
     <div className={cn('flex flex-wrap justify-end gap-2', className)} role="toolbar" aria-label="مستندات المنتج">

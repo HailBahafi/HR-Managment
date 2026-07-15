@@ -55,20 +55,27 @@ export function PutawayRulesListPage() {
   const companyId = getStorefrontCompanyId();
   const searchParams = useSearchParams();
   const categoryIdFilter = searchParams.get('categoryId') ?? '';
+  const productIdFilter = searchParams.get('productId') ?? '';
   const [search, setSearch] = React.useState('');
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<Draft>(() => ({
     ...EMPTY,
     categoryId: categoryIdFilter,
+    productId: productIdFilter,
   }));
 
   React.useEffect(() => {
-    setDraft((prev) => ({ ...prev, categoryId: categoryIdFilter || prev.categoryId }));
-  }, [categoryIdFilter]);
+    setDraft((prev) => ({
+      ...prev,
+      categoryId: categoryIdFilter || prev.categoryId,
+      productId: productIdFilter || prev.productId,
+    }));
+  }, [categoryIdFilter, productIdFilter]);
 
   const { data, isLoading } = usePutawayRules({
     companyId,
     categoryId: categoryIdFilter || undefined,
+    productId: productIdFilter || undefined,
     limit: 100,
   });
   const { data: locations = [] } = usePutawayLocationOptions(companyId);
@@ -121,8 +128,21 @@ export function PutawayRulesListPage() {
       subLocationId: draft.subLocationId || null,
       storageCategory: draft.storageCategory || undefined,
     });
-    setDraft(EMPTY);
+    setDraft({
+      ...EMPTY,
+      categoryId: categoryIdFilter,
+      productId: productIdFilter,
+    });
     setOpen(false);
+  }
+
+  function openCreate() {
+    setDraft({
+      ...EMPTY,
+      categoryId: categoryIdFilter,
+      productId: productIdFilter,
+    });
+    setOpen(true);
   }
 
   return (
@@ -130,9 +150,9 @@ export function PutawayRulesListPage() {
       <PageHeader
         icon={MapPinned}
         title="قواعد التخزين"
-        description="حدد أين يُخزَّن المنتج عند وصوله إلى موقع معيّن في المستودع."
+        description="تهيئة مستقلة لمسار الوصول→التخزين. تُربط بالمنتج أو الفئة عند الحاجة."
         actions={
-          <Button type="button" onClick={() => setOpen(true)}>
+          <Button type="button" onClick={openCreate}>
             <Plus className="me-1 h-4 w-4" />
             جديد
           </Button>
@@ -148,7 +168,11 @@ export function PutawayRulesListPage() {
         />
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
           <Settings2 className="h-3.5 w-3.5" />
-          قواعد التخزين
+          {productIdFilter
+            ? `مصفّى حسب المنتج: ${productLabel(productIdFilter)}`
+            : categoryIdFilter
+              ? `مصفّى حسب الفئة: ${categoryLabel(categoryIdFilter)}`
+              : 'كل القواعد'}
         </span>
       </div>
 

@@ -6,17 +6,17 @@
   "nav": {
     "appsHome": "Applications",
     "groups": {
-      "website": "🌐 Website",
       "products": "Products",
+      "catalogSetup": "Catalog setup",
+      "inventory": "Inventory",
       "sales": "Sales",
-      "inventory": "Warehouses",
-      "finance": "Finance",
-      "system": "System"
+      "website": "Website"
     },
     "sections": {
       "content": "Content",
       "appearance": "Appearance",
-      "catalog": "Catalog"
+      "catalogSetup": "Master data",
+      "inventorySetup": "Inventory setup"
     },
     "overview": "Overview",
     "homepage": "Homepage",

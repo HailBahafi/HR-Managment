@@ -6,17 +6,17 @@
   "nav": {
     "appsHome": "التطبيقات",
     "groups": {
-      "website": "🌐 الموقع",
       "products": "المنتجات",
-      "sales": "المبيعات",
+      "catalogSetup": "تهيئة الكتالوج",
       "inventory": "المخازن",
-      "finance": "المالية",
-      "system": "النظام"
+      "sales": "المبيعات",
+      "website": "الموقع"
     },
     "sections": {
       "content": "المحتوى",
       "appearance": "المظهر",
-      "catalog": "الكتالوج"
+      "catalogSetup": "بيانات أساسية",
+      "inventorySetup": "تهيئة المخزون"
     },
     "overview": "نظرة عامة",
     "homepage": "الصفحة الرئيسية",

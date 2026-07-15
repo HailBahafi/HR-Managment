@@ -14,15 +14,13 @@ export function categoryToFormValues(category: Category): CategoryFormValues {
     featuredBrandIds: category.featuredBrandIds ?? [],
     metaTitle: category.seo.metaTitle ?? '',
     metaDescription: category.seo.metaDescription ?? '',
-    routesNote: category.logistics?.routesNote ?? '',
-    removalStrategy: category.logistics?.removalStrategy ?? 'fifo',
-    packageReservation: category.logistics?.packageReservation ?? 'partial',
   };
 }
 
 export function formValuesToCreateCategoryInput(
   values: CategoryFormValues,
   companyId: string,
+  existing?: Category | null,
 ): CreateCategoryInput {
   return {
     companyId,
@@ -33,7 +31,7 @@ export function formValuesToCreateCategoryInput(
     parentId: values.parentId,
     image: values.imageUrl
       ? {
-          id: `media-cat-${Date.now()}`,
+          id: existing?.image?.id ?? `media-cat-${Date.now()}`,
           url: values.imageUrl.trim(),
           alt: values.nameAr.trim(),
           type: 'image',
@@ -48,10 +46,7 @@ export function formValuesToCreateCategoryInput(
     },
     displayOrder: values.displayOrder,
     isActive: values.isActive,
-    logistics: {
-      routesNote: values.routesNote?.trim() || undefined,
-      removalStrategy: values.removalStrategy,
-      packageReservation: values.packageReservation,
-    },
+    // Preserve any legacy logistics payload; managed via inventory putaway rules going forward.
+    logistics: existing?.logistics,
   };
 }
