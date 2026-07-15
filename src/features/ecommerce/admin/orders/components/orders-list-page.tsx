@@ -1,43 +1,137 @@
 'use client';
 
 import * as React from 'react';
+import { ChevronLeft, MapPin, ShoppingCart } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ShoppingCart } from 'lucide-react';
-import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { OrderLineShipPanel } from '@/features/ecommerce/admin/orders/components/order-line-ship-panel';
 import { useOrders } from '@/features/ecommerce/admin/orders/hooks/use-orders';
+import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { formatPrice } from '@/features/ecommerce/shared/utils/format-price';
 import type { Order, OrderStatus } from '@/features/ecommerce/domain/types/order';
 import { PageHeader } from '@/components/layouts/page-header';
-import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
-import { DataTable, AppPagination, type ColumnDef } from '@/components/ui/data-table';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AppPagination } from '@/components/ui/data-table';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/paged-list';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { cn } from '@/shared/utils';
 
-const ALL_STATUS = '__all__';
+const FILTER_PILLS: Array<{ value: '' | OrderStatus; label: string }> = [
+  { value: '', label: 'الكل' },
+  { value: 'pending', label: 'قيد الانتظار' },
+  { value: 'processing', label: 'قيد التجهيز' },
+  { value: 'delivered', label: 'مُسلَّم' },
+];
 
 const ORDER_STATUS_LABELS_AR: Record<OrderStatus, string> = {
   pending: 'قيد الانتظار',
   confirmed: 'مؤكد',
   processing: 'قيد التجهيز',
   shipped: 'تم الشحن',
-  delivered: 'تم التوصيل',
+  delivered: 'تم التسليم',
   cancelled: 'ملغي',
   refunded: 'مسترد',
 };
 
 const ORDER_STATUS_VARIANT: Record<OrderStatus, NonNullable<BadgeProps['variant']>> = {
-  pending: 'subtle',
+  pending: 'warning',
   confirmed: 'outline',
-  processing: 'warning',
-  shipped: 'gold',
+  processing: 'gold',
+  shipped: 'success',
   delivered: 'success',
   cancelled: 'destructive',
   refunded: 'destructive',
 };
 
+function OrderCard({
+  order,
+  companyId,
+  expanded,
+  onToggle,
+}: {
+  order: Order;
+  companyId: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const locationLabel = [order.city, order.region].filter(Boolean).join(' • ');
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-4 py-4 text-start transition-colors hover:bg-muted/40"
+      >
+        <span
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-transform',
+            expanded && '-rotate-90',
+          )}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-foreground" dir="ltr">
+              {order.orderNumber}
+            </span>
+            <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{ORDER_STATUS_LABELS_AR[order.status]}</Badge>
+          </div>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {order.customerNameAr}
+              {locationLabel ? ` • ${locationLabel}` : ''}
+            </span>
+          </p>
+        </div>
+
+        <div className="shrink-0 text-end">
+          <p className="font-semibold tabular-nums text-foreground">{formatPrice(order.totalAmount)}</p>
+          <p className="text-xs text-muted-foreground" dir="ltr">
+            {order.createdAt.slice(0, 10)}
+          </p>
+        </div>
+      </button>
+
+      {expanded ? (
+        <div className="space-y-3 border-t border-border bg-muted/20 px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              {order.items.length} منتج في الطلب — اختر موقع الشحن حسب الكمية المتوفرة لكل منتج.
+            </p>
+            <Select value={order.status} disabled>
+              <SelectTrigger className="w-44" aria-label="حالة الطلب">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(ORDER_STATUS_LABELS_AR).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {order.items.map((line) => (
+            <OrderLineShipPanel
+              key={`${order.id}-${line.productId}`}
+              companyId={companyId}
+              orderId={order.id}
+              line={line}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function OrdersListPage() {
-  const companyId = useAuthStore((s) => s.activeCompanyId) ?? '';
+  const companyId = getStorefrontCompanyId();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -46,10 +140,17 @@ export function OrdersListPage() {
   const status = (searchParams.get('status') as OrderStatus | null) ?? undefined;
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const pageSize = Number(searchParams.get('pageSize')) || DEFAULT_PAGE_SIZE;
+  const expandedId = searchParams.get('order') ?? '';
 
   const [searchInput, setSearchInput] = React.useState(search);
 
-  function updateParams(next: { q?: string; status?: string; page?: number; pageSize?: number }) {
+  function updateParams(next: {
+    q?: string;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+    order?: string | null;
+  }) {
     const params = new URLSearchParams(searchParams.toString());
     if (next.q !== undefined) {
       if (next.q) params.set('q', next.q);
@@ -66,6 +167,10 @@ export function OrdersListPage() {
     if (next.pageSize !== undefined) {
       if (next.pageSize !== DEFAULT_PAGE_SIZE) params.set('pageSize', String(next.pageSize));
       else params.delete('pageSize');
+    }
+    if (next.order !== undefined) {
+      if (next.order) params.set('order', next.order);
+      else params.delete('order');
     }
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
@@ -85,82 +190,71 @@ export function OrdersListPage() {
     return () => clearTimeout(timeout);
   }, [searchInput]);
 
-  const { data, isLoading, isError } = useOrders({ companyId, search: search || undefined, status, page, limit: pageSize });
-
-  const columns: ColumnDef<Order>[] = [
-    {
-      key: 'order',
-      title: 'الطلب',
-      render: (order) => (
-        <div className="flex flex-col">
-          <span className="font-medium text-foreground" dir="ltr">{order.orderNumber}</span>
-          <span className="text-xs text-muted-foreground">{order.customerNameAr}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'items',
-      title: 'العناصر',
-      render: (order) => <span className="tabular-nums text-muted-foreground">{order.items.length}</span>,
-    },
-    {
-      key: 'total',
-      title: 'الإجمالي',
-      render: (order) => <span className="font-medium tabular-nums">{formatPrice(order.totalAmount)}</span>,
-    },
-    {
-      key: 'status',
-      title: 'الحالة',
-      render: (order) => <Badge variant={ORDER_STATUS_VARIANT[order.status]}>{ORDER_STATUS_LABELS_AR[order.status]}</Badge>,
-    },
-    {
-      key: 'createdAt',
-      title: 'التاريخ',
-      render: (order) => (
-        <span className="text-sm text-muted-foreground" dir="ltr">
-          {new Date(order.createdAt).toLocaleDateString('ar-SA')}
-        </span>
-      ),
-    },
-  ];
+  const { data, isLoading, isError } = useOrders({
+    companyId,
+    search: search || undefined,
+    status,
+    page,
+    limit: pageSize,
+  });
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader icon={ShoppingCart} title="الطلبات" description="تتبع طلبات العملاء وحالة الشحن." />
-
-      <ListToolbar
-        searchValue={searchInput}
-        onSearchChange={setSearchInput}
-        searchPlaceholder="ابحث برقم الطلب أو اسم العميل…"
-        filters={
-          <Select
-            value={status ?? ALL_STATUS}
-            onValueChange={(next) => updateParams({ status: next === ALL_STATUS ? '' : next, page: 1 })}
-          >
-            <SelectTrigger aria-label="الحالة" className="w-full sm:w-auto">
-              <SelectValue placeholder="كل الحالات" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_STATUS}>كل الحالات</SelectItem>
-              {Object.entries(ORDER_STATUS_LABELS_AR).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
+      <PageHeader
+        icon={ShoppingCart}
+        title="الطلبات"
+        description="اضغط على الطلب لعرض المنتجات – ثم إعداد الشحن لكل منتج من المواقع حسب التوفر."
       />
+
+      <div className="space-y-3">
+        <Input
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="بحث برقم الطلب أو اسم العميل…"
+          className="max-w-xl"
+        />
+
+        <div className="flex flex-wrap gap-2">
+          {FILTER_PILLS.map((pill) => {
+            const active = (status ?? '') === pill.value;
+            return (
+              <button
+                key={pill.label}
+                type="button"
+                onClick={() => updateParams({ status: pill.value, page: 1 })}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                  active
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-background text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {isError ? <p className="text-sm text-destructive">تعذر تحميل الطلبات.</p> : null}
+      {isLoading ? <p className="text-sm text-muted-foreground">جاري التحميل…</p> : null}
 
-      <DataTable
-        columns={columns}
-        data={data?.items ?? []}
-        keyExtractor={(order) => order.id}
-        loading={isLoading}
-        emptyText="لا توجد طلبات بعد."
-      />
+      <div className="flex flex-col gap-3">
+        {(data?.items ?? []).map((order) => (
+          <OrderCard
+            key={order.id}
+            order={order}
+            companyId={companyId}
+            expanded={expandedId === order.id}
+            onToggle={() => updateParams({ order: expandedId === order.id ? null : order.id })}
+          />
+        ))}
+        {!isLoading && (data?.items.length ?? 0) === 0 ? (
+          <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+            لا توجد طلبات مطابقة.
+          </p>
+        ) : null}
+      </div>
 
       {data ? (
         <AppPagination
