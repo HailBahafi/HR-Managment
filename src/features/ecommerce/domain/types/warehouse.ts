@@ -66,7 +66,8 @@ export type WarehouseLocation = TenantScoped & {
 
 export type WarehouseLocationListQuery = {
   companyId: string;
-  warehouseId: string;
+  /** When omitted, list locations across all warehouses. */
+  warehouseId?: string;
   search?: string;
   page?: number;
   limit?: number;

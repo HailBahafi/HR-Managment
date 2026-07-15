@@ -5,7 +5,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, MapPin, PackageMinus, PackagePlus, RefreshCw, Warehouse } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useWarehouse } from '@/features/ecommerce/admin/inventory/warehouses/hooks/use-warehouses';
-import { WarehouseLocationsPanel } from '@/features/ecommerce/admin/inventory/locations/components/warehouse-locations-panel';
 import { WarehouseOperationsPanel } from '@/features/ecommerce/admin/inventory/operations/components/warehouse-operations-panel';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
@@ -14,17 +13,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/utils';
 
-type WarehouseTab = 'locations' | WarehouseOperationKind;
+type WarehouseTab = WarehouseOperationKind;
 
 const TABS: { id: WarehouseTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'locations', label: 'المواقع', icon: MapPin },
   { id: 'issue', label: 'صرف', icon: PackageMinus },
   { id: 'receipt', label: 'استلام', icon: PackagePlus },
   { id: 'internal', label: 'حركات داخلية', icon: RefreshCw },
 ];
 
 function isWarehouseTab(value: string | null): value is WarehouseTab {
-  return value === 'locations' || value === 'issue' || value === 'receipt' || value === 'internal';
+  return value === 'issue' || value === 'receipt' || value === 'internal';
 }
 
 export function WarehouseDetailPage() {
@@ -35,16 +33,12 @@ export function WarehouseDetailPage() {
   const warehouseId = params.warehouseId;
 
   const tabParam = searchParams.get('tab');
-  const activeTab: WarehouseTab = isWarehouseTab(tabParam) ? tabParam : 'locations';
+  const activeTab: WarehouseTab = isWarehouseTab(tabParam) ? tabParam : 'issue';
 
   const { data: warehouse, isLoading, isError } = useWarehouse(companyId, warehouseId);
 
   const setTab = (tab: WarehouseTab) => {
-    const href =
-      tab === 'locations'
-        ? ecommerceAdminRoutes.warehouseDetail(warehouseId)
-        : `${ecommerceAdminRoutes.warehouseDetail(warehouseId)}?tab=${tab}`;
-    router.replace(href, { scroll: false });
+    router.replace(`${ecommerceAdminRoutes.warehouseDetail(warehouseId)}?tab=${tab}`, { scroll: false });
   };
 
   if (isLoading) {
@@ -67,12 +61,19 @@ export function WarehouseDetailPage() {
       <PageHeader
         icon={Warehouse}
         title={warehouse.nameAr}
-        description={warehouse.description || warehouse.address || 'إدارة مواقع وعمليات هذا المستودع.'}
+        description={warehouse.description || warehouse.address || 'عمليات الصرف والاستلام والحركات الداخلية.'}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={warehouse.status === 'active' ? 'success' : 'subtle'}>
               {warehouse.status === 'active' ? 'نشط' : 'غير نشط'}
             </Badge>
+            <Button
+              variant="outline"
+              onClick={() => router.push(ecommerceAdminRoutes.locationsForWarehouse(warehouseId))}
+            >
+              <MapPin className="h-4 w-4" />
+              المواقع
+            </Button>
             <Button variant="outline" onClick={() => router.push(ecommerceAdminRoutes.warehouses)}>
               <ArrowRight className="h-4 w-4" />
               كل المستودعات
@@ -112,7 +113,6 @@ export function WarehouseDetailPage() {
         })}
       </div>
 
-      {activeTab === 'locations' ? <WarehouseLocationsPanel warehouseId={warehouseId} /> : null}
       {activeTab === 'issue' ? <WarehouseOperationsPanel warehouseId={warehouseId} kind="issue" /> : null}
       {activeTab === 'receipt' ? <WarehouseOperationsPanel warehouseId={warehouseId} kind="receipt" /> : null}
       {activeTab === 'internal' ? <WarehouseOperationsPanel warehouseId={warehouseId} kind="internal" /> : null}

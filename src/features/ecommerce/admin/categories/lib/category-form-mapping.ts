@@ -14,6 +14,9 @@ export function categoryToFormValues(category: Category): CategoryFormValues {
     featuredBrandIds: category.featuredBrandIds ?? [],
     metaTitle: category.seo.metaTitle ?? '',
     metaDescription: category.seo.metaDescription ?? '',
+    routesNote: category.logistics?.routesNote ?? '',
+    removalStrategy: category.logistics?.removalStrategy ?? 'fifo',
+    packageReservation: category.logistics?.packageReservation ?? 'partial',
   };
 }
 
@@ -45,5 +48,10 @@ export function formValuesToCreateCategoryInput(
     },
     displayOrder: values.displayOrder,
     isActive: values.isActive,
+    logistics: {
+      routesNote: values.routesNote?.trim() || undefined,
+      removalStrategy: values.removalStrategy,
+      packageReservation: values.packageReservation,
+    },
   };
 }

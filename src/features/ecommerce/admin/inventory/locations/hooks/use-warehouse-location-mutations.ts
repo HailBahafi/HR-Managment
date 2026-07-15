@@ -10,12 +10,12 @@ import type {
   UpdateWarehouseLocationInput,
 } from '@/features/ecommerce/domain/types/warehouse';
 
-export function useWarehouseLocationMutations(warehouseId: string) {
+export function useWarehouseLocationMutations() {
   const queryClient = useQueryClient();
 
   function invalidate(companyId: string) {
     void queryClient.invalidateQueries({
-      queryKey: warehouseLocationsQueryKeys.all(companyId, warehouseId),
+      queryKey: warehouseLocationsQueryKeys.all(companyId),
     });
   }
 
@@ -26,8 +26,7 @@ export function useWarehouseLocationMutations(warehouseId: string) {
       toast.success('تم إضافة الموقع بنجاح');
     },
     onError: (err) => {
-      const { displayMessage } = handleApiError(err, 'ecommerce.warehouseLocations.create');
-      toast.error(displayMessage);
+      handleApiError(err, 'ecommerce.warehouseLocations.create');
     },
   });
 
@@ -46,8 +45,7 @@ export function useWarehouseLocationMutations(warehouseId: string) {
       toast.success('تم تحديث الموقع بنجاح');
     },
     onError: (err) => {
-      const { displayMessage } = handleApiError(err, 'ecommerce.warehouseLocations.update');
-      toast.error(displayMessage);
+      handleApiError(err, 'ecommerce.warehouseLocations.update');
     },
   });
 
@@ -59,8 +57,7 @@ export function useWarehouseLocationMutations(warehouseId: string) {
       toast.success('تم حذف الموقع بنجاح');
     },
     onError: (err) => {
-      const { displayMessage } = handleApiError(err, 'ecommerce.warehouseLocations.delete');
-      toast.error(displayMessage);
+      handleApiError(err, 'ecommerce.warehouseLocations.delete');
     },
   });
 

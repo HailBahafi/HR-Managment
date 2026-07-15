@@ -3,9 +3,11 @@
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useBrands } from '@/features/ecommerce/admin/brands/hooks/use-brands';
 import { useCategories } from '@/features/ecommerce/admin/categories/hooks/use-categories';
+import { usePutawayRules } from '@/features/ecommerce/admin/inventory/putaway-rules/hooks/use-putaway-rules';
 import { useProductMutations } from '@/features/ecommerce/admin/products/hooks/use-product-mutations';
 import {
   PRODUCT_FORM_DEFAULT_VALUES,
@@ -20,11 +22,12 @@ import {
 import { ProductFormHeader } from '@/features/ecommerce/admin/products/components/product-form-header';
 import { ProductGeneralTab } from '@/features/ecommerce/admin/products/components/product-general-tab';
 import { ProductAttributesTab } from '@/features/ecommerce/admin/products/components/product-attributes-tab';
+import { ProductUnitsTab } from '@/features/ecommerce/admin/products/components/product-units-tab';
 import { ProductSalesTab } from '@/features/ecommerce/admin/products/components/product-sales-tab';
-import { ProductPricesTab } from '@/features/ecommerce/admin/products/components/product-prices-tab';
-import { ProductPurchaseTab } from '@/features/ecommerce/admin/products/components/product-purchase-tab';
 import { ProductInventoryTab } from '@/features/ecommerce/admin/products/components/product-inventory-tab';
-import { ProductLogisticsTab } from '@/features/ecommerce/admin/products/components/product-logistics-tab';
+import { ProductPutawayRulesTab } from '@/features/ecommerce/admin/products/components/product-putaway-rules-tab';
+import { ProductForeignPurchaseTab } from '@/features/ecommerce/admin/products/components/product-foreign-purchase-tab';
+import type { ProductRelatedDocKey } from '@/features/ecommerce/admin/products/components/product-related-docs-bar';
 import type { Product } from '@/features/ecommerce/domain/types/product';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -57,27 +60,50 @@ function ensureSlug(values: ProductFormValues): ProductFormValues {
 const TAB_TRIGGER_CLASS =
   'rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none';
 
+type FormTab =
+  | 'general'
+  | 'attributes'
+  | 'units'
+  | 'sales'
+  | 'inventory'
+  | 'putaway'
+  | 'foreignPurchase';
+
+function relatedDocFromTab(tab: FormTab): ProductRelatedDocKey | null {
+  if (tab === 'putaway') return 'putaway';
+  if (tab === 'foreignPurchase') return 'foreignPurchase';
+  return null;
+}
+
 export function ProductFormDialog({ product, open, onOpenChange }: Props) {
   const companyId = getStorefrontCompanyId();
   const { data: categoriesData } = useCategories({ companyId, limit: 100 });
   const { data: brandsData } = useBrands({ companyId, limit: 100 });
+  const { data: putawayData } = usePutawayRules(
+    { companyId, productId: product?.id, limit: 100 },
+    { enabled: Boolean(product?.id) },
+  );
   const { create, update } = useProductMutations();
   const isEditing = Boolean(product);
   const isSaving = create.isPending || update.isPending;
+  const [activeTab, setActiveTab] = React.useState<FormTab>('general');
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productFormSchema),
     defaultValues: PRODUCT_FORM_DEFAULT_VALUES,
   });
 
+  const liveName = form.watch('nameAr') || product?.nameAr || 'المنتج';
+
   React.useEffect(() => {
     if (!open) return;
     form.reset(product ? productToFormValues(product) : PRODUCT_FORM_DEFAULT_VALUES);
+    setActiveTab('general');
   }, [open, product, form]);
 
   const onSubmit = async (values: ProductFormValues) => {
     if (!companyId) return;
-    const input = formValuesToCreateInput(ensureSlug(values), companyId);
+    const input = formValuesToCreateInput(ensureSlug(values), companyId, { existing: product });
 
     if (product) {
       await update.mutateAsync({ companyId, id: product.id, patch: input });
@@ -86,6 +112,20 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
     }
     onOpenChange(false);
   };
+
+  function onRelatedDoc(key: ProductRelatedDocKey) {
+    if (key === 'putaway') {
+      if (!product?.id) {
+        toast.message('احفظ المنتج أولًا ثم أضف قواعد التخزين.');
+        return;
+      }
+      setActiveTab('putaway');
+      return;
+    }
+    setActiveTab('foreignPurchase');
+  }
+
+  const putawayCount = product?.id ? (putawayData?.pagination.total ?? putawayData?.items.length ?? 0) : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -109,30 +149,46 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
               register={form.register}
               setValue={form.setValue}
               nameError={form.formState.errors.nameAr?.message}
+              activeDocKey={relatedDocFromTab(activeTab)}
+              onRelatedDocSelect={onRelatedDoc}
+              relatedDocs={[
+                {
+                  key: 'putaway',
+                  label: 'قواعد التخزين',
+                  count: putawayCount,
+                  hint: product?.id
+                    ? 'فتح وإدارة قواعد التخزين لهذا المنتج'
+                    : 'احفظ المنتج أولًا لإضافة قواعد التخزين',
+                },
+                {
+                  key: 'foreignPurchase',
+                  label: 'تم الشراء في الخارج',
+                  count: 0,
+                  hint: 'مستندات الشراء الخارجي (قريبًا مع تطبيق المشتريات)',
+                },
+              ]}
             />
 
-            <Tabs defaultValue="general" className="w-full">
-              <TabsList className="h-auto w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0">
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as FormTab)}
+              className="w-full"
+            >
+              <TabsList className="h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
                 <TabsTrigger value="general" className={TAB_TRIGGER_CLASS}>
                   المعلومات العامة
                 </TabsTrigger>
                 <TabsTrigger value="attributes" className={TAB_TRIGGER_CLASS}>
                   الخصائص والمتغيرات
                 </TabsTrigger>
+                <TabsTrigger value="units" className={TAB_TRIGGER_CLASS}>
+                  الوحدات والتغليف
+                </TabsTrigger>
                 <TabsTrigger value="sales" className={TAB_TRIGGER_CLASS}>
                   المبيعات
                 </TabsTrigger>
-                <TabsTrigger value="prices" className={TAB_TRIGGER_CLASS}>
-                  الأسعار
-                </TabsTrigger>
-                <TabsTrigger value="purchase" className={TAB_TRIGGER_CLASS}>
-                  الشراء
-                </TabsTrigger>
                 <TabsTrigger value="inventory" className={TAB_TRIGGER_CLASS}>
                   المخزون
-                </TabsTrigger>
-                <TabsTrigger value="logistics" className={TAB_TRIGGER_CLASS}>
-                  اللوجستيات
                 </TabsTrigger>
               </TabsList>
 
@@ -146,22 +202,34 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
                 />
               </TabsContent>
               <TabsContent value="attributes" className="mt-4">
-                <ProductAttributesTab register={form.register} />
+                <ProductAttributesTab control={form.control} errors={form.formState.errors} />
+              </TabsContent>
+              <TabsContent value="units" className="mt-4">
+                <ProductUnitsTab
+                  control={form.control}
+                  errors={form.formState.errors}
+                  setValue={form.setValue}
+                />
               </TabsContent>
               <TabsContent value="sales" className="mt-4">
-                <ProductSalesTab control={form.control} errors={form.formState.errors} register={form.register} />
-              </TabsContent>
-              <TabsContent value="prices" className="mt-4">
-                <ProductPricesTab control={form.control} errors={form.formState.errors} register={form.register} />
-              </TabsContent>
-              <TabsContent value="purchase" className="mt-4">
-                <ProductPurchaseTab control={form.control} errors={form.formState.errors} register={form.register} />
+                <ProductSalesTab errors={form.formState.errors} register={form.register} />
               </TabsContent>
               <TabsContent value="inventory" className="mt-4">
                 <ProductInventoryTab control={form.control} errors={form.formState.errors} register={form.register} />
               </TabsContent>
-              <TabsContent value="logistics" className="mt-4">
-                <ProductLogisticsTab errors={form.formState.errors} register={form.register} />
+              <TabsContent value="putaway" className="mt-4">
+                {product?.id ? (
+                  <ProductPutawayRulesTab
+                    companyId={companyId}
+                    productId={product.id}
+                    productNameAr={liveName}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">احفظ المنتج أولًا لإدارة قواعد التخزين.</p>
+                )}
+              </TabsContent>
+              <TabsContent value="foreignPurchase" className="mt-4">
+                <ProductForeignPurchaseTab productNameAr={liveName} />
               </TabsContent>
             </Tabs>
           </div>

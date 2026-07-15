@@ -13,19 +13,15 @@ import type { CreateWarehouseInput, UpdateWarehouseInput } from '@/features/ecom
 export function useWarehouseMutations() {
   const queryClient = useQueryClient();
 
-  function invalidate(companyId: string, warehouseId?: string) {
+  function invalidate(companyId: string) {
     void queryClient.invalidateQueries({ queryKey: warehousesQueryKeys.all(companyId) });
-    if (warehouseId) {
-      void queryClient.invalidateQueries({
-        queryKey: warehouseLocationsQueryKeys.all(companyId, warehouseId),
-      });
-    }
+    void queryClient.invalidateQueries({ queryKey: warehouseLocationsQueryKeys.all(companyId) });
   }
 
   const create = useMutation({
     mutationFn: (input: CreateWarehouseInput) => warehousesApi.create(input),
-    onSuccess: (data, input) => {
-      invalidate(input.companyId, data.id);
+    onSuccess: (_data, input) => {
+      invalidate(input.companyId);
       toast.success('تم إنشاء المستودع مع مواقعه التلقائية');
     },
     onError: (err) => {

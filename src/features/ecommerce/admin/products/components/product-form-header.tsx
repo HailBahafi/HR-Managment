@@ -3,6 +3,11 @@
 import { Camera, Plus } from 'lucide-react';
 import { Controller, useFieldArray, useWatch, type Control, type UseFormRegister, type UseFormSetValue } from 'react-hook-form';
 import type { ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
+import {
+  ProductRelatedDocsBar,
+  type ProductRelatedDocChip,
+  type ProductRelatedDocKey,
+} from '@/features/ecommerce/admin/products/components/product-related-docs-bar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,9 +18,20 @@ type Props = {
   register: UseFormRegister<ProductFormInput>;
   setValue: UseFormSetValue<ProductFormInput>;
   nameError?: string;
+  relatedDocs?: ProductRelatedDocChip[];
+  activeDocKey?: ProductRelatedDocKey | null;
+  onRelatedDocSelect?: (key: ProductRelatedDocKey) => void;
 };
 
-export function ProductFormHeader({ control, register, setValue, nameError }: Props) {
+export function ProductFormHeader({
+  control,
+  register,
+  setValue,
+  nameError,
+  relatedDocs,
+  activeDocKey,
+  onRelatedDocSelect,
+}: Props) {
   const { fields, append, update } = useFieldArray({ control, name: 'media' });
   const media = useWatch({ control, name: 'media' });
   const primary = media?.find((item) => item.isPrimary) ?? media?.[0];
@@ -50,12 +66,12 @@ export function ProductFormHeader({ control, register, setValue, nameError }: Pr
   }
 
   return (
-    <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:gap-6">
+    <div className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-start lg:gap-6">
       <button
         type="button"
         onClick={pickImage}
         className={cn(
-          'group relative mx-auto flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 transition-colors hover:border-primary/40 hover:bg-muted/70 sm:mx-0',
+          'group relative mx-auto flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 transition-colors hover:border-primary/40 hover:bg-muted/70 lg:mx-0',
         )}
         aria-label="إضافة صورة المنتج"
       >
@@ -97,16 +113,6 @@ export function ProductFormHeader({ control, register, setValue, nameError }: Pr
           />
           <Controller
             control={control}
-            name="purchaseOk"
-            render={({ field }) => (
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(Boolean(checked))} />
-                الشراء
-              </label>
-            )}
-          />
-          <Controller
-            control={control}
             name="posAvailable"
             render={({ field }) => (
               <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
@@ -121,6 +127,15 @@ export function ProductFormHeader({ control, register, setValue, nameError }: Pr
           اسم المنتج
         </Label>
       </div>
+
+      {relatedDocs && onRelatedDocSelect ? (
+        <ProductRelatedDocsBar
+          className="shrink-0 justify-center lg:justify-end"
+          chips={relatedDocs}
+          activeKey={activeDocKey}
+          onSelect={onRelatedDocSelect}
+        />
+      ) : null}
     </div>
   );
 }

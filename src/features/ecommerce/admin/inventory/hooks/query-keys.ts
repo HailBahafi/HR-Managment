@@ -12,10 +12,9 @@ export const warehousesQueryKeys = {
 };
 
 export const warehouseLocationsQueryKeys = {
-  all: (companyId: string, warehouseId: string) =>
-    [companyId, 'ecommerce', 'warehouse-locations', warehouseId] as const,
+  all: (companyId: string) => [companyId, 'ecommerce', 'warehouse-locations'] as const,
   list: (query: WarehouseLocationListQuery) =>
-    [...warehouseLocationsQueryKeys.all(query.companyId, query.warehouseId), 'list', query] as const,
+    [...warehouseLocationsQueryKeys.all(query.companyId), 'list', query] as const,
 };
 
 export const warehouseOperationsQueryKeys = {

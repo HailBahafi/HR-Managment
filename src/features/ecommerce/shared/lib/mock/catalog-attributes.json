@@ -1,0 +1,46 @@
+[
+  {
+    "id": "attr-color",
+    "companyId": "demo-company",
+    "nameAr": "اللون",
+    "displayType": "color",
+    "createVariant": "always",
+    "values": [
+      { "id": "val-red", "nameAr": "أحمر", "extra": "#ef4444", "defaultExtraPrice": 0 },
+      { "id": "val-blue", "nameAr": "أزرق", "extra": "#3b82f6", "defaultExtraPrice": 0 },
+      { "id": "val-black", "nameAr": "أسود", "extra": "#111827", "defaultExtraPrice": 0 }
+    ],
+    "isActive": true,
+    "createdAt": "2026-06-01T08:00:00.000Z",
+    "updatedAt": "2026-06-01T08:00:00.000Z"
+  },
+  {
+    "id": "attr-size",
+    "companyId": "demo-company",
+    "nameAr": "المقاس",
+    "displayType": "radio",
+    "createVariant": "always",
+    "values": [
+      { "id": "val-s", "nameAr": "S", "defaultExtraPrice": 0 },
+      { "id": "val-m", "nameAr": "M", "defaultExtraPrice": 0 },
+      { "id": "val-l", "nameAr": "L", "defaultExtraPrice": 5 }
+    ],
+    "isActive": true,
+    "createdAt": "2026-06-01T08:00:00.000Z",
+    "updatedAt": "2026-06-01T08:00:00.000Z"
+  },
+  {
+    "id": "attr-material",
+    "companyId": "demo-company",
+    "nameAr": "المادة",
+    "displayType": "select",
+    "createVariant": "never",
+    "values": [
+      { "id": "val-cotton", "nameAr": "قطن", "freeText": "خفيف" },
+      { "id": "val-poly", "nameAr": "بوليستر" }
+    ],
+    "isActive": true,
+    "createdAt": "2026-06-02T08:00:00.000Z",
+    "updatedAt": "2026-06-02T08:00:00.000Z"
+  }
+]

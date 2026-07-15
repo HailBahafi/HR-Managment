@@ -1,20 +1,34 @@
 import type { MediaItem, SeoFields, Slugged, TenantScoped } from '@/features/ecommerce/domain/types/common';
+import type { WarehouseRemovalStrategy } from '@/features/ecommerce/domain/types/warehouse';
 
-export type Category = TenantScoped & Slugged & {
-  id: string;
-  nameAr: string;
-  nameEn?: string;
-  description?: string;
-  image?: MediaItem;
-  parentId?: string | null;
-  /** Brand IDs shown in storefront mega menu for this (usually root) category. */
-  featuredBrandIds?: string[];
-  seo: SeoFields;
-  displayOrder: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+/** How stock packages are reserved when fulfilling from this category. */
+export type CategoryPackageReservation = 'full' | 'partial';
+
+export type CategoryLogistics = {
+  /** Free-text notes for inventory routes (purchase/receipt/delivery). */
+  routesNote?: string;
+  removalStrategy?: WarehouseRemovalStrategy;
+  packageReservation?: CategoryPackageReservation;
 };
+
+export type Category = TenantScoped &
+  Slugged & {
+    id: string;
+    nameAr: string;
+    nameEn?: string;
+    description?: string;
+    image?: MediaItem;
+    parentId?: string | null;
+    /** Brand IDs shown in storefront mega menu for this (usually root) category. */
+    featuredBrandIds?: string[];
+    seo: SeoFields;
+    displayOrder: number;
+    isActive: boolean;
+    /** Inventory defaults for products in this category (Odoo-style settings). */
+    logistics?: CategoryLogistics;
+    createdAt: string;
+    updatedAt: string;
+  };
 
 export type CategoryListQuery = {
   companyId: string;

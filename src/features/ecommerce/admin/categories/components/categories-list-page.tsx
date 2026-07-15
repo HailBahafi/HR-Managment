@@ -109,7 +109,7 @@ export function CategoriesListPage() {
       <PageHeader
         icon={FolderTree}
         title={t('nav.categories')}
-        description="الهيكل الشجري يغذي شريط التصنيفات والقائمة الضخمة في المتجر."
+        description="تهيئة الفئات بشكل منفصل (عامة + لوجستيات) ثم استخدامها عند تعريف المنتجات."
       />
 
       <ListToolbar

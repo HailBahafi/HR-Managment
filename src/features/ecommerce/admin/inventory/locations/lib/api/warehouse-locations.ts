@@ -13,7 +13,7 @@ function newId(prefix: string) {
 export const warehouseLocationsApi: AdminWarehouseLocationsPort = {
   getAll(query: WarehouseLocationListQuery) {
     return mockWarehouseLocationsStore.list(query, (item, q) => {
-      if (item.warehouseId !== q.warehouseId) return false;
+      if (q.warehouseId && item.warehouseId !== q.warehouseId) return false;
       if (!q.search) return true;
       const search = q.search.toLowerCase();
       return (

@@ -12,14 +12,16 @@ export const ecommerceAdminRoutes = {
   content: '/cms/content',
   settings: '/cms/settings',
   products: '/products',
-  lotsSerials: '/products/lots-serials',
-  packages: '/products/packages',
   categories: '/categories',
+  attributes: '/attributes',
   brands: '/brands',
   orders: '/orders',
   customers: '/customers',
   warehouses: '/inventory/warehouses',
   warehouseDetail: (warehouseId: string) => `/inventory/warehouses/${warehouseId}`,
+  locations: '/inventory/locations',
+  locationsForWarehouse: (warehouseId: string) => `/inventory/locations?warehouseId=${warehouseId}`,
+  putawayRules: '/inventory/putaway-rules',
 } as const;
 
 export type EcommerceContentTab = 'pages' | 'blog' | 'faq';

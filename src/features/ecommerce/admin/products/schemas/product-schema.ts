@@ -17,86 +17,113 @@ export const PRODUCT_TRACKING_OPTIONS = [
   { value: 'serial', labelAr: 'الأرقام التسلسلية' },
 ] as const;
 
-const priceLineSchema = z.object({
+export {
+  ATTRIBUTE_DISPLAY_OPTIONS,
+  VARIANT_CREATION_OPTIONS,
+} from '@/features/ecommerce/admin/attributes/schemas/catalog-attribute-schema';
+
+export const PACKAGING_TYPE_OPTIONS = [
+  { value: 'unit', labelAr: 'وحدة' },
+  { value: 'pack', labelAr: 'علبة' },
+  { value: 'box', labelAr: 'صندوق' },
+  { value: 'pallet', labelAr: 'منصة' },
+  { value: 'other', labelAr: 'أخرى' },
+] as const;
+
+const attributeValueSchema = z.object({
   id: z.string(),
-  priceList: z.string().trim().min(1, 'قائمة الأسعار مطلوبة'),
-  minQty: z.coerce.number().min(0),
-  packaging: z.string().trim().optional(),
-  unitPrice: z.coerce.number().min(0),
+  nameAr: z.string().trim().min(1, 'قيمة الخاصية مطلوبة'),
+  freeText: z.string().trim().optional(),
+  defaultExtraPrice: z.coerce.number().min(0).optional(),
+  extra: z.string().trim().optional(),
 });
 
-const purchaseLineSchema = z.object({
+const attributeSchema = z.object({
   id: z.string(),
-  supplier: z.string().trim().min(1, 'المورد مطلوب'),
-  supplierProductName: z.string().trim().optional(),
-  supplierProductCode: z.string().trim().optional(),
-  startDate: z.string().trim().optional(),
-  endDate: z.string().trim().optional(),
-  quantity: z.coerce.number().min(0),
-  uom: z.string().trim().optional(),
-  unitPrice: z.coerce.number().min(0),
-  discountPercent: z.coerce.number().min(0).max(100).optional(),
-  leadTimeDays: z.coerce.number().int().min(0).optional(),
+  attributeId: z.string().optional(),
+  nameAr: z.string().trim().min(1, 'اسم الخاصية مطلوب'),
+  displayType: z.enum(['radio', 'pills', 'select', 'color', 'image', 'multi']),
+  createVariant: z.enum(['always', 'dynamic', 'never']),
+  values: z.array(attributeValueSchema).min(1, 'أضف قيمة واحدة على الأقل'),
 });
 
-export const productFormSchema = z.object({
-  sku: z.string().trim().min(1, 'رمز المنتج (SKU) مطلوب'),
-  nameAr: z.string().trim().min(1, 'اسم المنتج مطلوب'),
-  nameEn: z.string().trim().optional(),
-  slug: z
-    .string()
-    .trim()
-    .refine(
-      (value) => value === '' || slugPattern.test(value),
-      'الرابط المختصر يجب أن يكون بأحرف إنجليزية صغيرة وأرقام وشرطات فقط',
+const uomLineSchema = z.object({
+  id: z.string(),
+  nameAr: z.string().trim().min(1, 'اسم الوحدة مطلوب'),
+  uneceCode: z.string().trim().optional(),
+  relativeQuantity: z.coerce.number().positive('الكمية يجب أن تكون أكبر من صفر'),
+  isReference: z.boolean(),
+  packagingType: z.enum(['unit', 'pack', 'box', 'pallet', 'other']),
+});
+
+export const productFormSchema = z
+  .object({
+    sku: z.string().trim().min(1, 'رمز المنتج (SKU) مطلوب'),
+    nameAr: z.string().trim().min(1, 'اسم المنتج مطلوب'),
+    nameEn: z.string().trim().optional(),
+    slug: z
+      .string()
+      .trim()
+      .refine(
+        (value) => value === '' || slugPattern.test(value),
+        'الرابط المختصر يجب أن يكون بأحرف إنجليزية صغيرة وأرقام وشرطات فقط',
+      ),
+    description: z.string().trim().optional(),
+    categoryId: z.string().optional(),
+    brandId: z.string().optional(),
+    status: z.enum(['draft', 'active', 'archived']),
+    stockStatus: z.enum(['in_stock', 'out_of_stock', 'preorder', 'discontinued']),
+    stockQuantity: z.coerce.number().int('يجب أن تكون الكمية عددًا صحيحًا').min(0, 'الكمية لا يمكن أن تكون سالبة'),
+    trackInventory: z.boolean(),
+    allowBackorder: z.boolean(),
+    tagsInput: z.string().trim().optional(),
+    media: z.array(
+      z.object({
+        url: z.string().trim().url('رابط الصورة غير صالح'),
+        alt: z.string().trim().optional(),
+        isPrimary: z.boolean(),
+      }),
     ),
-  description: z.string().trim().optional(),
-  categoryId: z.string().optional(),
-  brandId: z.string().optional(),
-  status: z.enum(['draft', 'active', 'archived']),
-  stockStatus: z.enum(['in_stock', 'out_of_stock', 'preorder', 'discontinued']),
-  stockQuantity: z.coerce.number().int('يجب أن تكون الكمية عددًا صحيحًا').min(0, 'الكمية لا يمكن أن تكون سالبة'),
-  trackInventory: z.boolean(),
-  allowBackorder: z.boolean(),
-  tagsInput: z.string().trim().optional(),
-  priceAmount: z.coerce.number().min(0, 'السعر لا يمكن أن يكون سالبًا'),
-  priceCurrency: z.string().trim().min(1, 'العملة مطلوبة'),
-  compareAtPriceAmount: z
-    .union([z.coerce.number().positive('يجب أن يكون السعر قبل الخصم أكبر من صفر'), z.literal('')])
-    .optional()
-    .transform((value) => (value === '' || value === undefined ? undefined : value)),
-  media: z.array(
-    z.object({
-      url: z.string().trim().url('رابط الصورة غير صالح'),
-      alt: z.string().trim().optional(),
-      isPrimary: z.boolean(),
-    }),
-  ),
-  metaTitle: z.string().trim().optional(),
-  metaDescription: z.string().trim().optional(),
-  productType: z.enum(['goods', 'service', 'combo']),
-  tracking: z.enum(['none', 'lot', 'serial']),
-  barcode: z.string().trim().optional(),
-  uom: z.string().trim().optional(),
-  salesTax: z.string().trim().optional(),
-  purchaseTax: z.string().trim().optional(),
-  costAmount: z.coerce.number().min(0),
-  posAvailable: z.boolean(),
-  saleOk: z.boolean(),
-  purchaseOk: z.boolean(),
-  attributeNotes: z.string().trim().optional(),
-  weightKg: z.coerce.number().min(0),
-  volumeM3: z.coerce.number().min(0),
-  responsible: z.string().trim().optional(),
-  receiptDescription: z.string().trim().optional(),
-  deliveryDescription: z.string().trim().optional(),
-  internalMoveDescription: z.string().trim().optional(),
-  priceLines: z.array(priceLineSchema),
-  purchaseLines: z.array(purchaseLineSchema),
-});
+    metaTitle: z.string().trim().optional(),
+    metaDescription: z.string().trim().optional(),
+    productType: z.enum(['goods', 'service', 'combo']),
+    tracking: z.enum(['none', 'lot', 'serial']),
+    barcode: z.string().trim().optional(),
+    posAvailable: z.boolean(),
+    saleOk: z.boolean(),
+    attributes: z.array(attributeSchema),
+    uomLines: z.array(uomLineSchema).min(1, 'أضف وحدة واحدة على الأقل'),
+  })
+  .superRefine((values, ctx) => {
+    const refs = values.uomLines.filter((line) => line.isReference);
+    if (refs.length !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'يجب اختيار وحدة مرجعية واحدة فقط.',
+        path: ['uomLines'],
+      });
+    }
+  });
 
 export type ProductFormInput = z.input<typeof productFormSchema>;
 export type ProductFormValues = z.output<typeof productFormSchema>;
+
+function newId(prefix: string) {
+  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export function createDefaultUomLines() {
+  return [
+    {
+      id: newId('uom'),
+      nameAr: 'وحدات',
+      uneceCode: '',
+      relativeQuantity: 1,
+      isReference: true,
+      packagingType: 'unit' as const,
+    },
+  ];
+}
 
 export const PRODUCT_FORM_DEFAULT_VALUES: ProductFormInput = {
   sku: '',
@@ -112,29 +139,14 @@ export const PRODUCT_FORM_DEFAULT_VALUES: ProductFormInput = {
   trackInventory: true,
   allowBackorder: false,
   tagsInput: '',
-  priceAmount: 1,
-  priceCurrency: 'SAR',
-  compareAtPriceAmount: undefined,
   media: [],
   metaTitle: '',
   metaDescription: '',
   productType: 'goods',
   tracking: 'none',
   barcode: '',
-  uom: 'وحدات',
-  salesTax: '',
-  purchaseTax: '',
-  costAmount: 0,
   posAvailable: false,
   saleOk: true,
-  purchaseOk: true,
-  attributeNotes: '',
-  weightKg: 0,
-  volumeM3: 0,
-  responsible: '',
-  receiptDescription: '',
-  deliveryDescription: '',
-  internalMoveDescription: '',
-  priceLines: [],
-  purchaseLines: [],
+  attributes: [],
+  uomLines: createDefaultUomLines(),
 };

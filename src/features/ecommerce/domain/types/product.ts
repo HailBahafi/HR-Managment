@@ -7,29 +7,50 @@ export type { ProductStatus, StockStatus };
 /** Odoo-style product type. */
 export type ProductType = 'goods' | 'service' | 'combo';
 
-/** Inventory tracking mode (lot / serial deferred for warehouse ops linkage). */
+/** Inventory tracking mode. */
 export type ProductTracking = 'none' | 'lot' | 'serial';
 
-export type ProductPriceLine = {
+export type {
+  AttributeDisplayType,
+  VariantCreationMode,
+} from '@/features/ecommerce/domain/types/catalog-attribute';
+
+import type {
+  AttributeDisplayType,
+  VariantCreationMode,
+} from '@/features/ecommerce/domain/types/catalog-attribute';
+
+export type ProductAttributeValue = {
   id: string;
-  priceList: string;
-  minQty: number;
-  packaging?: string;
-  unitPrice: number;
+  nameAr: string;
+  freeText?: string;
+  defaultExtraPrice?: number;
+  /** Color hex or image URL depending on displayType */
+  extra?: string;
 };
 
-export type ProductPurchaseLine = {
+/** Attribute line on a product — usually copied from a catalog Attribute master. */
+export type ProductAttribute = {
   id: string;
-  supplier: string;
-  supplierProductName?: string;
-  supplierProductCode?: string;
-  startDate?: string;
-  endDate?: string;
-  quantity: number;
-  uom?: string;
-  unitPrice: number;
-  discountPercent?: number;
-  leadTimeDays?: number;
+  /** Reference to master catalog attribute when applied from التهيئة. */
+  attributeId?: string;
+  nameAr: string;
+  displayType: AttributeDisplayType;
+  createVariant: VariantCreationMode;
+  values: ProductAttributeValue[];
+};
+
+export type PackagingType = 'unit' | 'pack' | 'box' | 'pallet' | 'other';
+
+/** Flexible unit / packaging line relative to a reference unit on the product. */
+export type ProductUomLine = {
+  id: string;
+  nameAr: string;
+  uneceCode?: string;
+  /** How many reference units this packaging contains (e.g. Box = 12). */
+  relativeQuantity: number;
+  isReference: boolean;
+  packagingType: PackagingType;
 };
 
 export type Product = TenantScoped &
@@ -44,31 +65,22 @@ export type Product = TenantScoped &
     status: ProductStatus;
     stockStatus: StockStatus;
     inventory: Inventory;
+    /**
+     * Catalog display price — not configured as a fixed product master field in the form.
+     * Real sale/cost amounts come from inventory receipt / price lists later.
+     */
     price: Money;
     compareAtPrice?: Money;
     media: MediaItem[];
     seo: SeoFields;
     tags?: string[];
-    /** Extended catalog fields (Odoo-inspired). Optional for legacy seed compatibility. */
     productType?: ProductType;
     tracking?: ProductTracking;
     barcode?: string;
-    uom?: string;
-    salesTax?: string;
-    purchaseTax?: string;
-    cost?: Money;
     posAvailable?: boolean;
     saleOk?: boolean;
-    purchaseOk?: boolean;
-    attributeNotes?: string;
-    weightKg?: number;
-    volumeM3?: number;
-    responsible?: string;
-    receiptDescription?: string;
-    deliveryDescription?: string;
-    internalMoveDescription?: string;
-    priceLines?: ProductPriceLine[];
-    purchaseLines?: ProductPurchaseLine[];
+    attributes?: ProductAttribute[];
+    uomLines?: ProductUomLine[];
     createdAt: string;
     updatedAt: string;
     archivedAt?: string | null;

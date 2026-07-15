@@ -1,7 +1,10 @@
 import type { CreateProductInput, Product } from '@/features/ecommerce/domain/types/product';
 import type { MediaItem } from '@/features/ecommerce/domain/types/common';
 import type { ProductFormInput, ProductFormValues } from '@/features/ecommerce/admin/products/schemas/product-schema';
-import { PRODUCT_FORM_DEFAULT_VALUES } from '@/features/ecommerce/admin/products/schemas/product-schema';
+import {
+  createDefaultUomLines,
+  PRODUCT_FORM_DEFAULT_VALUES,
+} from '@/features/ecommerce/admin/products/schemas/product-schema';
 
 function parseTagsInput(tagsInput: string | undefined): string[] | undefined {
   const tags = (tagsInput ?? '')
@@ -31,9 +34,6 @@ export function productToFormValues(product: Product): ProductFormInput {
     trackInventory: product.inventory.trackInventory,
     allowBackorder: product.inventory.allowBackorder,
     tagsInput: formatTagsForInput(product.tags),
-    priceAmount: product.price.amount,
-    priceCurrency: product.price.currency,
-    compareAtPriceAmount: product.compareAtPrice?.amount,
     media: [...product.media]
       .sort((a, b) => a.position - b.position)
       .map((item) => ({ url: item.url, alt: item.alt, isPrimary: item.isPrimary })),
@@ -42,29 +42,26 @@ export function productToFormValues(product: Product): ProductFormInput {
     productType: product.productType ?? 'goods',
     tracking: product.tracking ?? 'none',
     barcode: product.barcode ?? '',
-    uom: product.uom ?? 'وحدات',
-    salesTax: product.salesTax ?? '',
-    purchaseTax: product.purchaseTax ?? '',
-    costAmount: product.cost?.amount ?? 0,
     posAvailable: product.posAvailable ?? false,
     saleOk: product.saleOk ?? true,
-    purchaseOk: product.purchaseOk ?? true,
-    attributeNotes: product.attributeNotes ?? '',
-    weightKg: product.weightKg ?? 0,
-    volumeM3: product.volumeM3 ?? 0,
-    responsible: product.responsible ?? '',
-    receiptDescription: product.receiptDescription ?? '',
-    deliveryDescription: product.deliveryDescription ?? '',
-    internalMoveDescription: product.internalMoveDescription ?? '',
-    priceLines: product.priceLines ?? [],
-    purchaseLines: product.purchaseLines ?? [],
+    attributes: product.attributes ?? [],
+    uomLines:
+      product.uomLines && product.uomLines.length > 0
+        ? product.uomLines
+        : createDefaultUomLines(),
   };
 }
+
+type MappingOptions = {
+  /** Keep catalog display price when editing — prices are not set as fixed product master data. */
+  existing?: Product | null;
+};
 
 /** Maps form values back into the API's create-input shape (companyId is injected by the caller). */
 export function formValuesToCreateInput(
   values: ProductFormValues,
   companyId: string,
+  options?: MappingOptions,
 ): CreateProductInput {
   const hasPrimary = values.media.some((item) => item.isPrimary);
   const media: MediaItem[] = values.media.map((item, index) => ({
@@ -75,6 +72,9 @@ export function formValuesToCreateInput(
     position: index,
     isPrimary: hasPrimary ? item.isPrimary : index === 0,
   }));
+
+  const existing = options?.existing;
+  const currency = existing?.price.currency ?? 'SAR';
 
   return {
     companyId,
@@ -93,10 +93,8 @@ export function formValuesToCreateInput(
       lowStockThreshold: 5,
       allowBackorder: values.allowBackorder,
     },
-    price: { amount: values.priceAmount, currency: values.priceCurrency },
-    compareAtPrice: values.compareAtPriceAmount
-      ? { amount: values.compareAtPriceAmount, currency: values.priceCurrency }
-      : undefined,
+    price: existing?.price ?? { amount: 0, currency },
+    compareAtPrice: existing?.compareAtPrice,
     media,
     seo: {
       metaTitle: values.metaTitle || undefined,
@@ -106,22 +104,13 @@ export function formValuesToCreateInput(
     productType: values.productType,
     tracking: values.tracking,
     barcode: values.barcode || undefined,
-    uom: values.uom || undefined,
-    salesTax: values.salesTax || undefined,
-    purchaseTax: values.purchaseTax || undefined,
-    cost: { amount: values.costAmount, currency: values.priceCurrency },
     posAvailable: values.posAvailable,
     saleOk: values.saleOk,
-    purchaseOk: values.purchaseOk,
-    attributeNotes: values.attributeNotes || undefined,
-    weightKg: values.weightKg,
-    volumeM3: values.volumeM3,
-    responsible: values.responsible || undefined,
-    receiptDescription: values.receiptDescription || undefined,
-    deliveryDescription: values.deliveryDescription || undefined,
-    internalMoveDescription: values.internalMoveDescription || undefined,
-    priceLines: values.priceLines,
-    purchaseLines: values.purchaseLines,
+    attributes: values.attributes,
+    uomLines: values.uomLines.map((line) => ({
+      ...line,
+      uneceCode: line.uneceCode || undefined,
+    })),
   };
 }
 

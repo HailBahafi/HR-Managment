@@ -7,6 +7,6 @@ export function useWarehouseLocations(query: WarehouseLocationListQuery) {
   return useQuery({
     queryKey: warehouseLocationsQueryKeys.list(query),
     queryFn: () => warehouseLocationsApi.getAll(query),
-    enabled: Boolean(query.companyId && query.warehouseId),
+    enabled: Boolean(query.companyId),
   });
 }

@@ -1,4 +1,5 @@
 import { formValuesToCreateInput, productToFormValues } from '@/features/ecommerce/admin/products/lib/product-form-mapping';
+import { createDefaultUomLines } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import type { Product } from '@/features/ecommerce/domain/types/product';
 import type { ProductFormValues } from '@/features/ecommerce/admin/products/schemas/product-schema';
 
@@ -28,11 +29,11 @@ describe('productToFormValues', () => {
     expect(values.nameEn).toBe('');
     expect(values.categoryId).toBe('cat-1');
     expect(values.brandId).toBe('brand-1');
-    expect(values.priceAmount).toBe(100);
-    expect(values.compareAtPriceAmount).toBeUndefined();
     expect(values.status).toBe('active');
     expect(values.stockQuantity).toBe(5);
     expect(values.tagsInput).toBe('');
+    expect(values.attributes).toEqual([]);
+    expect(values.uomLines.length).toBeGreaterThan(0);
   });
 
   it('maps media items sorted by position, preserving each isPrimary flag', () => {
@@ -59,6 +60,33 @@ describe('productToFormValues', () => {
     expect(productToFormValues(product).categoryId).toBeUndefined();
     expect(productToFormValues(product).brandId).toBeUndefined();
   });
+
+  it('maps attributes and uom lines when present', () => {
+    const product: Product = {
+      ...BASE_PRODUCT,
+      attributes: [
+        {
+          id: 'a1',
+          nameAr: 'اللون',
+          displayType: 'color',
+          createVariant: 'always',
+          values: [{ id: 'v1', nameAr: 'أحمر', extra: '#f00' }],
+        },
+      ],
+      uomLines: [
+        {
+          id: 'u1',
+          nameAr: 'قطعة',
+          relativeQuantity: 1,
+          isReference: true,
+          packagingType: 'unit',
+        },
+      ],
+    };
+    const values = productToFormValues(product);
+    expect(values.attributes[0]?.nameAr).toBe('اللون');
+    expect(values.uomLines[0]?.nameAr).toBe('قطعة');
+  });
 });
 
 describe('formValuesToCreateInput', () => {
@@ -76,31 +104,16 @@ describe('formValuesToCreateInput', () => {
     trackInventory: true,
     allowBackorder: false,
     tagsInput: '',
-    priceAmount: 250,
-    priceCurrency: 'SAR',
-    compareAtPriceAmount: undefined,
     media: [],
     metaTitle: '',
     metaDescription: '',
     productType: 'goods',
     tracking: 'none',
     barcode: '',
-    uom: 'وحدات',
-    salesTax: '',
-    purchaseTax: '',
-    costAmount: 0,
     posAvailable: false,
     saleOk: true,
-    purchaseOk: true,
-    attributeNotes: '',
-    weightKg: 0,
-    volumeM3: 0,
-    responsible: '',
-    receiptDescription: '',
-    deliveryDescription: '',
-    internalMoveDescription: '',
-    priceLines: [],
-    purchaseLines: [],
+    attributes: [],
+    uomLines: createDefaultUomLines(),
   };
 
   it('injects the given companyId and maps a missing category/brand to null', () => {
@@ -109,6 +122,16 @@ describe('formValuesToCreateInput', () => {
     expect(input.categoryId).toBeNull();
     expect(input.brandId).toBeNull();
     expect(input.media).toEqual([]);
+  });
+
+  it('does not set a fixed sale price on create (defaults to 0 until inventory pricing)', () => {
+    const input = formValuesToCreateInput(BASE_VALUES, 'demo-company');
+    expect(input.price).toEqual({ amount: 0, currency: 'SAR' });
+  });
+
+  it('preserves existing catalog price when editing', () => {
+    const input = formValuesToCreateInput(BASE_VALUES, 'demo-company', { existing: BASE_PRODUCT });
+    expect(input.price).toEqual({ amount: 100, currency: 'SAR' });
   });
 
   it('passes status/stockStatus through unchanged', () => {
@@ -128,14 +151,6 @@ describe('formValuesToCreateInput', () => {
 
   it('maps an empty tagsInput to undefined, not an empty array', () => {
     expect(formValuesToCreateInput(BASE_VALUES, 'demo-company').tags).toBeUndefined();
-  });
-
-  it('builds a Money object for compareAtPrice only when an amount is present, reusing the form currency', () => {
-    const withCompare = formValuesToCreateInput({ ...BASE_VALUES, compareAtPriceAmount: 300 }, 'demo-company');
-    expect(withCompare.compareAtPrice).toEqual({ amount: 300, currency: 'SAR' });
-
-    const withoutCompare = formValuesToCreateInput(BASE_VALUES, 'demo-company');
-    expect(withoutCompare.compareAtPrice).toBeUndefined();
   });
 
   it('maps each media entry with its array index as position', () => {

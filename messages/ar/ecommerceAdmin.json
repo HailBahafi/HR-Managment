@@ -30,13 +30,14 @@
     "appearanceAnnouncement": "شريط الإعلانات",
     "websiteSettings": "إعدادات الموقع",
     "products": "المنتجات",
-    "lotsSerials": "أرقام المجموعات / الأرقام التسلسلية",
-    "packages": "الطرود",
     "categories": "التصنيفات",
+    "attributes": "الخصائص",
     "brands": "العلامات التجارية",
     "orders": "الطلبات",
     "customers": "العملاء",
-    "warehouses": "المستودعات"
+    "warehouses": "المستودعات",
+    "locations": "المواقع",
+    "putawayRules": "قواعد التخزين"
   },
   "homepage": {
     "title": "الصفحة الرئيسية",

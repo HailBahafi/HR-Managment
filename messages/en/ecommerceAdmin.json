@@ -30,13 +30,14 @@
     "appearanceAnnouncement": "Announcement Bar",
     "websiteSettings": "Website Settings",
     "products": "Products",
-    "lotsSerials": "Lots / Serial Numbers",
-    "packages": "Packages",
     "categories": "Categories",
+    "attributes": "Attributes",
     "brands": "Brands",
     "orders": "Orders",
     "customers": "Customers",
-    "warehouses": "Warehouses"
+    "warehouses": "Warehouses",
+    "locations": "Locations",
+    "putawayRules": "Putaway Rules"
   },
   "homepage": {
     "title": "Homepage",

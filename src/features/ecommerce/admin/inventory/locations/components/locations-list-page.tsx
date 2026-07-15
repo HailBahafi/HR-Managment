@@ -1,10 +1,12 @@
 'use client';
 
 import * as React from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
+import { useWarehouses } from '@/features/ecommerce/admin/inventory/warehouses/hooks/use-warehouses';
 import { useWarehouseLocations } from '@/features/ecommerce/admin/inventory/locations/hooks/use-warehouse-locations';
 import { useWarehouseLocationMutations } from '@/features/ecommerce/admin/inventory/locations/hooks/use-warehouse-location-mutations';
 import {
@@ -14,13 +16,15 @@ import {
   warehouseLocationFormSchema,
   type WarehouseLocationFormValues,
 } from '@/features/ecommerce/admin/inventory/schemas/warehouse-schemas';
+import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { WarehouseLocation } from '@/features/ecommerce/domain/types/warehouse';
+import { PageHeader } from '@/components/layouts/page-header';
+import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ListToolbar } from '@/components/ui/list-toolbar';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
 import {
   Dialog,
@@ -33,10 +37,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type Props = {
-  warehouseId: string;
-};
-
+const ALL_WAREHOUSES = '__all__';
 const NO_PARENT = '__none__';
 
 const TYPE_LABEL: Record<string, string> = {
@@ -63,32 +64,73 @@ function toFormValues(location: WarehouseLocation): WarehouseLocationFormValues 
   };
 }
 
-export function WarehouseLocationsPanel({ warehouseId }: Props) {
+export function LocationsListPage() {
   const companyId = getStorefrontCompanyId();
-  const [searchInput, setSearchInput] = React.useState('');
-  const [search, setSearch] = React.useState('');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const warehouseIdFilter = searchParams.get('warehouseId') ?? '';
+  const search = searchParams.get('q') ?? '';
+
+  const [searchInput, setSearchInput] = React.useState(search);
+  const [formWarehouseId, setFormWarehouseId] = React.useState(warehouseIdFilter);
   const [formState, setFormState] = React.useState<{ open: boolean; location: WarehouseLocation | null }>({
     open: false,
     location: null,
   });
   const [toDelete, setToDelete] = React.useState<WarehouseLocation | null>(null);
 
+  function updateParams(next: { q?: string; warehouseId?: string }) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next.q !== undefined) {
+      if (next.q) params.set('q', next.q);
+      else params.delete('q');
+    }
+    if (next.warehouseId !== undefined) {
+      if (next.warehouseId) params.set('warehouseId', next.warehouseId);
+      else params.delete('warehouseId');
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
   React.useEffect(() => {
-    const timeout = setTimeout(() => setSearch(searchInput.trim()), 300);
+    const timeout = setTimeout(() => {
+      if (searchInput.trim() !== search) {
+        updateParams({ q: searchInput.trim() });
+      }
+    }, 300);
     return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- URL sync debounce
   }, [searchInput]);
+
+  const { data: warehousesData } = useWarehouses({ companyId, limit: 200 });
+  const warehouses = warehousesData?.items ?? [];
+  const warehouseNameById = React.useMemo(
+    () => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse.nameAr])),
+    [warehouses],
+  );
 
   const { data, isLoading, isError } = useWarehouseLocations({
     companyId,
-    warehouseId,
+    warehouseId: warehouseIdFilter || undefined,
     search: search || undefined,
     page: 1,
     limit: 200,
   });
-  const { create, update, remove } = useWarehouseLocationMutations(warehouseId);
+  const { create, update, remove } = useWarehouseLocationMutations();
   const locations = data?.items ?? [];
-  const parentOptions = locations.filter((location) => location.id !== formState.location?.id);
-  const nameById = React.useMemo(() => new Map(locations.map((location) => [location.id, location.nameAr])), [locations]);
+
+  const parentOptions = locations.filter(
+    (location) =>
+      location.id !== formState.location?.id &&
+      (!formWarehouseId || location.warehouseId === formWarehouseId),
+  );
+  const nameById = React.useMemo(
+    () => new Map(locations.map((location) => [location.id, location.nameAr])),
+    [locations],
+  );
 
   const form = useForm<WarehouseLocationFormValues>({
     resolver: zodResolver(warehouseLocationFormSchema),
@@ -98,12 +140,19 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
   React.useEffect(() => {
     if (!formState.open) return;
     form.reset(formState.location ? toFormValues(formState.location) : WAREHOUSE_LOCATION_FORM_DEFAULT_VALUES);
-  }, [formState, form]);
+    setFormWarehouseId(formState.location?.warehouseId ?? warehouseIdFilter);
+  }, [formState, form, warehouseIdFilter]);
 
   const isSaving = create.isPending || update.isPending;
+  const selectedWarehouseName = warehouseIdFilter
+    ? warehouseNameById.get(warehouseIdFilter)
+    : undefined;
 
   const onSubmit = async (values: WarehouseLocationFormValues) => {
     if (!companyId) return;
+    const targetWarehouseId = formState.location?.warehouseId || formWarehouseId;
+    if (!targetWarehouseId) return;
+
     const code =
       formState.location?.code ??
       values.nameAr
@@ -113,7 +162,7 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
 
     const payload = {
       companyId,
-      warehouseId,
+      warehouseId: targetWarehouseId,
       code,
       nameAr: values.nameAr.trim(),
       parentLocationId: values.parentLocationId || null,
@@ -151,6 +200,19 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
       ),
     },
     {
+      key: 'warehouse',
+      title: 'المستودع',
+      render: (row) => (
+        <button
+          type="button"
+          className="text-sm text-primary hover:underline"
+          onClick={() => router.push(ecommerceAdminRoutes.warehouseDetail(row.warehouseId))}
+        >
+          {warehouseNameById.get(row.warehouseId) ?? row.warehouseId}
+        </button>
+      ),
+    },
+    {
       key: 'parent',
       title: 'الموقع الرئيسي',
       render: (row) => (
@@ -167,8 +229,7 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
     {
       key: 'system',
       title: '',
-      render: (row) =>
-        row.isSystem ? <Badge variant="outline">تلقائي</Badge> : null,
+      render: (row) => (row.isSystem ? <Badge variant="outline">تلقائي</Badge> : null),
     },
     {
       key: 'actions',
@@ -199,19 +260,65 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <ListToolbar
-          searchValue={searchInput}
-          onSearchChange={setSearchInput}
-          searchPlaceholder="ابحث في المواقع…"
-          className="min-w-[220px] flex-1"
-        />
-        <Button onClick={() => setFormState({ open: true, location: null })} disabled={!companyId}>
-          <Plus className="h-4 w-4" />
-          إضافة موقع
-        </Button>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        icon={MapPin}
+        title="المواقع"
+        description={
+          selectedWarehouseName
+            ? `مواقع مستودع «${selectedWarehouseName}». يمكنك إزالة الفلتر لعرض كل المواقع.`
+            : 'إدارة مواقع التخزين لجميع المستودعات — صفِّ حسب المستودع أو افتح المستودع من العمود.'
+        }
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {warehouseIdFilter ? (
+              <Button
+                variant="outline"
+                onClick={() => router.push(ecommerceAdminRoutes.warehouseDetail(warehouseIdFilter))}
+              >
+                <Warehouse className="h-4 w-4" />
+                فتح المستودع
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => router.push(ecommerceAdminRoutes.warehouses)}>
+                <Warehouse className="h-4 w-4" />
+                المستودعات
+              </Button>
+            )}
+            <Button
+              onClick={() => setFormState({ open: true, location: null })}
+              disabled={!companyId || (warehouses.length === 0 && !warehouseIdFilter)}
+            >
+              <Plus className="h-4 w-4" />
+              إضافة موقع
+            </Button>
+          </div>
+        }
+      />
+
+      <ListToolbar
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="ابحث في المواقع…"
+        filters={
+          <Select
+            value={warehouseIdFilter || ALL_WAREHOUSES}
+            onValueChange={(value) => updateParams({ warehouseId: value === ALL_WAREHOUSES ? '' : value })}
+          >
+            <SelectTrigger aria-label="تصفية بالمستودع" className="w-full sm:w-56">
+              <SelectValue placeholder="كل المستودعات" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_WAREHOUSES}>كل المستودعات</SelectItem>
+              {warehouses.map((warehouse) => (
+                <SelectItem key={warehouse.id} value={warehouse.id}>
+                  {warehouse.nameAr}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       {isError ? <p className="text-sm text-destructive">تعذر تحميل المواقع.</p> : null}
 
@@ -220,7 +327,9 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
         data={locations}
         keyExtractor={(row) => row.id}
         loading={isLoading}
-        emptyText="لا توجد مواقع لهذا المستودع بعد."
+        emptyText={
+          warehouseIdFilter ? 'لا توجد مواقع لهذا المستودع بعد.' : 'لا توجد مواقع بعد. أضف موقعًا أو أنشئ مستودعًا.'
+        }
       />
 
       <Dialog
@@ -230,7 +339,7 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
         <DialogContent className={`${dialogMaxHeightClass} max-w-lg overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>{formState.location ? 'تعديل الموقع' : 'إضافة موقع'}</DialogTitle>
-            <DialogDescription>مثال: رف 1 داخل ممر 1 — اختر الموقع الرئيسي ونوع التخزين باختصار.</DialogDescription>
+            <DialogDescription>اختر المستودع ثم عرّف الموقع وخيارات التخزين.</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -239,6 +348,26 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
             }}
             className="space-y-4"
           >
+            <div className="space-y-1.5">
+              <Label htmlFor="loc-warehouse">المستودع</Label>
+              <Select
+                value={formWarehouseId || undefined}
+                onValueChange={setFormWarehouseId}
+                disabled={Boolean(formState.location)}
+              >
+                <SelectTrigger id="loc-warehouse" aria-label="المستودع">
+                  <SelectValue placeholder="اختر المستودع" />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehouses.map((warehouse) => (
+                    <SelectItem key={warehouse.id} value={warehouse.id}>
+                      {warehouse.nameAr}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="loc-name">اسم الموقع</Label>
               <Input id="loc-name" placeholder="مثال: رف 1" {...form.register('nameAr')} />
@@ -376,7 +505,7 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
               >
                 إلغاء
               </Button>
-              <Button type="submit" disabled={isSaving || !companyId}>
+              <Button type="submit" disabled={isSaving || !companyId || !formWarehouseId}>
                 {isSaving ? 'جاري الحفظ…' : 'حفظ'}
               </Button>
             </DialogFooter>
@@ -388,7 +517,7 @@ export function WarehouseLocationsPanel({ warehouseId }: Props) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>حذف الموقع؟</DialogTitle>
-            <DialogDescription>حذف «{toDelete?.nameAr}» من هذا المستودع.</DialogDescription>
+            <DialogDescription>حذف «{toDelete?.nameAr}».</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setToDelete(null)} disabled={remove.isPending}>

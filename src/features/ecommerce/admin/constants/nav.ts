@@ -20,8 +20,9 @@ import {
   Warehouse,
   Landmark,
   MonitorCog,
-  Hash,
-  Boxes,
+  MapPinned,
+  MapPin,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   ecommerceAdminRoutes,
@@ -105,14 +106,13 @@ export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
       {
         items: [
           { labelKey: 'products', href: ecommerceAdminRoutes.products, icon: Package },
-          { labelKey: 'lotsSerials', href: ecommerceAdminRoutes.lotsSerials, icon: Hash },
-          { labelKey: 'packages', href: ecommerceAdminRoutes.packages, icon: Boxes },
         ],
       },
       {
         sectionKey: 'catalog',
         items: [
           { labelKey: 'categories', href: ecommerceAdminRoutes.categories, icon: FolderTree },
+          { labelKey: 'attributes', href: ecommerceAdminRoutes.attributes, icon: SlidersHorizontal },
           { labelKey: 'brands', href: ecommerceAdminRoutes.brands, icon: Tag },
         ],
       },
@@ -139,6 +139,8 @@ export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
       {
         items: [
           { labelKey: 'warehouses', href: ecommerceAdminRoutes.warehouses, icon: Warehouse },
+          { labelKey: 'locations', href: ecommerceAdminRoutes.locations, icon: MapPin },
+          { labelKey: 'putawayRules', href: ecommerceAdminRoutes.putawayRules, icon: MapPinned },
         ],
       },
     ],
