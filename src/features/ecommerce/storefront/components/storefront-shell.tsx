@@ -3,6 +3,7 @@ import { Toaster } from 'sonner';
 import { JsonLd } from '@/features/ecommerce/storefront/components/json-ld';
 import { StoreFooter } from '@/features/ecommerce/storefront/components/store-footer';
 import { StoreHeader } from '@/features/ecommerce/storefront/components/store-header';
+import { StoreMobileTabBar } from '@/features/ecommerce/storefront/components/store-mobile-tab-bar';
 import { getStorefrontBrandsList } from '@/features/ecommerce/storefront/lib/loaders/catalog-loaders';
 import { getStorefrontNavCategories } from '@/features/ecommerce/storefront/lib/loaders/storefront-loaders';
 import { getStorefrontCompanyConfig } from '@/features/ecommerce/storefront/lib/get-storefront-company-config';
@@ -29,7 +30,12 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
   } as CSSProperties;
 
   return (
-    <div className="flex min-h-dvh flex-col overflow-x-clip bg-background" style={themeStyle}>
+    <div
+      className="flex min-h-dvh flex-col overflow-x-clip bg-background p-0"
+      style={themeStyle}
+      dir={dir}
+      lang={storefrontLocale}
+    >
       <JsonLd data={await organizationJsonLd(config, storefrontLocale)} />
       <Toaster richColors position="top-center" dir={dir} closeButton />
       <a
@@ -39,10 +45,16 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
         {t('a11y.skipToContent')}
       </a>
       <StoreHeader config={config} categories={categories} brands={brands} />
-      <main id="store-main" className="mx-auto w-full max-w-[1400px] flex-1 overflow-x-clip px-4 py-4 sm:px-6 sm:py-6">
+      <main
+        id="store-main"
+        className="mx-auto w-full max-w-[1400px] flex-1 overflow-x-clip px-4 py-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:pb-6"
+      >
         {children}
       </main>
-      <StoreFooter config={config} categories={categories} />
+      <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <StoreFooter config={config} categories={categories} />
+      </div>
+      <StoreMobileTabBar />
     </div>
   );
 }

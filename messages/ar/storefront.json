@@ -184,6 +184,12 @@
     "notFoundDescription": "الصفحة التي تبحث عنها غير متوفرة أو نُقلت.",
     "backToStore": "العودة إلى المتجر"
   },
+  "mobileTab": {
+    "home": "الرئيسية",
+    "categories": "الفئات",
+    "account": "حسابي",
+    "cart": "عربة التسوق"
+  },
   "locale": {
     "ar": "العربية",
     "en": "English"

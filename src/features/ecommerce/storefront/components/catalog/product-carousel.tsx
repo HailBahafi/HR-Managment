@@ -11,7 +11,7 @@ type ProductCarouselProps = {
   title: string;
   subtitle?: string;
   viewAllHref?: `/store${string}`;
-  viewAllLabel: string;
+  viewAllLabel?: string;
   layout?: 'carousel' | 'grid';
   gridColumns?: { mobile?: number; tablet?: number; desktop?: number };
   children: React.ReactNode;
@@ -38,41 +38,45 @@ export function ProductCarousel({
     element.scrollBy({ left: amount, behavior: 'smooth' });
   }
 
-  const navButtons = (
-    <div className="flex items-center gap-1.5">
-      <button
-        type="button"
-        onClick={() => scroll('prev')}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={t('paginationPrevious')}
-      >
-        <ChevronRight className="h-4 w-4" aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={() => scroll('next')}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={t('paginationNext')}
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-      </button>
-    </div>
-  );
+  const navButtons =
+    layout === 'carousel' ? (
+      <div className="hidden items-center gap-1.5 opacity-0 transition-opacity duration-200 group-hover/carousel:opacity-100 group-focus-within/carousel:opacity-100 md:flex">
+        <button
+          type="button"
+          onClick={() => scroll('prev')}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={t('paginationPrevious')}
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => scroll('next')}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={t('paginationNext')}
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+    ) : null;
 
   return (
-    <section className={cn('flex flex-col gap-4', className)}>
+    <section className={cn('group/carousel flex flex-col gap-4', className)} aria-label={title}>
       <SectionHeader
         title={title}
         subtitle={subtitle}
         viewAllHref={viewAllHref}
         viewAllLabel={viewAllLabel}
-        actions={layout === 'carousel' ? navButtons : undefined}
+        actions={navButtons}
       />
 
       {layout === 'grid' ? (
         <ProductGrid columns={gridColumns}>{children}</ProductGrid>
       ) : (
-        <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
+        <div
+          ref={scrollRef}
+          className="flex gap-3 overflow-x-auto pb-1 scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory md:gap-4 [&::-webkit-scrollbar]:hidden"
+        >
           {children}
         </div>
       )}
@@ -80,8 +84,18 @@ export function ProductCarousel({
   );
 }
 
+/** Mobile: exactly 2 full cards (50% − half gap). Larger breakpoints use fixed widths. */
 export function ProductCarouselItem({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('w-[168px] shrink-0 snap-start sm:w-[188px] md:w-[200px]', className)}>{children}</div>
+    <div
+      className={cn(
+        'flex shrink-0 snap-start self-stretch',
+        'w-[calc(50%-0.375rem)]',
+        'sm:w-[180px] md:w-[200px] lg:w-[220px]',
+        className,
+      )}
+    >
+      <div className="flex h-full w-full min-w-0 flex-col">{children}</div>
+    </div>
   );
 }

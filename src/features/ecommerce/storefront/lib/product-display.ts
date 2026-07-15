@@ -1,8 +1,15 @@
 import type { StorefrontProduct } from '@/features/ecommerce/storefront/domain/storefront-models';
 
+export type ProductDisplayImage = {
+  url: string;
+  alt: string;
+};
+
 export type ProductDisplayModel = {
   imageUrl: string | null;
   imageAlt: string;
+  /** Ordered gallery images for card/PDP carousels (images only). */
+  images: ProductDisplayImage[];
   outOfStock: boolean;
   hasDeal: boolean;
   discountPercent: number | null;
@@ -38,10 +45,29 @@ function isSellingFast(product: StorefrontProduct): boolean {
   return product.inventory.quantity <= product.inventory.lowStockThreshold;
 }
 
+function resolveGalleryImages(product: StorefrontProduct): ProductDisplayImage[] {
+  const fromMedia = [...product.media]
+    .filter((item) => item.type === 'image' && Boolean(item.url))
+    .sort((a, b) => a.position - b.position)
+    .map((item) => ({
+      url: item.url,
+      alt: item.alt || product.imageAlt || product.name,
+    }));
+
+  if (fromMedia.length > 0) return fromMedia;
+
+  if (product.imageUrl) {
+    return [{ url: product.imageUrl, alt: product.imageAlt || product.name }];
+  }
+
+  return [];
+}
+
 export function buildProductDisplay(product: StorefrontProduct): ProductDisplayModel {
+  const images = resolveGalleryImages(product);
   const primaryMedia = product.media.find((item) => item.isPrimary) ?? product.media[0] ?? null;
-  const imageUrl = primaryMedia?.url ?? product.imageUrl;
-  const imageAlt = primaryMedia?.alt || product.imageAlt || product.name;
+  const imageUrl = images[0]?.url ?? primaryMedia?.url ?? product.imageUrl;
+  const imageAlt = images[0]?.alt ?? primaryMedia?.alt ?? (product.imageAlt || product.name);
   const outOfStock = product.stockStatus === 'out_of_stock' || product.stockStatus === 'discontinued';
   const hasDeal = Boolean(product.compareAtPrice && product.compareAtPrice.amount > product.price.amount);
   const discountPercent =
@@ -53,6 +79,7 @@ export function buildProductDisplay(product: StorefrontProduct): ProductDisplayM
   return {
     imageUrl,
     imageAlt,
+    images,
     outOfStock,
     hasDeal,
     discountPercent,

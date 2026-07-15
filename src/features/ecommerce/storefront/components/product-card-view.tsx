@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { StorefrontProduct } from '@/features/ecommerce/storefront/domain/storefront-models';
 import { AddToCartButton } from '@/features/ecommerce/storefront/components/catalog/add-to-cart-button';
 import { FavoriteButton } from '@/features/ecommerce/storefront/components/catalog/favorite-button';
-import { ProductImage } from '@/features/ecommerce/storefront/components/catalog/product-image';
+import { ProductCardMedia } from '@/features/ecommerce/storefront/components/catalog/product-card-media';
 import { ProductPrice } from '@/features/ecommerce/storefront/components/catalog/product-price';
 import { ProductRating } from '@/features/ecommerce/storefront/components/catalog/product-rating';
 import { buildProductDisplay } from '@/features/ecommerce/storefront/lib/product-display';
@@ -38,16 +38,17 @@ export function ProductCardView({
   if (variant === 'horizontal') {
     return (
       <article className="group flex gap-3 overflow-hidden rounded-lg border border-border bg-card p-3">
-        <Link href={productHref} prefetch={false} className="relative block w-24 shrink-0 sm:w-28">
-          <ProductImage
-            src={display.imageUrl}
-            alt={display.imageAlt}
+        <div className="relative w-24 shrink-0 sm:w-28">
+          <ProductCardMedia
+            images={display.images.slice(0, 1)}
+            fallbackAlt={display.imageAlt}
+            href={productHref}
             aspectRatio="square"
-            className="rounded-md"
+            className="overflow-hidden rounded-md"
             imageClassName="p-2"
             sizes="112px"
           />
-        </Link>
+        </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           {brandName ? <p className="text-xs text-muted-foreground">{brandName}</p> : null}
           <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
@@ -80,19 +81,18 @@ export function ProductCardView({
   return (
     <article
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-shadow duration-200 hover:shadow-soft',
+        'group relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card transition-shadow duration-200 hover:shadow-soft',
         isCompact && 'text-sm',
       )}
     >
-      <div className="relative bg-muted/20">
-        <Link href={productHref} prefetch={false} className="block">
-          <ProductImage
-            src={display.imageUrl}
-            alt={display.imageAlt}
-            aspectRatio="square"
-            imageClassName={isCompact ? 'p-2' : 'p-4'}
-          />
-        </Link>
+      <div className="relative shrink-0 bg-muted/20">
+        <ProductCardMedia
+          images={display.images}
+          fallbackAlt={display.imageAlt}
+          href={productHref}
+          aspectRatio="square"
+          imageClassName={isCompact ? 'p-2' : 'p-4'}
+        />
 
         <FavoriteButton
           productId={product.id}
@@ -101,7 +101,14 @@ export function ProductCardView({
         />
 
         {display.promoBadge ? (
-          <span className="pointer-events-none absolute start-2 top-2 z-10 rounded-md bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+          <span
+            className={cn(
+              'pointer-events-none absolute start-0 top-0 z-10 max-w-[75%] truncate',
+              'rounded-none rounded-ee-2xl px-2.5 py-1.5',
+              'text-[10px] font-bold leading-none tracking-wide text-primary-foreground shadow-soft',
+              display.promoBadge === 'best-seller' ? 'bg-primary' : 'bg-secondary text-secondary-foreground',
+            )}
+          >
             {display.promoBadge === 'best-seller' ? t('components.badgeBestSeller') : t('components.badgeDeals')}
           </span>
         ) : null}
@@ -111,40 +118,52 @@ export function ProductCardView({
             productId={product.id}
             stockStatus={product.stockStatus}
             variant="quick"
-            className="absolute bottom-2 start-2 z-10"
+            className="absolute bottom-2 end-2 z-10"
           />
         ) : null}
 
         {display.outOfStock ? (
-          <span className="pointer-events-none absolute bottom-2 start-2 z-10 rounded-full bg-background/90 px-2 py-1 text-xs font-medium text-muted-foreground">
+          <span className="pointer-events-none absolute bottom-2 end-2 z-10 rounded-full bg-background/90 px-2 py-1 text-xs font-medium text-muted-foreground">
             {stockLabel}
           </span>
         ) : null}
       </div>
 
-      <div className={cn('flex flex-1 flex-col gap-1.5', isCompact ? 'p-2.5' : 'p-3')}>
-        {brandName ? <p className="text-[11px] font-medium text-muted-foreground">{brandName}</p> : null}
-        <h3 className={cn('line-clamp-2 font-medium leading-snug text-foreground', isCompact ? 'text-xs' : 'text-sm')}>
+      <div className={cn('flex min-h-0 flex-1 flex-col gap-1.5', isCompact ? 'p-2' : 'p-2.5')}>
+        {brandName ? (
+          <p className="truncate text-[10px] font-medium text-muted-foreground sm:text-[11px]">{brandName}</p>
+        ) : null}
+
+        <h3
+          className={cn(
+            'line-clamp-2 min-h-[2.5rem] font-medium leading-snug text-foreground',
+            isCompact ? 'text-[11px] sm:text-xs' : 'text-xs sm:text-sm',
+          )}
+        >
           <Link href={productHref} prefetch={false} className="hover:text-primary">
             {product.name}
           </Link>
         </h3>
 
-        <ProductRating rating={display.rating} reviewCount={display.reviewCount} />
+        <div className="min-h-[1.25rem]">
+          <ProductRating rating={display.rating} reviewCount={display.reviewCount} />
+        </div>
 
-        <ProductPrice
-          price={formattedPrice}
-          compareAtPrice={formattedComparePrice}
-          discountPercent={display.discountPercent}
-          muted={display.outOfStock}
-          size={isCompact ? 'sm' : 'sm'}
-          className={cn(display.outOfStock && 'opacity-60')}
-        />
+        <div className="mt-auto min-w-0">
+          <ProductPrice
+            price={formattedPrice}
+            compareAtPrice={formattedComparePrice}
+            discountPercent={display.discountPercent}
+            muted={display.outOfStock}
+            size="sm"
+            className={cn(display.outOfStock && 'opacity-60')}
+          />
+        </div>
 
         {display.sellingFast ? (
-          <p className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Package className="h-3 w-3 text-secondary" aria-hidden />
-            {t('components.sellingFast')}
+          <p className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Package className="h-3 w-3 shrink-0 text-secondary" aria-hidden />
+            <span className="truncate">{t('components.sellingFast')}</span>
           </p>
         ) : null}
       </div>

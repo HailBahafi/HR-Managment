@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Heart, ShoppingCart, User } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { createPortal } from 'react-dom';
+import { Heart, Menu, ShoppingCart, User, X } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import type {
   StorefrontBrand,
   StorefrontCategory,
@@ -14,6 +15,7 @@ import { StoreSearchBar } from '@/features/ecommerce/storefront/components/store
 import { useCartItemCount } from '@/features/ecommerce/storefront/hooks/use-storefront-cart-ui';
 import { useWishlistCount } from '@/features/ecommerce/storefront/hooks/use-storefront-wishlist-ui';
 import { Link } from '@/i18n/navigation';
+import { isRtlLocale, type StorefrontLocale } from '@/i18n/routing';
 import { cn } from '@/shared/utils';
 
 type StoreHeaderInteractiveProps = {
@@ -36,33 +38,206 @@ function BadgeIcon({ count, children }: { count: number; children: React.ReactNo
   );
 }
 
+function StoreMobileDrawer({
+  open,
+  onClose,
+  rtl,
+  config,
+  categories,
+  brands,
+}: {
+  open: boolean;
+  onClose: () => void;
+  rtl: boolean;
+  config: StorefrontCompanyConfig;
+  categories: StorefrontCategory[];
+  brands: StorefrontBrand[];
+}) {
+  const t = useTranslations('storefront');
+  const [mounted, setMounted] = React.useState(false);
+  const [entered, setEntered] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) {
+      setEntered(false);
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntered(true));
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, onClose]);
+
+  if (!mounted || !open) return null;
+
+  return createPortal(
+    <div className="lg:hidden" dir={rtl ? 'rtl' : 'ltr'}>
+      <button
+        type="button"
+        aria-label={t('a11y.closeMenu')}
+        className={cn(
+          'fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out',
+          entered ? 'opacity-100' : 'opacity-0',
+        )}
+        onClick={onClose}
+      />
+
+      <nav
+        id="store-mobile-nav"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('a11y.mobileNav')}
+        className={cn(
+          'fixed top-0 z-[70] flex h-dvh max-h-dvh w-[min(100vw-3rem,20rem)] max-w-[85vw] flex-col',
+          'border-border bg-background text-foreground shadow-luxe',
+          'transition-transform duration-300 ease-out will-change-transform',
+          rtl ? 'right-0 border-s' : 'left-0 border-e',
+          entered ? 'translate-x-0' : rtl ? 'translate-x-full' : '-translate-x-full',
+        )}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <p className="truncate font-display text-sm font-semibold">{config.name}</p>
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label={t('a11y.closeMenu')}
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-3 [-webkit-overflow-scrolling:touch]">
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+            <span className="text-xs font-medium text-muted-foreground">{t('a11y.languageSwitcher')}</span>
+            <StoreLocaleSwitcher tone="panel" />
+          </div>
+
+          <div className="flex flex-col gap-0.5">
+            {config.navigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                prefetch={false}
+                className="rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent"
+                onClick={onClose}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-3 border-t border-border pt-3 pb-2">
+            <StoreMobileCategoryNav
+              categories={categories}
+              brands={brands}
+              onNavigate={onClose}
+            />
+          </div>
+        </div>
+
+        <div className="shrink-0 border-t border-border bg-background px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Link
+            href="/login"
+            prefetch={false}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground"
+            onClick={onClose}
+          >
+            <User className="h-4 w-4" aria-hidden />
+            {t('nav.login')}
+          </Link>
+        </div>
+      </nav>
+    </div>,
+    document.body,
+  );
+}
+
 export function StoreHeaderInteractive({ config, categories, brands, logo }: StoreHeaderInteractiveProps) {
   const t = useTranslations('storefront');
-  const cartCount = useCartItemCount();
+  const locale = useLocale() as StorefrontLocale;
+  const rtl = isRtlLocale(locale);
   const wishlistCount = useWishlistCount();
+  const cartCount = useCartItemCount();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+
+  const closeMobile = React.useCallback(() => setMobileOpen(false), []);
 
   return (
     <>
-      <div className="bg-primary text-primary-foreground">
-        <div className="mx-auto flex max-w-[1400px] items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
-          <div className="min-w-0 shrink">{logo}</div>
+      <div className="bg-primary text-primary-foreground" dir={rtl ? 'rtl' : 'ltr'}>
+        {/* Mobile — Noon: burger · logo · search · favorite */}
+        <div className="mx-auto flex max-w-[1400px] items-center gap-2 px-3 py-2 lg:hidden">
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-primary-foreground/10"
+            aria-expanded={mobileOpen}
+            aria-controls="store-mobile-nav"
+            aria-label={mobileOpen ? t('a11y.closeMenu') : t('a11y.openMenu')}
+            onClick={() => setMobileOpen((value) => !value)}
+          >
+            {mobileOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+          </button>
 
-          <div className="hidden min-w-0 flex-1 lg:block">
-            <StoreSearchBar />
+          <div className="min-w-0 shrink-0">{logo}</div>
+
+          <div className="min-w-0 flex-1">
+            <StoreSearchBar
+              id="store-mobile-header-search"
+              variant="mobile"
+              className="[&_input]:bg-background [&_input]:text-foreground"
+            />
           </div>
 
-          <div className="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-2">
-            <StoreLocaleSwitcher className="hidden sm:inline-flex [&_select]:border-primary-foreground/30 [&_select]:bg-primary [&_select]:text-primary-foreground" />
+          <Link
+            href="/store/wishlist"
+            prefetch={false}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-primary-foreground/10"
+            aria-label={t('nav.wishlist')}
+          >
+            <BadgeIcon count={wishlistCount}>
+              <Heart className="h-5 w-5" aria-hidden />
+            </BadgeIcon>
+          </Link>
+        </div>
 
-            <button
-              type="button"
-              className="hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-primary-foreground/10 sm:inline-flex"
-              title={t('nav.login')}
+        {/* Desktop — full toolbar */}
+        <div className="mx-auto hidden max-w-[1400px] items-center gap-4 px-6 py-2.5 lg:flex">
+          <div className="min-w-0 shrink">{logo}</div>
+
+          <div className="min-w-0 flex-1">
+            <StoreSearchBar id="store-desktop-header-search" />
+          </div>
+
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            <StoreLocaleSwitcher tone="header" />
+
+            <Link
+              href="/login"
+              prefetch={false}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-primary-foreground/10"
             >
               <User className="h-4 w-4" aria-hidden />
               <span>{t('nav.login')}</span>
-            </button>
+            </Link>
 
             <Link
               href="/store/wishlist"
@@ -85,52 +260,22 @@ export function StoreHeaderInteractive({ config, categories, brands, logo }: Sto
                 <ShoppingCart className="h-5 w-5" aria-hidden />
               </BadgeIcon>
             </Link>
-
-            <button
-              type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-primary-foreground/10 lg:hidden"
-              aria-expanded={mobileOpen}
-              aria-controls="store-mobile-nav"
-              aria-label={mobileOpen ? t('a11y.closeMenu') : t('a11y.openMenu')}
-              onClick={() => setMobileOpen((value) => !value)}
-            >
-              <span className="text-lg leading-none">{mobileOpen ? '✕' : '☰'}</span>
-            </button>
           </div>
-        </div>
-
-        <div className="px-3 pb-3 sm:px-6 lg:hidden">
-          <StoreSearchBar />
         </div>
       </div>
 
-      <StoreCategoryNavBar categories={categories} brands={brands} />
+      <div dir={rtl ? 'rtl' : 'ltr'}>
+        <StoreCategoryNavBar categories={categories} brands={brands} />
+      </div>
 
-      <nav
-        id="store-mobile-nav"
-        className={cn('border-b border-border bg-background lg:hidden', mobileOpen ? 'block animate-fade-in' : 'hidden')}
-        aria-label={t('a11y.mobileNav')}
-      >
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-1 px-3 py-3 sm:px-6">
-          <StoreLocaleSwitcher />
-          {config.navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              prefetch={false}
-              className="rounded-md px-3 py-2.5 text-sm text-foreground hover:bg-accent"
-              onClick={() => setMobileOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
-          <StoreMobileCategoryNav
-            categories={categories}
-            brands={brands}
-            onNavigate={() => setMobileOpen(false)}
-          />
-        </div>
-      </nav>
+      <StoreMobileDrawer
+        open={mobileOpen}
+        onClose={closeMobile}
+        rtl={rtl}
+        config={config}
+        categories={categories}
+        brands={brands}
+      />
     </>
   );
 }

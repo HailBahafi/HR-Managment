@@ -8,10 +8,15 @@ import { cn } from '@/shared/utils';
 
 type StoreSearchBarProps = {
   className?: string;
-  variant?: 'header' | 'compact';
+  variant?: 'header' | 'compact' | 'mobile';
+  id?: string;
 };
 
-export function StoreSearchBar({ className, variant = 'header' }: StoreSearchBarProps) {
+export function StoreSearchBar({
+  className,
+  variant = 'header',
+  id = 'store-header-search',
+}: StoreSearchBarProps) {
   const t = useTranslations('storefront');
   const router = useRouter();
   const [query, setQuery] = React.useState('');
@@ -24,7 +29,7 @@ export function StoreSearchBar({ className, variant = 'header' }: StoreSearchBar
 
   return (
     <form onSubmit={handleSubmit} className={cn('w-full', className)} role="search">
-      <label htmlFor="store-header-search" className="sr-only">
+      <label htmlFor={id} className="sr-only">
         {t('search.placeholder')}
       </label>
       <div className="relative">
@@ -36,16 +41,16 @@ export function StoreSearchBar({ className, variant = 'header' }: StoreSearchBar
           aria-hidden
         />
         <input
-          id="store-header-search"
+          id={id}
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t('search.placeholder')}
           className={cn(
             'w-full border-0 bg-background text-foreground outline-none ring-primary/20 transition-shadow focus:ring-2',
-            variant === 'header'
-              ? 'h-11 rounded-full ps-12 pe-4 text-sm shadow-sm'
-              : 'h-10 rounded-lg border border-border ps-10 pe-3 text-sm',
+            variant === 'header' && 'h-11 rounded-full ps-12 pe-4 text-sm shadow-sm',
+            variant === 'compact' && 'h-10 rounded-lg border border-border ps-10 pe-3 text-sm',
+            variant === 'mobile' && 'h-9 rounded-full ps-9 pe-3 text-xs shadow-sm placeholder:text-muted-foreground/80',
           )}
           autoComplete="off"
         />

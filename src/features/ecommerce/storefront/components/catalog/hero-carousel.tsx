@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import type { StorefrontHeroSlide } from '@/features/ecommerce/storefront/domain/storefront-models';
 import type { HeroCarouselLayout } from '@/features/ecommerce/storefront/page-builder/domain/layout-types';
 import { CarouselEngine } from '@/features/ecommerce/storefront/components/catalog/carousel-engine';
-import { SectionHeader } from '@/features/ecommerce/storefront/components/catalog/section-header';
 import { Link } from '@/i18n/navigation';
 import { STOREFRONT_MAIN_FULL_BLEED_CLASS } from '@/features/ecommerce/storefront/components/catalog/layout-classes';
 import { cn } from '@/shared/utils';
@@ -40,9 +39,9 @@ function HeroSlideFrame({
   isPriority: boolean;
 }) {
   const t = useTranslations('storefront');
-  const alt = slide.alt || slide.title;
+  const alt = slide.alt || slide.title || 'Banner';
 
-  return (
+  const frame = (
     <div
       className={cn(
         'relative w-full max-w-full overflow-hidden bg-muted',
@@ -72,32 +71,25 @@ function HeroSlideFrame({
         sizes="(min-width: 1024px) 1400px, 100vw"
       />
 
-      <div className="absolute inset-0 bg-gradient-to-l from-foreground/55 via-foreground/25 to-transparent dark:from-background/70" />
-
-      <div className="absolute inset-y-0 start-0 z-10 flex w-full max-w-xl flex-col justify-end gap-3 p-5 pb-14 sm:justify-center sm:p-8 sm:pb-8 md:p-10">
-        {slide.title ? (
-          <h2 className="text-balance font-arabic-display text-2xl font-bold leading-tight text-primary-foreground sm:text-3xl md:text-4xl">
-            {slide.title}
-          </h2>
-        ) : null}
-        {slide.href ? (
-          <Link
-            href={slide.href}
-            prefetch={false}
-            className="inline-flex w-fit items-center rounded-full bg-background px-5 py-2.5 text-sm font-semibold text-foreground shadow-elevated transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t('hero.shopNow')}
-          </Link>
-        ) : null}
-      </div>
+      {slide.href ? (
+        <span className="sr-only">{t('hero.shopNow')}</span>
+      ) : null}
     </div>
   );
+
+  if (slide.href) {
+    return (
+      <Link href={slide.href} prefetch={false} className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {frame}
+      </Link>
+    );
+  }
+
+  return frame;
 }
 
 export function HeroCarousel({
   slides,
-  title,
-  subtitle,
   autoplay = true,
   intervalMs = 5000,
   layout = 'contained',
@@ -109,8 +101,6 @@ export function HeroCarousel({
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-col gap-4">
-      {title ? <SectionHeader title={title} subtitle={subtitle} /> : null}
-
       <div
         className={cn(
           'min-w-0 w-full max-w-full',

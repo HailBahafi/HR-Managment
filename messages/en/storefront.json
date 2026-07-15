@@ -184,6 +184,12 @@
     "notFoundDescription": "The page you are looking for is unavailable or has moved.",
     "backToStore": "Back to store"
   },
+  "mobileTab": {
+    "home": "Home",
+    "categories": "Categories",
+    "account": "Account",
+    "cart": "Cart"
+  },
   "locale": {
     "ar": "العربية",
     "en": "English"

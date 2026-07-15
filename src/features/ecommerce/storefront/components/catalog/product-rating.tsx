@@ -38,7 +38,7 @@ export function ProductRating({
     return (
       <div
         className={cn(
-          'inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5',
+          'inline-flex w-fit max-w-full shrink-0 self-start items-center gap-1 rounded-full bg-muted px-2 py-0.5',
           size === 'sm' ? 'text-xs' : 'text-sm',
           className,
         )}

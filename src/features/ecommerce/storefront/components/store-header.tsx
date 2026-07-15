@@ -28,12 +28,12 @@ export function StoreHeader({ config, categories, brands }: StoreHeaderProps) {
           {config.name.charAt(0)}
         </span>
       )}
-      <span className="hidden sm:inline">{config.name}</span>
+      <span className="hidden lg:inline">{config.name}</span>
     </Link>
   );
 
   return (
-    <header className="sticky top-0 z-50 shadow-soft">
+    <header className="sticky top-0 z-50 m-0 p-0 shadow-soft">
       <StoreHeaderInteractive config={config} categories={categories} brands={brands} logo={logo} />
     </header>
   );

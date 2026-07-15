@@ -51,6 +51,22 @@ describe('buildProductDisplay', () => {
     expect(display.sellingFast).toBe(true);
     expect(display.rating).toBeGreaterThan(0);
   });
+
+  it('builds ordered gallery images from media', () => {
+    const display = buildProductDisplay(
+      makeProduct({
+        media: [
+          { id: 'm2', url: 'https://example.com/b.jpg', alt: 'B', isPrimary: false, position: 1, type: 'image' },
+          { id: 'm1', url: 'https://example.com/a.jpg', alt: 'A', isPrimary: true, position: 0, type: 'image' },
+        ],
+      }),
+    );
+    expect(display.images).toEqual([
+      { url: 'https://example.com/a.jpg', alt: 'A' },
+      { url: 'https://example.com/b.jpg', alt: 'B' },
+    ]);
+    expect(display.imageUrl).toBe('https://example.com/a.jpg');
+  });
 });
 
 describe('hasProductDeal', () => {

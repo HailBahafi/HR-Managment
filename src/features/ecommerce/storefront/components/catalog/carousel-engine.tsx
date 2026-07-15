@@ -100,8 +100,16 @@ export function CarouselEngine({
 
   if (itemCount === 0) return null;
 
-  const navButtonClass =
-    'absolute top-1/2 z-20 -translate-y-1/2 rounded-full border border-border/40 bg-background p-2.5 text-foreground shadow-elevated transition-all hover:scale-105 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  const navButtonClass = cn(
+    'absolute top-1/2 z-20 -translate-y-1/2 rounded-full border border-border/40 bg-background p-2.5 text-foreground shadow-elevated',
+    'transition-all duration-200 hover:scale-105 hover:bg-muted',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    // Desktop only + visible on carousel hover / focus-within
+    'hidden opacity-0 pointer-events-none',
+    'md:inline-flex md:group-hover:opacity-100 md:group-hover:pointer-events-auto',
+    'md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto',
+    'md:focus-visible:opacity-100 md:focus-visible:pointer-events-auto',
+  );
 
   const dots = itemCount > 1 ? (
     <div
@@ -138,7 +146,7 @@ export function CarouselEngine({
 
   return (
     <div
-      className={cn('relative w-full max-w-full min-w-0', className)}
+      className={cn('group relative w-full max-w-full min-w-0', className)}
       role="region"
       aria-roledescription="carousel"
       aria-label={t('carousel')}
