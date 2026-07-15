@@ -27,6 +27,7 @@ export function isEcommerceAppPath(pathname: string): boolean {
     '/orders',
     '/customers',
     '/cms',
+    '/inventory',
   ];
   return bases.some((base) => pathname === base || pathname.startsWith(`${base}/`));
 }

@@ -16,6 +16,8 @@ export const ecommerceAdminRoutes = {
   brands: '/brands',
   orders: '/orders',
   customers: '/customers',
+  warehouses: '/inventory/warehouses',
+  warehouseDetail: (warehouseId: string) => `/inventory/warehouses/${warehouseId}`,
 } as const;
 
 export type EcommerceContentTab = 'pages' | 'blog' | 'faq';

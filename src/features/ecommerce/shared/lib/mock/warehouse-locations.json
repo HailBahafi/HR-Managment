@@ -1,0 +1,58 @@
+[
+  {
+    "id": "loc-main-a1",
+    "companyId": "demo-company",
+    "warehouseId": "wh-main",
+    "code": "A-01",
+    "nameAr": "ممر أ — رف 1",
+    "nameEn": "Aisle A — Rack 1",
+    "aisle": "A",
+    "rack": "01",
+    "bin": "01",
+    "isActive": true,
+    "createdAt": "2026-01-10T08:30:00.000Z",
+    "updatedAt": "2026-01-10T08:30:00.000Z"
+  },
+  {
+    "id": "loc-main-a2",
+    "companyId": "demo-company",
+    "warehouseId": "wh-main",
+    "code": "A-02",
+    "nameAr": "ممر أ — رف 2",
+    "nameEn": "Aisle A — Rack 2",
+    "aisle": "A",
+    "rack": "02",
+    "bin": "01",
+    "isActive": true,
+    "createdAt": "2026-01-10T08:30:00.000Z",
+    "updatedAt": "2026-01-10T08:30:00.000Z"
+  },
+  {
+    "id": "loc-main-recv",
+    "companyId": "demo-company",
+    "warehouseId": "wh-main",
+    "code": "RECV",
+    "nameAr": "منطقة الاستلام",
+    "nameEn": "Receiving bay",
+    "aisle": "R",
+    "rack": "00",
+    "bin": "00",
+    "isActive": true,
+    "createdAt": "2026-01-10T08:30:00.000Z",
+    "updatedAt": "2026-01-10T08:30:00.000Z"
+  },
+  {
+    "id": "loc-north-b1",
+    "companyId": "demo-company",
+    "warehouseId": "wh-north",
+    "code": "B-01",
+    "nameAr": "ممر ب — رف 1",
+    "nameEn": "Aisle B — Rack 1",
+    "aisle": "B",
+    "rack": "01",
+    "bin": "01",
+    "isActive": true,
+    "createdAt": "2026-02-01T09:00:00.000Z",
+    "updatedAt": "2026-02-01T09:00:00.000Z"
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "wh-main",
+    "companyId": "demo-company",
+    "code": "WH-MAIN",
+    "nameAr": "المستودع الرئيسي",
+    "nameEn": "Main Warehouse",
+    "description": "مستودع التوزيع المركزي للمتجر.",
+    "address": "الرياض — حي الصناعية",
+    "status": "active",
+    "createdAt": "2026-01-10T08:00:00.000Z",
+    "updatedAt": "2026-01-10T08:00:00.000Z"
+  },
+  {
+    "id": "wh-north",
+    "companyId": "demo-company",
+    "code": "WH-NORTH",
+    "nameAr": "مستودع الشمال",
+    "nameEn": "North Warehouse",
+    "description": "مستودع فرعي لخدمة المناطق الشمالية.",
+    "address": "القصيم — بريدة",
+    "status": "active",
+    "createdAt": "2026-02-01T08:00:00.000Z",
+    "updatedAt": "2026-02-01T08:00:00.000Z"
+  }
+]

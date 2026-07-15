@@ -126,7 +126,13 @@ export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
     key: 'inventory',
     labelKey: 'groups.inventory',
     icon: Warehouse,
-    sections: [],
+    sections: [
+      {
+        items: [
+          { labelKey: 'warehouses', href: ecommerceAdminRoutes.warehouses, icon: Warehouse },
+        ],
+      },
+    ],
   },
   {
     key: 'finance',
