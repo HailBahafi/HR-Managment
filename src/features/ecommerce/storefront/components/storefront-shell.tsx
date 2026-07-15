@@ -47,11 +47,11 @@ export async function StorefrontShell({ children }: { children: React.ReactNode 
       <StoreHeader config={config} categories={categories} brands={brands} />
       <main
         id="store-main"
-        className="mx-auto w-full max-w-[1400px] flex-1 overflow-x-clip px-4 py-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:pb-6"
+        className="store-main-safe-pb mx-auto w-full max-w-[1400px] flex-1 overflow-x-clip px-4 py-4 sm:px-6 sm:py-6"
       >
         {children}
       </main>
-      <div className="pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+      <div className="store-footer-safe-pb">
         <StoreFooter config={config} categories={categories} />
       </div>
       <StoreMobileTabBar />

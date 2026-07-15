@@ -3,6 +3,7 @@ import { PackageSearch } from 'lucide-react';
 import type { StorefrontCategory, StorefrontPaginated, StorefrontProduct } from '@/features/ecommerce/storefront/domain/storefront-models';
 import { ProductCard } from '@/features/ecommerce/storefront/components/product-card';
 import { ProductListingGrid } from '@/features/ecommerce/storefront/components/catalog/product-grid';
+import { CategorySubcategories } from '@/features/ecommerce/storefront/components/category-subcategories';
 import { StorePagination } from '@/features/ecommerce/storefront/components/store-pagination';
 import { StoreBreadcrumbs } from '@/features/ecommerce/storefront/components/store-breadcrumbs';
 import { StoreEmptyState } from '@/features/ecommerce/storefront/components/store-empty-state';
@@ -14,10 +15,12 @@ export async function CategoryDetailPage({
   category,
   page,
   productsResult,
+  subcategories = [],
 }: {
   category: StorefrontCategory;
   page: number;
   productsResult: StorefrontPaginated<StorefrontProduct>;
+  subcategories?: StorefrontCategory[];
 }) {
   const t = await getTranslations('storefront');
   const locale = (await getLocale()) as StorefrontLocale;
@@ -42,6 +45,8 @@ export async function CategoryDetailPage({
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{category.description}</p>
         ) : null}
       </div>
+
+      <CategorySubcategories subcategories={subcategories} />
 
       {products.length === 0 ? (
         <StoreEmptyState icon={PackageSearch} title={t('categories.noResults')} />

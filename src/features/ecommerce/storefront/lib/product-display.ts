@@ -13,8 +13,8 @@ export type ProductDisplayModel = {
   outOfStock: boolean;
   hasDeal: boolean;
   discountPercent: number | null;
-  /** Tag-driven promo chip (best-seller / deals). */
-  promoBadge: 'best-seller' | 'deals' | null;
+  /** Tag-driven promo chip (best-seller / deals / wholesale). */
+  promoBadge: 'best-seller' | 'deals' | 'wholesale' | null;
   sellingFast: boolean;
   /** Deterministic mock social proof until catalog API provides ratings. */
   rating: number;
@@ -32,8 +32,9 @@ function mockSocialProof(id: string): { rating: number; reviewCount: number } {
   };
 }
 
-function resolvePromoBadge(tags: string[]): 'best-seller' | 'deals' | null {
+function resolvePromoBadge(tags: string[]): 'best-seller' | 'deals' | 'wholesale' | null {
   const normalized = tags.map((tag) => tag.toLowerCase());
+  if (normalized.some((tag) => tag.includes('wholesale') || tag.includes('جملة'))) return 'wholesale';
   if (normalized.some((tag) => tag.includes('best'))) return 'best-seller';
   if (normalized.some((tag) => tag.includes('deal') || tag.includes('offer'))) return 'deals';
   return null;

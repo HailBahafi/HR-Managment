@@ -15,8 +15,15 @@
       "isPrimary": true
     },
     "parentId": null,
-    "featuredBrandIds": ["brand-pepsi", "brand-nadec", "brand-almarai"],
-    "seo": { "metaTitle": "المشروبات", "metaDescription": "مشروبات غازية وعصائر ومياه" },
+    "featuredBrandIds": [
+      "brand-pepsi",
+      "brand-nadec",
+      "brand-almarai"
+    ],
+    "seo": {
+      "metaTitle": "المشروبات",
+      "metaDescription": "مشروبات غازية وعصائر ومياه"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -29,11 +36,23 @@
     "nameAr": "مشروبات غازية",
     "nameEn": "Soft drinks",
     "parentId": "cat-bev",
-    "seo": { "metaTitle": "مشروبات غازية", "metaDescription": "مشروبات غازية" },
+    "seo": {
+      "metaTitle": "مشروبات غازية",
+      "metaDescription": "مشروبات غازية"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-soft",
+      "url": "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=800&q=80",
+      "alt": "Soft drinks",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "مشروبات غازية"
   },
   {
     "id": "cat-bev-soft-cola",
@@ -42,11 +61,23 @@
     "nameAr": "كولا",
     "nameEn": "Cola",
     "parentId": "cat-bev-soft",
-    "seo": { "metaTitle": "كولا", "metaDescription": "كولا" },
+    "seo": {
+      "metaTitle": "كولا",
+      "metaDescription": "كولا"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-soft-cola",
+      "url": "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=800&q=80",
+      "alt": "Cola",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "كولا"
   },
   {
     "id": "cat-bev-soft-energy",
@@ -55,11 +86,23 @@
     "nameAr": "مشروبات طاقة",
     "nameEn": "Energy drinks",
     "parentId": "cat-bev-soft",
-    "seo": { "metaTitle": "مشروبات طاقة", "metaDescription": "مشروبات طاقة" },
+    "seo": {
+      "metaTitle": "مشروبات طاقة",
+      "metaDescription": "مشروبات طاقة"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-soft-energy",
+      "url": "https://images.unsplash.com/photo-1622543925917-763c34f1f8d8?w=800&q=80",
+      "alt": "Energy drinks",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "مشروبات طاقة"
   },
   {
     "id": "cat-bev-juice",
@@ -68,11 +111,23 @@
     "nameAr": "عصائر",
     "nameEn": "Juices",
     "parentId": "cat-bev",
-    "seo": { "metaTitle": "عصائر", "metaDescription": "عصائر" },
+    "seo": {
+      "metaTitle": "عصائر",
+      "metaDescription": "عصائر"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-juice",
+      "url": "https://images.unsplash.com/photo-1622597467836-9bc5c3ecd8cd?w=800&q=80",
+      "alt": "Juices",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "عصائر"
   },
   {
     "id": "cat-bev-juice-orange",
@@ -81,11 +136,23 @@
     "nameAr": "عصير برتقال",
     "nameEn": "Orange juice",
     "parentId": "cat-bev-juice",
-    "seo": { "metaTitle": "عصير برتقال", "metaDescription": "عصير برتقال" },
+    "seo": {
+      "metaTitle": "عصير برتقال",
+      "metaDescription": "عصير برتقال"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-juice-orange",
+      "url": "https://images.unsplash.com/photo-1622597467836-9bc5c3ecd8cd?w=800&q=80",
+      "alt": "Orange juice",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "عصير برتقال"
   },
   {
     "id": "cat-bev-water",
@@ -94,11 +161,23 @@
     "nameAr": "مياه",
     "nameEn": "Water",
     "parentId": "cat-bev",
-    "seo": { "metaTitle": "مياه", "metaDescription": "مياه" },
+    "seo": {
+      "metaTitle": "مياه",
+      "metaDescription": "مياه"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-water",
+      "url": "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=800&q=80",
+      "alt": "Water",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "مياه"
   },
   {
     "id": "cat-bev-tea-coffee",
@@ -107,11 +186,23 @@
     "nameAr": "شاي وقهوة",
     "nameEn": "Tea & coffee",
     "parentId": "cat-bev",
-    "seo": { "metaTitle": "شاي وقهوة", "metaDescription": "شاي وقهوة" },
+    "seo": {
+      "metaTitle": "شاي وقهوة",
+      "metaDescription": "شاي وقهوة"
+    },
     "displayOrder": 4,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-tea-coffee",
+      "url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80",
+      "alt": "Tea and coffee",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "شاي وقهوة"
   },
   {
     "id": "cat-bev-tea",
@@ -120,11 +211,23 @@
     "nameAr": "شاي",
     "nameEn": "Tea",
     "parentId": "cat-bev-tea-coffee",
-    "seo": { "metaTitle": "شاي", "metaDescription": "شاي" },
+    "seo": {
+      "metaTitle": "شاي",
+      "metaDescription": "شاي"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-tea",
+      "url": "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=800&q=80",
+      "alt": "Tea",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "شاي"
   },
   {
     "id": "cat-bev-coffee",
@@ -133,13 +236,24 @@
     "nameAr": "قهوة",
     "nameEn": "Coffee",
     "parentId": "cat-bev-tea-coffee",
-    "seo": { "metaTitle": "قهوة", "metaDescription": "قهوة" },
+    "seo": {
+      "metaTitle": "قهوة",
+      "metaDescription": "قهوة"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bev-coffee",
+      "url": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&q=80",
+      "alt": "Coffee",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "قهوة"
   },
-
   {
     "id": "cat-snacks",
     "companyId": "demo-company",
@@ -156,8 +270,15 @@
       "isPrimary": true
     },
     "parentId": null,
-    "featuredBrandIds": ["brand-lays", "brand-pepsi", "brand-dove"],
-    "seo": { "metaTitle": "الوجبات الخفيفة", "metaDescription": "شيبس ومكسرات وشوكولاتة" },
+    "featuredBrandIds": [
+      "brand-lays",
+      "brand-pepsi",
+      "brand-dove"
+    ],
+    "seo": {
+      "metaTitle": "الوجبات الخفيفة",
+      "metaDescription": "شيبس ومكسرات وشوكولاتة"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -170,11 +291,23 @@
     "nameAr": "شيبس",
     "nameEn": "Chips",
     "parentId": "cat-snacks",
-    "seo": { "metaTitle": "شيبس", "metaDescription": "شيبس" },
+    "seo": {
+      "metaTitle": "شيبس",
+      "metaDescription": "شيبس"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-snacks-chips",
+      "url": "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=800&q=80",
+      "alt": "Chips",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "شيبس"
   },
   {
     "id": "cat-snacks-chips-potato",
@@ -183,11 +316,23 @@
     "nameAr": "شيبس بطاطس",
     "nameEn": "Potato chips",
     "parentId": "cat-snacks-chips",
-    "seo": { "metaTitle": "شيبس بطاطس", "metaDescription": "شيبس بطاطس" },
+    "seo": {
+      "metaTitle": "شيبس بطاطس",
+      "metaDescription": "شيبس بطاطس"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-snacks-chips-potato",
+      "url": "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=800&q=80",
+      "alt": "Potato chips",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "شيبس بطاطس"
   },
   {
     "id": "cat-snacks-nuts",
@@ -196,11 +341,23 @@
     "nameAr": "مكسرات",
     "nameEn": "Nuts",
     "parentId": "cat-snacks",
-    "seo": { "metaTitle": "مكسرات", "metaDescription": "مكسرات" },
+    "seo": {
+      "metaTitle": "مكسرات",
+      "metaDescription": "مكسرات"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-snacks-nuts",
+      "url": "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=800&q=80",
+      "alt": "Nuts",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "مكسرات"
   },
   {
     "id": "cat-snacks-biscuits",
@@ -209,11 +366,23 @@
     "nameAr": "بسكويت",
     "nameEn": "Biscuits",
     "parentId": "cat-snacks",
-    "seo": { "metaTitle": "بسكويت", "metaDescription": "بسكويت" },
+    "seo": {
+      "metaTitle": "بسكويت",
+      "metaDescription": "بسكويت"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-snacks-biscuits",
+      "url": "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=800&q=80",
+      "alt": "Biscuits",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "بسكويت"
   },
   {
     "id": "cat-snacks-dates",
@@ -222,13 +391,24 @@
     "nameAr": "تمور",
     "nameEn": "Dates",
     "parentId": "cat-snacks",
-    "seo": { "metaTitle": "تمور", "metaDescription": "تمور" },
+    "seo": {
+      "metaTitle": "تمور",
+      "metaDescription": "تمور"
+    },
     "displayOrder": 4,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-snacks-dates",
+      "url": "https://images.unsplash.com/photo-1606312619070-d48b4bdc5e96?w=800&q=80",
+      "alt": "Dates",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "تمور"
   },
-
   {
     "id": "cat-bakery",
     "companyId": "demo-company",
@@ -245,8 +425,14 @@
       "isPrimary": true
     },
     "parentId": null,
-    "featuredBrandIds": ["brand-almarai", "brand-nadec"],
-    "seo": { "metaTitle": "المخبوزات", "metaDescription": "خبز ومعجنات وحلويات" },
+    "featuredBrandIds": [
+      "brand-almarai",
+      "brand-nadec"
+    ],
+    "seo": {
+      "metaTitle": "المخبوزات",
+      "metaDescription": "خبز ومعجنات وحلويات"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -259,11 +445,23 @@
     "nameAr": "خبز",
     "nameEn": "Bread",
     "parentId": "cat-bakery",
-    "seo": { "metaTitle": "خبز", "metaDescription": "خبز" },
+    "seo": {
+      "metaTitle": "خبز",
+      "metaDescription": "خبز"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bakery-bread",
+      "url": "https://images.unsplash.com/photo-1549931319-a554e173a8e5?w=800&q=80",
+      "alt": "Bread",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "خبز"
   },
   {
     "id": "cat-bakery-pastries",
@@ -272,11 +470,23 @@
     "nameAr": "معجنات",
     "nameEn": "Pastries",
     "parentId": "cat-bakery",
-    "seo": { "metaTitle": "معجنات", "metaDescription": "معجنات" },
+    "seo": {
+      "metaTitle": "معجنات",
+      "metaDescription": "معجنات"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bakery-pastries",
+      "url": "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&q=80",
+      "alt": "Pastries",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "معجنات"
   },
   {
     "id": "cat-bakery-sweets",
@@ -285,13 +495,24 @@
     "nameAr": "حلويات مخبوزة",
     "nameEn": "Bakery sweets",
     "parentId": "cat-bakery",
-    "seo": { "metaTitle": "حلويات مخبوزة", "metaDescription": "حلويات مخبوزة" },
+    "seo": {
+      "metaTitle": "حلويات مخبوزة",
+      "metaDescription": "حلويات مخبوزة"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-bakery-sweets",
+      "url": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80",
+      "alt": "Bakery sweets",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "حلويات مخبوزة"
   },
-
   {
     "id": "cat-dairy",
     "companyId": "demo-company",
@@ -308,8 +529,14 @@
       "isPrimary": true
     },
     "parentId": null,
-    "featuredBrandIds": ["brand-almarai", "brand-nadec"],
-    "seo": { "metaTitle": "الألبان", "metaDescription": "حليب وجبن ولبن" },
+    "featuredBrandIds": [
+      "brand-almarai",
+      "brand-nadec"
+    ],
+    "seo": {
+      "metaTitle": "الألبان",
+      "metaDescription": "حليب وجبن ولبن"
+    },
     "displayOrder": 4,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -322,11 +549,23 @@
     "nameAr": "حليب",
     "nameEn": "Milk",
     "parentId": "cat-dairy",
-    "seo": { "metaTitle": "حليب", "metaDescription": "حليب" },
+    "seo": {
+      "metaTitle": "حليب",
+      "metaDescription": "حليب"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-dairy-milk",
+      "url": "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=800&q=80",
+      "alt": "Milk",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "حليب"
   },
   {
     "id": "cat-dairy-yogurt",
@@ -335,11 +574,23 @@
     "nameAr": "لبن وزبادي",
     "nameEn": "Yogurt",
     "parentId": "cat-dairy",
-    "seo": { "metaTitle": "لبن وزبادي", "metaDescription": "لبن وزبادي" },
+    "seo": {
+      "metaTitle": "لبن وزبادي",
+      "metaDescription": "لبن وزبادي"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-dairy-yogurt",
+      "url": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=80",
+      "alt": "Yogurt",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "لبن وزبادي"
   },
   {
     "id": "cat-dairy-cheese",
@@ -348,13 +599,24 @@
     "nameAr": "أجبان",
     "nameEn": "Cheese",
     "parentId": "cat-dairy",
-    "seo": { "metaTitle": "أجبان", "metaDescription": "أجبان" },
+    "seo": {
+      "metaTitle": "أجبان",
+      "metaDescription": "أجبان"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-dairy-cheese",
+      "url": "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=800&q=80",
+      "alt": "Cheese",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "أجبان"
   },
-
   {
     "id": "cat-frozen",
     "companyId": "demo-company",
@@ -371,8 +633,15 @@
       "isPrimary": true
     },
     "parentId": null,
-    "featuredBrandIds": ["brand-almarai", "brand-nadec", "brand-lays"],
-    "seo": { "metaTitle": "المجمدات", "metaDescription": "خضروات ولحوم مجمدة" },
+    "featuredBrandIds": [
+      "brand-almarai",
+      "brand-nadec",
+      "brand-lays"
+    ],
+    "seo": {
+      "metaTitle": "المجمدات",
+      "metaDescription": "خضروات ولحوم مجمدة"
+    },
     "displayOrder": 5,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -385,11 +654,23 @@
     "nameAr": "خضروات مجمدة",
     "nameEn": "Frozen vegetables",
     "parentId": "cat-frozen",
-    "seo": { "metaTitle": "خضروات مجمدة", "metaDescription": "خضروات مجمدة" },
+    "seo": {
+      "metaTitle": "خضروات مجمدة",
+      "metaDescription": "خضروات مجمدة"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-frozen-veg",
+      "url": "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=800&q=80",
+      "alt": "Frozen vegetables",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "خضروات مجمدة"
   },
   {
     "id": "cat-frozen-meat",
@@ -398,11 +679,23 @@
     "nameAr": "لحوم مجمدة",
     "nameEn": "Frozen meat",
     "parentId": "cat-frozen",
-    "seo": { "metaTitle": "لحوم مجمدة", "metaDescription": "لحوم مجمدة" },
+    "seo": {
+      "metaTitle": "لحوم مجمدة",
+      "metaDescription": "لحوم مجمدة"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-frozen-meat",
+      "url": "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=800&q=80",
+      "alt": "Frozen meat",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "لحوم مجمدة"
   },
   {
     "id": "cat-frozen-ready",
@@ -411,13 +704,24 @@
     "nameAr": "وجبات جاهزة مجمدة",
     "nameEn": "Frozen ready meals",
     "parentId": "cat-frozen",
-    "seo": { "metaTitle": "وجبات جاهزة مجمدة", "metaDescription": "وجبات جاهزة مجمدة" },
+    "seo": {
+      "metaTitle": "وجبات جاهزة مجمدة",
+      "metaDescription": "وجبات جاهزة مجمدة"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-frozen-ready",
+      "url": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=800&q=80",
+      "alt": "Frozen ready meals",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "وجبات جاهزة مجمدة"
   },
-
   {
     "id": "cat-grocery",
     "companyId": "demo-company",
@@ -434,8 +738,18 @@
       "isPrimary": true
     },
     "parentId": null,
-    "featuredBrandIds": ["brand-almarai", "brand-pepsi", "brand-lays", "brand-nadec", "brand-dove", "brand-tide"],
-    "seo": { "metaTitle": "البقالة", "metaDescription": "أرز ومعكرونة وصلصات" },
+    "featuredBrandIds": [
+      "brand-almarai",
+      "brand-pepsi",
+      "brand-lays",
+      "brand-nadec",
+      "brand-dove",
+      "brand-tide"
+    ],
+    "seo": {
+      "metaTitle": "البقالة",
+      "metaDescription": "أرز ومعكرونة وصلصات"
+    },
     "displayOrder": 6,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -448,11 +762,23 @@
     "nameAr": "إفطار",
     "nameEn": "Breakfast",
     "parentId": "cat-grocery",
-    "seo": { "metaTitle": "إفطار", "metaDescription": "إفطار" },
+    "seo": {
+      "metaTitle": "إفطار",
+      "metaDescription": "إفطار"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-grocery-breakfast",
+      "url": "https://images.unsplash.com/photo-1525385133512-2f4bee5dab2c?w=800&q=80",
+      "alt": "Breakfast",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "إفطار"
   },
   {
     "id": "cat-grocery-breakfast-cereal",
@@ -461,11 +787,23 @@
     "nameAr": "حبوب الإفطار",
     "nameEn": "Cereal",
     "parentId": "cat-grocery-breakfast",
-    "seo": { "metaTitle": "حبوب الإفطار", "metaDescription": "حبوب الإفطار" },
+    "seo": {
+      "metaTitle": "حبوب الإفطار",
+      "metaDescription": "حبوب الإفطار"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-grocery-breakfast-cereal",
+      "url": "https://images.unsplash.com/photo-1525385133512-2f4bee5dab2c?w=800&q=80",
+      "alt": "Cereal",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "حبوب الإفطار"
   },
   {
     "id": "cat-grocery-breakfast-jam",
@@ -474,11 +812,23 @@
     "nameAr": "مربى",
     "nameEn": "Jam",
     "parentId": "cat-grocery-breakfast",
-    "seo": { "metaTitle": "مربى", "metaDescription": "مربى" },
+    "seo": {
+      "metaTitle": "مربى",
+      "metaDescription": "مربى"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-grocery-breakfast-jam",
+      "url": "https://images.unsplash.com/photo-1471943311424-646960669fbc?w=800&q=80",
+      "alt": "Jam",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "مربى"
   },
   {
     "id": "cat-grocery-cooking",
@@ -487,11 +837,23 @@
     "nameAr": "مستلزمات الطبخ والخبز",
     "nameEn": "Cooking & baking",
     "parentId": "cat-grocery",
-    "seo": { "metaTitle": "مستلزمات الطبخ والخبز", "metaDescription": "مستلزمات الطبخ والخبز" },
+    "seo": {
+      "metaTitle": "مستلزمات الطبخ والخبز",
+      "metaDescription": "مستلزمات الطبخ والخبز"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-grocery-cooking",
+      "url": "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&q=80",
+      "alt": "Cooking essentials",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "مستلزمات الطبخ والخبز"
   },
   {
     "id": "cat-grocery-cooking-flour",
@@ -500,7 +862,10 @@
     "nameAr": "دقيق",
     "nameEn": "Flour",
     "parentId": "cat-grocery-cooking",
-    "seo": { "metaTitle": "دقيق", "metaDescription": "دقيق" },
+    "seo": {
+      "metaTitle": "دقيق",
+      "metaDescription": "دقيق"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -513,7 +878,10 @@
     "nameAr": "زيوت الطبخ",
     "nameEn": "Cooking oil",
     "parentId": "cat-grocery-cooking",
-    "seo": { "metaTitle": "زيوت الطبخ", "metaDescription": "زيوت الطبخ" },
+    "seo": {
+      "metaTitle": "زيوت الطبخ",
+      "metaDescription": "زيوت الطبخ"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -526,11 +894,23 @@
     "nameAr": "بهارات وتوابل",
     "nameEn": "Spices",
     "parentId": "cat-grocery",
-    "seo": { "metaTitle": "بهارات وتوابل", "metaDescription": "بهارات وتوابل" },
+    "seo": {
+      "metaTitle": "بهارات وتوابل",
+      "metaDescription": "بهارات وتوابل"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-grocery-spices",
+      "url": "https://images.unsplash.com/photo-1596040033229-a9821eec7cd5?w=800&q=80",
+      "alt": "Spices",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "بهارات وتوابل"
   },
   {
     "id": "cat-grocery-spices-ground",
@@ -539,7 +919,10 @@
     "nameAr": "بهارات مطحونة",
     "nameEn": "Ground spices",
     "parentId": "cat-grocery-spices",
-    "seo": { "metaTitle": "بهارات مطحونة", "metaDescription": "بهارات مطحونة" },
+    "seo": {
+      "metaTitle": "بهارات مطحونة",
+      "metaDescription": "بهارات مطحونة"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -552,11 +935,23 @@
     "nameAr": "المعلبات والمغلفات",
     "nameEn": "Canned & packaged",
     "parentId": "cat-grocery",
-    "seo": { "metaTitle": "المعلبات والمغلفات", "metaDescription": "المعلبات والمغلفات" },
+    "seo": {
+      "metaTitle": "المعلبات والمغلفات",
+      "metaDescription": "المعلبات والمغلفات"
+    },
     "displayOrder": 4,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
-    "updatedAt": "2026-01-05T08:00:00.000Z"
+    "updatedAt": "2026-01-05T08:00:00.000Z",
+    "image": {
+      "id": "media-cat-grocery-canned",
+      "url": "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=800&q=80",
+      "alt": "Canned goods",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "description": "المعلبات والمغلفات"
   },
   {
     "id": "cat-grocery-canned-pasta",
@@ -565,7 +960,10 @@
     "nameAr": "معكرونة",
     "nameEn": "Pasta",
     "parentId": "cat-grocery-canned",
-    "seo": { "metaTitle": "معكرونة", "metaDescription": "معكرونة" },
+    "seo": {
+      "metaTitle": "معكرونة",
+      "metaDescription": "معكرونة"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -578,7 +976,10 @@
     "nameAr": "أرز",
     "nameEn": "Rice",
     "parentId": "cat-grocery-canned",
-    "seo": { "metaTitle": "أرز", "metaDescription": "أرز" },
+    "seo": {
+      "metaTitle": "أرز",
+      "metaDescription": "أرز"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -591,13 +992,15 @@
     "nameAr": "صلصات",
     "nameEn": "Sauces",
     "parentId": "cat-grocery-canned",
-    "seo": { "metaTitle": "صلصات", "metaDescription": "صلصات" },
+    "seo": {
+      "metaTitle": "صلصات",
+      "metaDescription": "صلصات"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
     "updatedAt": "2026-01-05T08:00:00.000Z"
   },
-
   {
     "id": "cat-cleaning",
     "companyId": "demo-company",
@@ -614,8 +1017,14 @@
       "isPrimary": true
     },
     "parentId": null,
-    "featuredBrandIds": ["brand-tide", "brand-dove"],
-    "seo": { "metaTitle": "التنظيف", "metaDescription": "منظفات ومعقمات" },
+    "featuredBrandIds": [
+      "brand-tide",
+      "brand-dove"
+    ],
+    "seo": {
+      "metaTitle": "التنظيف",
+      "metaDescription": "منظفات ومعقمات"
+    },
     "displayOrder": 7,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -628,7 +1037,10 @@
     "nameAr": "غسيل الملابس",
     "nameEn": "Laundry",
     "parentId": "cat-cleaning",
-    "seo": { "metaTitle": "غسيل الملابس", "metaDescription": "غسيل الملابس" },
+    "seo": {
+      "metaTitle": "غسيل الملابس",
+      "metaDescription": "غسيل الملابس"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -641,7 +1053,10 @@
     "nameAr": "منظفات المنزل",
     "nameEn": "Home cleaners",
     "parentId": "cat-cleaning",
-    "seo": { "metaTitle": "منظفات المنزل", "metaDescription": "منظفات المنزل" },
+    "seo": {
+      "metaTitle": "منظفات المنزل",
+      "metaDescription": "منظفات المنزل"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -654,13 +1069,15 @@
     "nameAr": "منتجات ورقية وبلاستيكية",
     "nameEn": "Paper & plastic",
     "parentId": "cat-cleaning",
-    "seo": { "metaTitle": "منتجات ورقية وبلاستيكية", "metaDescription": "منتجات ورقية وبلاستيكية" },
+    "seo": {
+      "metaTitle": "منتجات ورقية وبلاستيكية",
+      "metaDescription": "منتجات ورقية وبلاستيكية"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
     "updatedAt": "2026-01-05T08:00:00.000Z"
   },
-
   {
     "id": "cat-personal",
     "companyId": "demo-company",
@@ -677,8 +1094,14 @@
       "isPrimary": true
     },
     "parentId": null,
-    "featuredBrandIds": ["brand-dove", "brand-tide"],
-    "seo": { "metaTitle": "العناية الشخصية", "metaDescription": "شامبو وصابون وعناية" },
+    "featuredBrandIds": [
+      "brand-dove",
+      "brand-tide"
+    ],
+    "seo": {
+      "metaTitle": "العناية الشخصية",
+      "metaDescription": "شامبو وصابون وعناية"
+    },
     "displayOrder": 8,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -691,7 +1114,10 @@
     "nameAr": "العناية بالشعر",
     "nameEn": "Hair care",
     "parentId": "cat-personal",
-    "seo": { "metaTitle": "العناية بالشعر", "metaDescription": "العناية بالشعر" },
+    "seo": {
+      "metaTitle": "العناية بالشعر",
+      "metaDescription": "العناية بالشعر"
+    },
     "displayOrder": 1,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -704,7 +1130,10 @@
     "nameAr": "العناية بالجسم",
     "nameEn": "Body care",
     "parentId": "cat-personal",
-    "seo": { "metaTitle": "العناية بالجسم", "metaDescription": "العناية بالجسم" },
+    "seo": {
+      "metaTitle": "العناية بالجسم",
+      "metaDescription": "العناية بالجسم"
+    },
     "displayOrder": 2,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
@@ -717,7 +1146,10 @@
     "nameAr": "العناية بالفم",
     "nameEn": "Oral care",
     "parentId": "cat-personal",
-    "seo": { "metaTitle": "العناية بالفم", "metaDescription": "العناية بالفم" },
+    "seo": {
+      "metaTitle": "العناية بالفم",
+      "metaDescription": "العناية بالفم"
+    },
     "displayOrder": 3,
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",

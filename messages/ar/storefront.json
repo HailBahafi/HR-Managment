@@ -14,7 +14,8 @@
     "cart": "السلة",
     "bestSellers": "الأكثر مبيعاً",
     "newArrivals": "وصل حديثاً",
-    "offersZone": "منطقة العروض",
+    "offersZone": "العروض",
+    "wholesale": "أسعار الجملة",
     "topBrands": "أفضل الماركات"
   },
   "home": {
@@ -40,7 +41,16 @@
     "reviewCount": "({count})",
     "badgeBestSeller": "أفضل المنتجات",
     "badgeDeals": "عروض",
+    "badgeWholesale": "جملة",
     "sellingFast": "بتخلّص بسرعة"
+  },
+  "offers": {
+    "title": "العروض",
+    "description": "منتجات مخفّضة وعروض محدودة — وفّر على مشترياتك اليومية."
+  },
+  "wholesale": {
+    "title": "أسعار الجملة",
+    "description": "أسعار جملة مختارة للمتاجر والمشترين بكميات أكبر. السعر الظاهر هو سعر الجملة."
   },
   "products": {
     "title": "المنتجات",
@@ -79,7 +89,10 @@
   },
   "categories": {
     "title": "التصنيفات",
-    "noResults": "لا توجد منتجات في هذا التصنيف."
+    "noResults": "لا توجد منتجات في هذا التصنيف.",
+    "subcategories": "الأقسام الفرعية",
+    "nestedSubcategories": "أقسام فرعية أدق",
+    "viewAllInCategory": "عرض كل القسم"
   },
   "brands": {
     "title": "العلامات التجارية",

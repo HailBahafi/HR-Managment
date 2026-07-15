@@ -40,6 +40,8 @@ const COMPANY_CONFIGS: Record<string, CompanyConfigRecord> = {
     navigation: [
       { label: { ar: 'الرئيسية', en: 'Home' }, href: '/store' },
       { label: { ar: 'المنتجات', en: 'Products' }, href: '/store/products' },
+      { label: { ar: 'العروض', en: 'Offers' }, href: '/store/offers' },
+      { label: { ar: 'أسعار الجملة', en: 'Wholesale' }, href: '/store/wholesale' },
       { label: { ar: 'من نحن', en: 'About' }, href: '/store/about' },
       { label: { ar: 'تواصل', en: 'Contact' }, href: '/store/contact' },
     ],
@@ -72,6 +74,8 @@ const COMPANY_CONFIGS: Record<string, CompanyConfigRecord> = {
           title: { ar: 'التسوق', en: 'Shop' },
           links: [
             { label: { ar: 'المنتجات', en: 'Products' }, href: '/store/products' },
+            { label: { ar: 'العروض', en: 'Offers' }, href: '/store/offers' },
+            { label: { ar: 'أسعار الجملة', en: 'Wholesale' }, href: '/store/wholesale' },
             { label: { ar: 'التصنيفات', en: 'Categories' }, href: '/store/categories' },
             { label: { ar: 'العلامات التجارية', en: 'Brands' }, href: '/store/brands' },
             { label: { ar: 'بحث', en: 'Search' }, href: '/store/search' },

@@ -18,9 +18,8 @@ type StoreCategoryNavBarProps = {
 };
 
 /**
- * Noon-style secondary category bar.
- * Hover/focus switches the open root and refills subcategory columns + featured brands.
- * No full-screen overlay (that blocked hovering other tabs).
+ * Desktop category strip — dedicated second header row so brand/actions stay uncrowded.
+ * Hover/focus opens the mega-menu panel under the strip.
  */
 export function StoreCategoryNavBar({ categories, brands }: StoreCategoryNavBarProps) {
   const t = useTranslations('storefront');
@@ -61,15 +60,26 @@ export function StoreCategoryNavBar({ categories, brands }: StoreCategoryNavBarP
   return (
     <div
       className={cn(
-        // z-index above sibling header strips so the panel stays hoverable while switching roots
-        'relative hidden border-b border-border bg-background lg:block',
+        // Above content so the mega panel stays hoverable while switching roots
+        'relative border-b border-border bg-muted/40',
         open ? 'z-50' : 'z-30',
       )}
       onMouseLeave={scheduleClose}
       onMouseEnter={cancelClose}
     >
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
-        <nav className="relative z-50 flex items-stretch gap-0.5 overflow-x-auto scrollbar-none" aria-label={t('nav.categories')}>
+        <nav
+          className="relative z-50 flex items-stretch gap-1 overflow-x-auto scrollbar-none"
+          aria-label={t('nav.categories')}
+        >
+          <Link
+            href="/store/categories"
+            prefetch={false}
+            className="relative z-50 shrink-0 whitespace-nowrap border-b-2 border-transparent px-3.5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:text-primary"
+          >
+            {t('nav.categories')}
+          </Link>
+
           {roots.map((category) => {
             const isActive = activeId === category.id;
             return (
@@ -80,18 +90,21 @@ export function StoreCategoryNavBar({ categories, brands }: StoreCategoryNavBarP
                 onFocus={() => openMenu(category.id)}
                 onClick={() => openMenu(category.id)}
                 className={cn(
-                  'relative z-50 shrink-0 border-b-2 px-3 py-3 text-sm transition-colors',
+                  'relative z-50 shrink-0 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-sm transition-colors',
                   isActive
-                    ? 'border-foreground font-semibold text-foreground'
+                    ? 'border-primary font-semibold text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
                 aria-expanded={isActive}
                 aria-haspopup="true"
               >
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1.5">
                   {category.name}
                   <ChevronDown
-                    className={cn('h-3.5 w-3.5 opacity-50 transition-transform', isActive && 'rotate-180')}
+                    className={cn(
+                      'h-3.5 w-3.5 opacity-40 transition-transform',
+                      isActive && 'rotate-180 opacity-70',
+                    )}
                     aria-hidden
                   />
                 </span>

@@ -77,7 +77,10 @@ async function resolveCategories(ctx: SectionResolverContext, dataSource: DataSo
   }
 
   if (dataSource.kind === 'collection' || dataSource.kind === 'query') {
-    const limit = dataSource.kind === 'collection' ? dataSource.limit : dataSource.limit;
+    // Shop-by-category needs the full adjacency tree (roots + children), not just
+    // the first N rows of the flat mock list.
+    const configuredLimit = dataSource.limit;
+    const limit = Math.max(configuredLimit, 200);
     const result = await storefrontCategoriesRepository.list({ companyId, locale, limit });
     return result.items;
   }

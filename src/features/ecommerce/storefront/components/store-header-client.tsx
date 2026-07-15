@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { Heart, Menu, ShoppingCart, User, X } from 'lucide-react';
+import { Heart, Menu, Search, ShoppingCart, User, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import type {
   StorefrontBrand,
@@ -11,7 +11,6 @@ import type {
 } from '@/features/ecommerce/storefront/domain/storefront-models';
 import { StoreLocaleSwitcher } from '@/features/ecommerce/storefront/components/store-locale-switcher';
 import { StoreCategoryNavBar, StoreMobileCategoryNav } from '@/features/ecommerce/storefront/components/store-mega-menu';
-import { StoreSearchBar } from '@/features/ecommerce/storefront/components/store-search-bar';
 import { useCartItemCount } from '@/features/ecommerce/storefront/hooks/use-storefront-cart-ui';
 import { useWishlistCount } from '@/features/ecommerce/storefront/hooks/use-storefront-wishlist-ui';
 import { Link } from '@/i18n/navigation';
@@ -35,6 +34,27 @@ function BadgeIcon({ count, children }: { count: number; children: React.ReactNo
         </span>
       ) : null}
     </span>
+  );
+}
+
+function HeaderIconLink({
+  href,
+  label,
+  children,
+}: {
+  href: '/store/cart' | '/store/wishlist' | '/store/search';
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+      aria-label={label}
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -131,6 +151,25 @@ function StoreMobileDrawer({
             <StoreLocaleSwitcher tone="panel" />
           </div>
 
+          <div className="mb-3 flex flex-col gap-0.5">
+            <Link
+              href="/store/offers"
+              prefetch={false}
+              className="rounded-lg px-3 py-2.5 text-sm font-medium text-secondary transition-colors hover:bg-accent"
+              onClick={onClose}
+            >
+              {t('nav.offersZone')}
+            </Link>
+            <Link
+              href="/store/wholesale"
+              prefetch={false}
+              className="rounded-lg px-3 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-accent"
+              onClick={onClose}
+            >
+              {t('nav.wholesale')}
+            </Link>
+          </div>
+
           <div className="flex flex-col gap-0.5">
             {config.navigation.map((item) => (
               <Link
@@ -154,7 +193,7 @@ function StoreMobileDrawer({
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-border bg-background px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="store-drawer-safe-pb shrink-0 border-t border-border bg-background px-3 py-3">
           <Link
             href="/login"
             prefetch={false}
@@ -183,12 +222,12 @@ export function StoreHeaderInteractive({ config, categories, brands, logo }: Sto
 
   return (
     <>
-      <div className="bg-primary text-primary-foreground" dir={rtl ? 'rtl' : 'ltr'}>
-        {/* Mobile — Noon: burger · logo · search · favorite */}
-        <div className="mx-auto flex max-w-[1400px] items-center gap-2 px-3 py-2 lg:hidden">
+      {/* Mobile — menu · logo · cart · search · wishlist */}
+      <div className="border-b border-border bg-background lg:hidden" dir={rtl ? 'rtl' : 'ltr'}>
+        <div className="mx-auto flex max-w-[1400px] items-center gap-1 px-3 py-2">
           <button
             type="button"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-primary-foreground/10"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
             aria-expanded={mobileOpen}
             aria-controls="store-mobile-nav"
             aria-label={mobileOpen ? t('a11y.closeMenu') : t('a11y.openMenu')}
@@ -199,72 +238,68 @@ export function StoreHeaderInteractive({ config, categories, brands, logo }: Sto
 
           <div className="min-w-0 shrink-0">{logo}</div>
 
-          <div className="min-w-0 flex-1">
-            <StoreSearchBar
-              id="store-mobile-header-search"
-              variant="mobile"
-              className="[&_input]:bg-background [&_input]:text-foreground"
-            />
-          </div>
-
-          <Link
-            href="/store/wishlist"
-            prefetch={false}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-primary-foreground/10"
-            aria-label={t('nav.wishlist')}
-          >
-            <BadgeIcon count={wishlistCount}>
-              <Heart className="h-5 w-5" aria-hidden />
-            </BadgeIcon>
-          </Link>
-        </div>
-
-        {/* Desktop — full toolbar */}
-        <div className="mx-auto hidden max-w-[1400px] items-center gap-4 px-6 py-2.5 lg:flex">
-          <div className="min-w-0 shrink">{logo}</div>
-
-          <div className="min-w-0 flex-1">
-            <StoreSearchBar id="store-desktop-header-search" />
-          </div>
-
-          <div className="ms-auto flex shrink-0 items-center gap-2">
-            <StoreLocaleSwitcher tone="header" />
-
-            <Link
-              href="/login"
-              prefetch={false}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors hover:bg-primary-foreground/10"
-            >
-              <User className="h-4 w-4" aria-hidden />
-              <span>{t('nav.login')}</span>
-            </Link>
-
-            <Link
-              href="/store/wishlist"
-              prefetch={false}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-primary-foreground/10"
-              aria-label={t('nav.wishlist')}
-            >
-              <BadgeIcon count={wishlistCount}>
-                <Heart className="h-5 w-5" aria-hidden />
-              </BadgeIcon>
-            </Link>
-
-            <Link
-              href="/store/cart"
-              prefetch={false}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-primary-foreground/10"
-              aria-label={t('nav.cart')}
-            >
+          <div className="ms-auto flex shrink-0 items-center gap-0.5">
+            <HeaderIconLink href="/store/cart" label={t('nav.cart')}>
               <BadgeIcon count={cartCount}>
                 <ShoppingCart className="h-5 w-5" aria-hidden />
               </BadgeIcon>
-            </Link>
+            </HeaderIconLink>
+            <HeaderIconLink href="/store/search" label={t('nav.search')}>
+              <Search className="h-5 w-5" aria-hidden />
+            </HeaderIconLink>
+            <HeaderIconLink href="/store/wishlist" label={t('nav.wishlist')}>
+              <BadgeIcon count={wishlistCount}>
+                <Heart className="h-5 w-5" aria-hidden />
+              </BadgeIcon>
+            </HeaderIconLink>
           </div>
         </div>
       </div>
 
-      <div dir={rtl ? 'rtl' : 'ltr'}>
+      {/* Desktop — brand bar then dedicated category strip (avoids one overcrowded row) */}
+      <div className="hidden lg:block" dir={rtl ? 'rtl' : 'ltr'}>
+        <div className="border-b border-border bg-background">
+          <div className="mx-auto flex max-w-[1400px] items-center gap-6 px-4 py-3 sm:px-6">
+            <div className="shrink-0">{logo}</div>
+
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <Link
+                href="/store/offers"
+                prefetch={false}
+                className="inline-flex shrink-0 items-center rounded-full bg-secondary/15 px-3.5 py-1.5 text-sm font-semibold text-secondary transition-colors hover:bg-secondary/25"
+              >
+                {t('nav.offersZone')}
+              </Link>
+              <Link
+                href="/store/wholesale"
+                prefetch={false}
+                className="inline-flex shrink-0 items-center rounded-full border border-border bg-card px-3.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted/50"
+              >
+                {t('nav.wholesale')}
+              </Link>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1">
+              <HeaderIconLink href="/store/cart" label={t('nav.cart')}>
+                <BadgeIcon count={cartCount}>
+                  <ShoppingCart className="h-5 w-5" aria-hidden />
+                </BadgeIcon>
+              </HeaderIconLink>
+              <HeaderIconLink href="/store/search" label={t('nav.search')}>
+                <Search className="h-5 w-5" aria-hidden />
+              </HeaderIconLink>
+              <HeaderIconLink href="/store/wishlist" label={t('nav.wishlist')}>
+                <BadgeIcon count={wishlistCount}>
+                  <Heart className="h-5 w-5" aria-hidden />
+                </BadgeIcon>
+              </HeaderIconLink>
+              <div className="ms-1 border-s border-border ps-2">
+                <StoreLocaleSwitcher tone="panel" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <StoreCategoryNavBar categories={categories} brands={brands} />
       </div>
 

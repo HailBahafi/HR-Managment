@@ -48,6 +48,32 @@
   box-shadow: 0 -6px 16px -8px rgba(0, 0, 0, 0.12);
 }
 
+/* Storefront safe-area padding — plain CSS outside @layer utilities.
+   Nested calc/env inside Tailwind arbitrary classes (and even @layer utilities)
+   gets corrupted by Turbopack; keep env() on a custom property only. */
+:root {
+  --store-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+.store-main-safe-pb {
+  padding-bottom: calc(4.5rem + var(--store-safe-area-bottom));
+}
+@media (min-width: 1024px) {
+  .store-main-safe-pb {
+    padding-bottom: 1.5rem;
+  }
+}
+.store-footer-safe-pb {
+  padding-bottom: calc(3.5rem + var(--store-safe-area-bottom));
+}
+@media (min-width: 1024px) {
+  .store-footer-safe-pb {
+    padding-bottom: 0;
+  }
+}
+.store-drawer-safe-pb {
+  padding-bottom: max(0.75rem, var(--store-safe-area-bottom));
+}
+
 /* ── Radix UI enter/exit animation system ───────────────────────────────────
    Defined as plain CSS — no Tailwind @utility directives — so Tailwind never
    generates data-[state=...] variant selectors that corrupt in Turbopack.

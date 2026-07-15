@@ -19,12 +19,12 @@ export function StoreHeader({ config, categories, brands }: StoreHeaderProps) {
       href="/store"
       prefetch={false}
       aria-label={config.name}
-      className="flex shrink-0 items-center gap-2 font-arabic-display text-base font-bold sm:text-lg"
+      className="flex shrink-0 items-center gap-2.5 font-arabic-display text-base font-bold tracking-tight text-foreground sm:text-lg"
     >
       {config.logoUrl ? (
-        <Image src={config.logoUrl} alt="" width={36} height={36} unoptimized className="rounded" aria-hidden />
+        <Image src={config.logoUrl} alt="" width={40} height={40} unoptimized className="rounded-lg" aria-hidden />
       ) : (
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-sm font-black text-secondary-foreground">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-base font-black text-secondary-foreground shadow-soft">
           {config.name.charAt(0)}
         </span>
       )}

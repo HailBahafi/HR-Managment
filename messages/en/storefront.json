@@ -14,7 +14,8 @@
     "cart": "Cart",
     "bestSellers": "Best sellers",
     "newArrivals": "New arrivals",
-    "offersZone": "Deals zone",
+    "offersZone": "Offers",
+    "wholesale": "Wholesale",
     "topBrands": "Top brands"
   },
   "home": {
@@ -40,7 +41,16 @@
     "reviewCount": "({count})",
     "badgeBestSeller": "Best products",
     "badgeDeals": "Deals",
+    "badgeWholesale": "Wholesale",
     "sellingFast": "Selling out fast"
+  },
+  "offers": {
+    "title": "Offers",
+    "description": "Discounted products and limited-time deals for everyday shopping."
+  },
+  "wholesale": {
+    "title": "Wholesale prices",
+    "description": "Selected wholesale pricing for shops and bulk buyers. Shown prices are wholesale rates."
   },
   "products": {
     "title": "Products",
@@ -79,7 +89,10 @@
   },
   "categories": {
     "title": "Categories",
-    "noResults": "No products in this category."
+    "noResults": "No products in this category.",
+    "subcategories": "Subcategories",
+    "nestedSubcategories": "More specific categories",
+    "viewAllInCategory": "View all in category"
   },
   "brands": {
     "title": "Brands",
