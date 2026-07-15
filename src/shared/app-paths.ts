@@ -1,3 +1,5 @@
+import { isEcommerceAdminNavPath } from '@/features/ecommerce/admin/constants/nav';
+
 /** True when the current route belongs to the HR application. */
 export function isHrAppPath(pathname: string): boolean {
   return pathname === '/hr' || pathname.startsWith('/hr/');
@@ -15,19 +17,8 @@ export function isLauncherPath(pathname: string): boolean {
 
 /**
  * True when the current route belongs to the Ecommerce admin module.
- * These routes carry no `/ecommerce` prefix (see ecommerceAdminRoutes) so this must be kept in
- * sync with `isEcommerceAdminNavPath` in `@/features/ecommerce/admin/constants/nav`.
+ * Routes carry no `/ecommerce` prefix — kept in sync via `isEcommerceAdminNavPath`.
  */
 export function isEcommerceAppPath(pathname: string): boolean {
-  const bases = [
-    '/overview',
-    '/products',
-    '/categories',
-    '/brands',
-    '/orders',
-    '/customers',
-    '/cms',
-    '/inventory',
-  ];
-  return bases.some((base) => pathname === base || pathname.startsWith(`${base}/`));
+  return isEcommerceAdminNavPath(pathname);
 }

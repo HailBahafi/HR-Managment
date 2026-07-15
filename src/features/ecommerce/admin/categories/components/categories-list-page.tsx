@@ -109,7 +109,7 @@ export function CategoriesListPage() {
       <PageHeader
         icon={FolderTree}
         title={t('nav.categories')}
-        description="تهيئة الفئات بشكل منفصل (عامة + لوجستيات) ثم استخدامها عند تعريف المنتجات."
+        description="تهيئة الفئات بشكل منفصل ثم استخدامها عند تعريف المنتجات."
       />
 
       <ListToolbar
