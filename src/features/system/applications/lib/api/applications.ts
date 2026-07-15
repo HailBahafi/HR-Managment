@@ -1,5 +1,6 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
+import { resolveSystemAppLaunchPath } from '@/features/system/constants/app-launch';
 import { isModuleEnabledFor, MODULE_REGISTRY } from '@/shared/modules/registry';
 
 export type ApplicationResponseDto = {
@@ -60,8 +61,9 @@ export function resolveApplicationLaunchPath(app: ApplicationResponseDto): strin
   const base = app.routePath?.trim();
   if (app.code === 'hr') return '/hr/organization/employees';
   if (app.code === 'ecommerce') return ecommerceAdminRoutes.overview;
+  if (app.code === 'accounting') return '/accounting';
   if (app.code === 'system' && (!base || base === '/system')) {
-    return '/system/organization/departments';
+    return resolveSystemAppLaunchPath();
   }
   return base || '/';
 }

@@ -46,8 +46,9 @@ import {
   flattenEcommerceNavItems,
 } from '@/features/ecommerce/admin/constants/nav';
 import { UserMenuDropdown } from '@/components/layouts/user-menu-dropdown';
-import { isHrAppPath, isSystemAppPath, isEcommerceAppPath, isLauncherPath } from '@/shared/app-paths';
+import { AppsLauncherButton } from '@/components/layouts/apps-launcher-button';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
+import { isHrAppPath, isSystemAppPath, isEcommerceAppPath, isLauncherPath } from '@/shared/app-paths';
 import { isModuleEnabledFor } from '@/shared/modules/registry';
 
 /* ── Icon registry ────────────────────────────────────────────────────── */
@@ -494,35 +495,27 @@ export function Topbar() {
       {/* ── Row 1: logo + nav + actions ── */}
       <div className="relative z-50 flex h-[54px] items-center gap-2 overflow-visible px-4 sm:px-5">
 
-        {/* Apps launcher + logo */}
-        <div className="flex shrink-0 items-center gap-0.5">
-          {onLauncher ? (
-            logoUrl ? (
-              <Link
-                href="/"
-                className="flex items-center rounded-xl p-1.5 transition-colors hover:bg-muted/50"
-                title={logoAlt}
-                aria-label={logoAlt}
-              >
-                <Logo size={28} src={logoUrl} alt={logoAlt} />
-              </Link>
-            ) : null
-          ) : (
+        {/* App switcher (RTL right) — separated from in-app navigation */}
+        <div className="flex shrink-0 items-center gap-2">
+          {!onLauncher && (
             <>
-              
-              <Link
-                href="/"
-                className="hidden items-center rounded-xl p-1.5 transition-colors hover:bg-muted/50 sm:flex"
-                title="الرئيسية"
-                aria-label="الرئيسية"
-              >
-                <Logo size={28} src={logoUrl} alt={logoAlt} />
-              </Link>
+              <AppsLauncherButton />
+              {inAppShell && (
+                <div className="hidden h-5 w-px bg-border/70 lg:block" aria-hidden />
+              )}
             </>
           )}
+          {onLauncher && logoUrl ? (
+            <Link
+              href="/"
+              className="flex items-center rounded-xl p-1.5 transition-colors hover:bg-muted/50"
+              title={logoAlt}
+              aria-label={logoAlt}
+            >
+              <Logo size={28} src={logoUrl} alt={logoAlt} />
+            </Link>
+          ) : null}
         </div>
-
-        {inAppShell && <div className="mx-0.5 hidden h-5 w-px bg-border/70 lg:block" />}
 
         {/* Desktop nav — app shell only (HR, System, or Ecommerce) */}
         {inAppShell && (
@@ -548,20 +541,6 @@ export function Topbar() {
           {inAppShell && <FilterTrigger />}
 
           {inHrApp && <NotificationBellPopover />}
-
-          <Button
-            variant="outline"
-            size="icon"
-            className={cn(
-              'h-8 w-8 shrink-0 rounded-xl border-primary/25 bg-background/80 shadow-xs',
-              onLauncher && 'border-primary/40 bg-primary/10 text-primary',
-            )}
-            asChild
-          >
-            <Link href="/" aria-label="التطبيقات" title="التطبيقات">
-              <LayoutGrid className="h-4 w-4" />
-            </Link>
-          </Button>
 
           <div className="mx-1 h-5 w-px bg-border/70" />
 
