@@ -77,9 +77,12 @@ type DraftForm = {
 };
 
 const EMPTY_FORM: DraftForm = {
-  nameAr: '', calculationType: 'fixed_amount',
-  typicalAmount: '', typicalPercent: '',
-  isActive: true, notes: '',
+  nameAr: '',
+  calculationType: 'fixed_amount',
+  typicalAmount: '',
+  typicalPercent: '',
+  isActive: true,
+  notes: '',
 };
 
 function formFromDto(dto: AllowanceTypeDto): DraftForm {
@@ -186,12 +189,12 @@ function AllowanceTypeDialog({
           {form.calculationType === 'fixed_amount' ? (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">المبلغ الافتراضي</Label>
-              <Input type="number" value={form.typicalAmount} onChange={(e) => patch({ typicalAmount: e.target.value })} placeholder="2500" className="h-9"  />
+              <Input type="number" value={form.typicalAmount} onChange={(e) => patch({ typicalAmount: e.target.value })} placeholder="2500" className="h-9" dir="ltr" />
             </div>
           ) : (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">النسبة الافتراضية (%)</Label>
-              <Input type="number" value={form.typicalPercent} onChange={(e) => patch({ typicalPercent: e.target.value })} placeholder="10" className="h-9"  />
+              <Input type="number" value={form.typicalPercent} onChange={(e) => patch({ typicalPercent: e.target.value })} placeholder="10" className="h-9" dir="ltr" />
             </div>
           )}
 
