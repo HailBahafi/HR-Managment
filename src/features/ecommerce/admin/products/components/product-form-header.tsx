@@ -1,14 +1,13 @@
 'use client';
 
 import { Camera, Plus } from 'lucide-react';
-import { Controller, useFieldArray, useWatch, type Control, type UseFormRegister, type UseFormSetValue } from 'react-hook-form';
+import { useFieldArray, useWatch, type Control, type UseFormRegister, type UseFormSetValue } from 'react-hook-form';
 import type { ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import {
   ProductRelatedDocsBar,
   type ProductRelatedDocChip,
   type ProductRelatedDocKey,
 } from '@/features/ecommerce/admin/products/components/product-related-docs-bar';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/shared/utils';
@@ -96,29 +95,6 @@ export function ProductFormHeader({
             {...register('nameAr')}
           />
           {nameError ? <p className="text-xs text-destructive">{nameError}</p> : null}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
-          <Controller
-            control={control}
-            name="saleOk"
-            render={({ field }) => (
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(Boolean(checked))} />
-                المبيعات
-              </label>
-            )}
-          />
-          <Controller
-            control={control}
-            name="posAvailable"
-            render={({ field }) => (
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(Boolean(checked))} />
-                نقطة البيع
-              </label>
-            )}
-          />
         </div>
 
         <Label htmlFor="product-name-ar" className="sr-only">

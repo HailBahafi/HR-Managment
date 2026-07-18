@@ -16,11 +16,7 @@ type Props = {
 export function ProductInventoryTab({ control, errors, register }: Props) {
   return (
     <div className="space-y-1">
-      <p className="mb-3 text-xs text-muted-foreground">
-        إعدادات التوفر للمتجر. كميات المواقع الفعلية تُدار من عمليات المستودع، وقواعد التخزين من المخازن.
-      </p>
-
-      <EntityFormRow label="كمية العرض (تقريبية)" htmlFor="product-stock">
+      <EntityFormRow label="كمية العرض" htmlFor="product-stock">
         <Input id="product-stock" type="number" min={0} dir="ltr" className="max-w-[8rem]" {...register('stockQuantity')} />
         {errors.stockQuantity ? <p className="mt-1 text-xs text-destructive">{errors.stockQuantity.message}</p> : null}
       </EntityFormRow>
@@ -57,16 +53,6 @@ export function ProductInventoryTab({ control, errors, register }: Props) {
             )}
           />
         </div>
-      </EntityFormRow>
-
-      <EntityFormRow label="الطلب عند النفاد">
-        <Controller
-          control={control}
-          name="allowBackorder"
-          render={({ field }) => (
-            <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="السماح بالطلب عند النفاد" />
-          )}
-        />
       </EntityFormRow>
     </div>
   );
