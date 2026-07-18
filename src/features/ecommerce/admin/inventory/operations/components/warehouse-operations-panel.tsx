@@ -8,14 +8,17 @@ import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/stor
 import { useWarehouseLocations } from '@/features/ecommerce/admin/inventory/locations/hooks/use-warehouse-locations';
 import { useWarehouseOperations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operations';
 import { useWarehouseOperationMutations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operation-mutations';
+import { WarehouseOperationDetailDialog } from '@/features/ecommerce/admin/inventory/operations/components/warehouse-operation-detail-dialog';
 import {
   WAREHOUSE_OPERATION_FORM_DEFAULT_VALUES,
   warehouseOperationFormSchema,
   type WarehouseOperationFormValues,
 } from '@/features/ecommerce/admin/inventory/schemas/warehouse-schemas';
+import { WAREHOUSE_OPERATION_STATUS_LABELS_AR } from '@/features/ecommerce/domain/constants/warehouse-operation-status';
 import type {
   WarehouseOperation,
   WarehouseOperationKind,
+  WarehouseOperationStatus,
 } from '@/features/ecommerce/domain/types/warehouse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +46,7 @@ import {
 
 const KIND_META: Record<
   WarehouseOperationKind,
-  { title: string; createLabel: string; empty: string; needsFrom: boolean; needsTo: boolean }
+  { title: string; createLabel: string; empty: string; needsFrom: boolean; needsTo: boolean; refPrefix: string }
 > = {
   issue: {
     title: 'عمليات الصرف',
@@ -51,6 +54,7 @@ const KIND_META: Record<
     empty: 'لا توجد عمليات صرف بعد.',
     needsFrom: true,
     needsTo: false,
+    refPrefix: 'WH/OUT',
   },
   receipt: {
     title: 'عمليات الاستلام',
@@ -58,6 +62,7 @@ const KIND_META: Record<
     empty: 'لا توجد عمليات استلام بعد.',
     needsFrom: false,
     needsTo: true,
+    refPrefix: 'WH/IN',
   },
   internal: {
     title: 'الحركات الداخلية',
@@ -65,14 +70,18 @@ const KIND_META: Record<
     empty: 'لا توجد حركات داخلية بعد.',
     needsFrom: true,
     needsTo: true,
+    refPrefix: 'WH/INT',
   },
 };
 
-const STATUS_LABEL: Record<WarehouseOperation['status'], string> = {
-  draft: 'مسودة',
-  posted: 'مرحّل',
-  cancelled: 'ملغى',
-};
+function statusBadgeVariant(
+  status: WarehouseOperationStatus,
+): 'subtle' | 'warning' | 'success' | 'destructive' {
+  if (status === 'ready') return 'warning';
+  if (status === 'done') return 'success';
+  if (status === 'cancelled') return 'destructive';
+  return 'subtle';
+}
 
 type Props = {
   warehouseId: string;
@@ -85,6 +94,7 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
   const [searchInput, setSearchInput] = React.useState('');
   const [search, setSearch] = React.useState('');
   const [open, setOpen] = React.useState(false);
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [toDelete, setToDelete] = React.useState<WarehouseOperation | null>(null);
 
   React.useEffect(() => {
@@ -112,6 +122,9 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
     [locations],
   );
 
+  const items = data?.items ?? [];
+  const selectedOperation = selectedId ? (items.find((item) => item.id === selectedId) ?? null) : null;
+
   const { create, remove } = useWarehouseOperationMutations(warehouseId, kind);
   const form = useForm<WarehouseOperationFormValues>({
     resolver: zodResolver(warehouseOperationFormSchema),
@@ -123,26 +136,30 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
     form.reset({
       ...WAREHOUSE_OPERATION_FORM_DEFAULT_VALUES,
       occurredAt: new Date().toISOString().slice(0, 16),
-      reference: `${kind === 'issue' ? 'ISS' : kind === 'receipt' ? 'RCV' : 'INT'}-${Date.now().toString().slice(-6)}`,
+      reference: `${meta.refPrefix}/${Date.now().toString().slice(-5)}`,
     });
-  }, [open, form, kind]);
+  }, [open, form, meta.refPrefix]);
 
   const onSubmit = async (values: WarehouseOperationFormValues) => {
     if (!companyId) return;
+    const qty = values.quantity;
     await create.mutateAsync({
       companyId,
       warehouseId,
       kind,
-      reference: values.reference.trim(),
-      status: values.status,
+      reference: values.reference?.trim() || `${meta.refPrefix}/${Date.now().toString().slice(-5)}`,
+      status: 'draft',
       occurredAt: new Date(values.occurredAt).toISOString(),
       notes: values.notes?.trim() || undefined,
+      partnerName: values.partnerName?.trim() || undefined,
+      sourceDocument: values.sourceDocument?.trim() || undefined,
       lines: [
         {
           id: `opl-${Math.random().toString(36).slice(2, 8)}`,
           productName: values.productName.trim(),
           sku: values.sku?.trim() || undefined,
-          quantity: values.quantity,
+          demandQuantity: qty,
+          quantity: qty,
           fromLocationId: values.fromLocationId || undefined,
           toLocationId: values.toLocationId || undefined,
         },
@@ -158,7 +175,7 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
       render: (row) => (
         <div className="flex flex-col">
           <span className="font-medium" dir="ltr">
-            {row.reference}
+            {row.reference || '—'}
           </span>
           <span className="text-xs text-muted-foreground">
             {new Date(row.occurredAt).toLocaleString('ar-SA')}
@@ -171,7 +188,9 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
       title: 'البنود',
       render: (row) => (
         <span className="text-sm text-muted-foreground">
-          {row.lines.map((line) => `${line.productName} × ${line.quantity}`).join('، ')}
+          {row.lines
+            .map((line) => `${line.productName} × ${line.demandQuantity ?? line.quantity}`)
+            .join('، ')}
         </span>
       ),
     },
@@ -193,8 +212,8 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
       key: 'status',
       title: 'الحالة',
       render: (row) => (
-        <Badge variant={row.status === 'posted' ? 'success' : row.status === 'cancelled' ? 'destructive' : 'subtle'}>
-          {STATUS_LABEL[row.status]}
+        <Badge variant={statusBadgeVariant(row.status)}>
+          {WAREHOUSE_OPERATION_STATUS_LABELS_AR[row.status]}
         </Badge>
       ),
     },
@@ -224,17 +243,28 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
 
       <DataTable
         columns={columns}
-        data={data?.items ?? []}
+        data={items}
         keyExtractor={(row) => row.id}
         loading={isLoading}
         emptyText={meta.empty}
+        onRowClick={(row) => setSelectedId(row.id)}
+      />
+
+      <WarehouseOperationDetailDialog
+        open={Boolean(selectedId)}
+        onOpenChange={(next) => {
+          if (!next) setSelectedId(null);
+        }}
+        operation={selectedOperation}
       />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className={`${dialogMaxHeightClass} max-w-lg overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle>{meta.createLabel}</DialogTitle>
-            <DialogDescription>أنشئ مستندًا جديدًا لهذا المستودع.</DialogDescription>
+            <DialogDescription>
+              يُنشأ المستند كمسودة، ثم يُحدَّد كجاهز ويُصدَّق من شاشة التفاصيل.
+            </DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -245,11 +275,8 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
           >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="op-ref">المرجع</Label>
+                <Label htmlFor="op-ref">المرجع (اختياري)</Label>
                 <Input id="op-ref" dir="ltr" {...form.register('reference')} />
-                {form.formState.errors.reference ? (
-                  <p className="text-xs text-destructive">{form.formState.errors.reference.message}</p>
-                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="op-date">التاريخ</Label>
@@ -257,24 +284,17 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="op-status">الحالة</Label>
-              <Controller
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="op-status" aria-label="حالة المستند">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">مسودة</SelectItem>
-                      <SelectItem value="posted">مرحّل</SelectItem>
-                      <SelectItem value="cancelled">ملغى</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="op-partner">
+                  {kind === 'issue' ? 'التسليم إلى' : kind === 'receipt' ? 'الاستلام من' : 'الطرف'}
+                </Label>
+                <Input id="op-partner" {...form.register('partnerName')} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="op-source">المستند المصدر</Label>
+                <Input id="op-source" {...form.register('sourceDocument')} placeholder="اختياري" />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -364,7 +384,7 @@ export function WarehouseOperationsPanel({ warehouseId, kind }: Props) {
                 إلغاء
               </Button>
               <Button type="submit" disabled={create.isPending || !companyId}>
-                {create.isPending ? 'جاري الحفظ…' : 'حفظ'}
+                {create.isPending ? 'جاري الحفظ…' : 'إنشاء مسودة'}
               </Button>
             </DialogFooter>
           </form>

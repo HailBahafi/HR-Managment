@@ -86,7 +86,8 @@ export type UpdateWarehouseLocationInput = Partial<CreateWarehouseLocationInput>
 /** صرف | استلام | حركات داخلية */
 export type WarehouseOperationKind = 'issue' | 'receipt' | 'internal';
 
-export type WarehouseOperationStatus = 'draft' | 'posted' | 'cancelled';
+/** مسودة → جاهز → منتهي (+ ملغى) */
+export type WarehouseOperationStatus = 'draft' | 'ready' | 'done' | 'cancelled';
 
 export type WarehouseOperationLine = {
   id: string;
@@ -96,6 +97,9 @@ export type WarehouseOperationLine = {
   productId?: string;
   /** Links the line to a sellable variant when applicable. */
   variantId?: string;
+  /** الكمية المطلوبة (الطلب) */
+  demandQuantity: number;
+  /** الكمية المنفذة عند التصديق */
   quantity: number;
   fromLocationId?: string;
   toLocationId?: string;
@@ -110,6 +114,10 @@ export type WarehouseOperation = TenantScoped & {
   status: WarehouseOperationStatus;
   occurredAt: string;
   notes?: string;
+  /** شريك المصدر/الوجهة (اختياري) */
+  partnerName?: string;
+  /** المستند المصدر — مثل تجديد مخزون */
+  sourceDocument?: string;
   lines: WarehouseOperationLine[];
   createdAt: string;
   updatedAt: string;

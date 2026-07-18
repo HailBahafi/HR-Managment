@@ -4,15 +4,18 @@
     "companyId": "demo-company",
     "warehouseId": "wh-main",
     "kind": "receipt",
-    "reference": "RCV-1001",
-    "status": "posted",
+    "reference": "WH/IN/00001",
+    "status": "ready",
     "occurredAt": "2026-03-01T10:00:00.000Z",
+    "partnerName": "مورد الألبان",
+    "sourceDocument": "تجديد المخزون يدويًا",
     "notes": "استلام توريد مورد الألبان",
     "lines": [
       {
         "id": "opl-1",
         "productName": "حليب طازج 1 لتر",
         "sku": "MILK-1L",
+        "demandQuantity": 120,
         "quantity": 120,
         "toLocationId": "loc-main-stock"
       }
@@ -25,15 +28,18 @@
     "companyId": "demo-company",
     "warehouseId": "wh-main",
     "kind": "issue",
-    "reference": "ISS-2001",
-    "status": "posted",
+    "reference": "WH/OUT/00001",
+    "status": "done",
     "occurredAt": "2026-03-05T14:00:00.000Z",
+    "partnerName": "مبيعات التجزئة",
+    "sourceDocument": "طلب بيع",
     "notes": "صرف لمبيعات التجزئة",
     "lines": [
       {
         "id": "opl-2",
         "productName": "حليب طازج 1 لتر",
         "sku": "MILK-1L",
+        "demandQuantity": 40,
         "quantity": 40,
         "fromLocationId": "loc-main-a1"
       }
@@ -46,15 +52,17 @@
     "companyId": "demo-company",
     "warehouseId": "wh-main",
     "kind": "internal",
-    "reference": "INT-3001",
+    "reference": "WH/INT/00001",
     "status": "draft",
     "occurredAt": "2026-03-08T09:30:00.000Z",
+    "sourceDocument": "نقل داخلي",
     "notes": "نقل من المخزون إلى الرف",
     "lines": [
       {
         "id": "opl-3",
         "productName": "حليب طازج 1 لتر",
         "sku": "MILK-1L",
+        "demandQuantity": 80,
         "quantity": 80,
         "fromLocationId": "loc-main-stock",
         "toLocationId": "loc-main-a1"

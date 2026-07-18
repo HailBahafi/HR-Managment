@@ -1,7 +1,7 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeftRight, Layers, MapPinned, PackageMinus, PackagePlus, RefreshCw } from 'lucide-react';
+import { ArrowLeftRight, History, Layers, MapPinned, PackageMinus, PackagePlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/shared/utils';
 
 export type ProductRelatedDocKey =
@@ -10,7 +10,8 @@ export type ProductRelatedDocKey =
   | 'replenish'
   | 'receipts'
   | 'issues'
-  | 'internals';
+  | 'internals'
+  | 'moves';
 
 export type ProductRelatedDocChip = {
   key: ProductRelatedDocKey;
@@ -27,6 +28,7 @@ const DOC_ICONS: Record<ProductRelatedDocKey, LucideIcon> = {
   receipts: PackagePlus,
   issues: PackageMinus,
   internals: ArrowLeftRight,
+  moves: History,
 };
 
 type Props = {

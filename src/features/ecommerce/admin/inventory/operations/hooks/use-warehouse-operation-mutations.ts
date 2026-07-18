@@ -50,7 +50,6 @@ export function useWarehouseOperationMutations(warehouseId: string, kind: Wareho
     }) => warehouseOperationsApi.update(companyId, id, patch),
     onSuccess: (_data, variables) => {
       invalidate(variables.companyId);
-      toast.success(SUCCESS_BY_KIND[kind]);
     },
     onError: (err) => {
       const { displayMessage } = handleApiError(err, 'ecommerce.warehouseOperations.update');

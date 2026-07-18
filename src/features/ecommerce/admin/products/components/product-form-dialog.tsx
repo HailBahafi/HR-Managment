@@ -27,6 +27,7 @@ import { ProductAttributesTab } from '@/features/ecommerce/admin/products/compon
 import { ProductInventoryTab } from '@/features/ecommerce/admin/products/components/product-inventory-tab';
 import { ProductStockMoveRequestDialog } from '@/features/ecommerce/admin/products/components/product-stock-move-request-dialog';
 import { ProductStockMovesListDialog } from '@/features/ecommerce/admin/products/components/product-stock-moves-list-dialog';
+import { ProductStockMovesHistoryDialog } from '@/features/ecommerce/admin/products/components/product-stock-moves-history-dialog';
 import type { ProductRelatedDocKey } from '@/features/ecommerce/admin/products/components/product-related-docs-bar';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { Product } from '@/features/ecommerce/domain/types/product';
@@ -92,6 +93,11 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
     kind: 'internal',
     limit: 100,
   });
+  const { data: allMovesData } = useWarehouseOperations({
+    companyId,
+    productId: product?.id,
+    limit: 200,
+  });
   const { create, update } = useProductMutations();
   const isEditing = Boolean(product);
   const isSaving = create.isPending || update.isPending;
@@ -99,6 +105,7 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
   const [activeRelatedDoc, setActiveRelatedDoc] = React.useState<ProductRelatedDocKey | null>(null);
   const [moveRequestKind, setMoveRequestKind] = React.useState<MoveRequestKind | null>(null);
   const [movesListKind, setMovesListKind] = React.useState<MoveRequestKind | null>(null);
+  const [movesHistoryOpen, setMovesHistoryOpen] = React.useState(false);
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -117,6 +124,7 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
     setActiveRelatedDoc(null);
     setMoveRequestKind(null);
     setMovesListKind(null);
+    setMovesHistoryOpen(false);
   }, [open, product, form]);
 
   const onSubmit = async (values: ProductFormValues) => {
@@ -170,6 +178,12 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
       setMovesListKind('internal');
       return;
     }
+    if (key === 'moves') {
+      if (!requireSavedProduct('تعرض سجل الحركات')) return;
+      setActiveRelatedDoc('moves');
+      setMovesHistoryOpen(true);
+      return;
+    }
     if (key !== 'putaway') return;
     if (!requireSavedProduct('تفتح قواعد التخزين')) return;
     onOpenChange(false);
@@ -181,6 +195,12 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
   const issuesCount = product?.id ? (issuesData?.pagination.total ?? issuesData?.items.length ?? 0) : 0;
   const internalsCount = product?.id
     ? (internalsData?.pagination.total ?? internalsData?.items.length ?? 0)
+    : 0;
+  const movesCount = product?.id
+    ? (allMovesData?.items ?? []).reduce(
+        (sum, op) => sum + op.lines.filter((line) => !line.productId || line.productId === product.id).length,
+        0,
+      )
     : 0;
 
   return (
@@ -241,6 +261,12 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
                     label: 'داخلية',
                     count: internalsCount,
                     hint: 'الحركات الداخلية بين مواقع المستودع',
+                  },
+                  {
+                    key: 'moves',
+                    label: 'سجل الحركات',
+                    count: movesCount,
+                    hint: 'كل حركات المخزون المرتبطة بهذا المنتج',
                   },
                   {
                     key: 'putaway',
@@ -363,6 +389,18 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
             );
             setMoveRequestKind(kind);
           }}
+        />
+      ) : null}
+
+      {product?.id ? (
+        <ProductStockMovesHistoryDialog
+          open={movesHistoryOpen}
+          onOpenChange={(next) => {
+            setMovesHistoryOpen(next);
+            if (!next && activeRelatedDoc === 'moves') setActiveRelatedDoc(null);
+          }}
+          productId={product.id}
+          productNameAr={nameAr || product.nameAr}
         />
       ) : null}
     </>

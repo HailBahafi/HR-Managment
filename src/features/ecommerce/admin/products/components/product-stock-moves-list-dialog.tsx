@@ -7,6 +7,7 @@ import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/stor
 import { useWarehouseOperations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operations';
 import { useWarehouses } from '@/features/ecommerce/admin/inventory/warehouses/hooks/use-warehouses';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
+import { WAREHOUSE_OPERATION_STATUS_LABELS_AR } from '@/features/ecommerce/domain/constants/warehouse-operation-status';
 import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,12 +29,6 @@ type Props = {
   productId: string;
   productNameAr: string;
   onCreateRequest?: () => void;
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'مسودة',
-  posted: 'مرحّل',
-  cancelled: 'ملغى',
 };
 
 const KIND_META: Record<
@@ -59,6 +54,13 @@ const KIND_META: Record<
     Icon: ArrowLeftRight,
   },
 };
+
+function statusBadgeVariant(status: string): 'subtle' | 'warning' | 'success' | 'destructive' {
+  if (status === 'ready') return 'warning';
+  if (status === 'done') return 'success';
+  if (status === 'cancelled') return 'destructive';
+  return 'subtle';
+}
 
 export function ProductStockMovesListDialog({
   open,
@@ -127,8 +129,10 @@ export function ProductStockMovesListDialog({
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={op.status === 'posted' ? 'success' : 'subtle'}>
-                        {STATUS_LABEL[op.status] ?? op.status}
+                      <Badge variant={statusBadgeVariant(op.status)}>
+                        {WAREHOUSE_OPERATION_STATUS_LABELS_AR[
+                          op.status as keyof typeof WAREHOUSE_OPERATION_STATUS_LABELS_AR
+                        ] ?? op.status}
                       </Badge>
                       <Button
                         type="button"

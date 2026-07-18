@@ -111,10 +111,11 @@ export const WAREHOUSE_LOCATION_FORM_DEFAULT_VALUES: WarehouseLocationFormValues
 };
 
 export const warehouseOperationFormSchema = z.object({
-  reference: z.string().min(1, 'المرجع مطلوب').max(64),
-  status: z.enum(['draft', 'posted', 'cancelled']),
+  reference: z.string().max(64).optional().or(z.literal('')),
   occurredAt: z.string().min(1, 'التاريخ مطلوب'),
   notes: z.string().max(500).optional().or(z.literal('')),
+  partnerName: z.string().max(160).optional().or(z.literal('')),
+  sourceDocument: z.string().max(160).optional().or(z.literal('')),
   productName: z.string().min(1, 'اسم المنتج مطلوب').max(160),
   sku: z.string().max(64).optional().or(z.literal('')),
   quantity: z.number({ error: 'الكمية مطلوبة' }).positive('الكمية يجب أن تكون أكبر من صفر'),
@@ -126,9 +127,10 @@ export type WarehouseOperationFormValues = z.infer<typeof warehouseOperationForm
 
 export const WAREHOUSE_OPERATION_FORM_DEFAULT_VALUES: WarehouseOperationFormValues = {
   reference: '',
-  status: 'draft',
   occurredAt: new Date().toISOString().slice(0, 16),
   notes: '',
+  partnerName: '',
+  sourceDocument: '',
   productName: '',
   sku: '',
   quantity: 1,

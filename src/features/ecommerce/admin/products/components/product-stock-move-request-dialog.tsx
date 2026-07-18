@@ -161,6 +161,7 @@ export function ProductStockMoveRequestDialog({
         sku: line.sku || undefined,
         productId,
         variantId: line.variantId,
+        demandQuantity: line.quantity,
         quantity: line.quantity,
         ...(kind === 'receipt'
           ? { toLocationId: locationId || undefined }
@@ -181,6 +182,12 @@ export function ProductStockMoveRequestDialog({
         reference: `${prefixFor(kind)}-${Date.now().toString().slice(-6)}`,
         status: 'draft',
         occurredAt: new Date().toISOString(),
+        sourceDocument:
+          kind === 'receipt'
+            ? 'تجديد المخزون يدويًا'
+            : kind === 'issue'
+              ? 'طلب صرف يدوي'
+              : 'حركة داخلية يدوية',
         notes:
           kind === 'receipt'
             ? `طلب تجديد مخزون للمنتج ${productNameAr}`
