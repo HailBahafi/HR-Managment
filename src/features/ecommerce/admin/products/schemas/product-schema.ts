@@ -17,6 +17,11 @@ export const PRODUCT_TRACKING_OPTIONS = [
   { value: 'serial', labelAr: 'الأرقام التسلسلية' },
 ] as const;
 
+export const PRODUCT_INVOICE_POLICY_OPTIONS = [
+  { value: 'ordered', labelAr: 'الكميات المطلوبة' },
+  { value: 'delivered', labelAr: 'الكميات التي تم توصيلها' },
+] as const;
+
 export {
   ATTRIBUTE_DISPLAY_OPTIONS,
   VARIANT_CREATION_OPTIONS,
@@ -90,6 +95,9 @@ export const productFormSchema = z
     metaDescription: z.string().trim().optional(),
     productType: z.enum(['goods', 'service', 'combo']),
     tracking: z.enum(['none', 'lot', 'serial']),
+    invoicePolicy: z.enum(['ordered', 'delivered']),
+    listPrice: z.coerce.number().min(0, 'سعر البيع لا يمكن أن يكون سالبًا'),
+    costPrice: z.coerce.number().min(0, 'سعر الشراء لا يمكن أن يكون سالبًا'),
     barcode: z.string().trim().optional(),
     posAvailable: z.boolean(),
     saleOk: z.boolean(),
@@ -146,6 +154,9 @@ export const PRODUCT_FORM_DEFAULT_VALUES: ProductFormInput = {
   metaDescription: '',
   productType: 'goods',
   tracking: 'none',
+  invoicePolicy: 'ordered',
+  listPrice: 0,
+  costPrice: 0,
   barcode: '',
   posAvailable: false,
   saleOk: true,

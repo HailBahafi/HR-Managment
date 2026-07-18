@@ -109,6 +109,9 @@ describe('formValuesToCreateInput', () => {
     metaDescription: '',
     productType: 'goods',
     tracking: 'none',
+    invoicePolicy: 'ordered',
+    listPrice: 0,
+    costPrice: 0,
     barcode: '',
     posAvailable: false,
     saleOk: true,
@@ -124,14 +127,31 @@ describe('formValuesToCreateInput', () => {
     expect(input.media).toEqual([]);
   });
 
-  it('does not set a fixed sale price on create (defaults to 0 until inventory pricing)', () => {
-    const input = formValuesToCreateInput(BASE_VALUES, 'demo-company');
-    expect(input.price).toEqual({ amount: 0, currency: 'SAR' });
+  it('maps listPrice and costPrice into catalog money fields', () => {
+    const input = formValuesToCreateInput(
+      { ...BASE_VALUES, listPrice: 25.5, costPrice: 18 },
+      'demo-company',
+    );
+    expect(input.price).toEqual({ amount: 25.5, currency: 'SAR' });
+    expect(input.costPrice).toEqual({ amount: 18, currency: 'SAR' });
   });
 
-  it('preserves existing catalog price when editing', () => {
-    const input = formValuesToCreateInput(BASE_VALUES, 'demo-company', { existing: BASE_PRODUCT });
-    expect(input.price).toEqual({ amount: 100, currency: 'SAR' });
+  it('maps invoice policy through to create input', () => {
+    const input = formValuesToCreateInput(
+      { ...BASE_VALUES, invoicePolicy: 'delivered' },
+      'demo-company',
+    );
+    expect(input.invoicePolicy).toBe('delivered');
+  });
+
+  it('preserves existing compare-at price and currency when editing', () => {
+    const input = formValuesToCreateInput(
+      { ...BASE_VALUES, listPrice: 80 },
+      'demo-company',
+      { existing: { ...BASE_PRODUCT, compareAtPrice: { amount: 120, currency: 'SAR' } } },
+    );
+    expect(input.price).toEqual({ amount: 80, currency: 'SAR' });
+    expect(input.compareAtPrice).toEqual({ amount: 120, currency: 'SAR' });
   });
 
   it('passes status/stockStatus through unchanged', () => {

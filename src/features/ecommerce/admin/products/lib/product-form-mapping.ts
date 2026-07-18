@@ -42,6 +42,9 @@ export function productToFormValues(product: Product): ProductFormInput {
     metaDescription: product.seo.metaDescription ?? '',
     productType: product.productType ?? 'goods',
     tracking: product.tracking ?? 'none',
+    invoicePolicy: product.invoicePolicy ?? 'ordered',
+    listPrice: product.price.amount,
+    costPrice: product.costPrice?.amount ?? 0,
     barcode: product.barcode ?? '',
     posAvailable: product.posAvailable ?? false,
     saleOk: product.saleOk ?? true,
@@ -59,7 +62,7 @@ export function productToFormValues(product: Product): ProductFormInput {
 }
 
 type MappingOptions = {
-  /** Keep catalog display price when editing — prices are not set as fixed product master data. */
+  /** Used to preserve currency and compare-at price when editing. */
   existing?: Product | null;
 };
 
@@ -99,7 +102,8 @@ export function formValuesToCreateInput(
       lowStockThreshold: 5,
       allowBackorder: values.allowBackorder,
     },
-    price: existing?.price ?? { amount: 0, currency },
+    price: { amount: values.listPrice, currency },
+    costPrice: { amount: values.costPrice, currency },
     compareAtPrice: existing?.compareAtPrice,
     media,
     seo: {
@@ -109,6 +113,7 @@ export function formValuesToCreateInput(
     tags: parseTagsInput(values.tagsInput),
     productType: values.productType,
     tracking: values.tracking,
+    invoicePolicy: values.invoicePolicy,
     barcode: values.barcode || undefined,
     posAvailable: values.posAvailable,
     saleOk: values.saleOk,

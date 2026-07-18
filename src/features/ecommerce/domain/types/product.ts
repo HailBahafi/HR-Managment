@@ -10,6 +10,13 @@ export type ProductType = 'goods' | 'service' | 'combo';
 /** Inventory tracking mode. */
 export type ProductTracking = 'none' | 'lot' | 'serial';
 
+/**
+ * When to invoice the customer (Odoo invoice_policy):
+ * - ordered: invoice based on ordered quantities
+ * - delivered: invoice based on delivered quantities
+ */
+export type ProductInvoicePolicy = 'ordered' | 'delivered';
+
 export type {
   AttributeDisplayType,
   VariantCreationMode,
@@ -68,16 +75,20 @@ export type Product = TenantScoped &
     stockStatus: StockStatus;
     inventory: Inventory;
     /**
-     * Catalog display price — not configured as a fixed product master field in the form.
-     * Real sale/cost amounts come from inventory receipt / price lists later.
+     * Catalog list / sale price shown on the product form.
+     * Advanced pricelist rules can still refine this later.
      */
     price: Money;
+    /** Purchase / cost price (سعر الشراء). */
+    costPrice?: Money;
     compareAtPrice?: Money;
     media: MediaItem[];
     seo: SeoFields;
     tags?: string[];
     productType?: ProductType;
     tracking?: ProductTracking;
+    /** Invoice on ordered vs delivered quantities. */
+    invoicePolicy?: ProductInvoicePolicy;
     barcode?: string;
     posAvailable?: boolean;
     saleOk?: boolean;
