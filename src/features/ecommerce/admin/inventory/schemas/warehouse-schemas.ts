@@ -13,19 +13,49 @@ export const OUTGOING_STEP_OPTIONS = [
 ] as const;
 
 export const LOCATION_TYPE_OPTIONS = [
-  { value: 'internal', label: 'داخلي' },
-  { value: 'view', label: 'عرض' },
-  { value: 'supplier', label: 'مورد' },
-  { value: 'customer', label: 'عميل' },
-  { value: 'inventory', label: 'جرد' },
+  {
+    value: 'supplier',
+    label: 'المورد',
+    hint: 'موقع افتراضي يمثل مصدر المنتجات القادمة من الموردين.',
+  },
+  {
+    value: 'view',
+    label: 'افتراضي',
+    hint: 'موقع تنظيمي لبناء هيكل المستودع. لا يخزّن منتجات مباشرة.',
+  },
+  {
+    value: 'internal',
+    label: 'داخلي',
+    hint: 'المواقع الفعلية داخل المستودع التي تُخزَّن فيها المنتجات.',
+  },
+  {
+    value: 'customer',
+    label: 'العميل',
+    hint: 'موقع افتراضي يمثل وجهة المنتجات المرسلة للعملاء.',
+  },
+  {
+    value: 'inventory',
+    label: 'خسارة المخزون',
+    hint: 'مقابل افتراضي لعمليات تصحيح المخزون (الجرد).',
+  },
+  {
+    value: 'production',
+    label: 'الإنتاج',
+    hint: 'مقابل افتراضي لعمليات الإنتاج (استهلاك مكوّنات وإنتاج تام).',
+  },
+  {
+    value: 'transit',
+    label: 'العابر',
+    hint: 'للنقل بين المستودعات أو الشركات.',
+  },
 ] as const;
 
 export const REMOVAL_STRATEGY_OPTIONS = [
   { value: 'fifo', label: 'الوارد أولاً يخرج أولاً (FIFO)' },
   { value: 'lifo', label: 'الوارد أخيراً يخرج أولاً (LIFO)' },
   { value: 'closest', label: 'أقرب موقع' },
-  { value: 'fewest_packages', label: 'أقل عدد طرود' },
-  { value: 'fefo', label: 'ما تنتهي صلاحيته أولاً (FEFO)' },
+  { value: 'fewest_packages', label: 'أقل عدد ممكن من الطرود' },
+  { value: 'fefo', label: 'ما تنتهي صلاحيته أولاً يخرج أولاً (FEFO)' },
 ] as const;
 
 export const warehouseFormSchema = z.object({
@@ -53,7 +83,7 @@ export const WAREHOUSE_FORM_DEFAULT_VALUES: WarehouseFormValues = {
 export const warehouseLocationFormSchema = z.object({
   nameAr: z.string().min(1, 'اسم الموقع مطلوب').max(120),
   parentLocationId: z.string().optional().or(z.literal('')),
-  locationType: z.enum(['internal', 'view', 'supplier', 'customer', 'inventory']),
+  locationType: z.enum(['internal', 'view', 'supplier', 'customer', 'inventory', 'production', 'transit']),
   storageCategory: z.string().max(80).optional().or(z.literal('')),
   barcode: z.string().max(64).optional().or(z.literal('')),
   replenish: z.boolean(),

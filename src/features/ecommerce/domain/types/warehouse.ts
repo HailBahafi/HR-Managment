@@ -8,7 +8,14 @@ export type WarehouseIncomingSteps = 1 | 2 | 3;
 /** Outgoing flow: 1 = deliver, 2 = pick+deliver, 3 = pick+pack+deliver */
 export type WarehouseOutgoingSteps = 1 | 2 | 3;
 
-export type WarehouseLocationType = 'internal' | 'view' | 'supplier' | 'customer' | 'inventory';
+export type WarehouseLocationType =
+  | 'internal'
+  | 'view'
+  | 'supplier'
+  | 'customer'
+  | 'inventory'
+  | 'production'
+  | 'transit';
 
 export type WarehouseRemovalStrategy = 'fifo' | 'lifo' | 'closest' | 'fewest_packages' | 'fefo';
 

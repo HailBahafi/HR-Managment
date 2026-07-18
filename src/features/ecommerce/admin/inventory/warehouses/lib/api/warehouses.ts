@@ -38,17 +38,24 @@ export const warehousesApi: AdminWarehousesPort = {
       updatedAt: now,
     });
 
-    const defaults = buildDefaultWarehouseLocations(warehouse);
-    await Promise.all(
-      defaults.map((location) =>
-        mockWarehouseLocationsStore.create({
-          ...location,
-          id: newId('loc'),
-          createdAt: now,
-          updatedAt: now,
-        }),
-      ),
-    );
+    const drafts = buildDefaultWarehouseLocations(warehouse);
+    const idByTempKey = new Map<string, string>();
+
+    // Parents first so Stock can link to the warehouse view location.
+    for (const draft of drafts) {
+      const { tempKey, parentTempKey, ...location } = draft;
+      const id = newId('loc');
+      idByTempKey.set(tempKey, id);
+      const parentLocationId = parentTempKey ? (idByTempKey.get(parentTempKey) ?? null) : null;
+
+      await mockWarehouseLocationsStore.create({
+        ...location,
+        id,
+        parentLocationId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     return warehouse;
   },

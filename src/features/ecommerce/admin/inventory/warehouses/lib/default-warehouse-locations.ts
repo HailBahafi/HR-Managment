@@ -1,59 +1,127 @@
 import type {
   CreateWarehouseLocationInput,
   Warehouse,
-  WarehouseIncomingSteps,
-  WarehouseOutgoingSteps,
+  WarehouseLocationType,
+  WarehouseRemovalStrategy,
 } from '@/features/ecommerce/domain/types/warehouse';
 
-type SeedSpec = {
-  key: string;
-  nameAr: string;
-  when?: (incoming: WarehouseIncomingSteps, outgoing: WarehouseOutgoingSteps) => boolean;
+export type DefaultWarehouseLocationDraft = CreateWarehouseLocationInput & {
+  /** Stable key within this seed batch (for parent linking before IDs exist). */
+  tempKey: string;
+  parentTempKey?: string;
 };
 
-const DEFAULT_LOCATION_SPECS: SeedSpec[] = [
-  { key: 'Stock', nameAr: 'المخزون' },
+type SeedSpec = {
+  tempKey: string;
+  /** Path segment after warehouse code, or empty for the warehouse view root. */
+  pathSuffix: string;
+  nameAr: string;
+  nameEn: string;
+  locationType: WarehouseLocationType;
+  parentTempKey?: string;
+  removalStrategy?: WarehouseRemovalStrategy;
+};
+
+/**
+ * Fixed system locations created for every warehouse (Odoo-style counterparts):
+ * Customers, Inventory adjustment, Production, Vendors, {CODE}, {CODE}/Stock.
+ */
+const FIXED_LOCATION_SPECS: SeedSpec[] = [
   {
-    key: 'Input',
-    nameAr: 'المدخلات',
-    when: (incoming) => incoming >= 2,
+    tempKey: 'customers',
+    pathSuffix: 'Customers',
+    nameAr: 'العميل',
+    nameEn: 'Customers',
+    locationType: 'customer',
   },
   {
-    key: 'Quality',
-    nameAr: 'مراقبة الجودة',
-    when: (incoming) => incoming >= 3,
+    tempKey: 'inventory',
+    pathSuffix: 'Inventory adjustment',
+    nameAr: 'خسارة المخزون',
+    nameEn: 'Inventory adjustment',
+    locationType: 'inventory',
   },
   {
-    key: 'Output',
-    nameAr: 'المخرجات',
-    when: (_i, outgoing) => outgoing >= 2,
+    tempKey: 'production',
+    pathSuffix: 'Production',
+    nameAr: 'الإنتاج',
+    nameEn: 'Production',
+    locationType: 'production',
   },
   {
-    key: 'Packing',
-    nameAr: 'منطقة التعبئة',
-    when: (_i, outgoing) => outgoing >= 3,
+    tempKey: 'vendors',
+    pathSuffix: 'Vendors',
+    nameAr: 'المورد',
+    nameEn: 'Vendors',
+    locationType: 'supplier',
+  },
+  {
+    tempKey: 'view',
+    pathSuffix: '',
+    nameAr: '', // filled with warehouse code
+    nameEn: '',
+    locationType: 'view',
+  },
+  {
+    tempKey: 'stock',
+    pathSuffix: 'Stock',
+    nameAr: '', // filled as CODE/Stock
+    nameEn: 'Stock',
+    locationType: 'internal',
+    parentTempKey: 'view',
   },
 ];
 
-/**
- * Builds the standard system locations for a new warehouse.
- * Example short code `فثسف` → `فثسف/المخزون`, `فثسف/المدخلات`, …
- */
-export function buildDefaultWarehouseLocations(warehouse: Warehouse): CreateWarehouseLocationInput[] {
-  const prefix = warehouse.code.trim() || 'WH';
-
-  return DEFAULT_LOCATION_SPECS.filter((spec) =>
-    spec.when ? spec.when(warehouse.incomingSteps, warehouse.outgoingSteps) : true,
-  ).map((spec) => ({
+function baseFields(
+  warehouse: Warehouse,
+  overrides: Partial<CreateWarehouseLocationInput> &
+    Pick<CreateWarehouseLocationInput, 'code' | 'nameAr' | 'locationType'>,
+): CreateWarehouseLocationInput {
+  return {
     companyId: warehouse.companyId,
     warehouseId: warehouse.id,
-    code: `${prefix}/${spec.key}`,
-    nameAr: `${prefix}/${spec.nameAr}`,
-    locationType: 'internal',
     replenish: false,
     cycleCountFrequencyDays: 0,
     removalStrategy: 'fifo',
     isActive: true,
     isSystem: true,
-  }));
+    parentLocationId: null,
+    ...overrides,
+  };
+}
+
+/**
+ * Builds the fixed system locations for a new warehouse.
+ * `{CODE}/Stock` is nested under the warehouse view `{CODE}`.
+ */
+export function buildDefaultWarehouseLocations(warehouse: Warehouse): DefaultWarehouseLocationDraft[] {
+  const prefix = warehouse.code.trim() || 'WH';
+
+  return FIXED_LOCATION_SPECS.map((spec) => {
+    const code = spec.pathSuffix ? `${prefix}/${spec.pathSuffix}` : prefix;
+    const nameAr =
+      spec.tempKey === 'view'
+        ? prefix
+        : spec.tempKey === 'stock'
+          ? `${prefix}/Stock`
+          : spec.nameAr;
+    const nameEn =
+      spec.tempKey === 'view'
+        ? prefix
+        : spec.tempKey === 'stock'
+          ? `${prefix}/Stock`
+          : spec.nameEn;
+
+    return {
+      ...baseFields(warehouse, {
+        code,
+        nameAr,
+        nameEn,
+        locationType: spec.locationType,
+        removalStrategy: spec.removalStrategy ?? 'fifo',
+      }),
+      tempKey: spec.tempKey,
+      parentTempKey: spec.parentTempKey,
+    };
+  });
 }

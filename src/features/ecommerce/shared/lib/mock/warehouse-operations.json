@@ -14,7 +14,7 @@
         "productName": "حليب طازج 1 لتر",
         "sku": "MILK-1L",
         "quantity": 120,
-        "toLocationId": "loc-main-input"
+        "toLocationId": "loc-main-stock"
       }
     ],
     "createdAt": "2026-03-01T10:00:00.000Z",
@@ -49,14 +49,14 @@
     "reference": "INT-3001",
     "status": "draft",
     "occurredAt": "2026-03-08T09:30:00.000Z",
-    "notes": "نقل من المدخلات إلى الرف",
+    "notes": "نقل من المخزون إلى الرف",
     "lines": [
       {
         "id": "opl-3",
         "productName": "حليب طازج 1 لتر",
         "sku": "MILK-1L",
         "quantity": 80,
-        "fromLocationId": "loc-main-input",
+        "fromLocationId": "loc-main-stock",
         "toLocationId": "loc-main-a1"
       }
     ],

@@ -1,5 +1,10 @@
+import * as React from 'react';
 import { LocationsListPage } from '@/features/ecommerce/admin/inventory/locations/components/locations-list-page';
 
 export default function Page() {
-  return <LocationsListPage />;
+  return (
+    <React.Suspense fallback={null}>
+      <LocationsListPage />
+    </React.Suspense>
+  );
 }
