@@ -1,33 +1,71 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { FolderTree, Pencil, Plus, RefreshCw } from 'lucide-react';
+import { FolderTree, Pencil, Plus, RefreshCw, Package } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useCategories } from '@/features/ecommerce/admin/categories/hooks/use-categories';
+import { useProducts } from '@/features/ecommerce/admin/products/hooks/use-products';
 import { CategoryFormDialog } from '@/features/ecommerce/admin/categories/components/category-form-dialog';
+import {
+  getCategoryPath,
+  sortCategoriesAsTree,
+} from '@/features/ecommerce/admin/categories/lib/category-tree';
+import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { Category } from '@/features/ecommerce/domain/types/category';
 import { PageHeader } from '@/components/layouts/page-header';
 import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type ColumnDef } from '@/components/ui/data-table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const ALL_ROOTS = '__all__';
 
 export function CategoriesListPage() {
   const companyId = getStorefrontCompanyId();
+  const router = useRouter();
   const t = useTranslations('ecommerceAdmin');
   const tCommon = useTranslations('common');
   const [search, setSearch] = React.useState('');
+  const [rootFilter, setRootFilter] = React.useState('');
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Category | null>(null);
+
   const { data, isLoading, isError, refetch } = useCategories({
     companyId,
     search: search || undefined,
-    limit: 200,
+    limit: 300,
   });
+  const { data: productsData } = useProducts({ companyId, limit: 500 });
 
   const items = React.useMemo(() => data?.items ?? [], [data?.items]);
   const byId = React.useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
+  const productCountByCategory = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const product of productsData?.items ?? []) {
+      if (!product.categoryId) continue;
+      counts.set(product.categoryId, (counts.get(product.categoryId) ?? 0) + 1);
+    }
+    return counts;
+  }, [productsData?.items]);
+
+  const roots = React.useMemo(
+    () => items.filter((item) => !item.parentId).sort((a, b) => a.displayOrder - b.displayOrder),
+    [items],
+  );
+
+  const treeRows = React.useMemo(() => {
+    let list = sortCategoriesAsTree(items);
+    if (rootFilter) {
+      list = list.filter((category) => {
+        const path = getCategoryPath(category, byId);
+        return path.pathIds[0] === rootFilter;
+      });
+    }
+    return list;
+  }, [items, byId, rootFilter]);
 
   function openCreate() {
     setEditing(null);
@@ -42,36 +80,57 @@ export function CategoriesListPage() {
   const columns: ColumnDef<Category>[] = [
     {
       key: 'category',
-      title: 'التصنيف',
-      render: (category) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-            {category.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={category.image.url} alt={category.image.alt} className="h-full w-full object-cover" />
-            ) : (
-              <FolderTree className="h-4 w-4 text-muted-foreground" />
-            )}
+      title: 'التصنيف / المسار',
+      render: (category) => {
+        const meta = getCategoryPath(category, byId);
+        return (
+          <div className="flex items-start gap-3" style={{ paddingInlineStart: `${(meta.depth - 1) * 16}px` }}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+              {category.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={category.image.url} alt={category.image.alt} className="h-full w-full object-cover" />
+              ) : (
+                <FolderTree className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <div className="min-w-0 flex flex-col gap-0.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-foreground">{category.nameAr}</span>
+                <Badge variant="outline">مستوى {meta.depth}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground" title={meta.pathLabel}>
+                {meta.pathLabel}
+              </p>
+              {category.nameEn ? <span className="text-xs text-muted-foreground">{category.nameEn}</span> : null}
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="font-medium text-foreground">{category.nameAr}</span>
-            {category.nameEn ? <span className="text-xs text-muted-foreground">{category.nameEn}</span> : null}
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
-      key: 'parent',
-      title: 'الأب',
-      render: (category) => (
-        <span className="text-sm text-muted-foreground">
-          {category.parentId ? (byId.get(category.parentId)?.nameAr ?? category.parentId) : '— جذري —'}
-        </span>
-      ),
+      key: 'products',
+      title: 'المنتجات',
+      render: (category) => {
+        const count = productCountByCategory.get(category.id) ?? 0;
+        return (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="gap-1 tabular-nums"
+            onClick={() =>
+              router.push(`${ecommerceAdminRoutes.products}?categoryId=${category.id}`)
+            }
+          >
+            <Package className="h-3.5 w-3.5" />
+            {count}
+          </Button>
+        );
+      },
     },
     {
       key: 'brands',
-      title: 'ماركات القائمة',
+      title: 'ماركات',
       render: (category) => (
         <span className="text-sm text-muted-foreground">{category.featuredBrandIds?.length ?? 0}</span>
       ),
@@ -109,13 +168,44 @@ export function CategoriesListPage() {
       <PageHeader
         icon={FolderTree}
         title={t('nav.categories')}
-        description="تهيئة الفئات بشكل منفصل ثم استخدامها عند تعريف المنتجات."
+        description="شجرة التصنيفات (مثال حتى 4 مستويات) — اربط المنتجات ثم فلترها من قائمة المنتجات."
       />
+
+      <div className="rounded-xl border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">مثال التسلسل في البيانات</p>
+        <p className="mt-1" dir="rtl">
+          المنزل › الإضاءة › مصابيح › مصابيح LED
+        </p>
+        <p className="mt-0.5" dir="rtl">
+          المشروبات › مشروبات غازية › كولا › كولا كلاسيك / كولا زيرو
+        </p>
+        <p className="mt-2 text-xs">
+          المستوى ليس حداً للنظام — البيانات فقط توضّح الفائدة. اضغط رقم المنتجات لفتح الفلترة.
+        </p>
+      </div>
 
       <ListToolbar
         searchValue={search}
         onSearchChange={setSearch}
         searchPlaceholder="ابحث بالاسم…"
+        filters={
+          <Select
+            value={rootFilter || ALL_ROOTS}
+            onValueChange={(value) => setRootFilter(value === ALL_ROOTS ? '' : value)}
+          >
+            <SelectTrigger className="w-full sm:w-56" aria-label="تصفية بالجذر">
+              <SelectValue placeholder="كل الأشجار" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_ROOTS}>كل الأشجار</SelectItem>
+              {roots.map((root) => (
+                <SelectItem key={root.id} value={root.id}>
+                  {root.nameAr}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" aria-label={tCommon('actions.retry')} onClick={() => void refetch()}>
@@ -133,7 +223,7 @@ export function CategoriesListPage() {
 
       <DataTable
         columns={columns}
-        data={items}
+        data={treeRows}
         keyExtractor={(category) => category.id}
         loading={isLoading}
         emptyText={t('catalog.empty')}

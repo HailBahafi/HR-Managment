@@ -56,4 +56,12 @@ describe('formValuesToCreateBrandInput', () => {
     const input = formValuesToCreateBrandInput({ ...BASE_VALUES, logoUrl: 'https://example.com/logo.png' }, 'demo-company');
     expect(input.logo).toMatchObject({ url: 'https://example.com/logo.png', isPrimary: true, type: 'image' });
   });
+
+  it('auto-generates slug from English name when slug is left empty', () => {
+    const input = formValuesToCreateBrandInput(
+      { ...BASE_VALUES, slug: '', nameEn: 'Royal Wood' },
+      'demo-company',
+    );
+    expect(input.slug).toBe('royal-wood');
+  });
 });

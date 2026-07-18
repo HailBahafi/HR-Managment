@@ -1154,5 +1154,130 @@
     "isActive": true,
     "createdAt": "2026-01-05T08:00:00.000Z",
     "updatedAt": "2026-01-05T08:00:00.000Z"
+  },
+  {
+    "id": "cat-bev-soft-cola-classic",
+    "companyId": "demo-company",
+    "slug": "classic-cola",
+    "nameAr": "كولا كلاسيك",
+    "nameEn": "Classic cola",
+    "description": "مستوى رابع — كولا عادية",
+    "parentId": "cat-bev-soft-cola",
+    "seo": {
+      "metaTitle": "كولا كلاسيك",
+      "metaDescription": "كولا كلاسيك"
+    },
+    "displayOrder": 1,
+    "isActive": true,
+    "createdAt": "2026-01-05T08:00:00.000Z",
+    "updatedAt": "2026-01-05T08:00:00.000Z"
+  },
+  {
+    "id": "cat-bev-soft-cola-zero",
+    "companyId": "demo-company",
+    "slug": "zero-cola",
+    "nameAr": "كولا زيرو",
+    "nameEn": "Zero cola",
+    "description": "مستوى رابع — بدون سكر",
+    "parentId": "cat-bev-soft-cola",
+    "seo": {
+      "metaTitle": "كولا زيرو",
+      "metaDescription": "كولا زيرو"
+    },
+    "displayOrder": 2,
+    "isActive": true,
+    "createdAt": "2026-01-05T08:00:00.000Z",
+    "updatedAt": "2026-01-05T08:00:00.000Z"
+  },
+  {
+    "id": "cat-home",
+    "companyId": "demo-company",
+    "slug": "home",
+    "nameAr": "المنزل",
+    "nameEn": "Home",
+    "description": "مثال تسلسل 4 مستويات: منزل › إضاءة › مصابيح › LED",
+    "image": {
+      "id": "media-cat-home",
+      "url": "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&q=80",
+      "alt": "Home",
+      "type": "image",
+      "position": 0,
+      "isPrimary": true
+    },
+    "parentId": null,
+    "featuredBrandIds": [],
+    "seo": {
+      "metaTitle": "المنزل",
+      "metaDescription": "مستلزمات المنزل"
+    },
+    "displayOrder": 9,
+    "isActive": true,
+    "createdAt": "2026-01-06T08:00:00.000Z",
+    "updatedAt": "2026-01-06T08:00:00.000Z"
+  },
+  {
+    "id": "cat-home-lighting",
+    "companyId": "demo-company",
+    "slug": "lighting",
+    "nameAr": "الإضاءة",
+    "nameEn": "Lighting",
+    "parentId": "cat-home",
+    "seo": {
+      "metaTitle": "الإضاءة",
+      "metaDescription": "الإضاءة"
+    },
+    "displayOrder": 1,
+    "isActive": true,
+    "createdAt": "2026-01-06T08:00:00.000Z",
+    "updatedAt": "2026-01-06T08:00:00.000Z"
+  },
+  {
+    "id": "cat-home-lighting-lamps",
+    "companyId": "demo-company",
+    "slug": "lamps",
+    "nameAr": "مصابيح",
+    "nameEn": "Lamps",
+    "parentId": "cat-home-lighting",
+    "seo": {
+      "metaTitle": "مصابيح",
+      "metaDescription": "مصابيح"
+    },
+    "displayOrder": 1,
+    "isActive": true,
+    "createdAt": "2026-01-06T08:00:00.000Z",
+    "updatedAt": "2026-01-06T08:00:00.000Z"
+  },
+  {
+    "id": "cat-home-lighting-lamps-led",
+    "companyId": "demo-company",
+    "slug": "led-lamps",
+    "nameAr": "مصابيح LED",
+    "nameEn": "LED lamps",
+    "description": "المستوى الرابع — منتجات تُربط هنا للفلترة الدقيقة",
+    "parentId": "cat-home-lighting-lamps",
+    "seo": {
+      "metaTitle": "مصابيح LED",
+      "metaDescription": "مصابيح LED"
+    },
+    "displayOrder": 1,
+    "isActive": true,
+    "createdAt": "2026-01-06T08:00:00.000Z",
+    "updatedAt": "2026-01-06T08:00:00.000Z"
+  },
+  {
+    "id": "cat-home-lighting-lamps-halogen",
+    "companyId": "demo-company",
+    "slug": "halogen-lamps",
+    "nameAr": "مصابيح هالوجين",
+    "nameEn": "Halogen lamps",
+    "parentId": "cat-home-lighting-lamps",
+    "seo": {
+      "metaTitle": "مصابيح هالوجين",
+      "metaDescription": "مصابيح هالوجين"
+    },
+    "displayOrder": 2,
+    "isActive": true,
+    "createdAt": "2026-01-06T08:00:00.000Z",
+    "updatedAt": "2026-01-06T08:00:00.000Z"
   }
 ]

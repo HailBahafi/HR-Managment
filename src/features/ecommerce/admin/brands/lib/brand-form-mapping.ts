@@ -1,6 +1,9 @@
 import type { Brand, CreateBrandInput } from '@/features/ecommerce/domain/types/brand';
-import type { BrandFormValues } from '@/features/ecommerce/admin/brands/schemas/brand-schema';
-import { BRAND_FORM_DEFAULT_VALUES } from '@/features/ecommerce/admin/brands/schemas/brand-schema';
+import {
+  BRAND_FORM_DEFAULT_VALUES,
+  buildBrandSlug,
+  type BrandFormValues,
+} from '@/features/ecommerce/admin/brands/schemas/brand-schema';
 
 export function brandToFormValues(brand: Brand): BrandFormValues {
   return {
@@ -17,18 +20,20 @@ export function brandToFormValues(brand: Brand): BrandFormValues {
 }
 
 export function formValuesToCreateBrandInput(values: BrandFormValues, companyId: string): CreateBrandInput {
+  const slug = buildBrandSlug(values);
+
   return {
     companyId,
-    nameAr: values.nameAr,
-    nameEn: values.nameEn || undefined,
-    slug: values.slug,
-    description: values.description || undefined,
-    websiteUrl: values.websiteUrl || undefined,
-    logo: values.logoUrl
+    nameAr: values.nameAr.trim(),
+    nameEn: values.nameEn?.trim() || undefined,
+    slug,
+    description: values.description?.trim() || undefined,
+    websiteUrl: values.websiteUrl?.trim() || undefined,
+    logo: values.logoUrl?.trim()
       ? {
           id: `media-${Math.random().toString(36).slice(2, 10)}`,
-          url: values.logoUrl,
-          alt: values.nameAr,
+          url: values.logoUrl.trim(),
+          alt: values.nameAr.trim(),
           type: 'image',
           position: 0,
           isPrimary: true,
@@ -36,8 +41,8 @@ export function formValuesToCreateBrandInput(values: BrandFormValues, companyId:
       : undefined,
     isActive: values.isActive,
     seo: {
-      metaTitle: values.metaTitle || undefined,
-      metaDescription: values.metaDescription || undefined,
+      metaTitle: values.metaTitle?.trim() || undefined,
+      metaDescription: values.metaDescription?.trim() || undefined,
     },
   };
 }

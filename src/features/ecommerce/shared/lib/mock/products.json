@@ -6,9 +6,9 @@
     "slug": "pepsi-cola-330ml",
     "nameAr": "بيبسي كولا 330 مل",
     "nameEn": "Pepsi Cola 330ml",
-    "description": "مشروب غازي منعش",
+    "description": "مشروب غازي منعش — مربوط بالمستوى 4: مشروبات › غازية › كولا › كولا كلاسيك",
     "brandId": "brand-pepsi",
-    "categoryId": "cat-bev-soft",
+    "categoryId": "cat-bev-soft-cola-classic",
     "status": "active",
     "stockStatus": "in_stock",
     "inventory": {
@@ -708,6 +708,87 @@
     "tags": [],
     "createdAt": "2026-03-16T08:00:00.000Z",
     "updatedAt": "2026-03-16T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-led-bulb",
+    "companyId": "demo-company",
+    "sku": "HOME-LED-001",
+    "slug": "led-bulb-9w",
+    "nameAr": "لمبة LED 9 واط",
+    "nameEn": "LED bulb 9W",
+    "description": "مرتبطة بالمستوى الرابع: منزل › إضاءة › مصابيح › مصابيح LED",
+    "categoryId": "cat-home-lighting-lamps-led",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 80,
+      "lowStockThreshold": 10,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 12.5,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m-led-1",
+        "url": "https://images.unsplash.com/photo-1565814329452-e1efa11c5b89?w=400&q=80",
+        "alt": "لمبة LED",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "لمبة LED 9 واط",
+      "metaDescription": "مصباح LED موفر للطاقة"
+    },
+    "tags": ["home", "lighting"],
+    "createdAt": "2026-03-17T08:00:00.000Z",
+    "updatedAt": "2026-03-17T08:00:00.000Z",
+    "archivedAt": null
+  },
+  {
+    "id": "prod-zero-cola",
+    "companyId": "demo-company",
+    "sku": "BEV-ZERO-001",
+    "slug": "pepsi-zero-330ml",
+    "nameAr": "بيبسي زيرو 330 مل",
+    "nameEn": "Pepsi Zero 330ml",
+    "description": "مرتبطة بالمستوى الرابع: مشروبات › غازية › كولا › كولا زيرو",
+    "brandId": "brand-pepsi",
+    "categoryId": "cat-bev-soft-cola-zero",
+    "status": "active",
+    "stockStatus": "in_stock",
+    "inventory": {
+      "trackInventory": true,
+      "quantity": 60,
+      "lowStockThreshold": 15,
+      "allowBackorder": false
+    },
+    "price": {
+      "amount": 2.75,
+      "currency": "SAR"
+    },
+    "media": [
+      {
+        "id": "m-zero-1",
+        "url": "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&q=80",
+        "alt": "بيبسي زيرو",
+        "type": "image",
+        "position": 0,
+        "isPrimary": true
+      }
+    ],
+    "seo": {
+      "metaTitle": "بيبسي زيرو",
+      "metaDescription": "مشروب غازي بدون سكر"
+    },
+    "tags": ["beverages"],
+    "createdAt": "2026-03-17T09:00:00.000Z",
+    "updatedAt": "2026-03-17T09:00:00.000Z",
     "archivedAt": null
   }
 ]

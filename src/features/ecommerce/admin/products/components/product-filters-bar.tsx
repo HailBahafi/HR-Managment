@@ -1,10 +1,15 @@
 'use client';
 
+import * as React from 'react';
 import { PRODUCT_STATUS_OPTIONS } from '@/features/ecommerce/domain/constants/product-status';
 import { STOCK_STATUS_OPTIONS } from '@/features/ecommerce/domain/constants/stock-status';
 import type { Category } from '@/features/ecommerce/domain/types/category';
 import type { Brand } from '@/features/ecommerce/domain/types/brand';
 import type { ProductListQuery } from '@/features/ecommerce/domain/types/product';
+import {
+  categoryFilterLabel,
+  sortCategoriesAsTree,
+} from '@/features/ecommerce/admin/categories/lib/category-tree';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 const ALL_VALUE = '__all__';
@@ -57,6 +62,18 @@ type Props = {
 };
 
 export function ProductFiltersBar({ filters, onChange, categories, brands }: Props) {
+  const byId = React.useMemo(
+    () => new Map((categories ?? []).map((category) => [category.id, category])),
+    [categories],
+  );
+  const categoryOptions = React.useMemo(() => {
+    const ordered = sortCategoriesAsTree(categories ?? []);
+    return ordered.map((category) => ({
+      value: category.id,
+      labelAr: categoryFilterLabel(category, byId),
+    }));
+  }, [categories, byId]);
+
   return (
     <div className="flex flex-wrap gap-2">
       <FilterSelect
@@ -64,7 +81,7 @@ export function ProductFiltersBar({ filters, onChange, categories, brands }: Pro
         placeholder="كل التصنيفات"
         value={filters.categoryId}
         onChange={(value) => onChange({ categoryId: value })}
-        options={(categories ?? []).map((category) => ({ value: category.id, labelAr: category.nameAr }))}
+        options={categoryOptions}
       />
       <FilterSelect
         ariaLabel="العلامة التجارية"

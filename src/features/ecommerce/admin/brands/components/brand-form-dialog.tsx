@@ -83,28 +83,37 @@ export function BrandFormDialog({ brand, open, onOpenChange }: Props) {
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="brand-name-ar">اسم العلامة التجارية</Label>
+              <Label htmlFor="brand-name-ar">اسم العلامة التجارية *</Label>
               <Input id="brand-name-ar" {...form.register('nameAr')} />
               {form.formState.errors.nameAr ? (
                 <p className="text-xs text-destructive">{form.formState.errors.nameAr.message}</p>
               ) : null}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="brand-name-en">الاسم بالإنجليزية</Label>
+              <Label htmlFor="brand-name-en">الاسم بالإنجليزية (اختياري)</Label>
               <Input id="brand-name-en" dir="ltr" {...form.register('nameEn')} />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="brand-slug">الرابط المختصر (Slug)</Label>
-            <Input id="brand-slug" dir="ltr" placeholder="royal-wood" {...form.register('slug')} />
+            <Label htmlFor="brand-slug">الرابط المختصر (اختياري)</Label>
+            <Input
+              id="brand-slug"
+              dir="ltr"
+              placeholder="يُنشأ تلقائياً إن تُرك فارغاً — مثل royal-wood"
+              {...form.register('slug')}
+            />
             {form.formState.errors.slug ? (
               <p className="text-xs text-destructive">{form.formState.errors.slug.message}</p>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                للمتجر فقط. إن تركته فارغاً يُولَّد من الاسم الإنجليزي أو العربي.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="brand-description">الوصف</Label>
+            <Label htmlFor="brand-description">الوصف (اختياري)</Label>
             <Textarea id="brand-description" rows={3} {...form.register('description')} />
           </div>
 
