@@ -1,4 +1,5 @@
 import { mockWarehouseOperationsStore } from '@/features/ecommerce/shared/lib/adapters/mock-inventory-store';
+import { applyDoneOperationToStock } from '@/features/ecommerce/admin/inventory/operations/lib/apply-operation-stock';
 import type {
   CreateWarehouseOperationInput,
   UpdateWarehouseOperationInput,
@@ -72,10 +73,19 @@ export const warehouseOperationsApi: AdminWarehouseOperationsPort = {
       })
       .then(normalizeOperation);
   },
-  update(companyId, id, patch: UpdateWarehouseOperationInput) {
-    return mockWarehouseOperationsStore
-      .update(companyId, id, { ...patch, updatedAt: new Date().toISOString() })
-      .then((item) => (item ? normalizeOperation(item) : null));
+  async update(companyId, id, patch: UpdateWarehouseOperationInput) {
+    const before = await mockWarehouseOperationsStore.getById(companyId, id);
+    const updated = await mockWarehouseOperationsStore.update(companyId, id, {
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    });
+    if (!updated) return null;
+    const normalized = normalizeOperation(updated);
+    const wasDone = before ? normalizeOperation(before).status === 'done' : false;
+    if (!wasDone && normalized.status === 'done') {
+      await applyDoneOperationToStock(normalized);
+    }
+    return normalized;
   },
   remove(companyId, id) {
     return mockWarehouseOperationsStore.remove(companyId, id);

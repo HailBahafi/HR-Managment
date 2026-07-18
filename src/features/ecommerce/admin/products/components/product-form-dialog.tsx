@@ -6,6 +6,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
+import { locationStockApi } from '@/features/ecommerce/admin/orders/lib/api/location-stock';
 import { useBrands } from '@/features/ecommerce/admin/brands/hooks/use-brands';
 import { useCategories } from '@/features/ecommerce/admin/categories/hooks/use-categories';
 import { usePutawayRules } from '@/features/ecommerce/admin/inventory/putaway-rules/hooks/use-putaway-rules';
@@ -129,7 +130,20 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
 
   const onSubmit = async (values: ProductFormValues) => {
     if (!companyId) return;
-    const input = formValuesToCreateInput(ensureSlug(values), companyId, { existing: product });
+    let nextValues = ensureSlug(values);
+    if (product?.id) {
+      const onHand = await locationStockApi.getOnHandByVariant(companyId, product.id);
+      nextValues = {
+        ...nextValues,
+        stockQuantity: onHand.total,
+        variants: nextValues.variants.map((variant) => ({
+          ...variant,
+          quantity: onHand.byVariant[variant.id] ?? 0,
+          stockStatus: (onHand.byVariant[variant.id] ?? 0) > 0 ? 'in_stock' : variant.stockStatus,
+        })),
+      };
+    }
+    const input = formValuesToCreateInput(nextValues, companyId, { existing: product });
 
     if (product) {
       await update.mutateAsync({ companyId, id: product.id, patch: input });
@@ -314,13 +328,15 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
                     errors={form.formState.errors}
                     register={form.register}
                     setValue={form.setValue}
+                    productId={product?.id}
                   />
                 </TabsContent>
                 <TabsContent value="availability" className="mt-4">
                   <ProductInventoryTab
                     control={form.control}
                     errors={form.formState.errors}
-                    register={form.register}
+                    setValue={form.setValue}
+                    productId={product?.id}
                   />
                 </TabsContent>
               </Tabs>

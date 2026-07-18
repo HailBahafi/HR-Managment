@@ -30,6 +30,7 @@ type Props = {
   errors: FieldErrors<ProductFormInput>;
   register: UseFormRegister<ProductFormInput>;
   setValue: UseFormSetValue<ProductFormInput>;
+  productId?: string | null;
 };
 
 type ProductAttributeLine = ProductFormInput['attributes'][number];
@@ -84,7 +85,7 @@ function ValuePill({
   );
 }
 
-export function ProductAttributesTab({ control, errors, register, setValue }: Props) {
+export function ProductAttributesTab({ control, errors, register, setValue, productId }: Props) {
   const companyId = getStorefrontCompanyId();
   const { data: catalogData, isLoading } = useCatalogAttributes({ companyId, limit: 100 });
   const { fields, append, remove, move, update } = useFieldArray({ control, name: 'attributes' });
@@ -369,7 +370,7 @@ export function ProductAttributesTab({ control, errors, register, setValue }: Pr
       </Dialog>
 
       <div className="pt-4" id="product-variants-panel">
-        <ProductVariantsPanel control={control} register={register} setValue={setValue} />
+        <ProductVariantsPanel control={control} register={register} setValue={setValue} productId={productId} />
       </div>
     </div>
   );

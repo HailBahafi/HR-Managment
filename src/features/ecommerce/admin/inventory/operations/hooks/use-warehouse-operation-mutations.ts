@@ -50,6 +50,12 @@ export function useWarehouseOperationMutations(warehouseId: string, kind: Wareho
     }) => warehouseOperationsApi.update(companyId, id, patch),
     onSuccess: (_data, variables) => {
       invalidate(variables.companyId);
+      void queryClient.invalidateQueries({
+        queryKey: [variables.companyId, 'ecommerce', 'location-stock'],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: [variables.companyId, 'ecommerce', 'products'],
+      });
     },
     onError: (err) => {
       const { displayMessage } = handleApiError(err, 'ecommerce.warehouseOperations.update');

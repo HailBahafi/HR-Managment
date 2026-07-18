@@ -10,6 +10,8 @@ import {
 } from 'react-hook-form';
 import type { ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import { syncProductVariants } from '@/features/ecommerce/admin/products/lib/product-variants';
+import { useProductOnHand } from '@/features/ecommerce/admin/inventory/hooks/use-product-on-hand';
+import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 
@@ -17,9 +19,11 @@ type Props = {
   control: Control<ProductFormInput>;
   register: UseFormRegister<ProductFormInput>;
   setValue: UseFormSetValue<ProductFormInput>;
+  productId?: string | null;
 };
 
-export function ProductVariantsPanel({ control, register, setValue }: Props) {
+export function ProductVariantsPanel({ control, register, setValue, productId }: Props) {
+  const companyId = getStorefrontCompanyId();
   const attributes = useWatch({ control, name: 'attributes' }) ?? [];
   const nameAr = useWatch({ control, name: 'nameAr' }) ?? '';
   const sku = useWatch({ control, name: 'sku' }) ?? '';
@@ -27,6 +31,7 @@ export function ProductVariantsPanel({ control, register, setValue }: Props) {
   const costPrice = Number(useWatch({ control, name: 'costPrice' }) ?? 0);
   const variantsWatch = useWatch({ control, name: 'variants' }) ?? [];
   const { fields, replace } = useFieldArray({ control, name: 'variants' });
+  const { data: onHand } = useProductOnHand(companyId, productId ?? undefined);
 
   const signature = React.useMemo(
     () =>
@@ -111,7 +116,7 @@ export function ProductVariantsPanel({ control, register, setValue }: Props) {
       <div>
         <p className="text-sm font-semibold text-foreground">متغيرات المنتج</p>
         <p className="text-xs text-muted-foreground">
-          كل متغير له سعر بيع وشراء وكمية خاصة — نفس البيانات في المتجر والمخزن.
+          سعر البيع والشراء قابلان للتعديل. الكمية تُحسب من مخزون المستودع بعد تصديق الحركات.
         </p>
       </div>
 
@@ -181,11 +186,16 @@ export function ProductVariantsPanel({ control, register, setValue }: Props) {
                   <td className="px-3 py-2.5 align-middle">
                     <Input
                       type="number"
-                      min={0}
-                      step={1}
                       dir="ltr"
-                      className="h-8 w-20"
-                      {...register(`variants.${index}.quantity`, { valueAsNumber: true })}
+                      className="h-8 w-20 bg-muted/40"
+                      value={
+                        productId && onHand
+                          ? (onHand.byVariant[variantsWatch[index]?.id ?? ''] ?? 0)
+                          : Number(variantsWatch[index]?.quantity ?? 0)
+                      }
+                      readOnly
+                      disabled
+                      title="من مخزون المستودع"
                     />
                   </td>
                   <td className="px-3 py-2.5 align-middle">
