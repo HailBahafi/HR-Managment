@@ -63,9 +63,30 @@ const uomLineSchema = z.object({
   packagingType: z.enum(['unit', 'pack', 'box', 'pallet', 'other']),
 });
 
+const variantSchema = z.object({
+  id: z.string(),
+  combinationKey: z.string(),
+  sku: z.string().trim().min(1),
+  nameAr: z.string().trim().min(1),
+  attributeValueIds: z.array(z.string()),
+  attributeLabels: z.array(
+    z.object({
+      attributeNameAr: z.string(),
+      valueNameAr: z.string(),
+      colorHex: z.string().optional(),
+    }),
+  ),
+  salePrice: z.coerce.number().min(0),
+  costPrice: z.coerce.number().min(0),
+  quantity: z.coerce.number().int().min(0),
+  stockStatus: z.enum(['in_stock', 'out_of_stock', 'preorder', 'discontinued']),
+  barcode: z.string().trim().optional(),
+  isActive: z.boolean(),
+});
+
 export const productFormSchema = z
   .object({
-    sku: z.string().trim().min(1, 'رمز المنتج (SKU) مطلوب'),
+    sku: z.string().trim(),
     nameAr: z.string().trim().min(1, 'اسم المنتج مطلوب'),
     nameEn: z.string().trim().optional(),
     slug: z
@@ -102,6 +123,7 @@ export const productFormSchema = z
     posAvailable: z.boolean(),
     saleOk: z.boolean(),
     attributes: z.array(attributeSchema),
+    variants: z.array(variantSchema),
     uomLines: z.array(uomLineSchema).min(1, 'أضف وحدة واحدة على الأقل'),
   })
   .superRefine((values, ctx) => {
@@ -161,5 +183,6 @@ export const PRODUCT_FORM_DEFAULT_VALUES: ProductFormInput = {
   posAvailable: false,
   saleOk: true,
   attributes: [],
+  variants: [],
   uomLines: createDefaultUomLines(),
 };

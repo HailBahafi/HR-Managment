@@ -30,6 +30,25 @@ export type StorefrontProduct = {
   tags: string[];
   metaTitle: string;
   metaDescription: string;
+  /** Attribute lines for variant pickers (when product has variants). */
+  attributes: Array<{
+    id: string;
+    nameAr: string;
+    displayType: string;
+    values: Array<{ id: string; nameAr: string; colorHex?: string; imageUrl?: string }>;
+  }>;
+  variants: Array<{
+    id: string;
+    combinationKey: string;
+    sku: string;
+    nameAr: string;
+    attributeValueIds: string[];
+    attributeLabels: Array<{ attributeNameAr: string; valueNameAr: string; colorHex?: string }>;
+    price: Money;
+    quantity: number;
+    stockStatus: StockStatus;
+    isActive: boolean;
+  }>;
 };
 
 export type StorefrontCategory = {

@@ -7,6 +7,6 @@ export function useWarehouseOperations(query: WarehouseOperationListQuery) {
   return useQuery({
     queryKey: warehouseOperationsQueryKeys.list(query),
     queryFn: () => warehouseOperationsApi.getAll(query),
-    enabled: Boolean(query.companyId && query.warehouseId && query.kind),
+    enabled: Boolean(query.companyId && (query.warehouseId || query.productId)),
   });
 }

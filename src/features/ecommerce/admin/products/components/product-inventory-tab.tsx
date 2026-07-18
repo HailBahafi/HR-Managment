@@ -1,6 +1,6 @@
 'use client';
 
-import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
+import { Controller, useWatch, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 import { STOCK_STATUS_OPTIONS, type ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import { EntityFormRow } from '@/features/ecommerce/admin/shared/components/entity-form-row';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,16 @@ type Props = {
 };
 
 export function ProductInventoryTab({ control, errors, register }: Props) {
+  const variants = useWatch({ control, name: 'variants' }) ?? [];
+  const hasVariants = variants.length > 0;
+
   return (
     <div className="space-y-1">
+      {hasVariants ? (
+        <p className="mb-3 rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          هذا المنتج له متغيرات — الكمية وسعر كل متغير تُدار من تبويب الخصائص والمتغيرات. الكمية أدناه مجموع العرض فقط.
+        </p>
+      ) : null}
       <EntityFormRow label="كمية العرض" htmlFor="product-stock">
         <Input id="product-stock" type="number" min={0} dir="ltr" className="max-w-[8rem]" {...register('stockQuantity')} />
         {errors.stockQuantity ? <p className="mt-1 text-xs text-destructive">{errors.stockQuantity.message}</p> : null}

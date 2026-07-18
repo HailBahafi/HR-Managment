@@ -24,10 +24,29 @@ export function StoreCartClient() {
 
   const productById = new Map((products ?? []).map((product) => [product.id, product]));
   const cartLines = lines
-    .map((line) => ({ line, product: productById.get(line.productId) }))
-    .filter((entry): entry is { line: (typeof lines)[number]; product: StorefrontProduct } => Boolean(entry.product));
+    .map((line) => {
+      const product = productById.get(line.productId);
+      if (!product) return null;
+      const variant = line.variantId
+        ? product.variants.find((item) => item.id === line.variantId)
+        : undefined;
+      const unitPrice = variant?.price ?? product.price;
+      const lineName = variant ? variant.nameAr : product.name;
+      return { line, product, variant, unitPrice, lineName };
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        line: (typeof lines)[number];
+        product: StorefrontProduct;
+        variant: StorefrontProduct['variants'][number] | undefined;
+        unitPrice: StorefrontProduct['price'];
+        lineName: string;
+      } => Boolean(entry),
+    );
 
-  const total = cartLines.reduce((sum, { line, product }) => sum + product.price.amount * line.quantity, 0);
+  const total = cartLines.reduce((sum, { line, unitPrice }) => sum + unitPrice.amount * line.quantity, 0);
 
   function formatPrice(amount: number, currency: string) {
     return format.number(amount, { style: 'currency', currency });
@@ -58,11 +77,12 @@ export function StoreCartClient() {
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
       <ul className="flex flex-col gap-4">
-        {cartLines.map(({ line, product }) => {
+        {cartLines.map(({ line, product, unitPrice, lineName, variant }) => {
           const display = buildProductDisplay(product);
-          const showCompare = hasProductDeal(product);
+          const showCompare = !variant && hasProductDeal(product);
+          const rowKey = line.variantId ? `${product.id}::${line.variantId}` : product.id;
           return (
-            <li key={product.id} className="flex gap-4 rounded-xl border border-border bg-card p-4">
+            <li key={rowKey} className="flex gap-4 rounded-xl border border-border bg-card p-4">
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
                 {display.imageUrl ? (
                   <Image src={display.imageUrl} alt={display.imageAlt} fill unoptimized sizes="80px" className="object-contain p-1" />
@@ -74,10 +94,28 @@ export function StoreCartClient() {
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <Link href={`/store/products/${product.slug}`} prefetch={false} className="font-medium text-foreground hover:text-primary">
-                  {product.name}
+                  {lineName}
                 </Link>
+                {variant ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {variant.attributeLabels.map((label) => (
+                      <span
+                        key={`${label.attributeNameAr}-${label.valueNameAr}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
+                      >
+                        {label.colorHex ? (
+                          <span
+                            className="h-2 w-2 rounded-full border border-border"
+                            style={{ backgroundColor: label.colorHex }}
+                          />
+                        ) : null}
+                        {label.valueNameAr}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 <ProductPrice
-                  price={formatPrice(product.price.amount, product.price.currency)}
+                  price={formatPrice(unitPrice.amount, unitPrice.currency)}
                   compareAtPrice={
                     showCompare && product.compareAtPrice
                       ? formatPrice(product.compareAtPrice.amount, product.compareAtPrice.currency)
@@ -89,11 +127,11 @@ export function StoreCartClient() {
                   <span className="text-xs text-muted-foreground">{t('cart.quantity')}</span>
                   <QuantitySelector
                     value={line.quantity}
-                    onChange={(quantity) => setQuantity(product.id, quantity)}
+                    onChange={(quantity) => setQuantity(product.id, quantity, line.variantId)}
                   />
                   <button
                     type="button"
-                    onClick={() => removeItem(product.id)}
+                    onClick={() => removeItem(product.id, line.variantId)}
                     className="ms-auto inline-flex items-center gap-1 text-xs text-destructive hover:underline"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />

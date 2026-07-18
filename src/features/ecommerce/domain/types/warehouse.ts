@@ -92,6 +92,10 @@ export type WarehouseOperationLine = {
   id: string;
   productName: string;
   sku?: string;
+  /** Links the line to catalog product for product-scoped movement lists. */
+  productId?: string;
+  /** Links the line to a sellable variant when applicable. */
+  variantId?: string;
   quantity: number;
   fromLocationId?: string;
   toLocationId?: string;
@@ -113,8 +117,10 @@ export type WarehouseOperation = TenantScoped & {
 
 export type WarehouseOperationListQuery = {
   companyId: string;
-  warehouseId: string;
-  kind: WarehouseOperationKind;
+  /** When omitted, returns operations across warehouses (product-scoped lists). */
+  warehouseId?: string;
+  kind?: WarehouseOperationKind;
+  productId?: string;
   search?: string;
   page?: number;
   limit?: number;

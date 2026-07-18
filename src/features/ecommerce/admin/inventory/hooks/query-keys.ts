@@ -18,8 +18,11 @@ export const warehouseLocationsQueryKeys = {
 };
 
 export const warehouseOperationsQueryKeys = {
+  root: (companyId: string) => [companyId, 'ecommerce', 'warehouse-operations'] as const,
   all: (companyId: string, warehouseId: string, kind: WarehouseOperationKind) =>
-    [companyId, 'ecommerce', 'warehouse-operations', warehouseId, kind] as const,
+    [...warehouseOperationsQueryKeys.root(companyId), warehouseId, kind] as const,
   list: (query: WarehouseOperationListQuery) =>
-    [...warehouseOperationsQueryKeys.all(query.companyId, query.warehouseId, query.kind), 'list', query] as const,
+    [...warehouseOperationsQueryKeys.root(query.companyId), 'list', query] as const,
+  byProduct: (companyId: string, productId: string, kind?: WarehouseOperationKind) =>
+    [...warehouseOperationsQueryKeys.root(companyId), 'by-product', productId, kind ?? 'all'] as const,
 };

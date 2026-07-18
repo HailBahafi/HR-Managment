@@ -22,7 +22,7 @@ export function useWarehouseOperationMutations(warehouseId: string, kind: Wareho
 
   function invalidate(companyId: string) {
     void queryClient.invalidateQueries({
-      queryKey: warehouseOperationsQueryKeys.all(companyId, warehouseId, kind),
+      queryKey: warehouseOperationsQueryKeys.root(companyId),
     });
   }
 

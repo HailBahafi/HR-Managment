@@ -62,6 +62,28 @@ export type ProductUomLine = {
   packagingType: PackagingType;
 };
 
+/**
+ * Sellable / stockable unit generated from attribute combinations.
+ * When a product has variants, price and quantity live here (warehouse + storefront).
+ */
+export type ProductVariant = {
+  id: string;
+  /** Stable key from sorted attribute value ids (e.g. `val-red|val-m`). */
+  combinationKey: string;
+  sku: string;
+  nameAr: string;
+  /** One value id per attribute that creates variants. */
+  attributeValueIds: string[];
+  /** Display labels parallel to attributeValueIds for admin/storefront pills. */
+  attributeLabels: Array<{ attributeNameAr: string; valueNameAr: string; colorHex?: string }>;
+  salePrice: Money;
+  costPrice: Money;
+  quantity: number;
+  stockStatus: StockStatus;
+  barcode?: string;
+  isActive: boolean;
+};
+
 export type Product = TenantScoped &
   Slugged & {
     id: string;
@@ -93,6 +115,8 @@ export type Product = TenantScoped &
     posAvailable?: boolean;
     saleOk?: boolean;
     attributes?: ProductAttribute[];
+    /** Generated sellable variants — empty when product has no variant-creating attributes. */
+    variants?: ProductVariant[];
     uomLines?: ProductUomLine[];
     createdAt: string;
     updatedAt: string;

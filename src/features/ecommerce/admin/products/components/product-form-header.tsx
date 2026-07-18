@@ -18,6 +18,7 @@ type Props = {
   setValue: UseFormSetValue<ProductFormInput>;
   nameError?: string;
   relatedDocs?: ProductRelatedDocChip[];
+  relatedDocsActiveKey?: ProductRelatedDocKey | null;
   onRelatedDocSelect?: (key: ProductRelatedDocKey) => void;
 };
 
@@ -27,6 +28,7 @@ export function ProductFormHeader({
   setValue,
   nameError,
   relatedDocs,
+  relatedDocsActiveKey,
   onRelatedDocSelect,
 }: Props) {
   const { fields, append, update } = useFieldArray({ control, name: 'media' });
@@ -106,6 +108,7 @@ export function ProductFormHeader({
         <ProductRelatedDocsBar
           className="shrink-0 justify-center lg:justify-end"
           chips={relatedDocs}
+          activeKey={relatedDocsActiveKey}
           onSelect={onRelatedDocSelect}
         />
       ) : null}

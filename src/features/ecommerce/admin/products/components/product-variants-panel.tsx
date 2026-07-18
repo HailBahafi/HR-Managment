@@ -1,0 +1,208 @@
+'use client';
+
+import * as React from 'react';
+import {
+  useFieldArray,
+  useWatch,
+  type Control,
+  type UseFormRegister,
+  type UseFormSetValue,
+} from 'react-hook-form';
+import type { ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
+import { syncProductVariants } from '@/features/ecommerce/admin/products/lib/product-variants';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+
+type Props = {
+  control: Control<ProductFormInput>;
+  register: UseFormRegister<ProductFormInput>;
+  setValue: UseFormSetValue<ProductFormInput>;
+};
+
+export function ProductVariantsPanel({ control, register, setValue }: Props) {
+  const attributes = useWatch({ control, name: 'attributes' }) ?? [];
+  const nameAr = useWatch({ control, name: 'nameAr' }) ?? '';
+  const sku = useWatch({ control, name: 'sku' }) ?? '';
+  const listPrice = Number(useWatch({ control, name: 'listPrice' }) ?? 0);
+  const costPrice = Number(useWatch({ control, name: 'costPrice' }) ?? 0);
+  const variantsWatch = useWatch({ control, name: 'variants' }) ?? [];
+  const { fields, replace } = useFieldArray({ control, name: 'variants' });
+
+  const signature = React.useMemo(
+    () =>
+      JSON.stringify({
+        nameAr,
+        sku,
+        listPrice,
+        costPrice,
+        attributes: attributes.map((attribute) => ({
+          id: attribute.id,
+          createVariant: attribute.createVariant,
+          values: attribute.values.map((value) => ({
+            id: value.id,
+            nameAr: value.nameAr,
+            colorHex: value.colorHex,
+            defaultExtraPrice: value.defaultExtraPrice,
+          })),
+        })),
+      }),
+    [attributes, nameAr, sku, listPrice, costPrice],
+  );
+
+  React.useEffect(() => {
+    const next = syncProductVariants({
+      productNameAr: nameAr,
+      productSku: sku,
+      listPrice,
+      costPrice,
+      attributes: attributes as Parameters<typeof syncProductVariants>[0]['attributes'],
+      existing: variantsWatch.map((variant) => ({
+        id: variant.id,
+        combinationKey: variant.combinationKey,
+        sku: variant.sku,
+        nameAr: variant.nameAr,
+        attributeValueIds: variant.attributeValueIds,
+        attributeLabels: variant.attributeLabels,
+        salePrice: { amount: Number(variant.salePrice) || 0, currency: 'SAR' },
+        costPrice: { amount: Number(variant.costPrice) || 0, currency: 'SAR' },
+        quantity: Number(variant.quantity) || 0,
+        stockStatus: variant.stockStatus,
+        barcode: variant.barcode,
+        isActive: variant.isActive,
+      })),
+    }).map((variant) => ({
+      id: variant.id,
+      combinationKey: variant.combinationKey,
+      sku: variant.sku,
+      nameAr: variant.nameAr,
+      attributeValueIds: variant.attributeValueIds,
+      attributeLabels: variant.attributeLabels,
+      salePrice: variant.salePrice.amount,
+      costPrice: variant.costPrice.amount,
+      quantity: variant.quantity,
+      stockStatus: variant.stockStatus,
+      barcode: variant.barcode ?? '',
+      isActive: variant.isActive,
+    }));
+
+    const currentKey = JSON.stringify(
+      variantsWatch.map((v) => [v.combinationKey, v.attributeLabels?.map((l) => l.valueNameAr)]),
+    );
+    const nextKey = JSON.stringify(
+      next.map((v) => [v.combinationKey, v.attributeLabels.map((l) => l.valueNameAr)]),
+    );
+    if (currentKey !== nextKey) {
+      replace(next);
+      setValue('variants', next, { shouldDirty: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, replace, setValue]);
+
+  if (fields.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        عند ربط خصائص تُنشئ متغيرات، تظهر هنا صفوف لكل تركيبة — بسعر وكمية منفصلة لكل متغير (متجر + مخزن).
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="text-sm font-semibold text-foreground">متغيرات المنتج</p>
+        <p className="text-xs text-muted-foreground">
+          كل متغير له سعر بيع وشراء وكمية خاصة — نفس البيانات في المتجر والمخزن.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/30 text-muted-foreground">
+              <th className="px-3 py-2.5 text-start font-medium">الاسم</th>
+              <th className="px-3 py-2.5 text-start font-medium">الخصائص</th>
+              <th className="px-3 py-2.5 text-start font-medium">سعر البيع</th>
+              <th className="px-3 py-2.5 text-start font-medium">التكلفة</th>
+              <th className="px-3 py-2.5 text-start font-medium">الكمية</th>
+              <th className="px-3 py-2.5 text-start font-medium">مفعّل</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fields.map((field, index) => {
+              const labels = variantsWatch[index]?.attributeLabels ?? field.attributeLabels;
+              return (
+                <tr key={field.id} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2.5 align-middle">
+                    <div className="font-medium text-foreground">
+                      {variantsWatch[index]?.nameAr ?? field.nameAr}
+                    </div>
+                    <div className="text-xs text-muted-foreground" dir="ltr">
+                      {variantsWatch[index]?.sku ?? field.sku}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 align-middle">
+                    <div className="flex flex-wrap gap-1.5">
+                      {labels.map((label) => (
+                        <span
+                          key={`${label.attributeNameAr}-${label.valueNameAr}`}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 text-xs"
+                        >
+                          {label.colorHex ? (
+                            <span
+                              className="h-2.5 w-2.5 rounded-full border border-border"
+                              style={{ backgroundColor: label.colorHex }}
+                            />
+                          ) : null}
+                          {label.valueNameAr}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 align-middle">
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      dir="ltr"
+                      className="h-8 w-24"
+                      {...register(`variants.${index}.salePrice`, { valueAsNumber: true })}
+                    />
+                  </td>
+                  <td className="px-3 py-2.5 align-middle">
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      dir="ltr"
+                      className="h-8 w-24"
+                      {...register(`variants.${index}.costPrice`, { valueAsNumber: true })}
+                    />
+                  </td>
+                  <td className="px-3 py-2.5 align-middle">
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      dir="ltr"
+                      className="h-8 w-20"
+                      {...register(`variants.${index}.quantity`, { valueAsNumber: true })}
+                    />
+                  </td>
+                  <td className="px-3 py-2.5 align-middle">
+                    <Switch
+                      checked={Boolean(variantsWatch[index]?.isActive ?? field.isActive)}
+                      onCheckedChange={(checked) =>
+                        setValue(`variants.${index}.isActive`, checked, { shouldDirty: true })
+                      }
+                      aria-label="تفعيل المتغير"
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

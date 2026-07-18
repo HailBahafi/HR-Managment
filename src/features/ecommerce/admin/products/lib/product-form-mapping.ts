@@ -1,4 +1,4 @@
-import type { CreateProductInput, Product } from '@/features/ecommerce/domain/types/product';
+import type { CreateProductInput, Product, ProductVariant } from '@/features/ecommerce/domain/types/product';
 import type { MediaItem } from '@/features/ecommerce/domain/types/common';
 import { normalizeAttributeValue } from '@/features/ecommerce/domain/types/catalog-attribute';
 import type { ProductFormInput, ProductFormValues } from '@/features/ecommerce/admin/products/schemas/product-schema';
@@ -6,6 +6,10 @@ import {
   createDefaultUomLines,
   PRODUCT_FORM_DEFAULT_VALUES,
 } from '@/features/ecommerce/admin/products/schemas/product-schema';
+import {
+  syncProductVariants,
+  totalVariantQuantity,
+} from '@/features/ecommerce/admin/products/lib/product-variants';
 
 function parseTagsInput(tagsInput: string | undefined): string[] | undefined {
   const tags = (tagsInput ?? '')
@@ -17,6 +21,49 @@ function parseTagsInput(tagsInput: string | undefined): string[] | undefined {
 
 function formatTagsForInput(tags: string[] | undefined): string {
   return tags?.join(', ') ?? '';
+}
+
+function variantToForm(variant: ProductVariant) {
+  return {
+    id: variant.id,
+    combinationKey: variant.combinationKey,
+    sku: variant.sku,
+    nameAr: variant.nameAr,
+    attributeValueIds: variant.attributeValueIds,
+    attributeLabels: variant.attributeLabels,
+    salePrice: variant.salePrice.amount,
+    costPrice: variant.costPrice.amount,
+    quantity: variant.quantity,
+    stockStatus: variant.stockStatus,
+    barcode: variant.barcode ?? '',
+    isActive: variant.isActive,
+  };
+}
+
+function formVariantToDomain(
+  variant: ProductFormValues['variants'][number],
+  currency: string,
+): ProductVariant {
+  const quantity = variant.quantity;
+  return {
+    id: variant.id,
+    combinationKey: variant.combinationKey,
+    sku: variant.sku,
+    nameAr: variant.nameAr,
+    attributeValueIds: variant.attributeValueIds,
+    attributeLabels: variant.attributeLabels,
+    salePrice: { amount: variant.salePrice, currency },
+    costPrice: { amount: variant.costPrice, currency },
+    quantity,
+    stockStatus:
+      variant.stockStatus === 'preorder' || variant.stockStatus === 'discontinued'
+        ? variant.stockStatus
+        : quantity > 0
+          ? 'in_stock'
+          : 'out_of_stock',
+    barcode: variant.barcode || undefined,
+    isActive: variant.isActive,
+  };
 }
 
 /** Maps an existing product into form values for the edit dialog. */
@@ -54,6 +101,7 @@ export function productToFormValues(product: Product): ProductFormInput {
         normalizeAttributeValue(value, attribute.displayType),
       ),
     })),
+    variants: (product.variants ?? []).map(variantToForm),
     uomLines:
       product.uomLines && product.uomLines.length > 0
         ? product.uomLines
@@ -85,6 +133,31 @@ export function formValuesToCreateInput(
   const existing = options?.existing;
   const currency = existing?.price.currency ?? 'SAR';
 
+  const synced = syncProductVariants({
+    productNameAr: values.nameAr,
+    productSku: values.sku,
+    listPrice: values.listPrice,
+    costPrice: values.costPrice,
+    currency,
+    attributes: values.attributes,
+    existing: values.variants.map((variant) => formVariantToDomain(variant, currency)),
+    defaultStockStatus: values.stockStatus,
+  }).map((variant) => {
+    const formRow = values.variants.find((row) => row.combinationKey === variant.combinationKey);
+    if (!formRow) return variant;
+    return formVariantToDomain(formRow, currency);
+  });
+
+  const hasVariants = synced.length > 0;
+  const quantity = hasVariants ? totalVariantQuantity(synced) : values.stockQuantity;
+  const stockStatus = hasVariants
+    ? synced.some((variant) => variant.isActive && variant.stockStatus === 'in_stock')
+      ? 'in_stock'
+      : synced.some((variant) => variant.isActive && variant.stockStatus === 'preorder')
+        ? 'preorder'
+        : 'out_of_stock'
+    : values.stockStatus;
+
   return {
     companyId,
     sku: values.sku,
@@ -95,10 +168,10 @@ export function formValuesToCreateInput(
     categoryId: values.categoryId ?? null,
     brandId: values.brandId ?? null,
     status: values.status,
-    stockStatus: values.stockStatus,
+    stockStatus,
     inventory: {
       trackInventory: values.trackInventory,
-      quantity: values.stockQuantity,
+      quantity,
       lowStockThreshold: 5,
       allowBackorder: values.allowBackorder,
     },
@@ -118,6 +191,7 @@ export function formValuesToCreateInput(
     posAvailable: values.posAvailable,
     saleOk: values.saleOk,
     attributes: values.attributes,
+    variants: synced,
     uomLines: values.uomLines.map((line) => ({
       ...line,
       uneceCode: line.uneceCode || undefined,

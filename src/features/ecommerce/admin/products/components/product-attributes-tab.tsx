@@ -2,10 +2,11 @@
 
 import * as React from 'react';
 import { GripVertical, Trash2 } from 'lucide-react';
-import { useFieldArray, useWatch, type Control, type FieldErrors } from 'react-hook-form';
+import { useFieldArray, useWatch, type Control, type FieldErrors, type UseFormRegister, type UseFormSetValue } from 'react-hook-form';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useCatalogAttributes } from '@/features/ecommerce/admin/attributes/hooks/use-catalog-attributes';
 import type { ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
+import { ProductVariantsPanel } from '@/features/ecommerce/admin/products/components/product-variants-panel';
 import {
   normalizeAttributeValue,
   type CatalogAttribute,
@@ -27,6 +28,8 @@ import { cn } from '@/shared/utils';
 type Props = {
   control: Control<ProductFormInput>;
   errors: FieldErrors<ProductFormInput>;
+  register: UseFormRegister<ProductFormInput>;
+  setValue: UseFormSetValue<ProductFormInput>;
 };
 
 type ProductAttributeLine = ProductFormInput['attributes'][number];
@@ -81,7 +84,7 @@ function ValuePill({
   );
 }
 
-export function ProductAttributesTab({ control, errors }: Props) {
+export function ProductAttributesTab({ control, errors, register, setValue }: Props) {
   const companyId = getStorefrontCompanyId();
   const { data: catalogData, isLoading } = useCatalogAttributes({ companyId, limit: 100 });
   const { fields, append, remove, move, update } = useFieldArray({ control, name: 'attributes' });
@@ -364,6 +367,10 @@ export function ProductAttributesTab({ control, errors }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <div className="pt-4" id="product-variants-panel">
+        <ProductVariantsPanel control={control} register={register} setValue={setValue} />
+      </div>
     </div>
   );
 }

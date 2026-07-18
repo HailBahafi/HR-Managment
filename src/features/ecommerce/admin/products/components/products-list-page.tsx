@@ -213,6 +213,7 @@ export function ProductsListPage() {
         keyExtractor={(product) => product.id}
         loading={isLoading}
         emptyText="لا توجد منتجات بعد."
+        onRowClick={openEditDialog}
       />
 
       {data ? (

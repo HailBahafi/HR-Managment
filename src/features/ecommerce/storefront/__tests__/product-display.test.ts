@@ -22,6 +22,8 @@ function makeProduct(overrides: Partial<StorefrontProduct> = {}): StorefrontProd
     tags: [],
     metaTitle: 'Test',
     metaDescription: 'Test',
+    attributes: [],
+    variants: [],
     ...overrides,
   };
 }

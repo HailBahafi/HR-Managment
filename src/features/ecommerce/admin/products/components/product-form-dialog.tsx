@@ -2,13 +2,14 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useBrands } from '@/features/ecommerce/admin/brands/hooks/use-brands';
 import { useCategories } from '@/features/ecommerce/admin/categories/hooks/use-categories';
 import { usePutawayRules } from '@/features/ecommerce/admin/inventory/putaway-rules/hooks/use-putaway-rules';
+import { useWarehouseOperations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operations';
 import { useProductMutations } from '@/features/ecommerce/admin/products/hooks/use-product-mutations';
 import {
   PRODUCT_FORM_DEFAULT_VALUES,
@@ -24,9 +25,12 @@ import { ProductFormHeader } from '@/features/ecommerce/admin/products/component
 import { ProductGeneralTab } from '@/features/ecommerce/admin/products/components/product-general-tab';
 import { ProductAttributesTab } from '@/features/ecommerce/admin/products/components/product-attributes-tab';
 import { ProductInventoryTab } from '@/features/ecommerce/admin/products/components/product-inventory-tab';
+import { ProductStockMoveRequestDialog } from '@/features/ecommerce/admin/products/components/product-stock-move-request-dialog';
+import { ProductStockMovesListDialog } from '@/features/ecommerce/admin/products/components/product-stock-moves-list-dialog';
 import type { ProductRelatedDocKey } from '@/features/ecommerce/admin/products/components/product-related-docs-bar';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { Product } from '@/features/ecommerce/domain/types/product';
+import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -59,6 +63,7 @@ const TAB_TRIGGER_CLASS =
   'rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none';
 
 type FormTab = 'general' | 'attributes' | 'availability';
+type MoveRequestKind = WarehouseOperationKind;
 
 export function ProductFormDialog({ product, open, onOpenChange }: Props) {
   const companyId = getStorefrontCompanyId();
@@ -69,20 +74,49 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
     { companyId, productId: product?.id, limit: 1 },
     { enabled: Boolean(product?.id) },
   );
+  const { data: receiptsData } = useWarehouseOperations({
+    companyId,
+    productId: product?.id,
+    kind: 'receipt',
+    limit: 100,
+  });
+  const { data: issuesData } = useWarehouseOperations({
+    companyId,
+    productId: product?.id,
+    kind: 'issue',
+    limit: 100,
+  });
+  const { data: internalsData } = useWarehouseOperations({
+    companyId,
+    productId: product?.id,
+    kind: 'internal',
+    limit: 100,
+  });
   const { create, update } = useProductMutations();
   const isEditing = Boolean(product);
   const isSaving = create.isPending || update.isPending;
   const [activeTab, setActiveTab] = React.useState<FormTab>('general');
+  const [activeRelatedDoc, setActiveRelatedDoc] = React.useState<ProductRelatedDocKey | null>(null);
+  const [moveRequestKind, setMoveRequestKind] = React.useState<MoveRequestKind | null>(null);
+  const [movesListKind, setMovesListKind] = React.useState<MoveRequestKind | null>(null);
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productFormSchema),
     defaultValues: PRODUCT_FORM_DEFAULT_VALUES,
   });
 
+  const variants = useWatch({ control: form.control, name: 'variants' }) ?? [];
+  const variantsCount = variants.length;
+  const nameAr = useWatch({ control: form.control, name: 'nameAr' }) ?? '';
+  const sku = useWatch({ control: form.control, name: 'sku' }) ?? '';
+
   React.useEffect(() => {
     if (!open) return;
     form.reset(product ? productToFormValues(product) : PRODUCT_FORM_DEFAULT_VALUES);
     setActiveTab('general');
+    setActiveRelatedDoc(null);
+    setMoveRequestKind(null);
+    setMovesListKind(null);
   }, [open, product, form]);
 
   const onSubmit = async (values: ProductFormValues) => {
@@ -97,98 +131,240 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
     onOpenChange(false);
   };
 
+  function requireSavedProduct(actionLabel: string): boolean {
+    if (product?.id) return true;
+    toast.message(`احفظ المنتج أولًا ثم ${actionLabel}.`);
+    return false;
+  }
+
   function onRelatedDoc(key: ProductRelatedDocKey) {
-    if (key !== 'putaway') return;
-    if (!product?.id) {
-      toast.message('احفظ المنتج أولًا ثم افتح قواعد التخزين.');
+    if (key === 'variants') {
+      setActiveTab('attributes');
+      setActiveRelatedDoc('variants');
+      requestAnimationFrame(() => {
+        document.getElementById('product-variants-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
       return;
     }
+    if (key === 'replenish') {
+      if (!requireSavedProduct('أنشئ طلب تجديد المخزون')) return;
+      setActiveRelatedDoc('replenish');
+      setMoveRequestKind('receipt');
+      return;
+    }
+    if (key === 'receipts') {
+      if (!requireSavedProduct('تعرض الإدخالات')) return;
+      setActiveRelatedDoc('receipts');
+      setMovesListKind('receipt');
+      return;
+    }
+    if (key === 'issues') {
+      if (!requireSavedProduct('تعرض الإخراجات')) return;
+      setActiveRelatedDoc('issues');
+      setMovesListKind('issue');
+      return;
+    }
+    if (key === 'internals') {
+      if (!requireSavedProduct('تعرض الحركات الداخلية')) return;
+      setActiveRelatedDoc('internals');
+      setMovesListKind('internal');
+      return;
+    }
+    if (key !== 'putaway') return;
+    if (!requireSavedProduct('تفتح قواعد التخزين')) return;
     onOpenChange(false);
-    router.push(`${ecommerceAdminRoutes.putawayRules}?productId=${product.id}`);
+    router.push(`${ecommerceAdminRoutes.putawayRules}?productId=${product!.id}`);
   }
 
   const putawayCount = product?.id ? (putawayData?.pagination.total ?? putawayData?.items.length ?? 0) : 0;
+  const receiptsCount = product?.id ? (receiptsData?.pagination.total ?? receiptsData?.items.length ?? 0) : 0;
+  const issuesCount = product?.id ? (issuesData?.pagination.total ?? issuesData?.items.length ?? 0) : 0;
+  const internalsCount = product?.id
+    ? (internalsData?.pagination.total ?? internalsData?.items.length ?? 0)
+    : 0;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(dialogShellContentClass, 'max-w-4xl sm:max-w-4xl')}>
-        <div className={dialogShellHeaderClass}>
-          <DialogTitle className="text-base font-semibold">
-            {isEditing ? 'تعديل المنتج' : 'منتج جديد'}
-          </DialogTitle>
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void form.handleSubmit(onSubmit)(e);
-          }}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <div className={cn(dialogShellBodyClass, 'space-y-5')}>
-            <ProductFormHeader
-              control={form.control}
-              register={form.register}
-              setValue={form.setValue}
-              nameError={form.formState.errors.nameAr?.message}
-              onRelatedDocSelect={onRelatedDoc}
-              relatedDocs={[
-                {
-                  key: 'putaway',
-                  label: 'قواعد التخزين',
-                  count: putawayCount,
-                  hint: product?.id
-                    ? 'فتح قائمة قواعد التخزين لهذا المنتج'
-                    : 'احفظ المنتج أولًا لإضافة قواعد التخزين',
-                },
-              ]}
-            />
-
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as FormTab)}
-              className="w-full"
-            >
-              <TabsList className="h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
-                <TabsTrigger value="general" className={TAB_TRIGGER_CLASS}>
-                  المعلومات العامة
-                </TabsTrigger>
-                <TabsTrigger value="attributes" className={TAB_TRIGGER_CLASS}>
-                  الخصائص والمتغيرات
-                </TabsTrigger>
-                <TabsTrigger value="availability" className={TAB_TRIGGER_CLASS}>
-                  التوفر
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="general" className="mt-4">
-                <ProductGeneralTab
-                  control={form.control}
-                  errors={form.formState.errors}
-                  register={form.register}
-                  categories={categoriesData?.items}
-                  brands={brandsData?.items}
-                />
-              </TabsContent>
-              <TabsContent value="attributes" className="mt-4">
-                <ProductAttributesTab control={form.control} errors={form.formState.errors} />
-              </TabsContent>
-              <TabsContent value="availability" className="mt-4">
-                <ProductInventoryTab control={form.control} errors={form.formState.errors} register={form.register} />
-              </TabsContent>
-            </Tabs>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className={cn(dialogShellContentClass, 'max-w-4xl sm:max-w-4xl')}>
+          <div className={dialogShellHeaderClass}>
+            <DialogTitle className="text-base font-semibold">
+              {isEditing ? 'تعديل المنتج' : 'منتج جديد'}
+            </DialogTitle>
           </div>
 
-          <DialogFooter className="shrink-0 gap-2 border-t border-border px-6 py-4 sm:justify-start">
-            <Button type="submit" disabled={isSaving || !companyId}>
-              {isSaving ? 'جاري الحفظ…' : isEditing ? 'حفظ' : 'إنشاء المنتج'}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
-              إلغاء
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void form.handleSubmit(onSubmit)(e);
+            }}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className={cn(dialogShellBodyClass, 'space-y-5')}>
+              <ProductFormHeader
+                control={form.control}
+                register={form.register}
+                setValue={form.setValue}
+                nameError={form.formState.errors.nameAr?.message}
+                onRelatedDocSelect={onRelatedDoc}
+                relatedDocsActiveKey={activeRelatedDoc}
+                relatedDocs={[
+                  {
+                    key: 'variants',
+                    label: 'متغيرات المنتج',
+                    count: variantsCount,
+                    hint:
+                      variantsCount > 0
+                        ? 'عرض وتحرير أسعار وكميات المتغيرات'
+                        : 'أضف خصائص تُنشئ متغيرات لظهورها هنا',
+                  },
+                  {
+                    key: 'replenish',
+                    label: 'تجديد المخزون',
+                    count: receiptsCount,
+                    hint: 'إنشاء طلب استلام إلى المستودع (لا يغيّر الكمية مباشرة)',
+                  },
+                  {
+                    key: 'receipts',
+                    label: 'الإدخالات',
+                    count: receiptsCount,
+                    hint: 'طلبات الاستلام الخاصة بهذا المنتج',
+                  },
+                  {
+                    key: 'issues',
+                    label: 'الإخراجات',
+                    count: issuesCount,
+                    hint: 'طلبات الصرف الخاصة بهذا المنتج',
+                  },
+                  {
+                    key: 'internals',
+                    label: 'داخلية',
+                    count: internalsCount,
+                    hint: 'الحركات الداخلية بين مواقع المستودع',
+                  },
+                  {
+                    key: 'putaway',
+                    label: 'قواعد التخزين',
+                    count: putawayCount,
+                    hint: product?.id
+                      ? 'فتح قائمة قواعد التخزين لهذا المنتج'
+                      : 'احفظ المنتج أولًا لإضافة قواعد التخزين',
+                  },
+                ]}
+              />
+
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => {
+                  setActiveTab(value as FormTab);
+                  if (value !== 'attributes') setActiveRelatedDoc(null);
+                }}
+                className="w-full"
+              >
+                <TabsList className="h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
+                  <TabsTrigger value="general" className={TAB_TRIGGER_CLASS}>
+                    المعلومات العامة
+                  </TabsTrigger>
+                  <TabsTrigger value="attributes" className={TAB_TRIGGER_CLASS}>
+                    الخصائص والمتغيرات
+                  </TabsTrigger>
+                  <TabsTrigger value="availability" className={TAB_TRIGGER_CLASS}>
+                    التوفر
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="general" className="mt-4">
+                  <ProductGeneralTab
+                    control={form.control}
+                    errors={form.formState.errors}
+                    register={form.register}
+                    categories={categoriesData?.items}
+                    brands={brandsData?.items}
+                  />
+                </TabsContent>
+                <TabsContent value="attributes" className="mt-4">
+                  <ProductAttributesTab
+                    control={form.control}
+                    errors={form.formState.errors}
+                    register={form.register}
+                    setValue={form.setValue}
+                  />
+                </TabsContent>
+                <TabsContent value="availability" className="mt-4">
+                  <ProductInventoryTab
+                    control={form.control}
+                    errors={form.formState.errors}
+                    register={form.register}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            <DialogFooter className="shrink-0 gap-2 border-t border-border px-6 py-4 sm:justify-start">
+              <Button type="submit" disabled={isSaving || !companyId}>
+                {isSaving ? 'جاري الحفظ…' : isEditing ? 'حفظ' : 'إنشاء المنتج'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+                إلغاء
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ProductStockMoveRequestDialog
+        open={moveRequestKind !== null}
+        onOpenChange={(next) => {
+          if (!next) {
+            setMoveRequestKind(null);
+            if (
+              activeRelatedDoc === 'replenish' ||
+              activeRelatedDoc === 'issues' ||
+              activeRelatedDoc === 'internals'
+            ) {
+              setActiveRelatedDoc(null);
+            }
+          }
+        }}
+        kind={moveRequestKind ?? 'receipt'}
+        productId={product?.id}
+        productNameAr={nameAr}
+        productSku={sku}
+        variants={variants}
+        onCreated={(warehouseId, kind) => {
+          onOpenChange(false);
+          router.push(`${ecommerceAdminRoutes.warehouseDetail(warehouseId)}?tab=${kind}`);
+        }}
+      />
+
+      {product?.id ? (
+        <ProductStockMovesListDialog
+          open={movesListKind !== null}
+          onOpenChange={(next) => {
+            if (!next) {
+              setMovesListKind(null);
+              if (
+                activeRelatedDoc === 'receipts' ||
+                activeRelatedDoc === 'issues' ||
+                activeRelatedDoc === 'internals'
+              ) {
+                setActiveRelatedDoc(null);
+              }
+            }
+          }}
+          kind={movesListKind ?? 'receipt'}
+          productId={product.id}
+          productNameAr={nameAr || product.nameAr}
+          onCreateRequest={() => {
+            const kind = movesListKind ?? 'receipt';
+            setMovesListKind(null);
+            setActiveRelatedDoc(
+              kind === 'receipt' ? 'replenish' : kind === 'issue' ? 'issues' : 'internals',
+            );
+            setMoveRequestKind(kind);
+          }}
+        />
+      ) : null}
+    </>
   );
 }

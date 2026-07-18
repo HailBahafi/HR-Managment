@@ -4,39 +4,55 @@ import { create } from 'zustand';
 
 export type CartLine = {
   productId: string;
+  /** Sellable variant when the product has attribute combinations. */
+  variantId?: string;
   quantity: number;
 };
 
+function lineKey(productId: string, variantId?: string) {
+  return variantId ? `${productId}::${variantId}` : productId;
+}
+
 interface StorefrontCartUiState {
   lines: CartLine[];
-  addItem: (productId: string, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  setQuantity: (productId: string, quantity: number) => void;
+  addItem: (productId: string, quantity?: number, variantId?: string) => void;
+  removeItem: (productId: string, variantId?: string) => void;
+  setQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clear: () => void;
 }
 
 export const useStorefrontCartUi = create<StorefrontCartUiState>((set, get) => ({
   lines: [],
-  addItem: (productId, quantity = 1) => {
-    const existing = get().lines.find((line) => line.productId === productId);
+  addItem: (productId, quantity = 1, variantId) => {
+    const key = lineKey(productId, variantId);
+    const existing = get().lines.find((line) => lineKey(line.productId, line.variantId) === key);
     if (existing) {
       set({
         lines: get().lines.map((line) =>
-          line.productId === productId ? { ...line, quantity: line.quantity + quantity } : line,
+          lineKey(line.productId, line.variantId) === key
+            ? { ...line, quantity: line.quantity + quantity }
+            : line,
         ),
       });
       return;
     }
-    set({ lines: [...get().lines, { productId, quantity }] });
+    set({ lines: [...get().lines, { productId, variantId, quantity }] });
   },
-  removeItem: (productId) => set({ lines: get().lines.filter((line) => line.productId !== productId) }),
-  setQuantity: (productId, quantity) => {
+  removeItem: (productId, variantId) =>
+    set({
+      lines: get().lines.filter((line) => lineKey(line.productId, line.variantId) !== lineKey(productId, variantId)),
+    }),
+  setQuantity: (productId, quantity, variantId) => {
     if (quantity <= 0) {
-      get().removeItem(productId);
+      get().removeItem(productId, variantId);
       return;
     }
     set({
-      lines: get().lines.map((line) => (line.productId === productId ? { ...line, quantity } : line)),
+      lines: get().lines.map((line) =>
+        lineKey(line.productId, line.variantId) === lineKey(productId, variantId)
+          ? { ...line, quantity }
+          : line,
+      ),
     });
   },
   clear: () => set({ lines: [] }),

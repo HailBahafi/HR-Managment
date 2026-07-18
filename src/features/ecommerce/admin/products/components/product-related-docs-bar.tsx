@@ -1,10 +1,16 @@
 'use client';
 
 import type { LucideIcon } from 'lucide-react';
-import { MapPinned } from 'lucide-react';
+import { ArrowLeftRight, Layers, MapPinned, PackageMinus, PackagePlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/shared/utils';
 
-export type ProductRelatedDocKey = 'putaway';
+export type ProductRelatedDocKey =
+  | 'putaway'
+  | 'variants'
+  | 'replenish'
+  | 'receipts'
+  | 'issues'
+  | 'internals';
 
 export type ProductRelatedDocChip = {
   key: ProductRelatedDocKey;
@@ -16,6 +22,11 @@ export type ProductRelatedDocChip = {
 
 const DOC_ICONS: Record<ProductRelatedDocKey, LucideIcon> = {
   putaway: MapPinned,
+  variants: Layers,
+  replenish: RefreshCw,
+  receipts: PackagePlus,
+  issues: PackageMinus,
+  internals: ArrowLeftRight,
 };
 
 type Props = {
@@ -25,7 +36,7 @@ type Props = {
   className?: string;
 };
 
-/** Smart buttons: icon + count + label — open related config screens, not embedded editors. */
+/** Smart buttons: icon + count + label — open related config screens / sections. */
 export function ProductRelatedDocsBar({ chips, activeKey, onSelect, className }: Props) {
   return (
     <div className={cn('flex flex-wrap justify-end gap-2', className)} role="toolbar" aria-label="مستندات المنتج">

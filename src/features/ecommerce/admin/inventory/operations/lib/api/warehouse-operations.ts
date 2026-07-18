@@ -15,13 +15,19 @@ export const warehouseOperationsApi: AdminWarehouseOperationsPort = {
     return mockWarehouseOperationsStore.list(
       query,
       (item, q) => {
-        if (item.warehouseId !== q.warehouseId || item.kind !== q.kind) return false;
+        if (q.warehouseId && item.warehouseId !== q.warehouseId) return false;
+        if (q.kind && item.kind !== q.kind) return false;
+        if (q.productId && !item.lines.some((line) => line.productId === q.productId)) return false;
         if (!q.search) return true;
         const search = q.search.toLowerCase();
         return (
           item.reference.toLowerCase().includes(search) ||
           (item.notes?.toLowerCase().includes(search) ?? false) ||
-          item.lines.some((line) => line.productName.toLowerCase().includes(search))
+          item.lines.some(
+            (line) =>
+              line.productName.toLowerCase().includes(search) ||
+              (line.sku?.toLowerCase().includes(search) ?? false),
+          )
         );
       },
       (a, b) => b.occurredAt.localeCompare(a.occurredAt),

@@ -1,9 +1,11 @@
 import type { TenantScoped } from '@/features/ecommerce/domain/types/common';
 
-/** On-hand quantity of a product at a specific warehouse location. */
+/** On-hand quantity of a product (or variant) at a specific warehouse location. */
 export type LocationStock = TenantScoped & {
   id: string;
   productId: string;
+  /** When set, stock is tracked per sellable variant (aligns with storefront). */
+  variantId?: string;
   warehouseId: string;
   locationId: string;
   quantity: number;
@@ -22,6 +24,7 @@ export type StockAvailabilityRow = {
 export type LocationStockListQuery = {
   companyId: string;
   productId?: string;
+  variantId?: string;
   warehouseId?: string;
   locationId?: string;
 };

@@ -116,6 +116,7 @@ describe('formValuesToCreateInput', () => {
     posAvailable: false,
     saleOk: true,
     attributes: [],
+    variants: [],
     uomLines: createDefaultUomLines(),
   };
 
