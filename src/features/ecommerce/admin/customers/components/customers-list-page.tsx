@@ -1,13 +1,12 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Users } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useCustomers } from '@/features/ecommerce/admin/customers/hooks/use-customers';
 import { formatPrice } from '@/features/ecommerce/shared/utils/format-price';
 import type { Customer } from '@/features/ecommerce/domain/types/customer';
-import { PageHeader } from '@/components/layouts/page-header';
 import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -101,7 +100,7 @@ export function CustomersListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader icon={Users} title="العملاء" description="نظرة على قاعدة العملاء وسجل الشراء." />
+      <SetPageTitle titleAr="العملاء" iconName="Users" />
 
       <ListToolbar searchValue={searchInput} onSearchChange={setSearchInput} searchPlaceholder="ابحث بالاسم أو البريد الإلكتروني…" />
 

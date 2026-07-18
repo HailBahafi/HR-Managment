@@ -1,5 +1,6 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Pencil, Plus, Trash2, Package } from 'lucide-react';
@@ -17,7 +18,6 @@ import { STOCK_STATUS_LABELS_AR } from '@/features/ecommerce/domain/constants/st
 import type { Product, ProductListQuery } from '@/features/ecommerce/domain/types/product';
 import type { ProductStatus } from '@/features/ecommerce/domain/constants/product-status';
 import type { StockStatus } from '@/features/ecommerce/domain/constants/stock-status';
-import { PageHeader } from '@/components/layouts/page-header';
 import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -183,17 +183,7 @@ export function ProductsListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={Package}
-        title="المنتجات"
-        description="إدارة كتالوج المنتجات، الأسعار، والمخزون."
-        actions={
-          <Button onClick={openCreateDialog} disabled={!companyId}>
-            <Plus className="h-4 w-4" />
-            إضافة منتج
-          </Button>
-        }
-      />
+      <SetPageTitle titleAr="المنتجات" iconName="Package" />
 
       <ListToolbar
         searchValue={searchInput}
@@ -206,6 +196,12 @@ export function ProductsListPage() {
             categories={categoriesData?.items}
             brands={brandsData?.items}
           />
+        }
+        actions={
+          <Button onClick={openCreateDialog} disabled={!companyId}>
+            <Plus className="h-4 w-4" />
+            إضافة منتج
+          </Button>
         }
       />
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Pencil, Plus, Trash2, Tag } from 'lucide-react';
@@ -9,7 +10,6 @@ import { useBrandMutations } from '@/features/ecommerce/admin/brands/hooks/use-b
 import { BrandFormDialog } from '@/features/ecommerce/admin/brands/components/brand-form-dialog';
 import { DeleteBrandDialog } from '@/features/ecommerce/admin/brands/components/delete-brand-dialog';
 import type { Brand } from '@/features/ecommerce/domain/types/brand';
-import { PageHeader } from '@/components/layouts/page-header';
 import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -127,10 +127,12 @@ export function BrandsListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={Tag}
-        title="العلامات التجارية"
-        description="إدارة العلامات التجارية المرتبطة بالمنتجات."
+      <SetPageTitle titleAr="العلامات التجارية" iconName="Tag" />
+
+      <ListToolbar
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="ابحث بالاسم…"
         actions={
           <Button onClick={openCreateDialog} disabled={!companyId}>
             <Plus className="h-4 w-4" />
@@ -138,8 +140,6 @@ export function BrandsListPage() {
           </Button>
         }
       />
-
-      <ListToolbar searchValue={searchInput} onSearchChange={setSearchInput} searchPlaceholder="ابحث بالاسم…" />
 
       {isError ? <p className="text-sm text-destructive">تعذر تحميل العلامات التجارية.</p> : null}
 

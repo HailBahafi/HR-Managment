@@ -14,7 +14,7 @@ import {
 } from '@/features/ecommerce/admin/categories/lib/category-tree';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { Category } from '@/features/ecommerce/domain/types/category';
-import { PageHeader } from '@/components/layouts/page-header';
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -165,24 +165,7 @@ export function CategoriesListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={FolderTree}
-        title={t('nav.categories')}
-        description="شجرة التصنيفات (مثال حتى 4 مستويات) — اربط المنتجات ثم فلترها من قائمة المنتجات."
-      />
-
-      <div className="rounded-xl border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">مثال التسلسل في البيانات</p>
-        <p className="mt-1" dir="rtl">
-          المنزل › الإضاءة › مصابيح › مصابيح LED
-        </p>
-        <p className="mt-0.5" dir="rtl">
-          المشروبات › مشروبات غازية › كولا › كولا كلاسيك / كولا زيرو
-        </p>
-        <p className="mt-2 text-xs">
-          المستوى ليس حداً للنظام — البيانات فقط توضّح الفائدة. اضغط رقم المنتجات لفتح الفلترة.
-        </p>
-      </div>
+      <SetPageTitle titleAr={t('nav.categories')} iconName="FolderTree" />
 
       <ListToolbar
         searchValue={search}

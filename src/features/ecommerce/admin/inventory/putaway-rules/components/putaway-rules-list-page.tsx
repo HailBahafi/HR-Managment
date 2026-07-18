@@ -1,8 +1,9 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MapPinned, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useCategories } from '@/features/ecommerce/admin/categories/hooks/use-categories';
 import { useProducts } from '@/features/ecommerce/admin/products/hooks/use-products';
@@ -15,7 +16,6 @@ import {
 import { PACKAGING_TYPE_OPTIONS } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import type { PackagingType } from '@/features/ecommerce/domain/types/product';
 import type { PutawayAppliesTo } from '@/features/ecommerce/domain/types/putaway-rule';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -231,17 +231,7 @@ export function PutawayRulesListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={MapPinned}
-        title="قواعد التخزين"
-        description="عند وصول البضاعة لموقع معيّن، حدّد أين تُخزَّن. الأولوية: منتج → فئة → كافة المنتجات."
-        actions={
-          <Button type="button" onClick={openCreate}>
-            <Plus className="me-1 h-4 w-4" />
-            جديد
-          </Button>
-        }
-      />
+      <SetPageTitle titleAr="قواعد التخزين" iconName="MapPinned" />
 
       <div className="flex flex-wrap items-center gap-2">
         <Input
@@ -273,6 +263,10 @@ export function PutawayRulesListPage() {
               : `مصفّى حسب الفئة: ${categoryLabel(categoryIdFilter)}`}
           </span>
         )}
+        <Button type="button" className="ms-auto" onClick={openCreate}>
+          <Plus className="me-1 h-4 w-4" />
+          جديد
+        </Button>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-card">

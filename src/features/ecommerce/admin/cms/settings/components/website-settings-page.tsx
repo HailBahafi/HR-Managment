@@ -9,7 +9,6 @@ import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/stor
 import { storefrontCompanyRepository } from '@/features/ecommerce/storefront/lib/repositories/company-repository';
 import type { CompanyConfigRecord } from '@/features/ecommerce/storefront/domain/company-config';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -76,18 +75,14 @@ export function WebsiteSettingsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="Settings" />
+      <SetPageTitle titleAr={t('title')} iconName="Settings" />
 
-      <PageHeader
-        icon={Settings}
-        title={t('title')}
-        description={t('description')}
-        actions={
-          <Button type="button" disabled={!draft || save.isPending} onClick={() => draft && void save.mutateAsync(draft)}>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" disabled={!draft || save.isPending} onClick={() => draft && void save.mutateAsync(draft)}>
             {save.isPending ? tCommon('status.saving') : tCommon('actions.save')}
           </Button>
-        }
-      />
+      </div>
+
 
       {isLoading ? (
         <div className="space-y-3">

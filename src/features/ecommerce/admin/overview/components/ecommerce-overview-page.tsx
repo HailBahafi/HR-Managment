@@ -1,12 +1,11 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Package, ShoppingCart, Users, LayoutDashboard } from 'lucide-react';
+import { Package, ShoppingCart, Users } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/lib/auth-store';
 import { useProducts } from '@/features/ecommerce/admin/products/hooks/use-products';
 import { useOrders } from '@/features/ecommerce/admin/orders/hooks/use-orders';
 import { useCustomers } from '@/features/ecommerce/admin/customers/hooks/use-customers';
-import { PageHeader } from '@/components/layouts/page-header';
 import { StatTile, StatTileGrid } from '@/components/ui/stat-tile';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 
@@ -25,8 +24,7 @@ export function EcommerceOverviewPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <SetPageTitle titleAr={t('nav.overview')} descriptionAr={t('module.description')} iconName="LayoutDashboard" />
-      <PageHeader icon={LayoutDashboard} title={t('nav.overview')} description={t('module.description')} />
+      <SetPageTitle titleAr={t('nav.overview')} iconName="LayoutDashboard" />
 
       <StatTileGrid>
         {stats.map((stat) => (

@@ -14,7 +14,6 @@ import type {
 } from '@/features/ecommerce/storefront/domain/content';
 import { BookOpen } from 'lucide-react';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -110,17 +109,13 @@ export function CmsPagesPage({ embedded = false }: { embedded?: boolean }) {
     <div className="flex flex-col gap-5">
       {!embedded ? (
         <>
-          <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="BookOpen" />
-          <PageHeader
-            icon={BookOpen}
-            title={t('title')}
-            description={t('description')}
-            actions={
-              <Button type="button" disabled={!draft || isSaving} onClick={handleSave}>
+          <SetPageTitle titleAr={t('title')} iconName="BookOpen" />
+
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" disabled={!draft || isSaving} onClick={handleSave}>
                 {isSaving ? tCommon('status.saving') : tCommon('actions.save')}
               </Button>
-            }
-          />
+      </div>
         </>
       ) : (
         <div className="flex justify-end">

@@ -9,7 +9,6 @@ import { useHomepagePageRecord } from '@/features/ecommerce/admin/cms/homepage/h
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import { getSectionDefinition } from '@/features/ecommerce/storefront/page-builder/lib/section-definition-registry';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,21 +26,17 @@ export function BannersManagementPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="Image" />
+      <SetPageTitle titleAr={t('title')} iconName="Image" />
 
-      <PageHeader
-        icon={ImageIcon}
-        title={t('title')}
-        description={t('description')}
-        actions={
-          <Button type="button" asChild>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" asChild>
             <Link href={ecommerceAdminRoutes.homepage}>
               <Pencil className="h-4 w-4" />
               {t('editInBuilder')}
             </Link>
           </Button>
-        }
-      />
+      </div>
+
 
       {isLoading ? (
         <div className="space-y-3">

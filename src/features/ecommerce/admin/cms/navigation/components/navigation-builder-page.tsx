@@ -16,7 +16,6 @@ import { NavigationFooterPanel } from '@/features/ecommerce/admin/cms/navigation
 import type { EcommerceNavigationTab } from '@/features/ecommerce/admin/constants/routes';
 import { ecommerceNavigationHref } from '@/features/ecommerce/admin/constants/routes';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -74,14 +73,10 @@ export function NavigationBuilderPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="Navigation" />
+      <SetPageTitle titleAr={t('title')} iconName="Navigation" />
 
-      <PageHeader
-        icon={NavigationIcon}
-        title={t('title')}
-        description={t('description')}
-        actions={
-          <Button
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button
             type="button"
             disabled={!draft || save.isPending || tab === 'announcement'}
             onClick={() => {
@@ -90,8 +85,8 @@ export function NavigationBuilderPage() {
           >
             {save.isPending ? tCommon('status.saving') : tCommon('actions.save')}
           </Button>
-        }
-      />
+      </div>
+
 
       {isLoading ? (
         <div className="space-y-3">

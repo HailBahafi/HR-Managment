@@ -1,14 +1,14 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
-import { ChevronLeft, MapPin, ShoppingCart } from 'lucide-react';
+import { ChevronLeft, MapPin } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrderLineShipPanel } from '@/features/ecommerce/admin/orders/components/order-line-ship-panel';
 import { useOrders } from '@/features/ecommerce/admin/orders/hooks/use-orders';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { formatPrice } from '@/features/ecommerce/shared/utils/format-price';
 import type { Order, OrderStatus } from '@/features/ecommerce/domain/types/order';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -200,11 +200,7 @@ export function OrdersListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={ShoppingCart}
-        title="الطلبات"
-        description="اضغط على الطلب لعرض المنتجات – ثم إعداد الشحن لكل منتج من المواقع حسب التوفر."
-      />
+      <SetPageTitle titleAr="الطلبات" iconName="ShoppingCart" />
 
       <div className="space-y-3">
         <Input

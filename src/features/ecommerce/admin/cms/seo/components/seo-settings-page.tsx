@@ -67,7 +67,7 @@ export function SeoSettingsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="Search" />
+      <SetPageTitle titleAr={t('title')} iconName="Search" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-arabic-display text-xl font-semibold text-foreground">{t('title')}</h1>

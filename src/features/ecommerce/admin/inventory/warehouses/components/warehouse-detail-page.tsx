@@ -1,5 +1,6 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, MapPin, PackageMinus, PackagePlus, RefreshCw, Warehouse } from 'lucide-react';
@@ -8,7 +9,6 @@ import { useWarehouse } from '@/features/ecommerce/admin/inventory/warehouses/ho
 import { WarehouseOperationsPanel } from '@/features/ecommerce/admin/inventory/operations/components/warehouse-operations-panel';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/utils';
@@ -58,36 +58,32 @@ export function WarehouseDetailPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={Warehouse}
-        title={warehouse.nameAr}
-        description={warehouse.description || warehouse.address || 'عمليات الصرف والاستلام والحركات الداخلية.'}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={warehouse.status === 'active' ? 'success' : 'subtle'}>
-              {warehouse.status === 'active' ? 'نشط' : 'غير نشط'}
-            </Badge>
-            <Button
-              variant="outline"
-              onClick={() => router.push(ecommerceAdminRoutes.locationsForWarehouse(warehouseId))}
-            >
-              <MapPin className="h-4 w-4" />
-              المواقع
-            </Button>
-            <Button variant="outline" onClick={() => router.push(ecommerceAdminRoutes.warehouses)}>
-              <ArrowRight className="h-4 w-4" />
-              كل المستودعات
-            </Button>
-          </div>
-        }
-      />
+      <SetPageTitle titleAr={warehouse.nameAr} iconName="Warehouse" />
 
-      <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-soft">
-        <span className="font-medium text-foreground" dir="ltr">
-          {warehouse.code}
-        </span>
-        {warehouse.address ? <span className="mx-2">·</span> : null}
-        {warehouse.address}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-soft">
+          <span className="font-medium text-foreground" dir="ltr">
+            {warehouse.code}
+          </span>
+          {warehouse.address ? <span className="mx-2">·</span> : null}
+          {warehouse.address}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={warehouse.status === 'active' ? 'success' : 'subtle'}>
+            {warehouse.status === 'active' ? 'نشط' : 'غير نشط'}
+          </Badge>
+          <Button
+            variant="outline"
+            onClick={() => router.push(ecommerceAdminRoutes.locationsForWarehouse(warehouseId))}
+          >
+            <MapPin className="h-4 w-4" />
+            المواقع
+          </Button>
+          <Button variant="outline" onClick={() => router.push(ecommerceAdminRoutes.warehouses)}>
+            <ArrowRight className="h-4 w-4" />
+            كل المستودعات
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-border pb-px">

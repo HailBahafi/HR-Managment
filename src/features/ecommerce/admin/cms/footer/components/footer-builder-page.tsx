@@ -71,7 +71,7 @@ export function FooterBuilderPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="PanelBottom" />
+      <SetPageTitle titleAr={t('title')} iconName="PanelBottom" />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>

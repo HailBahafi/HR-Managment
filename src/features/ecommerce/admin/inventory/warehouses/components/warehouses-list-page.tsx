@@ -1,5 +1,6 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
@@ -9,7 +10,6 @@ import { useWarehouseMutations } from '@/features/ecommerce/admin/inventory/ware
 import { WarehouseFormDialog } from '@/features/ecommerce/admin/inventory/warehouses/components/warehouse-form-dialog';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { Warehouse as WarehouseEntity } from '@/features/ecommerce/domain/types/warehouse';
-import { PageHeader } from '@/components/layouts/page-header';
 import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -149,10 +149,12 @@ export function WarehousesListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={Warehouse}
-        title="المخازن"
-        description="إدارة المستودعات والعمليات. المواقع في صفحة منفصلة — أيقونة الموقع تفتح مواقع المستودع."
+      <SetPageTitle titleAr="المخازن" iconName="Warehouse" />
+
+      <ListToolbar
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="ابحث بالاسم أو الرمز…"
         actions={
           <Button onClick={() => setFormState({ open: true, warehouse: null })} disabled={!companyId}>
             <Plus className="h-4 w-4" />
@@ -160,8 +162,6 @@ export function WarehousesListPage() {
           </Button>
         }
       />
-
-      <ListToolbar searchValue={searchInput} onSearchChange={setSearchInput} searchPlaceholder="ابحث بالاسم أو الرمز…" />
 
       {isError ? <p className="text-sm text-destructive">تعذر تحميل المستودعات.</p> : null}
 

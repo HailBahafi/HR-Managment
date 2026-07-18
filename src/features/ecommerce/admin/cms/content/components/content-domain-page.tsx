@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { FileText } from 'lucide-react';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CmsPagesPage } from '@/features/ecommerce/admin/cms/pages/components/cms-pages-page';
 import { BlogCmsPage } from '@/features/ecommerce/admin/cms/blog/components/blog-cms-page';
@@ -34,8 +33,7 @@ export function ContentDomainPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="FileText" />
-      <PageHeader icon={FileText} title={t('title')} description={t('description')} />
+      <SetPageTitle titleAr={t('title')} iconName="FileText" />
 
       <Tabs
         value={tab}

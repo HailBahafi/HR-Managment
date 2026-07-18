@@ -9,7 +9,6 @@ import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/stor
 import { storefrontContentRepository } from '@/features/ecommerce/storefront/lib/repositories/content-repository';
 import type { FaqItem } from '@/features/ecommerce/storefront/domain/content';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -60,13 +59,10 @@ export function FaqCmsPage({ embedded = false }: { embedded?: boolean }) {
     <div className="flex flex-col gap-5">
       {!embedded ? (
         <>
-          <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="CircleHelp" />
-          <PageHeader
-            icon={CircleHelp}
-            title={t('title')}
-            description={t('description')}
-            actions={
-              <>
+          <SetPageTitle titleAr={t('title')} iconName="CircleHelp" />
+
+      <div className="flex flex-wrap justify-end gap-2">
+        <>
                 <Button type="button" variant="outline" onClick={() => setDraft([...(draft ?? []), emptyItem()])}>
                   <Plus className="me-2 h-4 w-4" />
                   {t('addItem')}
@@ -75,8 +71,7 @@ export function FaqCmsPage({ embedded = false }: { embedded?: boolean }) {
                   {save.isPending ? tCommon('status.saving') : tCommon('actions.save')}
                 </Button>
               </>
-            }
-          />
+      </div>
         </>
       ) : (
         <div className="flex justify-end gap-2">

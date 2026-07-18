@@ -25,7 +25,6 @@ import {
 } from '@/features/ecommerce/admin/cms/homepage/lib/create-section';
 import { SectionEditDialog } from '@/features/ecommerce/admin/cms/homepage/components/section-edit-dialog';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -111,14 +110,10 @@ export function HomepagePageBuilderPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="LayoutTemplate" />
+      <SetPageTitle titleAr={t('title')} iconName="LayoutTemplate" />
 
-      <PageHeader
-        icon={LayoutTemplate}
-        title={t('title')}
-        description={t('description')}
-        actions={
-          <>
+      <div className="flex flex-wrap justify-end gap-2">
+        <>
             <Button type="button" variant="outline" asChild>
               <Link href="/ar/store" target="_blank" rel="noreferrer">
                 <ExternalLink className="h-4 w-4" />
@@ -132,8 +127,8 @@ export function HomepagePageBuilderPage() {
               {save.isPending ? tCommon('status.saving') : t('publish')}
             </Button>
           </>
-        }
-      />
+      </div>
+
 
       {dirty ? (
         <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">

@@ -1,8 +1,9 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Pencil, Plus, Trash2, SlidersHorizontal } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import {
   useCatalogAttributeMutations,
@@ -14,7 +15,6 @@ import {
   VARIANT_CREATION_OPTIONS,
 } from '@/features/ecommerce/admin/attributes/schemas/catalog-attribute-schema';
 import type { CatalogAttribute } from '@/features/ecommerce/domain/types/catalog-attribute';
-import { PageHeader } from '@/components/layouts/page-header';
 import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -145,10 +145,12 @@ export function AttributesListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={SlidersHorizontal}
-        title="الخصائص"
-        description="تهيئة خصائص المنتجات (اللون، المقاس…) بشكل منفصل، ثم استخدامها عند تعريف المنتجات."
+      <SetPageTitle titleAr="الخصائص" iconName="SlidersHorizontal" />
+
+      <ListToolbar
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="ابحث باسم الخاصية…"
         actions={
           <Button onClick={() => setFormState({ open: true, attribute: null })} disabled={!companyId}>
             <Plus className="h-4 w-4" />
@@ -156,8 +158,6 @@ export function AttributesListPage() {
           </Button>
         }
       />
-
-      <ListToolbar searchValue={searchInput} onSearchChange={setSearchInput} searchPlaceholder="ابحث باسم الخاصية…" />
 
       {isError ? <p className="text-sm text-destructive">تعذر تحميل الخصائص.</p> : null}
 

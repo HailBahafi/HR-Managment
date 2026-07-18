@@ -1,5 +1,6 @@
 'use client';
 
+import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, Pencil, Plus, Trash2, Warehouse } from 'lucide-react';
@@ -18,7 +19,6 @@ import {
 } from '@/features/ecommerce/admin/inventory/schemas/warehouse-schemas';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { WarehouseLocation, WarehouseLocationType } from '@/features/ecommerce/domain/types/warehouse';
-import { PageHeader } from '@/components/layouts/page-header';
 import { ListToolbar } from '@/components/ui/list-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -266,40 +266,7 @@ export function LocationsListPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
-        icon={MapPin}
-        title="المواقع"
-        description={
-          selectedWarehouseName
-            ? `مواقع مستودع «${selectedWarehouseName}» — المواقع التلقائية ثابتة لكل مستودع.`
-            : 'إدارة مواقع التخزين. عند إنشاء مستودع تُنشأ المواقع الافتراضية تلقائياً.'
-        }
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {warehouseIdFilter ? (
-              <Button
-                variant="outline"
-                onClick={() => router.push(ecommerceAdminRoutes.warehouseDetail(warehouseIdFilter))}
-              >
-                <Warehouse className="h-4 w-4" />
-                فتح المستودع
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={() => router.push(ecommerceAdminRoutes.warehouses)}>
-                <Warehouse className="h-4 w-4" />
-                المستودعات
-              </Button>
-            )}
-            <Button
-              onClick={() => setFormState({ open: true, location: null })}
-              disabled={!companyId || (warehouses.length === 0 && !warehouseIdFilter)}
-            >
-              <Plus className="h-4 w-4" />
-              إضافة موقع
-            </Button>
-          </div>
-        }
-      />
+      <SetPageTitle titleAr="المواقع" iconName="MapPin" />
 
       <ListToolbar
         searchValue={searchInput}
@@ -322,6 +289,26 @@ export function LocationsListPage() {
               ))}
             </SelectContent>
           </Select>
+        }
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {warehouseIdFilter ? (
+              <Button
+                variant="outline"
+                onClick={() => router.push(ecommerceAdminRoutes.warehouseDetail(warehouseIdFilter))}
+              >
+                <Warehouse className="h-4 w-4" />
+                المستودع
+              </Button>
+            ) : null}
+            <Button
+              onClick={() => setFormState({ open: true, location: null })}
+              disabled={!companyId || warehouses.length === 0}
+            >
+              <Plus className="h-4 w-4" />
+              إضافة موقع
+            </Button>
+          </div>
         }
       />
 

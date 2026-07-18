@@ -9,7 +9,6 @@ import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/stor
 import { storefrontContentRepository } from '@/features/ecommerce/storefront/lib/repositories/content-repository';
 import type { BlogPost } from '@/features/ecommerce/storefront/domain/content';
 import { SetPageTitle } from '@/components/layouts/set-page-title';
-import { PageHeader } from '@/components/layouts/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -96,18 +95,14 @@ export function BlogCmsPage({ embedded = false }: { embedded?: boolean }) {
     <div className="flex flex-col gap-5">
       {!embedded ? (
         <>
-          <SetPageTitle titleAr={t('title')} descriptionAr={t('description')} iconName="FileStack" />
-          <PageHeader
-            icon={FileStack}
-            title={t('title')}
-            description={t('description')}
-            actions={
-              <Button type="button" onClick={openCreate}>
+          <SetPageTitle titleAr={t('title')} iconName="FileStack" />
+
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" onClick={openCreate}>
                 <Plus className="me-2 h-4 w-4" />
                 {t('addPost')}
               </Button>
-            }
-          />
+      </div>
         </>
       ) : (
         <div className="flex justify-end">
