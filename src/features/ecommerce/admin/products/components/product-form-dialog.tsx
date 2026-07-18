@@ -29,6 +29,10 @@ import { ProductInventoryTab } from '@/features/ecommerce/admin/products/compone
 import { ProductStockMoveRequestDialog } from '@/features/ecommerce/admin/products/components/product-stock-move-request-dialog';
 import { ProductStockMovesListDialog } from '@/features/ecommerce/admin/products/components/product-stock-moves-list-dialog';
 import { ProductStockMovesHistoryDialog } from '@/features/ecommerce/admin/products/components/product-stock-moves-history-dialog';
+import {
+  isReplenishmentOperation,
+  ProductReplenishmentListDialog,
+} from '@/features/ecommerce/admin/products/components/product-replenishment-list-dialog';
 import type { ProductRelatedDocKey } from '@/features/ecommerce/admin/products/components/product-related-docs-bar';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { Product } from '@/features/ecommerce/domain/types/product';
@@ -107,6 +111,7 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
   const [moveRequestKind, setMoveRequestKind] = React.useState<MoveRequestKind | null>(null);
   const [movesListKind, setMovesListKind] = React.useState<MoveRequestKind | null>(null);
   const [movesHistoryOpen, setMovesHistoryOpen] = React.useState(false);
+  const [replenishmentListOpen, setReplenishmentListOpen] = React.useState(false);
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -126,6 +131,7 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
     setMoveRequestKind(null);
     setMovesListKind(null);
     setMovesHistoryOpen(false);
+    setReplenishmentListOpen(false);
   }, [open, product, form]);
 
   const onSubmit = async (values: ProductFormValues) => {
@@ -169,9 +175,9 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
       return;
     }
     if (key === 'replenish') {
-      if (!requireSavedProduct('أنشئ طلب تجديد المخزون')) return;
+      if (!requireSavedProduct('تعرض طلبات تجديد المخزون')) return;
       setActiveRelatedDoc('replenish');
-      setMoveRequestKind('receipt');
+      setReplenishmentListOpen(true);
       return;
     }
     if (key === 'receipts') {
@@ -206,6 +212,9 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
 
   const putawayCount = product?.id ? (putawayData?.pagination.total ?? putawayData?.items.length ?? 0) : 0;
   const receiptsCount = product?.id ? (receiptsData?.pagination.total ?? receiptsData?.items.length ?? 0) : 0;
+  const replenishmentCount = product?.id
+    ? (receiptsData?.items ?? []).filter(isReplenishmentOperation).length
+    : 0;
   const issuesCount = product?.id ? (issuesData?.pagination.total ?? issuesData?.items.length ?? 0) : 0;
   const internalsCount = product?.id
     ? (internalsData?.pagination.total ?? internalsData?.items.length ?? 0)
@@ -255,8 +264,8 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
                   {
                     key: 'replenish',
                     label: 'تجديد المخزون',
-                    count: receiptsCount,
-                    hint: 'إنشاء طلب استلام إلى المستودع (لا يغيّر الكمية مباشرة)',
+                    count: replenishmentCount,
+                    hint: 'طلبات تجديد المخزون وحالاتها — أنشئ طلبًا ثم صدّقه من المستودع',
                   },
                   {
                     key: 'receipts',
@@ -373,11 +382,33 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
         productNameAr={nameAr}
         productSku={sku}
         variants={variants}
-        onCreated={(warehouseId, kind) => {
-          onOpenChange(false);
-          router.push(`${ecommerceAdminRoutes.warehouseDetail(warehouseId)}?tab=${kind}`);
+        onCreated={(_warehouseId, kind) => {
+          setMoveRequestKind(null);
+          if (kind === 'receipt') {
+            setActiveRelatedDoc('replenish');
+            setReplenishmentListOpen(true);
+            return;
+          }
+          setActiveRelatedDoc(null);
         }}
       />
+
+      {product?.id ? (
+        <ProductReplenishmentListDialog
+          open={replenishmentListOpen}
+          onOpenChange={(next) => {
+            setReplenishmentListOpen(next);
+            if (!next && activeRelatedDoc === 'replenish') setActiveRelatedDoc(null);
+          }}
+          productId={product.id}
+          productNameAr={nameAr || product.nameAr}
+          onCreateRequest={() => {
+            setReplenishmentListOpen(false);
+            setActiveRelatedDoc('replenish');
+            setMoveRequestKind('receipt');
+          }}
+        />
+      ) : null}
 
       {product?.id ? (
         <ProductStockMovesListDialog

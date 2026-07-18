@@ -8,6 +8,7 @@ import { useWarehouses } from '@/features/ecommerce/admin/inventory/warehouses/h
 import { useWarehouseLocations } from '@/features/ecommerce/admin/inventory/locations/hooks/use-warehouse-locations';
 import { warehouseOperationsApi } from '@/features/ecommerce/admin/inventory/operations/lib/api/warehouse-operations';
 import { warehouseOperationsQueryKeys } from '@/features/ecommerce/admin/inventory/hooks/query-keys';
+import { REPLENISHMENT_SOURCE_DOCUMENT } from '@/features/ecommerce/admin/products/constants/replenishment';
 import type { ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
 import { useQueryClient } from '@tanstack/react-query';
@@ -184,7 +185,7 @@ export function ProductStockMoveRequestDialog({
         occurredAt: new Date().toISOString(),
         sourceDocument:
           kind === 'receipt'
-            ? 'تجديد المخزون يدويًا'
+            ? REPLENISHMENT_SOURCE_DOCUMENT
             : kind === 'issue'
               ? 'طلب صرف يدوي'
               : 'حركة داخلية يدوية',
