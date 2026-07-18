@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2 } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
@@ -15,7 +15,10 @@ import {
   type CatalogAttributeFormInput,
   type CatalogAttributeFormValues,
 } from '@/features/ecommerce/admin/attributes/schemas/catalog-attribute-schema';
-import type { CatalogAttribute } from '@/features/ecommerce/domain/types/catalog-attribute';
+import {
+  normalizeAttributeValue,
+  type CatalogAttribute,
+} from '@/features/ecommerce/domain/types/catalog-attribute';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,13 +47,17 @@ function toFormValues(attribute: CatalogAttribute): CatalogAttributeFormInput {
     displayType: attribute.displayType,
     createVariant: attribute.createVariant,
     isActive: attribute.isActive,
-    values: attribute.values.map((value) => ({
-      id: value.id,
-      nameAr: value.nameAr,
-      freeText: value.freeText ?? '',
-      defaultExtraPrice: value.defaultExtraPrice ?? 0,
-      extra: value.extra ?? '',
-    })),
+    values: attribute.values.map((raw) => {
+      const value = normalizeAttributeValue(raw, attribute.displayType);
+      return {
+        id: value.id,
+        nameAr: value.nameAr,
+        freeText: value.freeText ?? '',
+        defaultExtraPrice: value.defaultExtraPrice ?? 0,
+        colorHex: value.colorHex ?? '',
+        imageUrl: value.imageUrl ?? '',
+      };
+    }),
   };
 }
 
@@ -66,6 +73,10 @@ export function CatalogAttributeFormDialog({ attribute, open, onOpenChange }: Pr
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'values' });
+  const displayType = useWatch({ control: form.control, name: 'displayType' });
+  const showColor = displayType === 'color';
+  const showImage = displayType === 'color' || displayType === 'image';
+  const displayHint = ATTRIBUTE_DISPLAY_OPTIONS.find((option) => option.value === displayType)?.hint;
 
   React.useEffect(() => {
     if (!open) return;
@@ -85,7 +96,12 @@ export function CatalogAttributeFormDialog({ attribute, open, onOpenChange }: Pr
         nameAr: value.nameAr.trim(),
         freeText: value.freeText?.trim() || undefined,
         defaultExtraPrice: value.defaultExtraPrice ?? 0,
-        extra: value.extra?.trim() || undefined,
+        colorHex:
+          values.displayType === 'color' ? value.colorHex?.trim() || undefined : undefined,
+        imageUrl:
+          values.displayType === 'color' || values.displayType === 'image'
+            ? value.imageUrl?.trim() || undefined
+            : undefined,
       })),
     };
 
@@ -99,7 +115,7 @@ export function CatalogAttributeFormDialog({ attribute, open, onOpenChange }: Pr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(dialogShellContentClass, 'max-w-3xl sm:max-w-3xl')}>
+      <DialogContent className={cn(dialogShellContentClass, 'max-w-4xl sm:max-w-4xl')}>
         <div className={dialogShellHeaderClass}>
           <DialogTitle className="text-base font-semibold">
             {isEditing ? 'تعديل الخاصية' : 'خاصية جديدة'}
@@ -147,6 +163,7 @@ export function CatalogAttributeFormDialog({ attribute, open, onOpenChange }: Pr
                     </Select>
                   )}
                 />
+                {displayHint ? <p className="text-xs text-muted-foreground">{displayHint}</p> : null}
               </div>
 
               <div className="flex items-end gap-2 pb-1">
@@ -178,6 +195,7 @@ export function CatalogAttributeFormDialog({ attribute, open, onOpenChange }: Pr
                           type="button"
                           role="radio"
                           aria-checked={selected}
+                          title={option.hint}
                           onClick={() => field.onChange(option.value)}
                           className={cn(
                             'rounded-full border px-3 py-1.5 text-sm transition-colors',
@@ -193,30 +211,104 @@ export function CatalogAttributeFormDialog({ attribute, open, onOpenChange }: Pr
                   </div>
                 )}
               />
+              <p className="text-xs text-muted-foreground">
+                فوراً = مصفوفة SKU جاهزة للمتجر · ديناميكياً = عند الاختيار · مطلقاً = عرض فقط
+              </p>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-semibold">قيم الخاصية</p>
+              <div>
+                <p className="text-sm font-semibold">قيم الخاصية</p>
+                <p className="text-xs text-muted-foreground">
+                  أعمدة العرض تتغيّر حسب نوع العرض — البيانات تُنسخ للمنتج ثم للمتجر.
+                </p>
+              </div>
               <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full min-w-[640px] text-sm">
+                <table className="w-full min-w-[720px] text-sm">
                   <thead className="border-b border-border bg-muted/40 text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 text-start font-medium">القيمة</th>
                       <th className="px-3 py-2 text-start font-medium">نص حر</th>
+                      {showColor ? (
+                        <th className="px-3 py-2 text-start font-medium">اللون</th>
+                      ) : null}
+                      {showImage ? (
+                        <th className="px-3 py-2 text-start font-medium">
+                          {displayType === 'color' ? 'صورة (اختياري)' : 'صورة'}
+                        </th>
+                      ) : null}
                       <th className="px-3 py-2 text-start font-medium">السعر الإضافي الافتراضي</th>
-                      <th className="px-3 py-2 text-start font-medium">لون/رابط</th>
                       <th className="px-3 py-2" />
                     </tr>
                   </thead>
                   <tbody>
                     {fields.map((field, index) => (
-                      <tr key={field.id} className="border-b border-border last:border-0">
+                      <tr key={field.id} className="border-b border-border last:border-0 align-top">
                         <td className="px-3 py-2">
-                          <Input {...form.register(`values.${index}.nameAr`)} placeholder="قيمة" />
+                          <Input {...form.register(`values.${index}.nameAr`)} placeholder="أحمر" />
+                          {form.formState.errors.values?.[index]?.nameAr ? (
+                            <p className="mt-1 text-xs text-destructive">
+                              {form.formState.errors.values[index]?.nameAr?.message}
+                            </p>
+                          ) : null}
                         </td>
                         <td className="px-3 py-2">
-                          <Input {...form.register(`values.${index}.freeText`)} placeholder="اختياري" />
+                          <Input
+                            {...form.register(`values.${index}.freeText`)}
+                            placeholder="وصف قصير للمتجر"
+                          />
                         </td>
+                        {showColor ? (
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <Controller
+                                control={form.control}
+                                name={`values.${index}.colorHex`}
+                                render={({ field: colorField }) => (
+                                  <>
+                                    <input
+                                      type="color"
+                                      aria-label="اختيار اللون"
+                                      className="h-9 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5"
+                                      value={
+                                        colorField.value && /^#[0-9a-fA-F]{6}$/.test(colorField.value)
+                                          ? colorField.value
+                                          : '#cccccc'
+                                      }
+                                      onChange={(event) => colorField.onChange(event.target.value)}
+                                    />
+                                    <Input
+                                      dir="ltr"
+                                      className="w-28"
+                                      placeholder="#ef4444"
+                                      value={colorField.value ?? ''}
+                                      onChange={colorField.onChange}
+                                    />
+                                  </>
+                                )}
+                              />
+                            </div>
+                            {form.formState.errors.values?.[index]?.colorHex ? (
+                              <p className="mt-1 text-xs text-destructive">
+                                {form.formState.errors.values[index]?.colorHex?.message}
+                              </p>
+                            ) : null}
+                          </td>
+                        ) : null}
+                        {showImage ? (
+                          <td className="px-3 py-2">
+                            <Input
+                              dir="ltr"
+                              placeholder="https://…"
+                              {...form.register(`values.${index}.imageUrl`)}
+                            />
+                            {form.formState.errors.values?.[index]?.imageUrl ? (
+                              <p className="mt-1 text-xs text-destructive">
+                                {form.formState.errors.values[index]?.imageUrl?.message}
+                              </p>
+                            ) : null}
+                          </td>
+                        ) : null}
                         <td className="px-3 py-2">
                           <Input
                             type="number"
@@ -226,9 +318,6 @@ export function CatalogAttributeFormDialog({ attribute, open, onOpenChange }: Pr
                             className="w-28"
                             {...form.register(`values.${index}.defaultExtraPrice`)}
                           />
-                        </td>
-                        <td className="px-3 py-2">
-                          <Input dir="ltr" placeholder="#hex" {...form.register(`values.${index}.extra`)} />
                         </td>
                         <td className="px-3 py-2">
                           <Button
@@ -257,8 +346,11 @@ export function CatalogAttributeFormDialog({ attribute, open, onOpenChange }: Pr
                   إضافة بند
                 </span>
               </button>
-              {form.formState.errors.values?.message ? (
-                <p className="text-xs text-destructive">{form.formState.errors.values.message}</p>
+              {form.formState.errors.values?.message || form.formState.errors.values?.root?.message ? (
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.values?.message ??
+                    form.formState.errors.values?.root?.message}
+                </p>
               ) : null}
             </div>
           </div>

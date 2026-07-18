@@ -35,6 +35,8 @@ const attributeValueSchema = z.object({
   nameAr: z.string().trim().min(1, 'قيمة الخاصية مطلوبة'),
   freeText: z.string().trim().optional(),
   defaultExtraPrice: z.coerce.number().min(0).optional(),
+  colorHex: z.string().trim().optional(),
+  imageUrl: z.string().trim().optional(),
   extra: z.string().trim().optional(),
 });
 

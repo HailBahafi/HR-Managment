@@ -1,5 +1,6 @@
 import type { CreateProductInput, Product } from '@/features/ecommerce/domain/types/product';
 import type { MediaItem } from '@/features/ecommerce/domain/types/common';
+import { normalizeAttributeValue } from '@/features/ecommerce/domain/types/catalog-attribute';
 import type { ProductFormInput, ProductFormValues } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import {
   createDefaultUomLines,
@@ -44,7 +45,12 @@ export function productToFormValues(product: Product): ProductFormInput {
     barcode: product.barcode ?? '',
     posAvailable: product.posAvailable ?? false,
     saleOk: product.saleOk ?? true,
-    attributes: product.attributes ?? [],
+    attributes: (product.attributes ?? []).map((attribute) => ({
+      ...attribute,
+      values: attribute.values.map((value) =>
+        normalizeAttributeValue(value, attribute.displayType),
+      ),
+    })),
     uomLines:
       product.uomLines && product.uomLines.length > 0
         ? product.uomLines

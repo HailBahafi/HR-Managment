@@ -10,10 +10,14 @@ import {
   type ProductFormInput,
 } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
-import type { CatalogAttribute } from '@/features/ecommerce/domain/types/catalog-attribute';
+import {
+  normalizeAttributeValue,
+  type CatalogAttribute,
+} from '@/features/ecommerce/domain/types/catalog-attribute';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { cn } from '@/shared/utils';
 
 type Props = {
   control: Control<ProductFormInput>;
@@ -40,13 +44,17 @@ export function ProductAttributesTab({ control, errors }: Props) {
       nameAr: attribute.nameAr,
       displayType: attribute.displayType,
       createVariant: attribute.createVariant,
-      values: attribute.values.map((value) => ({
-        id: value.id,
-        nameAr: value.nameAr,
-        freeText: value.freeText,
-        defaultExtraPrice: value.defaultExtraPrice,
-        extra: value.extra,
-      })),
+      values: attribute.values.map((raw) => {
+        const value = normalizeAttributeValue(raw, attribute.displayType);
+        return {
+          id: value.id,
+          nameAr: value.nameAr,
+          freeText: value.freeText,
+          defaultExtraPrice: value.defaultExtraPrice,
+          colorHex: value.colorHex,
+          imageUrl: value.imageUrl,
+        };
+      }),
     });
   }
 
@@ -127,11 +135,28 @@ export function ProductAttributesTab({ control, errors }: Props) {
             {field.values.map((value) => (
               <span
                 key={value.id}
-                className="rounded-md border border-border bg-muted/30 px-2 py-1 text-xs text-foreground"
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs text-foreground',
+                )}
               >
+                {field.displayType === 'color' && value.colorHex ? (
+                  <span
+                    className="h-3.5 w-3.5 shrink-0 rounded-full border border-border"
+                    style={{ backgroundColor: value.colorHex }}
+                    title={value.colorHex}
+                  />
+                ) : null}
+                {field.displayType === 'image' && value.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={value.imageUrl}
+                    alt=""
+                    className="h-5 w-5 shrink-0 rounded object-cover"
+                  />
+                ) : null}
                 {value.nameAr}
                 {value.defaultExtraPrice ? (
-                  <span className="ms-1 text-muted-foreground">(+{value.defaultExtraPrice})</span>
+                  <span className="text-muted-foreground">(+{value.defaultExtraPrice})</span>
                 ) : null}
               </span>
             ))}

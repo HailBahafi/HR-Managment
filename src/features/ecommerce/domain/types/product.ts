@@ -25,7 +25,9 @@ export type ProductAttributeValue = {
   nameAr: string;
   freeText?: string;
   defaultExtraPrice?: number;
-  /** Color hex or image URL depending on displayType */
+  colorHex?: string;
+  imageUrl?: string;
+  /** @deprecated Prefer colorHex / imageUrl */
   extra?: string;
 };
 

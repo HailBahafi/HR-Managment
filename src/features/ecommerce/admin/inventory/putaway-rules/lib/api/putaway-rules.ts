@@ -5,6 +5,7 @@ import {
 } from '@/features/ecommerce/shared/lib/adapters/mock-inventory-store';
 import type {
   CreatePutawayRuleInput,
+  PutawayLocationOption,
   PutawayRule,
   PutawayRuleListQuery,
   UpdatePutawayRuleInput,
@@ -17,6 +18,16 @@ function newId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function normalizeInput(input: CreatePutawayRuleInput): CreatePutawayRuleInput {
+  if (input.appliesTo === 'product') {
+    return { ...input, categoryId: null, productId: input.productId || null };
+  }
+  if (input.appliesTo === 'category') {
+    return { ...input, productId: null, categoryId: input.categoryId || null };
+  }
+  return { ...input, productId: null, categoryId: null };
+}
+
 export const putawayRulesApi = {
   getAll(query: PutawayRuleListQuery) {
     return repository.list(
@@ -27,7 +38,11 @@ export const putawayRulesApi = {
         if (q.warehouseId && item.warehouseId !== q.warehouseId) return false;
         return true;
       },
-      (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+      (a, b) => {
+        const bySeq = (a.sequence ?? 10) - (b.sequence ?? 10);
+        if (bySeq !== 0) return bySeq;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      },
     );
   },
 
@@ -38,7 +53,7 @@ export const putawayRulesApi = {
   create(input: CreatePutawayRuleInput) {
     const now = new Date().toISOString();
     return repository.create({
-      ...input,
+      ...normalizeInput(input),
       id: newId('putaway'),
       createdAt: now,
       updatedAt: now,
@@ -46,14 +61,20 @@ export const putawayRulesApi = {
   },
 
   update(companyId: string, id: string, patch: UpdatePutawayRuleInput) {
-    return repository.update(companyId, id, { ...patch, updatedAt: new Date().toISOString() });
+    const normalized = patch.appliesTo
+      ? normalizeInput({ ...(patch as CreatePutawayRuleInput) })
+      : patch;
+    return repository.update(companyId, id, {
+      ...normalized,
+      updatedAt: new Date().toISOString(),
+    });
   },
 
   remove(companyId: string, id: string) {
     return repository.remove(companyId, id);
   },
 
-  async listLocationOptions(companyId: string) {
+  async listLocationOptions(companyId: string): Promise<PutawayLocationOption[]> {
     const [warehouses, locations] = await Promise.all([
       mockWarehousesStore.list({ companyId, page: 1, limit: 200 }),
       mockWarehouseLocationsStore.list({ companyId, page: 1, limit: 500 }),
@@ -67,7 +88,9 @@ export const putawayRulesApi = {
         warehouseNameAr: warehouseMap.get(location.warehouseId)?.nameAr ?? location.warehouseId,
         nameAr: location.nameAr,
         code: location.code,
-        storageCategory: location.storageCategory,
+        locationType: location.locationType,
+        parentLocationId: location.parentLocationId ?? null,
+        isActive: location.isActive,
       }))
       .sort((a, b) => a.nameAr.localeCompare(b.nameAr, 'ar'));
   },
