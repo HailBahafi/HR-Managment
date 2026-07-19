@@ -13,7 +13,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 120,
+      "quantity": 155,
       "lowStockThreshold": 20,
       "allowBackorder": false
     },
@@ -60,7 +60,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 45,
+      "quantity": 40,
       "lowStockThreshold": 10,
       "allowBackorder": false
     },
@@ -107,7 +107,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 80,
+      "quantity": 84,
       "lowStockThreshold": 15,
       "allowBackorder": false
     },
@@ -153,7 +153,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 30,
+      "quantity": 22,
       "lowStockThreshold": 5,
       "allowBackorder": false
     },
@@ -199,7 +199,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 60,
+      "quantity": 85,
       "lowStockThreshold": 10,
       "allowBackorder": false
     },
@@ -245,7 +245,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 40,
+      "quantity": 48,
       "lowStockThreshold": 8,
       "allowBackorder": false
     },
@@ -290,7 +290,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 25,
+      "quantity": 28,
       "lowStockThreshold": 5,
       "allowBackorder": false
     },
@@ -337,7 +337,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 35,
+      "quantity": 21,
       "lowStockThreshold": 5,
       "allowBackorder": false
     },
@@ -383,7 +383,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 50,
+      "quantity": 9,
       "lowStockThreshold": 10,
       "allowBackorder": false
     },
@@ -422,7 +422,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 100,
+      "quantity": 60,
       "lowStockThreshold": 20,
       "allowBackorder": false
     },
@@ -468,7 +468,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 70,
+      "quantity": 48,
       "lowStockThreshold": 15,
       "allowBackorder": false
     },
@@ -514,7 +514,7 @@
     "stockStatus": "in_stock",
     "inventory": {
       "trackInventory": true,
-      "quantity": 40,
+      "quantity": 12,
       "lowStockThreshold": 8,
       "allowBackorder": false
     },
@@ -745,7 +745,10 @@
       "metaTitle": "لمبة LED 9 واط",
       "metaDescription": "مصباح LED موفر للطاقة"
     },
-    "tags": ["home", "lighting"],
+    "tags": [
+      "home",
+      "lighting"
+    ],
     "createdAt": "2026-03-17T08:00:00.000Z",
     "updatedAt": "2026-03-17T08:00:00.000Z",
     "archivedAt": null
@@ -786,7 +789,9 @@
       "metaTitle": "بيبسي زيرو",
       "metaDescription": "مشروب غازي بدون سكر"
     },
-    "tags": ["beverages"],
+    "tags": [
+      "beverages"
+    ],
     "createdAt": "2026-03-17T09:00:00.000Z",
     "updatedAt": "2026-03-17T09:00:00.000Z",
     "archivedAt": null

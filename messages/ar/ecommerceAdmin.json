@@ -8,7 +8,9 @@
     "groups": {
       "products": "المنتجات",
       "catalogSetup": "تهيئة الكتالوج",
-      "inventory": "المخازن",
+      "inventory": "عمليات المخزون",
+      "inventorySetup": "تهيئة المخزون",
+      "inventoryReports": "تقارير المخزون",
       "sales": "المبيعات",
       "website": "الموقع"
     },
@@ -16,7 +18,8 @@
       "content": "المحتوى",
       "appearance": "المظهر",
       "catalogSetup": "بيانات أساسية",
-      "inventorySetup": "تهيئة المخزون"
+      "inventorySetup": "تهيئة المخزون",
+      "inventoryOps": "عمليات المخزون"
     },
     "overview": "نظرة عامة",
     "homepage": "الصفحة الرئيسية",
@@ -37,7 +40,17 @@
     "customers": "العملاء",
     "warehouses": "المستودعات",
     "locations": "المواقع",
-    "putawayRules": "قواعد التخزين"
+    "putawayRules": "قواعد التخزين",
+    "opTransfers": "التحويلات",
+    "opAdjustments": "التعديلات",
+    "opPhysicalCount": "الجرد المادي",
+    "opScrap": "مخلفات التصنيع",
+    "opPurchase": "الشراء",
+    "opReplenishment": "تجديد المخزون",
+    "reportStock": "المخزون",
+    "reportDetailedStock": "Detailed Stock",
+    "reportMoves": "سجل الحركات",
+    "reportMovesAnalysis": "تحليل الحركات"
   },
   "homepage": {
     "title": "الصفحة الرئيسية",

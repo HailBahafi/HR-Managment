@@ -5,20 +5,16 @@ import { toast } from 'sonner';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import { warehouseOperationsApi } from '@/features/ecommerce/admin/inventory/operations/lib/api/warehouse-operations';
 import { warehouseOperationsQueryKeys } from '@/features/ecommerce/admin/inventory/hooks/query-keys';
+import { WAREHOUSE_OPERATION_KIND_META } from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
 import type {
   CreateWarehouseOperationInput,
   UpdateWarehouseOperationInput,
   WarehouseOperationKind,
 } from '@/features/ecommerce/domain/types/warehouse';
 
-const SUCCESS_BY_KIND: Record<WarehouseOperationKind, string> = {
-  issue: 'تم حفظ مستند الصرف',
-  receipt: 'تم حفظ مستند الاستلام',
-  internal: 'تم حفظ الحركة الداخلية',
-};
-
 export function useWarehouseOperationMutations(warehouseId: string, kind: WarehouseOperationKind) {
   const queryClient = useQueryClient();
+  const successMessage = `تم حفظ ${WAREHOUSE_OPERATION_KIND_META[kind].createLabel}`;
 
   function invalidate(companyId: string) {
     void queryClient.invalidateQueries({
@@ -30,7 +26,7 @@ export function useWarehouseOperationMutations(warehouseId: string, kind: Wareho
     mutationFn: (input: CreateWarehouseOperationInput) => warehouseOperationsApi.create(input),
     onSuccess: (_data, input) => {
       invalidate(input.companyId);
-      toast.success(SUCCESS_BY_KIND[kind]);
+      toast.success(successMessage);
     },
     onError: (err) => {
       const { displayMessage } = handleApiError(err, 'ecommerce.warehouseOperations.create');

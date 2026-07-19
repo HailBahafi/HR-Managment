@@ -6,6 +6,7 @@ import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/stor
 import { useWarehouseOperations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operations';
 import { useWarehouseLocations } from '@/features/ecommerce/admin/inventory/locations/hooks/use-warehouse-locations';
 import { WarehouseOperationDetailDialog } from '@/features/ecommerce/admin/inventory/operations/components/warehouse-operation-detail-dialog';
+import { WAREHOUSE_OPERATION_KIND_META } from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
 import { WAREHOUSE_OPERATION_STATUS_LABELS_AR } from '@/features/ecommerce/domain/constants/warehouse-operation-status';
 import type {
   WarehouseLocation,
@@ -73,8 +74,9 @@ function defaultPartnerLocation(
     inWarehouse.find((location) => location.locationType === 'supplier')?.nameAr ?? 'الموردون';
   const customers =
     inWarehouse.find((location) => location.locationType === 'customer')?.nameAr ?? 'العملاء';
-  if (kind === 'receipt') return { from: vendors };
-  if (kind === 'issue') return { to: customers };
+  const effect = WAREHOUSE_OPERATION_KIND_META[kind]?.stockEffect;
+  if (effect === 'inbound') return { from: vendors };
+  if (effect === 'outbound') return { to: customers };
   return {};
 }
 
@@ -251,7 +253,11 @@ export function ProductStockMovesHistoryDialog({
                         <td
                           className={cn(
                             'px-3 py-2.5 tabular-nums font-medium',
-                            row.kind === 'receipt' ? 'text-success' : row.kind === 'issue' ? 'text-destructive' : '',
+                            row.kind === 'issue' || row.kind === 'scrap'
+                              ? 'text-destructive'
+                              : WAREHOUSE_OPERATION_KIND_META[row.kind]?.stockEffect === 'inbound'
+                                ? 'text-success'
+                                : '',
                           )}
                           dir="ltr"
                         >

@@ -1,7 +1,7 @@
 /**
  * Ecommerce admin routes live under the `(ecommerce)` route group inside `(app)`.
  *
- * Nav domains: Products → Catalog setup → Inventory → Sales → Website.
+ * Nav domains: Products → Catalog setup → Inventory → Inventory setup → Sales → Website.
  */
 export const ecommerceAdminRoutes = {
   overview: '/overview',
@@ -21,6 +21,25 @@ export const ecommerceAdminRoutes = {
   locations: '/inventory/locations',
   locationsForWarehouse: (warehouseId: string) => `/inventory/locations?warehouseId=${warehouseId}`,
   putawayRules: '/inventory/putaway-rules',
+  /** تقارير المخزون */
+  reportStock: '/inventory/reports/stock',
+  reportDetailedStock: '/inventory/reports/detailed-stock',
+  reportMoves: '/inventory/reports/moves',
+  reportMovesAnalysis: '/inventory/reports/moves-analysis',
+  /** صفحات العمليات المستقلة تحت /inventory/{segment} */
+  operations: '/inventory/transfers',
+  operationsForKind: (kindOrSegment: string) => `/inventory/${
+    (
+      {
+        transfer: 'transfers',
+        adjustment: 'adjustments',
+        physical_count: 'physical-counts',
+        scrap: 'scrap',
+        purchase: 'purchases',
+        replenishment: 'replenishment',
+      } as Record<string, string>
+    )[kindOrSegment] ?? kindOrSegment
+  }`,
 } as const;
 
 export type EcommerceContentTab = 'pages' | 'blog' | 'faq';

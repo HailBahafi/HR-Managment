@@ -3,27 +3,44 @@
 import { SetPageTitle } from '@/components/layouts/set-page-title';
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, MapPin, PackageMinus, PackagePlus, RefreshCw, Warehouse } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  ArrowRight,
+  ClipboardList,
+  Factory,
+  MapPin,
+  PackageMinus,
+  PackagePlus,
+  RefreshCw,
+  ShoppingCart,
+  SlidersHorizontal,
+  Truck,
+} from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useWarehouse } from '@/features/ecommerce/admin/inventory/warehouses/hooks/use-warehouses';
 import { WarehouseOperationsPanel } from '@/features/ecommerce/admin/inventory/operations/components/warehouse-operations-panel';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
+import {
+  isWarehouseOperationKind,
+  WAREHOUSE_DETAIL_TAB_KINDS,
+  WAREHOUSE_OPERATION_KIND_META,
+} from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
 import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/utils';
 
-type WarehouseTab = WarehouseOperationKind;
-
-const TABS: { id: WarehouseTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'issue', label: 'صرف', icon: PackageMinus },
-  { id: 'receipt', label: 'استلام', icon: PackagePlus },
-  { id: 'internal', label: 'حركات داخلية', icon: RefreshCw },
-];
-
-function isWarehouseTab(value: string | null): value is WarehouseTab {
-  return value === 'issue' || value === 'receipt' || value === 'internal';
-}
+const TAB_ICONS: Record<WarehouseOperationKind, React.ComponentType<{ className?: string }>> = {
+  transfer: Truck,
+  receipt: PackagePlus,
+  issue: PackageMinus,
+  internal: ArrowLeftRight,
+  adjustment: SlidersHorizontal,
+  physical_count: ClipboardList,
+  scrap: Factory,
+  purchase: ShoppingCart,
+  replenishment: RefreshCw,
+};
 
 export function WarehouseDetailPage() {
   const companyId = getStorefrontCompanyId();
@@ -33,11 +50,14 @@ export function WarehouseDetailPage() {
   const warehouseId = params.warehouseId;
 
   const tabParam = searchParams.get('tab');
-  const activeTab: WarehouseTab = isWarehouseTab(tabParam) ? tabParam : 'issue';
+  const activeTab: WarehouseOperationKind =
+    isWarehouseOperationKind(tabParam) && WAREHOUSE_DETAIL_TAB_KINDS.includes(tabParam)
+      ? tabParam
+      : 'receipt';
 
   const { data: warehouse, isLoading, isError } = useWarehouse(companyId, warehouseId);
 
-  const setTab = (tab: WarehouseTab) => {
+  const setTab = (tab: WarehouseOperationKind) => {
     router.replace(`${ecommerceAdminRoutes.warehouseDetail(warehouseId)}?tab=${tab}`, { scroll: false });
   };
 
@@ -87,31 +107,31 @@ export function WarehouseDetailPage() {
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-border pb-px">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const selected = activeTab === tab.id;
+        {WAREHOUSE_DETAIL_TAB_KINDS.map((kind) => {
+          const Icon = TAB_ICONS[kind];
+          const selected = activeTab === kind;
+          const both = WAREHOUSE_OPERATION_KIND_META[kind].uiPlacement === 'both';
           return (
             <button
-              key={tab.id}
+              key={kind}
               type="button"
-              onClick={() => setTab(tab.id)}
+              onClick={() => setTab(kind)}
+              title={both ? 'متاح أيضًا من قائمة عمليات المخزون' : undefined}
               className={cn(
-                'inline-flex items-center gap-2 rounded-t-lg px-3.5 py-2.5 text-sm transition-colors',
+                'inline-flex items-center gap-1.5 rounded-t-lg px-2.5 py-2 text-xs sm:text-sm transition-colors',
                 selected
                   ? 'border-b-2 border-primary font-semibold text-primary'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <Icon className="h-4 w-4" />
-              {tab.label}
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              {WAREHOUSE_OPERATION_KIND_META[kind].labelAr}
             </button>
           );
         })}
       </div>
 
-      {activeTab === 'issue' ? <WarehouseOperationsPanel warehouseId={warehouseId} kind="issue" /> : null}
-      {activeTab === 'receipt' ? <WarehouseOperationsPanel warehouseId={warehouseId} kind="receipt" /> : null}
-      {activeTab === 'internal' ? <WarehouseOperationsPanel warehouseId={warehouseId} kind="internal" /> : null}
+      <WarehouseOperationsPanel warehouseId={warehouseId} kind={activeTab} />
     </div>
   );
 }

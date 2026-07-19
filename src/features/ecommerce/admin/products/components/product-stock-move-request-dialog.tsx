@@ -9,6 +9,7 @@ import { useWarehouseLocations } from '@/features/ecommerce/admin/inventory/loca
 import { warehouseOperationsApi } from '@/features/ecommerce/admin/inventory/operations/lib/api/warehouse-operations';
 import { warehouseOperationsQueryKeys } from '@/features/ecommerce/admin/inventory/hooks/query-keys';
 import { REPLENISHMENT_SOURCE_DOCUMENT } from '@/features/ecommerce/admin/products/constants/replenishment';
+import { WAREHOUSE_OPERATION_KIND_META } from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
 import type { ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,7 +33,7 @@ type VariantRow = ProductFormInput['variants'][number];
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** receipt = إدخال/تجديد · issue = إخراج/صرف · internal = حركة داخلية */
+  /** عادة: replenishment | issue | internal | receipt */
   kind: WarehouseOperationKind;
   productId?: string | null;
   productNameAr: string;
@@ -51,12 +52,6 @@ type DraftLine = {
 
 function newLineId() {
   return `opl-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function prefixFor(kind: WarehouseOperationKind) {
-  if (kind === 'receipt') return 'RCV';
-  if (kind === 'issue') return 'ISS';
-  return 'INT';
 }
 
 export function ProductStockMoveRequestDialog({
@@ -125,13 +120,11 @@ export function ProductStockMoveRequestDialog({
     setToLocationId(second?.id ?? stockLoc?.id ?? '');
   }, [open, warehouseId, locations]);
 
-  const title =
-    kind === 'receipt'
-      ? 'طلب تجديد / إدخال مخزون'
-      : kind === 'issue'
-        ? 'طلب صرف / إخراج مخزون'
-        : 'طلب حركة داخلية';
-  const Icon = kind === 'receipt' ? RefreshCw : kind === 'issue' ? PackageMinus : ArrowLeftRight;
+  const kindMeta = WAREHOUSE_OPERATION_KIND_META[kind];
+  const stockEffect = kindMeta.stockEffect;
+  const title = kindMeta.createLabel;
+  const Icon =
+    stockEffect === 'inbound' ? RefreshCw : stockEffect === 'outbound' ? PackageMinus : ArrowLeftRight;
   const hasQty = lines.some((line) => line.quantity > 0);
 
   async function handleSubmit() {
@@ -149,7 +142,7 @@ export function ProductStockMoveRequestDialog({
       return;
     }
 
-    if (kind === 'internal' && locationId && toLocationId && locationId === toLocationId) {
+    if (stockEffect === 'move' && locationId && toLocationId && locationId === toLocationId) {
       toast.error('اختر موقعين مختلفين للحركة الداخلية.');
       return;
     }
@@ -164,9 +157,9 @@ export function ProductStockMoveRequestDialog({
         variantId: line.variantId,
         demandQuantity: line.quantity,
         quantity: line.quantity,
-        ...(kind === 'receipt'
+        ...(stockEffect === 'inbound'
           ? { toLocationId: locationId || undefined }
-          : kind === 'issue'
+          : stockEffect === 'outbound'
             ? { fromLocationId: locationId || undefined }
             : {
                 fromLocationId: locationId || undefined,
@@ -180,31 +173,20 @@ export function ProductStockMoveRequestDialog({
         companyId,
         warehouseId,
         kind,
-        reference: `${prefixFor(kind)}-${Date.now().toString().slice(-6)}`,
+        reference: `${kindMeta.refPrefix}-${Date.now().toString().slice(-6)}`,
         status: 'draft',
         occurredAt: new Date().toISOString(),
         sourceDocument:
-          kind === 'receipt'
+          kind === 'replenishment' || kind === 'receipt'
             ? REPLENISHMENT_SOURCE_DOCUMENT
             : kind === 'issue'
-              ? 'طلب صرف يدوي'
+              ? 'طلب توصيل يدوي'
               : 'حركة داخلية يدوية',
-        notes:
-          kind === 'receipt'
-            ? `طلب تجديد مخزون للمنتج ${productNameAr}`
-            : kind === 'issue'
-              ? `طلب صرف مخزون للمنتج ${productNameAr}`
-              : `طلب حركة داخلية للمنتج ${productNameAr}`,
+        notes: `طلب ${kindMeta.labelAr} للمنتج ${productNameAr}`,
         lines: opLines,
       });
       void queryClient.invalidateQueries({ queryKey: warehouseOperationsQueryKeys.root(companyId) });
-      toast.success(
-        kind === 'receipt'
-          ? `تم إنشاء طلب استلام ${created.reference}`
-          : kind === 'issue'
-            ? `تم إنشاء طلب صرف ${created.reference}`
-            : `تم إنشاء طلب حركة داخلية ${created.reference}`,
-      );
+      toast.success(`تم إنشاء ${kindMeta.createLabel} ${created.reference}`);
       onOpenChange(false);
       onCreated?.(warehouseId, kind);
     } catch {
@@ -247,7 +229,11 @@ export function ProductStockMoveRequestDialog({
             </div>
             <div className="space-y-1.5">
               <Label>
-                {kind === 'receipt' ? 'موقع الاستلام' : kind === 'issue' ? 'موقع الصرف' : 'من موقع'}
+                {stockEffect === 'inbound'
+                  ? 'موقع الاستلام'
+                  : stockEffect === 'outbound'
+                    ? 'موقع الصرف'
+                    : 'من موقع'}
               </Label>
               <Select
                 value={locationId || undefined}
@@ -266,7 +252,7 @@ export function ProductStockMoveRequestDialog({
                 </SelectContent>
               </Select>
             </div>
-            {kind === 'internal' ? (
+            {stockEffect === 'move' ? (
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>إلى موقع</Label>
                 <Select
@@ -331,13 +317,7 @@ export function ProductStockMoveRequestDialog({
 
         <DialogFooter className="shrink-0 gap-2 border-t border-border px-6 py-4 sm:justify-start">
           <Button type="button" onClick={() => void handleSubmit()} disabled={saving || !hasQty}>
-            {saving
-              ? 'جاري الإنشاء…'
-              : kind === 'receipt'
-                ? 'إنشاء طلب استلام'
-                : kind === 'issue'
-                  ? 'إنشاء طلب صرف'
-                  : 'إنشاء طلب داخلي'}
+            {saving ? 'جاري الإنشاء…' : kindMeta.createLabel}
           </Button>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             إلغاء
@@ -349,7 +329,8 @@ export function ProductStockMoveRequestDialog({
 }
 
 export function StockMoveKindIcon({ kind }: { kind: WarehouseOperationKind }) {
-  if (kind === 'receipt') return <PackagePlus className="h-4 w-4" />;
-  if (kind === 'issue') return <PackageMinus className="h-4 w-4" />;
+  const effect = WAREHOUSE_OPERATION_KIND_META[kind].stockEffect;
+  if (effect === 'inbound') return <PackagePlus className="h-4 w-4" />;
+  if (effect === 'outbound') return <PackageMinus className="h-4 w-4" />;
   return <ArrowLeftRight className="h-4 w-4" />;
 }

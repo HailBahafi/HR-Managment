@@ -213,7 +213,7 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
   const putawayCount = product?.id ? (putawayData?.pagination.total ?? putawayData?.items.length ?? 0) : 0;
   const receiptsCount = product?.id ? (receiptsData?.pagination.total ?? receiptsData?.items.length ?? 0) : 0;
   const replenishmentCount = product?.id
-    ? (receiptsData?.items ?? []).filter(isReplenishmentOperation).length
+    ? (allMovesData?.items ?? []).filter(isReplenishmentOperation).length
     : 0;
   const issuesCount = product?.id ? (issuesData?.pagination.total ?? issuesData?.items.length ?? 0) : 0;
   const internalsCount = product?.id
@@ -384,7 +384,7 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
         variants={variants}
         onCreated={(_warehouseId, kind) => {
           setMoveRequestKind(null);
-          if (kind === 'receipt') {
+          if (kind === 'receipt' || kind === 'replenishment') {
             setActiveRelatedDoc('replenish');
             setReplenishmentListOpen(true);
             return;
@@ -405,7 +405,7 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
           onCreateRequest={() => {
             setReplenishmentListOpen(false);
             setActiveRelatedDoc('replenish');
-            setMoveRequestKind('receipt');
+            setMoveRequestKind('replenishment');
           }}
         />
       ) : null}

@@ -116,9 +116,14 @@ export const warehouseOperationFormSchema = z.object({
   notes: z.string().max(500).optional().or(z.literal('')),
   partnerName: z.string().max(160).optional().or(z.literal('')),
   sourceDocument: z.string().max(160).optional().or(z.literal('')),
+  /** مطلوب عند الإنشاء من قائمة المخزون العامة (بدون مستودع محدد) */
+  sourceWarehouseId: z.string().optional().or(z.literal('')),
+  destinationWarehouseId: z.string().optional().or(z.literal('')),
   productName: z.string().min(1, 'اسم المنتج مطلوب').max(160),
   sku: z.string().max(64).optional().or(z.literal('')),
-  quantity: z.number({ error: 'الكمية مطلوبة' }).positive('الكمية يجب أن تكون أكبر من صفر'),
+  /** للجرد/التعديل: الكمية النظرية/السابقة */
+  theoreticalQuantity: z.number().min(0).optional(),
+  quantity: z.number({ error: 'الكمية مطلوبة' }).min(0, 'الكمية لا يمكن أن تكون سالبة'),
   fromLocationId: z.string().optional().or(z.literal('')),
   toLocationId: z.string().optional().or(z.literal('')),
 });
@@ -131,8 +136,11 @@ export const WAREHOUSE_OPERATION_FORM_DEFAULT_VALUES: WarehouseOperationFormValu
   notes: '',
   partnerName: '',
   sourceDocument: '',
+  sourceWarehouseId: '',
+  destinationWarehouseId: '',
   productName: '',
   sku: '',
+  theoreticalQuantity: 0,
   quantity: 1,
   fromLocationId: '',
   toLocationId: '',

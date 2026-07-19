@@ -2,11 +2,12 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeftRight, PackageMinus, PackagePlus } from 'lucide-react';
+import { ArrowLeftRight, PackageMinus, PackagePlus, RefreshCw } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useWarehouseOperations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operations';
 import { useWarehouses } from '@/features/ecommerce/admin/inventory/warehouses/hooks/use-warehouses';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
+import { WAREHOUSE_OPERATION_KIND_META } from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
 import { WAREHOUSE_OPERATION_STATUS_LABELS_AR } from '@/features/ecommerce/domain/constants/warehouse-operation-status';
 import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
 import { Button } from '@/components/ui/button';
@@ -31,28 +32,11 @@ type Props = {
   onCreateRequest?: () => void;
 };
 
-const KIND_META: Record<
-  WarehouseOperationKind,
-  { title: string; hint: string; createLabel: string; Icon: typeof PackagePlus }
-> = {
-  receipt: {
-    title: 'إدخالات المنتج',
-    hint: 'الاستلام',
-    createLabel: 'طلب استلام جديد',
-    Icon: PackagePlus,
-  },
-  issue: {
-    title: 'إخراجات المنتج',
-    hint: 'الصرف',
-    createLabel: 'طلب صرف جديد',
-    Icon: PackageMinus,
-  },
-  internal: {
-    title: 'الحركات الداخلية',
-    hint: 'الحركة الداخلية',
-    createLabel: 'طلب داخلي جديد',
-    Icon: ArrowLeftRight,
-  },
+const LIST_ICONS: Partial<Record<WarehouseOperationKind, typeof PackagePlus>> = {
+  receipt: PackagePlus,
+  issue: PackageMinus,
+  internal: ArrowLeftRight,
+  replenishment: RefreshCw,
 };
 
 function statusBadgeVariant(status: string): 'subtle' | 'warning' | 'success' | 'destructive' {
@@ -85,8 +69,8 @@ export function ProductStockMovesListDialog({
   }, [warehousesData?.items]);
 
   const items = data?.items ?? [];
-  const meta = KIND_META[kind];
-  const Icon = meta.Icon;
+  const meta = WAREHOUSE_OPERATION_KIND_META[kind];
+  const Icon = LIST_ICONS[kind] ?? PackagePlus;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -94,13 +78,13 @@ export function ProductStockMovesListDialog({
         <div className={dialogShellHeaderClass}>
           <DialogTitle className="flex items-center gap-2 text-base font-semibold">
             <Icon className="h-4 w-4 text-primary" />
-            {meta.title}
+            {meta.labelAr} · {productNameAr}
           </DialogTitle>
         </div>
 
         <div className={cn(dialogShellBodyClass, 'space-y-3')}>
           <p className="text-xs text-muted-foreground">
-            طلبات حركة {meta.hint} المرتبطة بـ «{productNameAr}».
+            طلبات «{meta.labelAr}» المرتبطة بهذا المنتج.
           </p>
 
           {isLoading ? (
@@ -130,9 +114,7 @@ export function ProductStockMovesListDialog({
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={statusBadgeVariant(op.status)}>
-                        {WAREHOUSE_OPERATION_STATUS_LABELS_AR[
-                          op.status as keyof typeof WAREHOUSE_OPERATION_STATUS_LABELS_AR
-                        ] ?? op.status}
+                        {WAREHOUSE_OPERATION_STATUS_LABELS_AR[op.status] ?? op.status}
                       </Badge>
                       <Button
                         type="button"

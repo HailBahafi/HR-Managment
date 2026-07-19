@@ -33,6 +33,9 @@ export const warehouseOperationsApi: AdminWarehouseOperationsPort = {
         (item, q) => {
           if (q.warehouseId && item.warehouseId !== q.warehouseId) return false;
           if (q.kind && item.kind !== q.kind) return false;
+          if (q.status && item.status !== q.status && !(q.status === 'done' && (item.status as string) === 'posted')) {
+            return false;
+          }
           if (q.productId && !item.lines.some((line) => line.productId === q.productId)) return false;
           if (!q.search) return true;
           const search = q.search.toLowerCase();

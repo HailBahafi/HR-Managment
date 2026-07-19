@@ -25,6 +25,7 @@ import { cn } from '@/shared/utils';
 export { REPLENISHMENT_SOURCE_DOCUMENT };
 
 export function isReplenishmentOperation(op: WarehouseOperation): boolean {
+  if (op.kind === 'replenishment') return true;
   if (op.kind !== 'receipt') return false;
   const source = op.sourceDocument?.trim() ?? '';
   const notes = op.notes?.trim() ?? '';
@@ -61,7 +62,6 @@ export function ProductReplenishmentListDialog({
   const { data, isLoading } = useWarehouseOperations({
     companyId,
     productId,
-    kind: 'receipt',
     limit: 100,
   });
   const { data: warehousesData } = useWarehouses({ companyId, limit: 100 });

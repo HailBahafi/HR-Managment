@@ -21,12 +21,22 @@ import {
   MapPin,
   SlidersHorizontal,
   Library,
+  Truck,
+  ClipboardList,
+  Factory,
+  RefreshCw,
+  BarChart3,
 } from 'lucide-react';
 import {
   ecommerceAdminRoutes,
   ecommerceContentHref,
   ecommerceNavigationHref,
 } from '@/features/ecommerce/admin/constants/routes';
+import {
+  INVENTORY_HEADER_OPERATION_KINDS,
+  WAREHOUSE_OPERATION_KIND_META,
+} from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
+import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
 
 export type EcommerceAdminNavItem = {
   /** next-intl key under `ecommerceAdmin.nav.*` */
@@ -37,21 +47,35 @@ export type EcommerceAdminNavItem = {
 
 export type EcommerceAdminNavSection = {
   /** Optional section label key under `ecommerceAdmin.nav.sections.*` */
-  sectionKey?: 'content' | 'appearance' | 'catalogSetup' | 'inventorySetup';
+  sectionKey?: 'content' | 'appearance' | 'catalogSetup' | 'inventorySetup' | 'inventoryOps';
   items: EcommerceAdminNavItem[];
 };
 
 export type EcommerceAdminNavGroup = {
-  key: 'products' | 'catalogSetup' | 'inventory' | 'sales' | 'website';
+  key: 'products' | 'catalogSetup' | 'inventory' | 'inventorySetup' | 'inventoryReports' | 'sales' | 'website';
   labelKey: string;
   icon: LucideIcon;
   sections: EcommerceAdminNavSection[];
 };
 
-/**
- * Order: operational catalog → master setup → inventory setup → sales → website.
- * Empty future domains (finance/system) are omitted until they have real screens.
- */
+const HEADER_OP_ICONS: Partial<Record<WarehouseOperationKind, LucideIcon>> = {
+  transfer: Truck,
+  adjustment: SlidersHorizontal,
+  physical_count: ClipboardList,
+  scrap: Factory,
+  purchase: ShoppingCart,
+  replenishment: RefreshCw,
+};
+
+const inventoryOpsNavItems: EcommerceAdminNavItem[] = INVENTORY_HEADER_OPERATION_KINDS.map((kind) => {
+  const segment = WAREHOUSE_OPERATION_KIND_META[kind].pathSegment!;
+  return {
+    labelKey: WAREHOUSE_OPERATION_KIND_META[kind].navLabelKey,
+    href: ecommerceAdminRoutes.operationsForKind(segment),
+    icon: HEADER_OP_ICONS[kind] ?? Package,
+  };
+});
+
 export const ecommerceAdminOverviewItem: EcommerceAdminNavItem = {
   labelKey: 'overview',
   href: ecommerceAdminRoutes.overview,
@@ -87,14 +111,46 @@ export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
   {
     key: 'inventory',
     labelKey: 'groups.inventory',
+    icon: Package,
+    sections: [
+      {
+        items: inventoryOpsNavItems,
+      },
+    ],
+  },
+  {
+    key: 'inventorySetup',
+    labelKey: 'groups.inventorySetup',
     icon: Warehouse,
     sections: [
       {
-        sectionKey: 'inventorySetup',
         items: [
           { labelKey: 'warehouses', href: ecommerceAdminRoutes.warehouses, icon: Warehouse },
           { labelKey: 'locations', href: ecommerceAdminRoutes.locations, icon: MapPin },
           { labelKey: 'putawayRules', href: ecommerceAdminRoutes.putawayRules, icon: MapPinned },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'inventoryReports',
+    labelKey: 'groups.inventoryReports',
+    icon: BarChart3,
+    sections: [
+      {
+        items: [
+          { labelKey: 'reportStock', href: ecommerceAdminRoutes.reportStock, icon: Package },
+          {
+            labelKey: 'reportDetailedStock',
+            href: ecommerceAdminRoutes.reportDetailedStock,
+            icon: ClipboardList,
+          },
+          { labelKey: 'reportMoves', href: ecommerceAdminRoutes.reportMoves, icon: FileText },
+          {
+            labelKey: 'reportMovesAnalysis',
+            href: ecommerceAdminRoutes.reportMovesAnalysis,
+            icon: BarChart3,
+          },
         ],
       },
     ],
@@ -159,7 +215,6 @@ const ECOMMERCE_ADMIN_PATHS: string[] = [
   ...ecommerceAdminNavGroups.flatMap(collectHrefs),
 ];
 
-/** True when `pathname` belongs to one of the ecommerce admin pages. */
 export function isEcommerceAdminNavPath(pathname: string): boolean {
   return ECOMMERCE_ADMIN_PATHS.some((base) => pathname === base || pathname.startsWith(`${base}/`));
 }

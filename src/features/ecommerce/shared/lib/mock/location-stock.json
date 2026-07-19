@@ -5,8 +5,8 @@
     "productId": "prod-1",
     "warehouseId": "wh-main",
     "locationId": "loc-main-a1",
-    "quantity": 40,
-    "updatedAt": "2026-06-01T08:00:00.000Z"
+    "quantity": 42,
+    "updatedAt": "2026-07-10T08:00:00.000Z"
   },
   {
     "id": "ls-2",
@@ -14,8 +14,8 @@
     "productId": "prod-1",
     "warehouseId": "wh-main",
     "locationId": "loc-main-stock",
-    "quantity": 25,
-    "updatedAt": "2026-06-01T08:00:00.000Z"
+    "quantity": 78,
+    "updatedAt": "2026-07-10T08:00:00.000Z"
   },
   {
     "id": "ls-3",
@@ -23,8 +23,8 @@
     "productId": "prod-1",
     "warehouseId": "wh-north",
     "locationId": "loc-north-stock",
-    "quantity": 15,
-    "updatedAt": "2026-06-01T08:00:00.000Z"
+    "quantity": 35,
+    "updatedAt": "2026-07-10T08:00:00.000Z"
   },
   {
     "id": "ls-4",
@@ -32,8 +32,8 @@
     "productId": "prod-2",
     "warehouseId": "wh-main",
     "locationId": "loc-main-a1",
-    "quantity": 8,
-    "updatedAt": "2026-06-01T08:00:00.000Z"
+    "quantity": 18,
+    "updatedAt": "2026-07-12T08:00:00.000Z"
   },
   {
     "id": "ls-5",
@@ -41,8 +41,8 @@
     "productId": "prod-2",
     "warehouseId": "wh-north",
     "locationId": "loc-north-stock",
-    "quantity": 3,
-    "updatedAt": "2026-06-01T08:00:00.000Z"
+    "quantity": 22,
+    "updatedAt": "2026-07-12T08:00:00.000Z"
   },
   {
     "id": "ls-6",
@@ -50,8 +50,8 @@
     "productId": "prod-3",
     "warehouseId": "wh-main",
     "locationId": "loc-main-stock",
-    "quantity": 12,
-    "updatedAt": "2026-06-01T08:00:00.000Z"
+    "quantity": 64,
+    "updatedAt": "2026-07-12T15:30:00.000Z"
   },
   {
     "id": "ls-7",
@@ -59,7 +59,142 @@
     "productId": "prod-3",
     "warehouseId": "wh-north",
     "locationId": "loc-north-stock",
+    "quantity": 20,
+    "updatedAt": "2026-07-12T15:30:00.000Z"
+  },
+  {
+    "id": "ls-8",
+    "companyId": "demo-company",
+    "productId": "prod-4",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-a1",
+    "quantity": 8,
+    "updatedAt": "2026-07-09T16:30:00.000Z"
+  },
+  {
+    "id": "ls-9",
+    "companyId": "demo-company",
+    "productId": "prod-4",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-stock",
+    "quantity": 14,
+    "updatedAt": "2026-07-09T16:30:00.000Z"
+  },
+  {
+    "id": "ls-10",
+    "companyId": "demo-company",
+    "productId": "prod-5",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-a1",
+    "quantity": 60,
+    "updatedAt": "2026-07-10T16:00:00.000Z"
+  },
+  {
+    "id": "ls-11",
+    "companyId": "demo-company",
+    "productId": "prod-5",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-stock",
+    "quantity": 25,
+    "updatedAt": "2026-07-10T16:00:00.000Z"
+  },
+  {
+    "id": "ls-12",
+    "companyId": "demo-company",
+    "productId": "prod-6",
+    "warehouseId": "wh-north",
+    "locationId": "loc-north-stock",
+    "quantity": 18,
+    "updatedAt": "2026-07-15T10:00:00.000Z"
+  },
+  {
+    "id": "ls-13",
+    "companyId": "demo-company",
+    "productId": "prod-6",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-stock",
+    "quantity": 30,
+    "updatedAt": "2026-07-15T10:00:00.000Z"
+  },
+  {
+    "id": "ls-14",
+    "companyId": "demo-company",
+    "productId": "prod-7",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-stock",
+    "quantity": 28,
+    "updatedAt": "2026-07-14T08:00:00.000Z"
+  },
+  {
+    "id": "ls-15",
+    "companyId": "demo-company",
+    "productId": "prod-8",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-stock",
+    "quantity": 16,
+    "updatedAt": "2026-07-14T08:00:00.000Z"
+  },
+  {
+    "id": "ls-16",
+    "companyId": "demo-company",
+    "productId": "prod-8",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-a1",
     "quantity": 5,
-    "updatedAt": "2026-06-01T08:00:00.000Z"
+    "updatedAt": "2026-07-14T08:00:00.000Z"
+  },
+  {
+    "id": "ls-17",
+    "companyId": "demo-company",
+    "productId": "prod-9",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-stock",
+    "quantity": 9,
+    "updatedAt": "2026-07-13T08:00:00.000Z"
+  },
+  {
+    "id": "ls-18",
+    "companyId": "demo-company",
+    "productId": "prod-10",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-stock",
+    "quantity": 48,
+    "updatedAt": "2026-07-13T08:00:00.000Z"
+  },
+  {
+    "id": "ls-19",
+    "companyId": "demo-company",
+    "productId": "prod-10",
+    "warehouseId": "wh-north",
+    "locationId": "loc-north-stock",
+    "quantity": 12,
+    "updatedAt": "2026-07-13T08:00:00.000Z"
+  },
+  {
+    "id": "ls-20",
+    "companyId": "demo-company",
+    "productId": "prod-11",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-a1",
+    "quantity": 48,
+    "updatedAt": "2026-07-12T15:30:00.000Z"
+  },
+  {
+    "id": "ls-21",
+    "companyId": "demo-company",
+    "productId": "prod-12",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-a1",
+    "quantity": 2,
+    "updatedAt": "2026-07-11T14:30:00.000Z"
+  },
+  {
+    "id": "ls-22",
+    "companyId": "demo-company",
+    "productId": "prod-12",
+    "warehouseId": "wh-main",
+    "locationId": "loc-main-stock",
+    "quantity": 10,
+    "updatedAt": "2026-07-11T14:30:00.000Z"
   }
 ]

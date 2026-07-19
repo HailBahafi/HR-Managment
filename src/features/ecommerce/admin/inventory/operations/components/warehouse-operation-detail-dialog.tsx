@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useWarehouseLocations } from '@/features/ecommerce/admin/inventory/locations/hooks/use-warehouse-locations';
 import { useWarehouseOperationMutations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operation-mutations';
+import { WAREHOUSE_OPERATION_KIND_META } from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
 import {
   WAREHOUSE_OPERATION_FLOW_STEPS,
   WAREHOUSE_OPERATION_KIND_LABELS_AR,
@@ -144,18 +145,22 @@ export function WarehouseOperationDetailDialog({ open, onOpenChange, operation }
   const qtyEditable = status === 'draft' || status === 'ready';
   const isSaving = update.isPending;
 
-  const destinationLabel =
-    kind === 'receipt'
-      ? 'الموقع الوجهة'
-      : kind === 'issue'
-        ? 'موقع الصرف'
-        : 'المواقع';
+  const destinationLabel = (() => {
+    const meta = WAREHOUSE_OPERATION_KIND_META[kind];
+    if (meta.stockEffect === 'inbound' || meta.stockEffect === 'adjust_set') return 'الموقع الوجهة';
+    if (meta.stockEffect === 'outbound') return 'موقع الصرف';
+    if (meta.stockEffect === 'transfer') return 'من ← إلى';
+    return 'المواقع';
+  })();
 
   const destinationValue = (() => {
     const line = lines[0] ?? operation.lines[0];
     if (!line) return '—';
-    if (kind === 'receipt') return locationName(line.toLocationId);
-    if (kind === 'issue') return locationName(line.fromLocationId);
+    const meta = WAREHOUSE_OPERATION_KIND_META[kind];
+    if (meta.stockEffect === 'inbound' || meta.stockEffect === 'adjust_set') {
+      return locationName(line.toLocationId);
+    }
+    if (meta.stockEffect === 'outbound') return locationName(line.fromLocationId);
     return `${locationName(line.fromLocationId)} ← ${locationName(line.toLocationId)}`;
   })();
 
@@ -187,7 +192,10 @@ export function WarehouseOperationDetailDialog({ open, onOpenChange, operation }
   }
 
   async function validate() {
-    const invalid = lines.some((line) => line.quantity < 0 || line.demandQuantity <= 0);
+    const isCountLike = kind === 'physical_count' || kind === 'adjustment';
+    const invalid = lines.some(
+      (line) => line.quantity < 0 || (!isCountLike && line.demandQuantity <= 0),
+    );
     if (invalid) {
       toast.error('تحقق من كميات البنود قبل التصديق.');
       return;

@@ -8,7 +8,9 @@
     "groups": {
       "products": "Products",
       "catalogSetup": "Catalog setup",
-      "inventory": "Inventory",
+      "inventory": "Inventory operations",
+      "inventorySetup": "Inventory setup",
+      "inventoryReports": "Inventory reports",
       "sales": "Sales",
       "website": "Website"
     },
@@ -16,7 +18,8 @@
       "content": "Content",
       "appearance": "Appearance",
       "catalogSetup": "Master data",
-      "inventorySetup": "Inventory setup"
+      "inventorySetup": "Inventory setup",
+      "inventoryOps": "Inventory operations"
     },
     "overview": "Overview",
     "homepage": "Homepage",
@@ -37,7 +40,17 @@
     "customers": "Customers",
     "warehouses": "Warehouses",
     "locations": "Locations",
-    "putawayRules": "Putaway Rules"
+    "putawayRules": "Putaway Rules",
+    "opTransfers": "Transfers",
+    "opAdjustments": "Adjustments",
+    "opPhysicalCount": "Physical count",
+    "opScrap": "Manufacturing scrap",
+    "opPurchase": "Purchase",
+    "opReplenishment": "Replenishment",
+    "reportStock": "Stock",
+    "reportDetailedStock": "Detailed Stock",
+    "reportMoves": "Stock moves",
+    "reportMovesAnalysis": "Moves analysis"
   },
   "homepage": {
     "title": "Homepage",

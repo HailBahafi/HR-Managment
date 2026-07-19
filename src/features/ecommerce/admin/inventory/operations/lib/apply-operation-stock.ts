@@ -1,54 +1,90 @@
 import { locationStockApi } from '@/features/ecommerce/admin/orders/lib/api/location-stock';
 import { productsApi } from '@/features/ecommerce/admin/products/lib/api/products';
+import { WAREHOUSE_OPERATION_KIND_META } from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
 import type { WarehouseOperation } from '@/features/ecommerce/domain/types/warehouse';
 
 /** Apply a validated (done) warehouse operation to location stock, then sync product qty. */
 export async function applyDoneOperationToStock(operation: WarehouseOperation): Promise<void> {
   const companyId = operation.companyId;
+  const effect = WAREHOUSE_OPERATION_KIND_META[operation.kind].stockEffect;
   const touchedProductIds = new Set<string>();
 
   for (const line of operation.lines) {
     if (!line.productId) continue;
     const qty = line.quantity;
-    if (qty <= 0) continue;
+    if (qty < 0) continue;
 
-    if (operation.kind === 'receipt') {
+    if (effect === 'inbound') {
+      if (!line.toLocationId || qty <= 0) continue;
+      await locationStockApi.adjust({
+        companyId,
+        productId: line.productId,
+        variantId: line.variantId,
+        warehouseId: operation.warehouseId,
+        locationId: line.toLocationId,
+        delta: qty,
+      });
+    } else if (effect === 'outbound') {
+      if (!line.fromLocationId || qty <= 0) continue;
+      await locationStockApi.adjust({
+        companyId,
+        productId: line.productId,
+        variantId: line.variantId,
+        warehouseId: operation.warehouseId,
+        locationId: line.fromLocationId,
+        delta: -qty,
+      });
+    } else if (effect === 'move') {
+      if (!line.fromLocationId || !line.toLocationId || qty <= 0) continue;
+      await locationStockApi.adjust({
+        companyId,
+        productId: line.productId,
+        variantId: line.variantId,
+        warehouseId: operation.warehouseId,
+        locationId: line.fromLocationId,
+        delta: -qty,
+      });
+      await locationStockApi.adjust({
+        companyId,
+        productId: line.productId,
+        variantId: line.variantId,
+        warehouseId: operation.warehouseId,
+        locationId: line.toLocationId,
+        delta: qty,
+      });
+    } else if (effect === 'transfer') {
+      if (!line.fromLocationId || !line.toLocationId || qty <= 0) continue;
+      const destWarehouseId = operation.destinationWarehouseId || operation.warehouseId;
+      await locationStockApi.adjust({
+        companyId,
+        productId: line.productId,
+        variantId: line.variantId,
+        warehouseId: operation.warehouseId,
+        locationId: line.fromLocationId,
+        delta: -qty,
+      });
+      await locationStockApi.adjust({
+        companyId,
+        productId: line.productId,
+        variantId: line.variantId,
+        warehouseId: destWarehouseId,
+        locationId: line.toLocationId,
+        delta: qty,
+      });
+    } else if (effect === 'adjust_set') {
+      // الجرد/التعديل: الكمية = المعدودة، الطلب = النظرية → الفرق يُطبَّق على الموقع الوجهة
       if (!line.toLocationId) continue;
+      const theoretical = line.demandQuantity ?? 0;
+      const counted = line.quantity;
+      const delta = counted - theoretical;
+      if (delta === 0) continue;
       await locationStockApi.adjust({
         companyId,
         productId: line.productId,
         variantId: line.variantId,
         warehouseId: operation.warehouseId,
         locationId: line.toLocationId,
-        delta: qty,
-      });
-    } else if (operation.kind === 'issue') {
-      if (!line.fromLocationId) continue;
-      await locationStockApi.adjust({
-        companyId,
-        productId: line.productId,
-        variantId: line.variantId,
-        warehouseId: operation.warehouseId,
-        locationId: line.fromLocationId,
-        delta: -qty,
-      });
-    } else {
-      if (!line.fromLocationId || !line.toLocationId) continue;
-      await locationStockApi.adjust({
-        companyId,
-        productId: line.productId,
-        variantId: line.variantId,
-        warehouseId: operation.warehouseId,
-        locationId: line.fromLocationId,
-        delta: -qty,
-      });
-      await locationStockApi.adjust({
-        companyId,
-        productId: line.productId,
-        variantId: line.variantId,
-        warehouseId: operation.warehouseId,
-        locationId: line.toLocationId,
-        delta: qty,
+        delta,
       });
     }
 
@@ -75,7 +111,11 @@ export async function syncProductQuantityFromWarehouse(
       ...variant,
       quantity: qty,
       stockStatus:
-        qty > 0 ? ('in_stock' as const) : variant.stockStatus === 'preorder' ? variant.stockStatus : ('out_of_stock' as const),
+        qty > 0
+          ? ('in_stock' as const)
+          : variant.stockStatus === 'preorder'
+            ? variant.stockStatus
+            : ('out_of_stock' as const),
     };
   });
 

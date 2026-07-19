@@ -134,7 +134,7 @@ export const hrDisciplineNavGroups: { labelAr: string; items: { slug: HRDiscipli
     labelAr: 'الإعدادات', items: [
       { slug: 'violation-types',     labelAr: 'أنواع المخالفات' },
       { slug: 'approval-assignment', labelAr: 'إسناد الموافقات' },
-    ],
+    ],  
   },
   {
     labelAr: '', items: [

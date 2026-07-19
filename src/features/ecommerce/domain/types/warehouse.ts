@@ -83,8 +83,17 @@ export type WarehouseLocationListQuery = {
 export type CreateWarehouseLocationInput = Omit<WarehouseLocation, 'id' | 'createdAt' | 'updatedAt'>;
 export type UpdateWarehouseLocationInput = Partial<CreateWarehouseLocationInput>;
 
-/** صرف | استلام | حركات داخلية */
-export type WarehouseOperationKind = 'issue' | 'receipt' | 'internal';
+/** أنواع مستندات المخزون */
+export type WarehouseOperationKind =
+  | 'transfer'
+  | 'receipt'
+  | 'issue'
+  | 'internal'
+  | 'adjustment'
+  | 'physical_count'
+  | 'scrap'
+  | 'purchase'
+  | 'replenishment';
 
 /** مسودة → جاهز → منتهي (+ ملغى) */
 export type WarehouseOperationStatus = 'draft' | 'ready' | 'done' | 'cancelled';
@@ -97,9 +106,9 @@ export type WarehouseOperationLine = {
   productId?: string;
   /** Links the line to a sellable variant when applicable. */
   variantId?: string;
-  /** الكمية المطلوبة (الطلب) */
+  /** الكمية المطلوبة (الطلب) — وفي الجرد: الكمية النظرية */
   demandQuantity: number;
-  /** الكمية المنفذة عند التصديق */
+  /** الكمية المنفذة عند التصديق — وفي الجرد: الكمية المعدودة */
   quantity: number;
   fromLocationId?: string;
   toLocationId?: string;
@@ -116,8 +125,10 @@ export type WarehouseOperation = TenantScoped & {
   notes?: string;
   /** شريك المصدر/الوجهة (اختياري) */
   partnerName?: string;
-  /** المستند المصدر — مثل تجديد مخزون */
+  /** المستند المصدر — مثل أمر شراء أو تجديد مخزون */
   sourceDocument?: string;
+  /** مستودع الوجهة — للتحويلات بين المستودعات */
+  destinationWarehouseId?: string;
   lines: WarehouseOperationLine[];
   createdAt: string;
   updatedAt: string;
@@ -128,8 +139,11 @@ export type WarehouseOperationListQuery = {
   /** When omitted, returns operations across warehouses (product-scoped lists). */
   warehouseId?: string;
   kind?: WarehouseOperationKind;
+  status?: WarehouseOperationStatus;
   productId?: string;
   search?: string;
+  /** Company-wide list for inventory reports (no warehouse/product/kind required). */
+  all?: boolean;
   page?: number;
   limit?: number;
 };
