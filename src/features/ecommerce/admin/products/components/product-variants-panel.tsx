@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Camera } from 'lucide-react';
 import {
   useFieldArray,
   useWatch,
@@ -14,6 +15,8 @@ import { useProductOnHand } from '@/features/inventory/admin/hooks/use-product-o
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/utils';
 
 type Props = {
   control: Control<ProductFormInput>;
@@ -73,6 +76,7 @@ export function ProductVariantsPanel({ control, register, setValue, productId }:
         quantity: Number(variant.quantity) || 0,
         stockStatus: variant.stockStatus,
         barcode: variant.barcode,
+        imageUrl: variant.imageUrl,
         isActive: variant.isActive,
       })),
     }).map((variant) => ({
@@ -87,6 +91,7 @@ export function ProductVariantsPanel({ control, register, setValue, productId }:
       quantity: variant.quantity,
       stockStatus: variant.stockStatus,
       barcode: variant.barcode ?? '',
+      imageUrl: variant.imageUrl ?? '',
       isActive: variant.isActive,
     }));
 
@@ -103,10 +108,18 @@ export function ProductVariantsPanel({ control, register, setValue, productId }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, replace, setValue]);
 
+  function pickVariantImage(index: number) {
+    const current = variantsWatch[index]?.imageUrl?.trim() ?? '';
+    const nextUrl = window.prompt('أدخل رابط صورة المتغير', current || 'https://');
+    if (nextUrl === null) return;
+    const url = nextUrl.trim();
+    setValue(`variants.${index}.imageUrl`, url, { shouldDirty: true });
+  }
+
   if (fields.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        عند ربط خصائص تُنشئ متغيرات، تظهر هنا صفوف لكل تركيبة — بسعر وكمية منفصلة لكل متغير (متجر + مخزن).
+        عند ربط خصائص تُنشئ متغيرات، تظهر هنا صفوف لكل تركيبة — بسعر وكمية وباركود وصورة لكل متغير.
       </p>
     );
   }
@@ -116,16 +129,18 @@ export function ProductVariantsPanel({ control, register, setValue, productId }:
       <div>
         <p className="text-sm font-semibold text-foreground">متغيرات المنتج</p>
         <p className="text-xs text-muted-foreground">
-          سعر البيع والشراء قابلان للتعديل. الكمية تُحسب من مخزون المستودع بعد تصديق الحركات.
+          سعر البيع والشراء والباركود والصورة قابلة للتعديل. الكمية من مخزون المستودع بعد التصديق.
         </p>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="w-full min-w-[980px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30 text-muted-foreground">
+              <th className="px-3 py-2.5 text-start font-medium">صورة</th>
               <th className="px-3 py-2.5 text-start font-medium">الاسم</th>
               <th className="px-3 py-2.5 text-start font-medium">الخصائص</th>
+              <th className="px-3 py-2.5 text-start font-medium">الباركود</th>
               <th className="px-3 py-2.5 text-start font-medium">سعر البيع</th>
               <th className="px-3 py-2.5 text-start font-medium">التكلفة</th>
               <th className="px-3 py-2.5 text-start font-medium">الكمية</th>
@@ -135,8 +150,27 @@ export function ProductVariantsPanel({ control, register, setValue, productId }:
           <tbody>
             {fields.map((field, index) => {
               const labels = variantsWatch[index]?.attributeLabels ?? field.attributeLabels;
+              const imageUrl = variantsWatch[index]?.imageUrl?.trim() ?? '';
               return (
                 <tr key={field.id} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2.5 align-middle">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={cn('h-12 w-12 overflow-hidden p-0')}
+                      onClick={() => pickVariantImage(index)}
+                      aria-label="صورة المتغير"
+                    >
+                      {imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Camera className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                    <input type="hidden" {...register(`variants.${index}.imageUrl`)} />
+                  </td>
                   <td className="px-3 py-2.5 align-middle">
                     <div className="font-medium text-foreground">
                       {variantsWatch[index]?.nameAr ?? field.nameAr}
@@ -162,6 +196,15 @@ export function ProductVariantsPanel({ control, register, setValue, productId }:
                         </span>
                       ))}
                     </div>
+                  </td>
+                  <td className="px-3 py-2.5 align-middle">
+                    <Input
+                      type="text"
+                      dir="ltr"
+                      className="h-8 w-32"
+                      placeholder="Barcode"
+                      {...register(`variants.${index}.barcode`)}
+                    />
                   </td>
                   <td className="px-3 py-2.5 align-middle">
                     <Input

@@ -1,7 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { Controller, useWatch, type Control, type FieldErrors, type UseFormSetValue } from 'react-hook-form';
+import {
+  Controller,
+  useWatch,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+  type UseFormSetValue,
+} from 'react-hook-form';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { useProductOnHand, useProductStockSummary } from '@/features/inventory/admin/hooks/use-product-on-hand';
 import { STOCK_STATUS_OPTIONS, type ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
@@ -13,11 +20,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 type Props = {
   control: Control<ProductFormInput>;
   errors: FieldErrors<ProductFormInput>;
+  register: UseFormRegister<ProductFormInput>;
   setValue: UseFormSetValue<ProductFormInput>;
   productId?: string | null;
 };
 
-export function ProductInventoryTab({ control, setValue, productId }: Props) {
+export function ProductInventoryTab({ control, errors, register, setValue, productId }: Props) {
   const companyId = getStorefrontCompanyId();
   const variants = useWatch({ control, name: 'variants' }) ?? [];
   const hasVariants = variants.length > 0;
@@ -117,6 +125,36 @@ export function ProductInventoryTab({ control, setValue, productId }: Props) {
             name="trackInventory"
             render={({ field }) => (
               <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="تتبع المخزون" />
+            )}
+          />
+        </div>
+      </EntityFormRow>
+
+      <EntityFormRow label="حد المخزون المنخفض" htmlFor="product-low-stock">
+        <Input
+          id="product-low-stock"
+          type="number"
+          min={0}
+          step={1}
+          dir="ltr"
+          className="max-w-[8rem]"
+          {...register('lowStockThreshold', { valueAsNumber: true })}
+        />
+        {errors.lowStockThreshold ? (
+          <p className="mt-1 text-xs text-destructive">{errors.lowStockThreshold.message}</p>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">تنبيه عندما يصل On Hand إلى هذا الحد أو دونه.</p>
+        )}
+      </EntityFormRow>
+
+      <EntityFormRow label="السماح بالطلب عند النفاد">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">Backorder — البيع رغم نفاد المخزون</p>
+          <Controller
+            control={control}
+            name="allowBackorder"
+            render={({ field }) => (
+              <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="السماح بالطلب عند النفاد" />
             )}
           />
         </div>

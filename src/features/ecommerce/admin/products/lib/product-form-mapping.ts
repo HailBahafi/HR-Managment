@@ -23,6 +23,11 @@ function formatTagsForInput(tags: string[] | undefined): string {
   return tags?.join(', ') ?? '';
 }
 
+function optionalPositive(value: number | undefined): number | undefined {
+  if (value === undefined || value === null || Number.isNaN(value)) return undefined;
+  return value;
+}
+
 function variantToForm(variant: ProductVariant) {
   return {
     id: variant.id,
@@ -36,6 +41,7 @@ function variantToForm(variant: ProductVariant) {
     quantity: variant.quantity,
     stockStatus: variant.stockStatus,
     barcode: variant.barcode ?? '',
+    imageUrl: variant.imageUrl ?? '',
     isActive: variant.isActive,
   };
 }
@@ -62,6 +68,7 @@ function formVariantToDomain(
           ? 'in_stock'
           : 'out_of_stock',
     barcode: variant.barcode || undefined,
+    imageUrl: variant.imageUrl?.trim() || undefined,
     isActive: variant.isActive,
   };
 }
@@ -73,6 +80,7 @@ export function productToFormValues(product: Product): ProductFormInput {
     nameAr: product.nameAr,
     nameEn: product.nameEn ?? '',
     slug: product.slug,
+    shortDescription: product.shortDescription ?? '',
     description: product.description ?? '',
     categoryId: product.categoryId ?? undefined,
     brandId: product.brandId ?? undefined,
@@ -81,6 +89,7 @@ export function productToFormValues(product: Product): ProductFormInput {
     stockQuantity: product.inventory.quantity,
     trackInventory: product.inventory.trackInventory,
     allowBackorder: product.inventory.allowBackorder,
+    lowStockThreshold: product.inventory.lowStockThreshold ?? 5,
     tagsInput: formatTagsForInput(product.tags),
     media: [...product.media]
       .sort((a, b) => a.position - b.position)
@@ -92,9 +101,15 @@ export function productToFormValues(product: Product): ProductFormInput {
     invoicePolicy: product.invoicePolicy ?? 'ordered',
     listPrice: product.price.amount,
     costPrice: product.costPrice?.amount ?? 0,
+    compareAtPrice: product.compareAtPrice?.amount,
     barcode: product.barcode ?? '',
+    weightKg: product.weightKg,
+    lengthCm: product.dimensions?.lengthCm,
+    widthCm: product.dimensions?.widthCm,
+    heightCm: product.dimensions?.heightCm,
     posAvailable: product.posAvailable ?? false,
     saleOk: product.saleOk ?? true,
+    purchaseOk: product.purchaseOk ?? true,
     attributes: (product.attributes ?? []).map((attribute) => ({
       ...attribute,
       values: attribute.values.map((value) =>
@@ -110,7 +125,7 @@ export function productToFormValues(product: Product): ProductFormInput {
 }
 
 type MappingOptions = {
-  /** Used to preserve currency and compare-at price when editing. */
+  /** Used to preserve currency when editing. */
   existing?: Product | null;
 };
 
@@ -158,12 +173,19 @@ export function formValuesToCreateInput(
         : 'out_of_stock'
     : values.stockStatus;
 
+  const lengthCm = optionalPositive(values.lengthCm);
+  const widthCm = optionalPositive(values.widthCm);
+  const heightCm = optionalPositive(values.heightCm);
+  const hasDimensions =
+    lengthCm !== undefined || widthCm !== undefined || heightCm !== undefined;
+
   return {
     companyId,
     sku: values.sku,
     nameAr: values.nameAr,
     nameEn: values.nameEn || undefined,
     slug: values.slug,
+    shortDescription: values.shortDescription || undefined,
     description: values.description || undefined,
     categoryId: values.categoryId ?? null,
     brandId: values.brandId ?? null,
@@ -172,12 +194,15 @@ export function formValuesToCreateInput(
     inventory: {
       trackInventory: values.trackInventory,
       quantity,
-      lowStockThreshold: 5,
+      lowStockThreshold: values.lowStockThreshold,
       allowBackorder: values.allowBackorder,
     },
     price: { amount: values.listPrice, currency },
     costPrice: { amount: values.costPrice, currency },
-    compareAtPrice: existing?.compareAtPrice,
+    compareAtPrice:
+      values.compareAtPrice !== undefined && values.compareAtPrice > 0
+        ? { amount: values.compareAtPrice, currency }
+        : undefined,
     media,
     seo: {
       metaTitle: values.metaTitle || undefined,
@@ -188,8 +213,13 @@ export function formValuesToCreateInput(
     tracking: values.tracking,
     invoicePolicy: values.invoicePolicy,
     barcode: values.barcode || undefined,
+    weightKg: optionalPositive(values.weightKg),
+    dimensions: hasDimensions
+      ? { lengthCm, widthCm, heightCm }
+      : undefined,
     posAvailable: values.posAvailable,
     saleOk: values.saleOk,
+    purchaseOk: values.purchaseOk,
     attributes: values.attributes,
     variants: synced,
     uomLines: values.uomLines.map((line) => ({

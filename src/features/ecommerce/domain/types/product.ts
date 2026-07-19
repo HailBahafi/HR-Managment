@@ -81,7 +81,16 @@ export type ProductVariant = {
   quantity: number;
   stockStatus: StockStatus;
   barcode?: string;
+  /** Variant gallery image (URL). */
+  imageUrl?: string;
   isActive: boolean;
+};
+
+/** Physical dimensions in centimeters (shipping / logistics). */
+export type ProductDimensions = {
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
 };
 
 export type Product = TenantScoped &
@@ -90,7 +99,10 @@ export type Product = TenantScoped &
     sku: string;
     nameAr: string;
     nameEn?: string;
+    /** Full product description (storefront / catalog). */
     description?: string;
+    /** Short blurb for cards, lists, and search snippets. */
+    shortDescription?: string;
     brandId?: string | null;
     categoryId?: string | null;
     status: ProductStatus;
@@ -112,8 +124,14 @@ export type Product = TenantScoped &
     /** Invoice on ordered vs delivered quantities. */
     invoicePolicy?: ProductInvoicePolicy;
     barcode?: string;
+    /** Weight in kilograms (shipping). */
+    weightKg?: number;
+    dimensions?: ProductDimensions;
     posAvailable?: boolean;
+    /** Can be sold on sales channels. */
     saleOk?: boolean;
+    /** Can be purchased / replenished from vendors. */
+    purchaseOk?: boolean;
     attributes?: ProductAttribute[];
     /** Generated sellable variants — empty when product has no variant-creating attributes. */
     variants?: ProductVariant[];

@@ -95,6 +95,7 @@ describe('formValuesToCreateInput', () => {
     nameAr: 'منتج آخر',
     nameEn: '',
     slug: 'another-product',
+    shortDescription: '',
     description: '',
     categoryId: undefined,
     brandId: undefined,
@@ -103,6 +104,7 @@ describe('formValuesToCreateInput', () => {
     stockQuantity: 3,
     trackInventory: true,
     allowBackorder: false,
+    lowStockThreshold: 5,
     tagsInput: '',
     media: [],
     metaTitle: '',
@@ -112,9 +114,15 @@ describe('formValuesToCreateInput', () => {
     invoicePolicy: 'ordered',
     listPrice: 0,
     costPrice: 0,
+    compareAtPrice: undefined,
     barcode: '',
+    weightKg: undefined,
+    lengthCm: undefined,
+    widthCm: undefined,
+    heightCm: undefined,
     posAvailable: false,
     saleOk: true,
+    purchaseOk: true,
     attributes: [],
     variants: [],
     uomLines: createDefaultUomLines(),
@@ -145,14 +153,36 @@ describe('formValuesToCreateInput', () => {
     expect(input.invoicePolicy).toBe('delivered');
   });
 
-  it('preserves existing compare-at price and currency when editing', () => {
+  it('maps compare-at price from the form when provided', () => {
     const input = formValuesToCreateInput(
-      { ...BASE_VALUES, listPrice: 80 },
+      { ...BASE_VALUES, listPrice: 80, compareAtPrice: 120 },
       'demo-company',
-      { existing: { ...BASE_PRODUCT, compareAtPrice: { amount: 120, currency: 'SAR' } } },
     );
     expect(input.price).toEqual({ amount: 80, currency: 'SAR' });
     expect(input.compareAtPrice).toEqual({ amount: 120, currency: 'SAR' });
+  });
+
+  it('maps barcode, short description, purchaseOk, and logistics fields', () => {
+    const input = formValuesToCreateInput(
+      {
+        ...BASE_VALUES,
+        barcode: '6281000000000',
+        shortDescription: 'وصف قصير',
+        purchaseOk: false,
+        weightKg: 1.5,
+        lengthCm: 10,
+        widthCm: 5,
+        heightCm: 2,
+        lowStockThreshold: 8,
+      },
+      'demo-company',
+    );
+    expect(input.barcode).toBe('6281000000000');
+    expect(input.shortDescription).toBe('وصف قصير');
+    expect(input.purchaseOk).toBe(false);
+    expect(input.weightKg).toBe(1.5);
+    expect(input.dimensions).toEqual({ lengthCm: 10, widthCm: 5, heightCm: 2 });
+    expect(input.inventory.lowStockThreshold).toBe(8);
   });
 
   it('passes status/stockStatus through unchanged', () => {

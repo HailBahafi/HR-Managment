@@ -26,6 +26,8 @@ import { ProductFormHeader } from '@/features/ecommerce/admin/products/component
 import { ProductGeneralTab } from '@/features/ecommerce/admin/products/components/product-general-tab';
 import { ProductAttributesTab } from '@/features/ecommerce/admin/products/components/product-attributes-tab';
 import { ProductInventoryTab } from '@/features/ecommerce/admin/products/components/product-inventory-tab';
+import { ProductStorefrontTab } from '@/features/ecommerce/admin/products/components/product-storefront-tab';
+import { ProductUnitsTab } from '@/features/ecommerce/admin/products/components/product-units-tab';
 import { ProductStockMoveRequestDialog } from '@/features/ecommerce/admin/products/components/product-stock-move-request-dialog';
 import { ProductStockMovesListDialog } from '@/features/ecommerce/admin/products/components/product-stock-moves-list-dialog';
 import { ProductStockMovesHistoryDialog } from '@/features/ecommerce/admin/products/components/product-stock-moves-history-dialog';
@@ -68,7 +70,7 @@ function ensureSlug(values: ProductFormValues): ProductFormValues {
 const TAB_TRIGGER_CLASS =
   'rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-sm shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none';
 
-type FormTab = 'general' | 'attributes' | 'availability';
+type FormTab = 'general' | 'attributes' | 'availability' | 'units' | 'storefront';
 type MoveRequestKind = WarehouseOperationKind;
 
 export function ProductFormDialog({ product, open, onOpenChange }: Props) {
@@ -320,6 +322,12 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
                   <TabsTrigger value="availability" className={TAB_TRIGGER_CLASS}>
                     التوفر
                   </TabsTrigger>
+                  <TabsTrigger value="units" className={TAB_TRIGGER_CLASS}>
+                    الوحدات
+                  </TabsTrigger>
+                  <TabsTrigger value="storefront" className={TAB_TRIGGER_CLASS}>
+                    المتجر وSEO
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="mt-4">
@@ -344,9 +352,20 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
                   <ProductInventoryTab
                     control={form.control}
                     errors={form.formState.errors}
+                    register={form.register}
                     setValue={form.setValue}
                     productId={product?.id}
                   />
+                </TabsContent>
+                <TabsContent value="units" className="mt-4">
+                  <ProductUnitsTab
+                    control={form.control}
+                    errors={form.formState.errors}
+                    setValue={form.setValue}
+                  />
+                </TabsContent>
+                <TabsContent value="storefront" className="mt-4">
+                  <ProductStorefrontTab errors={form.formState.errors} register={form.register} />
                 </TabsContent>
               </Tabs>
             </div>

@@ -13,6 +13,7 @@ import type { Brand } from '@/features/ecommerce/domain/types/brand';
 import type { Category } from '@/features/ecommerce/domain/types/category';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/shared/utils';
 
@@ -134,6 +135,23 @@ export function ProductGeneralTab({ control, errors, register, categories, brand
         {errors.costPrice ? <p className="mt-1 text-xs text-destructive">{errors.costPrice.message}</p> : null}
       </EntityFormRow>
 
+      <EntityFormRow label="سعر المقارنة" htmlFor="product-compare-at">
+        <div className="flex max-w-xs items-center gap-2">
+          <Input
+            id="product-compare-at"
+            type="number"
+            min={0}
+            step="0.01"
+            dir="ltr"
+            className="max-w-[8rem]"
+            placeholder="اختياري"
+            {...register('compareAtPrice')}
+          />
+          <span className="text-sm text-muted-foreground">ر.س</span>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">يُعرض كسعر قبل الخصم في المتجر عند تعبئته.</p>
+      </EntityFormRow>
+
       <EntityFormRow label="الفئة" htmlFor="product-category">
         <Controller
           control={control}
@@ -205,9 +223,58 @@ export function ProductGeneralTab({ control, errors, register, categories, brand
         />
       </EntityFormRow>
 
+      <EntityFormRow label="متاح للبيع">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">يظهر في قنوات البيع والمتجر</p>
+          <Controller
+            control={control}
+            name="saleOk"
+            render={({ field }) => (
+              <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="متاح للبيع" />
+            )}
+          />
+        </div>
+      </EntityFormRow>
+
+      <EntityFormRow label="متاح للشراء">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">يمكن تموينه وشراؤه من الموردين</p>
+          <Controller
+            control={control}
+            name="purchaseOk"
+            render={({ field }) => (
+              <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="متاح للشراء" />
+            )}
+          />
+        </div>
+      </EntityFormRow>
+
+      <EntityFormRow label="نقطة البيع">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">متاح في شاشة الكاشير</p>
+          <Controller
+            control={control}
+            name="posAvailable"
+            render={({ field }) => (
+              <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="نقطة البيع" />
+            )}
+          />
+        </div>
+      </EntityFormRow>
+
       <EntityFormRow label="الرقم المرجعي" htmlFor="product-sku">
         <Input id="product-sku" dir="ltr" className="max-w-sm" placeholder="TIPS" {...register('sku')} />
         {errors.sku ? <p className="mt-1 text-xs text-destructive">{errors.sku.message}</p> : null}
+      </EntityFormRow>
+
+      <EntityFormRow label="الباركود" htmlFor="product-barcode">
+        <Input
+          id="product-barcode"
+          dir="ltr"
+          className="max-w-sm"
+          placeholder="مثلاً 6281000000000"
+          {...register('barcode')}
+        />
       </EntityFormRow>
 
       <EntityFormRow label="علامات التصنيف" htmlFor="product-tags">
@@ -220,9 +287,51 @@ export function ProductGeneralTab({ control, errors, register, categories, brand
       </EntityFormRow>
 
       <div className="pt-4">
-        <p className="mb-1 text-sm font-semibold text-foreground">ملاحظات داخلية</p>
-        <p className="mb-2 text-xs text-muted-foreground">تُستخدم هذه الملاحظة للأغراض الداخلية فقط.</p>
+        <p className="mb-1 text-sm font-semibold text-foreground">وصف مختصر</p>
+        <p className="mb-2 text-xs text-muted-foreground">يظهر في بطاقات المنتج والقوائم.</p>
+        <Textarea
+          id="product-short-description"
+          rows={2}
+          className="resize-none"
+          {...register('shortDescription')}
+        />
+      </div>
+
+      <div className="pt-4">
+        <p className="mb-1 text-sm font-semibold text-foreground">الوصف</p>
+        <p className="mb-2 text-xs text-muted-foreground">الوصف الكامل لصفحة المنتج.</p>
         <Textarea id="product-description" rows={4} className="resize-none" {...register('description')} />
+      </div>
+
+      <div className="pt-4">
+        <p className="mb-1 text-sm font-semibold text-foreground">اللوجستيات</p>
+        <p className="mb-3 text-xs text-muted-foreground">اختياري — مفيد للشحن لاحقًا.</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1.5">
+            <label htmlFor="product-weight" className="text-xs text-muted-foreground">
+              الوزن (كجم)
+            </label>
+            <Input id="product-weight" type="number" min={0} step="0.01" dir="ltr" {...register('weightKg')} />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="product-length" className="text-xs text-muted-foreground">
+              الطول (سم)
+            </label>
+            <Input id="product-length" type="number" min={0} step="0.1" dir="ltr" {...register('lengthCm')} />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="product-width" className="text-xs text-muted-foreground">
+              العرض (سم)
+            </label>
+            <Input id="product-width" type="number" min={0} step="0.1" dir="ltr" {...register('widthCm')} />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="product-height" className="text-xs text-muted-foreground">
+              الارتفاع (سم)
+            </label>
+            <Input id="product-height" type="number" min={0} step="0.1" dir="ltr" {...register('heightCm')} />
+          </div>
+        </div>
       </div>
     </div>
   );

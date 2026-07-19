@@ -41,7 +41,7 @@ type SyncArgs = {
 
 /**
  * Rebuild variants from attribute lines where `createVariant !== 'never'`.
- * Preserves sale/cost/qty/barcode for matching `combinationKey`.
+ * Preserves sale/cost/qty/barcode/image for matching `combinationKey`.
  */
 export function syncProductVariants(args: SyncArgs): ProductVariant[] {
   const currency = args.currency ?? 'SAR';
@@ -95,6 +95,7 @@ export function syncProductVariants(args: SyncArgs): ProductVariant[] {
       quantity,
       stockStatus,
       barcode: existing?.barcode,
+      imageUrl: existing?.imageUrl,
       isActive: existing?.isActive ?? true,
     };
   });

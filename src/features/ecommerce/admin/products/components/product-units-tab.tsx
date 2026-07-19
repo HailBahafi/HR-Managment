@@ -89,7 +89,7 @@ export function ProductUnitsTab({ control, errors, setValue }: Props) {
                         min={0}
                         dir="ltr"
                         className="w-28"
-                        value={qtyField.value}
+                        value={qtyField.value == null ? '' : String(qtyField.value)}
                         onChange={(event) => qtyField.onChange(Number(event.target.value))}
                       />
                     )}

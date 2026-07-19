@@ -12,16 +12,27 @@ type Props = {
   register: UseFormRegister<ProductFormInput>;
 };
 
-/** Storefront presentation / SEO — sales channels stay on the product header. */
-export function ProductStorefrontTab({ register }: Props) {
+/** Storefront presentation / SEO. */
+export function ProductStorefrontTab({ errors, register }: Props) {
   return (
     <div className="space-y-1">
       <p className="mb-3 text-xs text-muted-foreground">
-        قنوات البيع تُضبط من أعلى النموذج (المبيعات / نقطة البيع). هنا بيانات العرض في المتجر وSEO فقط.
+        بيانات العرض في المتجر وSEO. قنوات البيع والشراء تُضبط من تبويب المعلومات العامة.
       </p>
 
       <EntityFormRow label="الاسم الإنجليزي" htmlFor="product-name-en">
         <Input id="product-name-en" className="max-w-sm" {...register('nameEn')} />
+      </EntityFormRow>
+
+      <EntityFormRow label="الرابط المختصر (Slug)" htmlFor="product-slug">
+        <Input
+          id="product-slug"
+          dir="ltr"
+          className="max-w-sm"
+          placeholder="product-slug"
+          {...register('slug')}
+        />
+        {errors.slug ? <p className="mt-1 text-xs text-destructive">{errors.slug.message}</p> : null}
       </EntityFormRow>
 
       <div className="space-y-1.5 border-b border-border/70 py-3">
@@ -35,7 +46,12 @@ export function ProductStorefrontTab({ register }: Props) {
         <Label htmlFor="product-meta-description" className="text-sm text-muted-foreground">
           وصف SEO
         </Label>
-        <Textarea id="product-meta-description" rows={3} className="max-w-lg resize-none" {...register('metaDescription')} />
+        <Textarea
+          id="product-meta-description"
+          rows={3}
+          className="max-w-lg resize-none"
+          {...register('metaDescription')}
+        />
       </div>
     </div>
   );
