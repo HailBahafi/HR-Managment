@@ -1,8 +1,8 @@
 import type {
   WarehouseOperationKind,
   WarehouseOperationStatus,
-} from '@/features/ecommerce/domain/types/warehouse';
-import { WAREHOUSE_OPERATION_KIND_META } from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
+} from '@/features/inventory/domain/types/warehouse';
+import { WAREHOUSE_OPERATION_KIND_META } from '@/features/inventory/domain/constants/warehouse-operation-kinds';
 
 export const WAREHOUSE_OPERATION_STATUS_LABELS_AR: Record<WarehouseOperationStatus, string> = {
   draft: 'مسودة',

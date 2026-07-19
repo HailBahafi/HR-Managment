@@ -145,7 +145,7 @@ function StoreMobileDrawer({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-3 [-webkit-overflow-scrolling:touch]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain overflow-touch px-3 py-3">
           <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
             <span className="text-xs font-medium text-muted-foreground">{t('a11y.languageSwitcher')}</span>
             <StoreLocaleSwitcher tone="panel" />

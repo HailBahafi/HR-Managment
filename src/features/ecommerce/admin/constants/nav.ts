@@ -16,27 +16,14 @@ import {
   PanelBottom,
   Megaphone,
   Globe,
-  Warehouse,
-  MapPinned,
-  MapPin,
   SlidersHorizontal,
   Library,
-  Truck,
-  ClipboardList,
-  Factory,
-  RefreshCw,
-  BarChart3,
 } from 'lucide-react';
 import {
   ecommerceAdminRoutes,
   ecommerceContentHref,
   ecommerceNavigationHref,
 } from '@/features/ecommerce/admin/constants/routes';
-import {
-  INVENTORY_HEADER_OPERATION_KINDS,
-  WAREHOUSE_OPERATION_KIND_META,
-} from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
-import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
 
 export type EcommerceAdminNavItem = {
   /** next-intl key under `ecommerceAdmin.nav.*` */
@@ -47,34 +34,16 @@ export type EcommerceAdminNavItem = {
 
 export type EcommerceAdminNavSection = {
   /** Optional section label key under `ecommerceAdmin.nav.sections.*` */
-  sectionKey?: 'content' | 'appearance' | 'catalogSetup' | 'inventorySetup' | 'inventoryOps';
+  sectionKey?: 'content' | 'appearance' | 'catalogSetup';
   items: EcommerceAdminNavItem[];
 };
 
 export type EcommerceAdminNavGroup = {
-  key: 'products' | 'catalogSetup' | 'inventory' | 'inventorySetup' | 'inventoryReports' | 'sales' | 'website';
+  key: 'products' | 'catalogSetup' | 'sales' | 'website';
   labelKey: string;
   icon: LucideIcon;
   sections: EcommerceAdminNavSection[];
 };
-
-const HEADER_OP_ICONS: Partial<Record<WarehouseOperationKind, LucideIcon>> = {
-  transfer: Truck,
-  adjustment: SlidersHorizontal,
-  physical_count: ClipboardList,
-  scrap: Factory,
-  purchase: ShoppingCart,
-  replenishment: RefreshCw,
-};
-
-const inventoryOpsNavItems: EcommerceAdminNavItem[] = INVENTORY_HEADER_OPERATION_KINDS.map((kind) => {
-  const segment = WAREHOUSE_OPERATION_KIND_META[kind].pathSegment!;
-  return {
-    labelKey: WAREHOUSE_OPERATION_KIND_META[kind].navLabelKey,
-    href: ecommerceAdminRoutes.operationsForKind(segment),
-    icon: HEADER_OP_ICONS[kind] ?? Package,
-  };
-});
 
 export const ecommerceAdminOverviewItem: EcommerceAdminNavItem = {
   labelKey: 'overview',
@@ -82,6 +51,7 @@ export const ecommerceAdminOverviewItem: EcommerceAdminNavItem = {
   icon: LayoutDashboard,
 };
 
+/** Ecommerce-only nav — inventory lives in the standalone Inventory app. */
 export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
   {
     key: 'products',
@@ -104,53 +74,6 @@ export const ecommerceAdminNavGroups: EcommerceAdminNavGroup[] = [
           { labelKey: 'categories', href: ecommerceAdminRoutes.categories, icon: FolderTree },
           { labelKey: 'attributes', href: ecommerceAdminRoutes.attributes, icon: SlidersHorizontal },
           { labelKey: 'brands', href: ecommerceAdminRoutes.brands, icon: Tag },
-        ],
-      },
-    ],
-  },
-  {
-    key: 'inventory',
-    labelKey: 'groups.inventory',
-    icon: Package,
-    sections: [
-      {
-        items: inventoryOpsNavItems,
-      },
-    ],
-  },
-  {
-    key: 'inventorySetup',
-    labelKey: 'groups.inventorySetup',
-    icon: Warehouse,
-    sections: [
-      {
-        items: [
-          { labelKey: 'warehouses', href: ecommerceAdminRoutes.warehouses, icon: Warehouse },
-          { labelKey: 'locations', href: ecommerceAdminRoutes.locations, icon: MapPin },
-          { labelKey: 'putawayRules', href: ecommerceAdminRoutes.putawayRules, icon: MapPinned },
-        ],
-      },
-    ],
-  },
-  {
-    key: 'inventoryReports',
-    labelKey: 'groups.inventoryReports',
-    icon: BarChart3,
-    sections: [
-      {
-        items: [
-          { labelKey: 'reportStock', href: ecommerceAdminRoutes.reportStock, icon: Package },
-          {
-            labelKey: 'reportDetailedStock',
-            href: ecommerceAdminRoutes.reportDetailedStock,
-            icon: ClipboardList,
-          },
-          { labelKey: 'reportMoves', href: ecommerceAdminRoutes.reportMoves, icon: FileText },
-          {
-            labelKey: 'reportMovesAnalysis',
-            href: ecommerceAdminRoutes.reportMovesAnalysis,
-            icon: BarChart3,
-          },
         ],
       },
     ],

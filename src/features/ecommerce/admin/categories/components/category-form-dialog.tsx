@@ -9,7 +9,7 @@ import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/stor
 import { useCategoryMutations } from '@/features/ecommerce/admin/categories/hooks/use-category-mutations';
 import { useBrands } from '@/features/ecommerce/admin/brands/hooks/use-brands';
 import { useProducts } from '@/features/ecommerce/admin/products/hooks/use-products';
-import { usePutawayRules } from '@/features/ecommerce/admin/inventory/putaway-rules/hooks/use-putaway-rules';
+import { usePutawayRules } from '@/features/inventory/admin/putaway-rules/hooks/use-putaway-rules';
 import {
   CATEGORY_FORM_DEFAULT_VALUES,
   categoryFormSchema,

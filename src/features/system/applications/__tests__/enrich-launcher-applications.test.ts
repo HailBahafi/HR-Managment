@@ -24,6 +24,12 @@ describe('enrichLauncherApplications', () => {
     expect(resolveApplicationLaunchPath(apps.find((app) => app.code === 'ecommerce')!)).toBe('/overview');
   });
 
+  it('adds inventory when enabled and missing from backend list', () => {
+    const apps = enrichLauncherApplications([hrApp], 'company-1');
+    expect(apps.some((app) => app.code === 'inventory')).toBe(true);
+    expect(resolveApplicationLaunchPath(apps.find((app) => app.code === 'inventory')!)).toBe('/inventory');
+  });
+
   it('does not duplicate ecommerce when backend already returns it', () => {
     const withEcommerce: ApplicationResponseDto = {
       ...hrApp,
@@ -41,5 +47,6 @@ describe('enrichLauncherApplications', () => {
   it('skips ecommerce when no company is selected', () => {
     const apps = enrichLauncherApplications([hrApp], null);
     expect(apps.some((app) => app.code === 'ecommerce')).toBe(false);
+    expect(apps.some((app) => app.code === 'inventory')).toBe(false);
   });
 });

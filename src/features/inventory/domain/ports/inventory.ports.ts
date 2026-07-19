@@ -12,7 +12,7 @@ import type {
   WarehouseLocationListQuery,
   WarehouseOperation,
   WarehouseOperationListQuery,
-} from '@/features/ecommerce/domain/types/warehouse';
+} from '@/features/inventory/domain/types/warehouse';
 
 export type AdminWarehousesPort = {
   getAll(query: WarehouseListQuery): Promise<PaginatedResult<Warehouse>>;

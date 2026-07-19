@@ -3,12 +3,12 @@
 import * as React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
-import { useWarehouseOperations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operations';
-import { useWarehouses } from '@/features/ecommerce/admin/inventory/warehouses/hooks/use-warehouses';
-import { WarehouseOperationDetailDialog } from '@/features/ecommerce/admin/inventory/operations/components/warehouse-operation-detail-dialog';
-import { WAREHOUSE_OPERATION_STATUS_LABELS_AR } from '@/features/ecommerce/domain/constants/warehouse-operation-status';
+import { useWarehouseOperations } from '@/features/inventory/admin/operations/hooks/use-warehouse-operations';
+import { useWarehouses } from '@/features/inventory/admin/warehouses/hooks/use-warehouses';
+import { WarehouseOperationDetailDialog } from '@/features/inventory/admin/operations/components/warehouse-operation-detail-dialog';
+import { WAREHOUSE_OPERATION_STATUS_LABELS_AR } from '@/features/inventory/domain/constants/warehouse-operation-status';
 import { REPLENISHMENT_SOURCE_DOCUMENT } from '@/features/ecommerce/admin/products/constants/replenishment';
-import type { WarehouseOperation } from '@/features/ecommerce/domain/types/warehouse';
+import type { WarehouseOperation } from '@/features/inventory/domain/types/warehouse';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {

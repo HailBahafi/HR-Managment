@@ -102,8 +102,8 @@ export type WarehouseOperationLine = {
   id: string;
   productName: string;
   sku?: string;
-  /** Links the line to catalog product for product-scoped movement lists. */
-  productId?: string;
+  /** Required — every stock-affecting line must link to a catalog product. */
+  productId: string;
   /** Links the line to a sellable variant when applicable. */
   variantId?: string;
   /** الكمية المطلوبة (الطلب) — وفي الجرد: الكمية النظرية */

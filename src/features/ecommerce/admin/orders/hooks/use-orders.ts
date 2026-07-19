@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { locationStockApi } from '@/features/ecommerce/admin/orders/lib/api/location-stock';
+import { inventoryStockService } from '@/features/inventory/services/inventory-stock.service';
 import { ordersApi } from '@/features/ecommerce/admin/orders/lib/api/orders';
 import type { OrderListQuery, SaveOrderLineAllocationsInput, ShipOrderLineInput } from '@/features/ecommerce/domain/types/order';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
@@ -28,7 +28,7 @@ export function useOrders(query: OrderListQuery) {
 export function useProductStockAvailability(companyId: string, productId: string, enabled = true) {
   return useQuery({
     queryKey: stockAvailabilityQueryKeys.product(companyId, productId),
-    queryFn: () => locationStockApi.getAvailability(companyId, productId),
+    queryFn: () => inventoryStockService.getAvailability(companyId, productId),
     enabled: Boolean(companyId && productId && enabled),
   });
 }

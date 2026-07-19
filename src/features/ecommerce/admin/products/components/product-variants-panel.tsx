@@ -10,7 +10,7 @@ import {
 } from 'react-hook-form';
 import type { ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import { syncProductVariants } from '@/features/ecommerce/admin/products/lib/product-variants';
-import { useProductOnHand } from '@/features/ecommerce/admin/inventory/hooks/use-product-on-hand';
+import { useProductOnHand } from '@/features/inventory/admin/hooks/use-product-on-hand';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';

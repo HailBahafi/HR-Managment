@@ -8,7 +8,13 @@ export type LocationStock = TenantScoped & {
   variantId?: string;
   warehouseId: string;
   locationId: string;
+  /** Physical on-hand at this location (source of truth for balances). */
   quantity: number;
+  /**
+   * Quantity reserved for open orders / allocations.
+   * Available = quantity − reservedQuantity (never negative for display).
+   */
+  reservedQuantity: number;
   updatedAt: string;
 };
 
@@ -19,6 +25,8 @@ export type StockAvailabilityRow = {
   locationId: string;
   locationNameAr: string;
   quantity: number;
+  reservedQuantity: number;
+  availableQuantity: number;
 };
 
 export type LocationStockListQuery = {

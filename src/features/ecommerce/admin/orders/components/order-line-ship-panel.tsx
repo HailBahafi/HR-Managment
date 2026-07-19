@@ -60,7 +60,10 @@ export function OrderLineShipPanel({ companyId, orderId, line }: Props) {
   }, [line]);
 
   const availableByLocation = React.useMemo(
-    () => Object.fromEntries(availability.map((row) => [row.locationId, row.quantity])),
+    () =>
+      Object.fromEntries(
+        availability.map((row) => [row.locationId, row.availableQuantity ?? row.quantity]),
+      ),
     [availability],
   );
 

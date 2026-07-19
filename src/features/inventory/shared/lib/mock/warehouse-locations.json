@@ -213,5 +213,39 @@
     "isSystem": true,
     "createdAt": "2026-02-01T09:00:00.000Z",
     "updatedAt": "2026-02-01T09:00:00.000Z"
+  },
+  {
+    "id": "loc-main-transit",
+    "companyId": "demo-company",
+    "warehouseId": "wh-main",
+    "code": "WH/Transit",
+    "nameAr": "WH/Transit",
+    "nameEn": "Transit",
+    "parentLocationId": "loc-main-view",
+    "locationType": "transit",
+    "replenish": false,
+    "cycleCountFrequencyDays": 0,
+    "removalStrategy": "fifo",
+    "isActive": true,
+    "isSystem": true,
+    "createdAt": "2026-07-19T12:00:00.000Z",
+    "updatedAt": "2026-07-19T12:00:00.000Z"
+  },
+  {
+    "id": "loc-north-transit",
+    "companyId": "demo-company",
+    "warehouseId": "wh-north",
+    "code": "NORTH/Transit",
+    "nameAr": "NORTH/Transit",
+    "nameEn": "Transit",
+    "parentLocationId": "loc-north-view",
+    "locationType": "transit",
+    "replenish": false,
+    "cycleCountFrequencyDays": 0,
+    "removalStrategy": "fifo",
+    "isActive": true,
+    "isSystem": true,
+    "createdAt": "2026-07-19T12:00:00.000Z",
+    "updatedAt": "2026-07-19T12:00:00.000Z"
   }
 ]

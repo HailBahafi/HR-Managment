@@ -1,4 +1,4 @@
-import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
+import type { WarehouseOperationKind } from '@/features/inventory/domain/types/warehouse';
 
 /**
  * أنواع مستندات المخزون.
@@ -6,8 +6,11 @@ import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/w
  *
  * uiPlacement:
  * - warehouse → تبويبات تفاصيل المستودع فقط
- * - header → قائمة المخزون في الشريط الجانبي فقط
- * - both → المستودع + الشريط الجانبي
+ * - header → قائمة التطبيق العامة فقط
+ * - both → المستودع (خاص) + قائمة العمليات العامة
+ *
+ * العمليات اليومية (تحويل / إيصال / توصيل / داخلي) تظهر في المكانين:
+ * عامة على مستوى التطبيق، وخاصة داخل المستودع.
  */
 export const WAREHOUSE_OPERATION_KINDS: WarehouseOperationKind[] = [
   'transfer',
@@ -34,10 +37,10 @@ export type WarehouseOperationKindMeta = {
   refPrefix: string;
   stockEffect: 'inbound' | 'outbound' | 'move' | 'transfer' | 'adjust_set';
   uiPlacement: WarehouseOperationUiPlacement;
-  /** مفتاح ترجمة القائمة الجانبية */
+  /** مفتاح ترجمة اختياري */
   navLabelKey: string;
-  /** مسار الصفحة المستقلة تحت /inventory/… (للأنواع في الهيدر) */
-  pathSegment?: string;
+  /** مسار الصفحة العامة تحت /inventory/… */
+  pathSegment: string;
 };
 
 export const WAREHOUSE_OPERATION_KIND_META: Record<WarehouseOperationKind, WarehouseOperationKindMeta> =
@@ -66,8 +69,9 @@ export const WAREHOUSE_OPERATION_KIND_META: Record<WarehouseOperationKind, Wareh
       needsDestWarehouse: false,
       refPrefix: 'WH/IN',
       stockEffect: 'inbound',
-      uiPlacement: 'warehouse',
+      uiPlacement: 'both',
       navLabelKey: 'opReceipts',
+      pathSegment: 'receipts',
     },
     issue: {
       labelAr: 'التوصيلات',
@@ -79,8 +83,9 @@ export const WAREHOUSE_OPERATION_KIND_META: Record<WarehouseOperationKind, Wareh
       needsDestWarehouse: false,
       refPrefix: 'WH/OUT',
       stockEffect: 'outbound',
-      uiPlacement: 'warehouse',
+      uiPlacement: 'both',
       navLabelKey: 'opDeliveries',
+      pathSegment: 'deliveries',
     },
     internal: {
       labelAr: 'داخلي',
@@ -92,8 +97,9 @@ export const WAREHOUSE_OPERATION_KIND_META: Record<WarehouseOperationKind, Wareh
       needsDestWarehouse: false,
       refPrefix: 'WH/INT',
       stockEffect: 'move',
-      uiPlacement: 'warehouse',
+      uiPlacement: 'both',
       navLabelKey: 'opInternal',
+      pathSegment: 'internal',
     },
     adjustment: {
       labelAr: 'التعديلات',
@@ -171,7 +177,7 @@ export function isWarehouseOperationKind(value: string | null | undefined): valu
   return Boolean(value && (WAREHOUSE_OPERATION_KINDS as string[]).includes(value));
 }
 
-/** تبويبات داخل صفحة المستودع */
+/** تبويبات داخل صفحة المستودع — عمليات خاصة بهذا المستودع */
 export const WAREHOUSE_DETAIL_TAB_KINDS: WarehouseOperationKind[] = WAREHOUSE_OPERATION_KINDS.filter(
   (kind) => {
     const placement = WAREHOUSE_OPERATION_KIND_META[kind].uiPlacement;
@@ -179,7 +185,7 @@ export const WAREHOUSE_DETAIL_TAB_KINDS: WarehouseOperationKind[] = WAREHOUSE_OP
   },
 );
 
-/** عناصر قائمة المخزون في الشريط الجانبي */
+/** قائمة العمليات العامة في تطبيق المخزون */
 export const INVENTORY_HEADER_OPERATION_KINDS: WarehouseOperationKind[] = WAREHOUSE_OPERATION_KINDS.filter(
   (kind) => {
     const placement = WAREHOUSE_OPERATION_KIND_META[kind].uiPlacement;
@@ -191,7 +197,7 @@ export function warehouseOperationKindFromPathSegment(
   segment: string | null | undefined,
 ): WarehouseOperationKind | null {
   if (!segment) return null;
-  for (const kind of INVENTORY_HEADER_OPERATION_KINDS) {
+  for (const kind of WAREHOUSE_OPERATION_KINDS) {
     if (WAREHOUSE_OPERATION_KIND_META[kind].pathSegment === segment) return kind;
   }
   return null;

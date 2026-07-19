@@ -1,8 +1,11 @@
 /**
  * Ecommerce admin routes live under the `(ecommerce)` route group inside `(app)`.
  *
- * Nav domains: Products → Catalog setup → Inventory → Inventory setup → Sales → Website.
+ * Inventory moved to the standalone Inventory app — see `inventoryAdminRoutes`.
+ * Legacy inventory path helpers are kept as thin aliases for older product dialogs.
  */
+import { inventoryAdminRoutes } from '@/features/inventory/admin/constants/routes';
+
 export const ecommerceAdminRoutes = {
   overview: '/overview',
   homepage: '/cms/homepage',
@@ -16,30 +19,18 @@ export const ecommerceAdminRoutes = {
   brands: '/brands',
   orders: '/orders',
   customers: '/customers',
-  warehouses: '/inventory/warehouses',
-  warehouseDetail: (warehouseId: string) => `/inventory/warehouses/${warehouseId}`,
-  locations: '/inventory/locations',
-  locationsForWarehouse: (warehouseId: string) => `/inventory/locations?warehouseId=${warehouseId}`,
-  putawayRules: '/inventory/putaway-rules',
-  /** تقارير المخزون */
-  reportStock: '/inventory/reports/stock',
-  reportDetailedStock: '/inventory/reports/detailed-stock',
-  reportMoves: '/inventory/reports/moves',
-  reportMovesAnalysis: '/inventory/reports/moves-analysis',
-  /** صفحات العمليات المستقلة تحت /inventory/{segment} */
-  operations: '/inventory/transfers',
-  operationsForKind: (kindOrSegment: string) => `/inventory/${
-    (
-      {
-        transfer: 'transfers',
-        adjustment: 'adjustments',
-        physical_count: 'physical-counts',
-        scrap: 'scrap',
-        purchase: 'purchases',
-        replenishment: 'replenishment',
-      } as Record<string, string>
-    )[kindOrSegment] ?? kindOrSegment
-  }`,
+  /** @deprecated Use inventoryAdminRoutes */
+  warehouses: inventoryAdminRoutes.warehouses,
+  warehouseDetail: inventoryAdminRoutes.warehouseDetail,
+  locations: inventoryAdminRoutes.locations,
+  locationsForWarehouse: inventoryAdminRoutes.locationsForWarehouse,
+  putawayRules: inventoryAdminRoutes.putawayRules,
+  reportStock: inventoryAdminRoutes.reportStock,
+  reportDetailedStock: inventoryAdminRoutes.reportDetailedStock,
+  reportMoves: inventoryAdminRoutes.reportMoves,
+  reportMovesAnalysis: inventoryAdminRoutes.reportMovesAnalysis,
+  operations: inventoryAdminRoutes.transfers,
+  operationsForKind: inventoryAdminRoutes.operationsForKind,
 } as const;
 
 export type EcommerceContentTab = 'pages' | 'blog' | 'faq';

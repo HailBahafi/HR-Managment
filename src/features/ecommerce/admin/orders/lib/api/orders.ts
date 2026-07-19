@@ -1,5 +1,5 @@
 import { createMockRepository } from '@/features/ecommerce/shared/lib/mock/repository';
-import { locationStockApi } from '@/features/ecommerce/admin/orders/lib/api/location-stock';
+import { inventoryStockService } from '@/features/inventory/services/inventory-stock.service';
 import {
   deriveLineShipStatus,
   validateAllocations,
@@ -71,8 +71,10 @@ export const ordersApi = {
     if (!line) throw new Error('بند الطلب غير موجود.');
     if (line.shipStatus === 'shipped') throw new Error('تم شحن هذا البند مسبقًا.');
 
-    const availability = await locationStockApi.getAvailability(companyId, input.productId);
-    const availableByLocation = Object.fromEntries(availability.map((row) => [row.locationId, row.quantity]));
+    const availability = await inventoryStockService.getAvailability(companyId, input.productId);
+    const availableByLocation = Object.fromEntries(
+      availability.map((row) => [row.locationId, row.availableQuantity]),
+    );
 
     const validation = validateAllocations(line.quantity, input.allocations, availableByLocation);
     if (!validation.ok) throw new Error(validation.error ?? 'توزيع الكمية غير صالح.');
@@ -111,14 +113,25 @@ export const ordersApi = {
     if (!line) throw new Error('بند الطلب غير موجود.');
     if (line.shipStatus === 'shipped') throw new Error('تم شحن هذا البند مسبقًا.');
 
-    const availability = await locationStockApi.getAvailability(companyId, input.productId);
-    const availableByLocation = Object.fromEntries(availability.map((row) => [row.locationId, row.quantity]));
+    const availability = await inventoryStockService.getAvailability(companyId, input.productId);
+    const availableByLocation = Object.fromEntries(
+      availability.map((row) => [row.locationId, row.availableQuantity]),
+    );
     const validation = validateAllocations(line.quantity, line.allocations, availableByLocation);
     if (!validation.ok) throw new Error(validation.error ?? 'احفظ توزيعًا صحيحًا قبل الشحن.');
 
-    for (const allocation of line.allocations) {
-      await locationStockApi.deduct(companyId, allocation.locationId, input.productId, allocation.quantity);
-    }
+    await inventoryStockService.issueForShipment({
+      companyId,
+      productId: input.productId,
+      productName: line.productNameAr,
+      orderId,
+      orderNumber: order.orderNumber,
+      lines: line.allocations.map((allocation) => ({
+        warehouseId: allocation.warehouseId,
+        locationId: allocation.locationId,
+        quantity: allocation.quantity,
+      })),
+    });
 
     const items = order.items.map((item) =>
       item.productId === input.productId ? { ...item, shipStatus: 'shipped' as const } : item,

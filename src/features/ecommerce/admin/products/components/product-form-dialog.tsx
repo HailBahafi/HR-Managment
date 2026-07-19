@@ -6,11 +6,11 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
-import { locationStockApi } from '@/features/ecommerce/admin/orders/lib/api/location-stock';
+import { inventoryStockService } from '@/features/inventory/services/inventory-stock.service';
 import { useBrands } from '@/features/ecommerce/admin/brands/hooks/use-brands';
 import { useCategories } from '@/features/ecommerce/admin/categories/hooks/use-categories';
-import { usePutawayRules } from '@/features/ecommerce/admin/inventory/putaway-rules/hooks/use-putaway-rules';
-import { useWarehouseOperations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operations';
+import { usePutawayRules } from '@/features/inventory/admin/putaway-rules/hooks/use-putaway-rules';
+import { useWarehouseOperations } from '@/features/inventory/admin/operations/hooks/use-warehouse-operations';
 import { useProductMutations } from '@/features/ecommerce/admin/products/hooks/use-product-mutations';
 import {
   PRODUCT_FORM_DEFAULT_VALUES,
@@ -36,7 +36,7 @@ import {
 import type { ProductRelatedDocKey } from '@/features/ecommerce/admin/products/components/product-related-docs-bar';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
 import type { Product } from '@/features/ecommerce/domain/types/product';
-import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
+import type { WarehouseOperationKind } from '@/features/inventory/domain/types/warehouse';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -138,7 +138,7 @@ export function ProductFormDialog({ product, open, onOpenChange }: Props) {
     if (!companyId) return;
     let nextValues = ensureSlug(values);
     if (product?.id) {
-      const onHand = await locationStockApi.getOnHandByVariant(companyId, product.id);
+      const onHand = await inventoryStockService.getOnHandByVariant(companyId, product.id);
       nextValues = {
         ...nextValues,
         stockQuantity: onHand.total,

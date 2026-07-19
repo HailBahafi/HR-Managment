@@ -1,5 +1,6 @@
 import { apiRequest, type PaginatedResult } from '@/features/hr/lib/api/client';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
+import { inventoryAdminRoutes } from '@/features/inventory/admin/constants/routes';
 import { resolveSystemAppLaunchPath } from '@/features/system/constants/app-launch';
 import { isModuleEnabledFor, MODULE_REGISTRY } from '@/shared/modules/registry';
 
@@ -53,6 +54,22 @@ export function enrichLauncherApplications(
     });
   }
 
+  if (!codes.has('inventory') && isModuleEnabledFor('inventory', companyId)) {
+    const maxSort = next.reduce((max, app) => Math.max(max, app.sortOrder), 0);
+    next.push({
+      id: 'module-inventory',
+      code: 'inventory',
+      nameAr: MODULE_REGISTRY.inventory.labelAr,
+      nameEn: 'Inventory',
+      description: null,
+      icon: 'package',
+      routePath: inventoryAdminRoutes.overview,
+      sortOrder: maxSort + 10,
+      isActive: true,
+      status: 'active',
+    });
+  }
+
   return next.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
@@ -61,6 +78,7 @@ export function resolveApplicationLaunchPath(app: ApplicationResponseDto): strin
   const base = app.routePath?.trim();
   if (app.code === 'hr') return '/hr/organization/employees';
   if (app.code === 'ecommerce') return ecommerceAdminRoutes.overview;
+  if (app.code === 'inventory') return inventoryAdminRoutes.overview;
   if (app.code === 'accounting') return '/accounting';
   if (app.code === 'system' && (!base || base === '/system')) {
     return resolveSystemAppLaunchPath();

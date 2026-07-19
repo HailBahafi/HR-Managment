@@ -7,10 +7,10 @@ import type {
   Warehouse,
   WarehouseLocation,
   WarehouseOperation,
-} from '@/features/ecommerce/domain/types/warehouse';
-import warehousesSeed from '@/features/ecommerce/shared/lib/mock/warehouses.json';
-import locationsSeed from '@/features/ecommerce/shared/lib/mock/warehouse-locations.json';
-import operationsSeed from '@/features/ecommerce/shared/lib/mock/warehouse-operations.json';
+} from '@/features/inventory/domain/types/warehouse';
+import warehousesSeed from '@/features/inventory/shared/lib/mock/warehouses.json';
+import locationsSeed from '@/features/inventory/shared/lib/mock/warehouse-locations.json';
+import operationsSeed from '@/features/inventory/shared/lib/mock/warehouse-operations.json';
 
 export const mockWarehousesStore = createMockRepository<Warehouse>(warehousesSeed as Warehouse[]);
 export const mockWarehouseLocationsStore = createMockRepository<WarehouseLocation>(

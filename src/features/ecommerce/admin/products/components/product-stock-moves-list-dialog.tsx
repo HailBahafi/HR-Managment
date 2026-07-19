@@ -4,12 +4,12 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeftRight, PackageMinus, PackagePlus, RefreshCw } from 'lucide-react';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
-import { useWarehouseOperations } from '@/features/ecommerce/admin/inventory/operations/hooks/use-warehouse-operations';
-import { useWarehouses } from '@/features/ecommerce/admin/inventory/warehouses/hooks/use-warehouses';
+import { useWarehouseOperations } from '@/features/inventory/admin/operations/hooks/use-warehouse-operations';
+import { useWarehouses } from '@/features/inventory/admin/warehouses/hooks/use-warehouses';
 import { ecommerceAdminRoutes } from '@/features/ecommerce/admin/constants/routes';
-import { WAREHOUSE_OPERATION_KIND_META } from '@/features/ecommerce/domain/constants/warehouse-operation-kinds';
-import { WAREHOUSE_OPERATION_STATUS_LABELS_AR } from '@/features/ecommerce/domain/constants/warehouse-operation-status';
-import type { WarehouseOperationKind } from '@/features/ecommerce/domain/types/warehouse';
+import { WAREHOUSE_OPERATION_KIND_META } from '@/features/inventory/domain/constants/warehouse-operation-kinds';
+import { WAREHOUSE_OPERATION_STATUS_LABELS_AR } from '@/features/inventory/domain/constants/warehouse-operation-status';
+import type { WarehouseOperationKind } from '@/features/inventory/domain/types/warehouse';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {

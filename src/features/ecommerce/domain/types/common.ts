@@ -67,9 +67,10 @@ export type TenantScoped = {
 };
 
 /**
- * Embedded on `Product`, not a separate entity — no multi-warehouse concept yet (see
- * PRODUCTS_DOMAIN_BLUEPRINT.md's Known Risks Accepted). `quantity` is informational/display-only;
- * `StockStatus` on the product itself is always the purchasability source of truth.
+ * Embedded on `Product` as a **display cache** only.
+ * Source of truth for balances is `LocationStock` (on-hand per location).
+ * `quantity` is synced from warehouse on-hand after validated operations — never write
+ * stock changes through the product form.
  */
 export type Inventory = {
   trackInventory: boolean;

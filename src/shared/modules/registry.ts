@@ -11,7 +11,7 @@
  * implementation without any caller changes.
  */
 
-export type ModuleId = 'auth' | 'system' | 'hr' | 'ecommerce';
+export type ModuleId = 'auth' | 'system' | 'hr' | 'ecommerce' | 'inventory';
 
 export type ModuleDefinition = {
   id: ModuleId;
@@ -25,6 +25,7 @@ export const MODULE_REGISTRY: Record<ModuleId, ModuleDefinition> = {
   system: { id: 'system', labelAr: 'النظام', installable: false },
   hr: { id: 'hr', labelAr: 'الموارد البشرية', installable: true },
   ecommerce: { id: 'ecommerce', labelAr: 'المتجر الإلكتروني', installable: true },
+  inventory: { id: 'inventory', labelAr: 'المخزون', installable: true },
 };
 
 /**

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Controller, useWatch, type Control, type FieldErrors, type UseFormSetValue } from 'react-hook-form';
 import { getStorefrontCompanyId } from '@/features/ecommerce/storefront/lib/storefront-company';
-import { useProductOnHand } from '@/features/ecommerce/admin/inventory/hooks/use-product-on-hand';
+import { useProductOnHand, useProductStockSummary } from '@/features/inventory/admin/hooks/use-product-on-hand';
 import { STOCK_STATUS_OPTIONS, type ProductFormInput } from '@/features/ecommerce/admin/products/schemas/product-schema';
 import { EntityFormRow } from '@/features/ecommerce/admin/shared/components/entity-form-row';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ export function ProductInventoryTab({ control, setValue, productId }: Props) {
   const variants = useWatch({ control, name: 'variants' }) ?? [];
   const hasVariants = variants.length > 0;
   const { data: onHand, isLoading } = useProductOnHand(companyId, productId ?? undefined);
+  const { data: summary } = useProductStockSummary(companyId, productId ?? undefined);
 
   const warehouseQty = onHand?.total ?? 0;
 
@@ -45,11 +46,11 @@ export function ProductInventoryTab({ control, setValue, productId }: Props) {
     <div className="space-y-1">
       <p className="mb-3 rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
         {productId
-          ? 'كمية العرض تُحسب تلقائيًا من مخزون المستودع (المواقع الداخلية) بعد تصديق حركات الاستلام/الصرف. لا يمكن تعديلها يدويًا.'
+          ? 'مصدر الحقيقة هو مخزون المواقع (LocationStock). كمية المنتج هنا مجرد عرض متزامن بعد تصديق الحركات.'
           : 'احفظ المنتج أولًا ثم صدّق مستندات الاستلام في المستودع لتظهر كمية العرض هنا.'}
       </p>
 
-      <EntityFormRow label="كمية العرض (من المستودع)" htmlFor="product-stock">
+      <EntityFormRow label="On Hand" htmlFor="product-stock">
         <Input
           id="product-stock"
           type="number"
@@ -59,10 +60,33 @@ export function ProductInventoryTab({ control, setValue, productId }: Props) {
           readOnly
           disabled
         />
-        {hasVariants ? (
-          <p className="mt-1 text-xs text-muted-foreground">مجموع كميات المتغيرات في المستودع.</p>
-        ) : null}
       </EntityFormRow>
+
+      {productId && summary ? (
+        <>
+          <EntityFormRow label="Reserved">
+            <Input
+              type="number"
+              dir="ltr"
+              className="max-w-[8rem] bg-muted/40"
+              value={summary.reserved}
+              readOnly
+              disabled
+            />
+          </EntityFormRow>
+          <EntityFormRow label="Available">
+            <Input
+              type="number"
+              dir="ltr"
+              className="max-w-[8rem] bg-muted/40 font-semibold"
+              value={summary.available}
+              readOnly
+              disabled
+            />
+            <p className="mt-1 text-xs text-muted-foreground">Available = On Hand − Reserved</p>
+          </EntityFormRow>
+        </>
+      ) : null}
 
       <EntityFormRow label="حالة التوفر" htmlFor="product-availability">
         <Controller

@@ -1,5 +1,5 @@
 import type { MediaItem, SeoFields, Slugged, TenantScoped } from '@/features/ecommerce/domain/types/common';
-import type { WarehouseRemovalStrategy } from '@/features/ecommerce/domain/types/warehouse';
+import type { WarehouseRemovalStrategy } from '@/features/inventory/domain/types/warehouse';
 
 /** How stock packages are reserved when fulfilling from this category. */
 export type CategoryPackageReservation = 'full' | 'partial';

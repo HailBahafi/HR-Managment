@@ -75,7 +75,7 @@ export function ProductCarousel({
       ) : (
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto pb-1 scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory md:gap-4 [&::-webkit-scrollbar]:hidden"
+          className="flex gap-3 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory md:gap-4"
         >
           {children}
         </div>
