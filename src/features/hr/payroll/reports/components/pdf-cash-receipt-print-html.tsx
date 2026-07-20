@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { sanitizePdfText } from '@/components/pdf/lib/sanitize-pdf-text';
 import { RoseTradingLetterheadPrint } from '@/components/pdf/print/rose-trading-letterhead-print';
-import { fmtPrintDate, fmtPrintNumber, PDF_PRINT_C, type CompanyInfo } from './pdf-print-shared';
+import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
+import { RosePdfWatermark } from '@/components/pdf/rose-trading/rose-pdf-watermark';
 
+/** Kept for legacy dialog imports — blank form no longer uses reasons. */
 export type CashReceiptReason =
   | 'salary'
   | 'advance'
@@ -22,59 +23,77 @@ export const CASH_RECEIPT_REASON_LABELS: Record<CashReceiptReason, string> = {
   other: 'أخرى',
 };
 
-/** @deprecated Use `CASH_RECEIPT_REASON_LABELS` — kept for dialog imports. */
+/** @deprecated Use `CASH_RECEIPT_REASON_LABELS` */
 export const REASON_LABELS = CASH_RECEIPT_REASON_LABELS;
 
 export type CashReceiptPrintHtmlProps = {
-  company: CompanyInfo;
-  employeeNameAr: string;
-  branchNameAr: string;
-  amountNumeric: number;
-  amountWritten: string;
-  reason: CashReceiptReason;
-  reasonDetail: string;
-  date: string;
   logoSrc?: string;
+  companyNameAr: string;
+  companyNameEn?: string | null;
 };
 
-function CheckRow({ checked, label }: { checked: boolean; label: string }) {
+const font: React.CSSProperties = { fontFamily: 'Arial, Helvetica, sans-serif' };
+const DOTS = '........................................................................';
+const DOTS_SHORT = '....................................';
+const DOTS_MED = '....................';
+
+function Checkbox() {
   return (
-    <div dir="rtl" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-      <div
-        style={{
-          width: 10,
-          height: 10,
-          border: '1px solid #000',
-          marginLeft: 6,
-          marginRight: 2,
-          backgroundColor: checked ? PDF_PRINT_C.primary : 'transparent',
-        }}
-      />
-      <div style={{ flex: 1, fontSize: 9, textAlign: 'right', wordBreak: 'break-word' }}>{sanitizePdfText(label)}</div>
+    <span
+      style={{
+        display: 'inline-block',
+        width: 12,
+        height: 12,
+        border: '1.5px solid #111',
+        marginInlineStart: 8,
+        marginInlineEnd: 2,
+        flexShrink: 0,
+        verticalAlign: 'middle',
+        boxSizing: 'border-box',
+      }}
+    />
+  );
+}
+
+function ReasonRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        fontSize: 14,
+        lineHeight: 1.85,
+        marginBottom: 6,
+        textAlign: 'right',
+        ...font,
+      }}
+    >
+      <Checkbox />
+      <span style={{ flex: 1 }}>{children}</span>
     </div>
   );
 }
 
-function LabeledField({ label, value, dir = 'rtl' }: { label: string; value: string; dir?: 'rtl' | 'ltr' }) {
+function DottedField({ label, dots = DOTS }: { label: string; dots?: string }) {
   return (
-    <div dir="rtl" style={{ display: 'flex', flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-      <div style={{ fontSize: 9, fontWeight: 700, color: '#111', textAlign: 'right', minWidth: 110 }}>
-        {sanitizePdfText(label)}
-      </div>
-      <div style={{ flex: 1, fontSize: 9.5, color: '#111', textAlign: 'right' }} dir={dir}>
-        {sanitizePdfText(value || '—')}
-      </div>
+    <div style={{ fontSize: 15, lineHeight: 2.1, textAlign: 'right', marginBottom: 4, ...font }}>
+      {label} {dots}
     </div>
   );
 }
 
+/**
+ * Blank cash receipt form — matches paper layout.
+ * Letterhead kept; fields left blank for handwritten fill-in.
+ */
 export const CashReceiptPrintHtml = React.forwardRef<HTMLDivElement, CashReceiptPrintHtmlProps>(
-  function CashReceiptPrintHtml(
-    { company, employeeNameAr, branchNameAr, amountNumeric, amountWritten, reason, reasonDetail, date },
-    ref,
-  ) {
-    const amountNum = fmtPrintNumber(amountNumeric);
-    const written = amountWritten?.trim() ? amountWritten : `${amountNum} ريال سعودي`;
+  function CashReceiptPrintHtml({ logoSrc: logoSrcProp, companyNameAr, companyNameEn }, ref) {
+    const [logoSrc, setLogoSrc] = React.useState<string | undefined>(logoSrcProp);
+    React.useEffect(() => {
+      if (logoSrcProp) setLogoSrc(logoSrcProp);
+      else setLogoSrc(getPdfLogoSrc());
+    }, [logoSrcProp]);
 
     return (
       <div
@@ -82,74 +101,162 @@ export const CashReceiptPrintHtml = React.forwardRef<HTMLDivElement, CashReceipt
         dir="rtl"
         lang="ar"
         style={{
+          position: 'relative',
           width: '210mm',
           maxWidth: '100%',
           margin: '0 auto',
           boxSizing: 'border-box',
           backgroundColor: '#ffffff',
-          padding: '26px 20px 48px',
-          fontFamily: 'Arial, Helvetica, sans-serif',
-          color: '#111',
+          padding: '26px 36px 40px',
+          fontSize: 15,
+          color: '#111111',
+          display: 'flex',
+          flexDirection: 'column',
           minHeight: '297mm',
+          overflow: 'hidden',
+          ...font,
         }}
       >
+        <RosePdfWatermark logoSrc={logoSrc} />
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+          }}
+        >
         <RoseTradingLetterheadPrint
-          companyNameAr={company.nameAr}
-          companyNameEn={company.nameEn}
-          commercialReg={company.crNumber}
+          logoSrc={logoSrc}
+          companyNameAr={companyNameAr}
+          companyNameEn={companyNameEn ?? undefined}
         />
 
-        <div style={{ fontSize: 14, fontWeight: 700, textAlign: 'center', marginBottom: 10, textDecoration: 'underline' }}>
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight: 700,
+            textAlign: 'center',
+            marginTop: 12,
+            marginBottom: 28,
+            ...font,
+          }}
+        >
           سند استلام نقدي
         </div>
 
-        <div style={{ marginTop: 8 }}>
-          <LabeledField label="استلمت أنا /" value={employeeNameAr} />
-          <LabeledField label="من مؤسسة" value={company.nameAr} />
-          <LabeledField label="فرع" value={branchNameAr} />
+        {/* Opening lines */}
+        <div style={{ fontSize: 15, lineHeight: 2.15, textAlign: 'right', marginBottom: 6, ...font }}>
+          استلمت انا / {DOTS} الموقعة أدناه
+        </div>
+        <div style={{ fontSize: 15, lineHeight: 2.15, textAlign: 'right', marginBottom: 6, ...font }}>
+          من مؤسسة {DOTS} ، فرع {DOTS_SHORT}
+        </div>
+        <div style={{ fontSize: 15, lineHeight: 2.15, textAlign: 'right', marginBottom: 18, ...font }}>
+          مبلغ وقدره ( {DOTS_SHORT} ريال ) كتابة ( {DOTS} ريال سعودي فقط لا غير )
         </div>
 
-        <div style={{ marginTop: 12, backgroundColor: '#f9f9f9', border: `1px solid ${PDF_PRINT_C.border}`, padding: 10, borderRadius: 3 }}>
-          <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            <div style={{ flex: '1 1 180px' }}>
-              <LabeledField label="مبلغ وقدره ( )" value={amountNum} dir="ltr" />
-            </div>
-            <div style={{ flex: '1 1 220px' }}>
-              <LabeledField label="ريال سعودي ( كتابةً )" value={written} />
-            </div>
+        <div style={{ fontSize: 15, fontWeight: 700, textAlign: 'right', marginBottom: 12, ...font }}>
+          وذلك مقابل :
+        </div>
+
+        {/* Two-column reasons */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '4px 28px',
+            marginBottom: 8,
+          }}
+        >
+          {/* Right column (first in RTL) */}
+          <div>
+            <ReasonRow>
+              استلام راتب شهر {DOTS_MED}/{DOTS_MED} 20م
+            </ReasonRow>
+            <ReasonRow>
+              بدل إضافي لمدة {DOTS_MED} يوم
+            </ReasonRow>
+            <ReasonRow>
+              سحب نقدي يخصم من راتب شهر {DOTS_MED}/{DOTS_MED} 20م
+            </ReasonRow> 
           </div>
-          <div style={{ fontSize: 9, fontWeight: 700, textAlign: 'right', marginTop: 6 }}>وذلك مقابل:</div>
-        </div>
-
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ width: '48%', minWidth: 200 }}>
-            <CheckRow checked={reason === 'salary'} label={`${CASH_RECEIPT_REASON_LABELS.salary}${reason === 'salary' && reasonDetail ? ` ${reasonDetail}` : ''}`} />
-            <CheckRow checked={reason === 'advance'} label={`${CASH_RECEIPT_REASON_LABELS.advance}${reason === 'advance' && reasonDetail ? ` ${reasonDetail}` : ''}`} />
-            <CheckRow checked={reason === 'storage_deficit'} label={`${CASH_RECEIPT_REASON_LABELS.storage_deficit}${reason === 'storage_deficit' && reasonDetail ? ` ${reasonDetail}` : ''}`} />
-          </div>
-          <div style={{ width: '48%', minWidth: 200 }}>
-            <CheckRow checked={reason === 'allowance'} label={`${CASH_RECEIPT_REASON_LABELS.allowance}${reason === 'allowance' && reasonDetail ? ` ${reasonDetail}` : ''}`} />
-            <CheckRow checked={reason === 'overtime'} label={`${CASH_RECEIPT_REASON_LABELS.overtime}${reason === 'overtime' && reasonDetail ? ` ${reasonDetail}` : ''}`} />
-            <CheckRow checked={reason === 'other'} label={`${CASH_RECEIPT_REASON_LABELS.other}${reason === 'other' && reasonDetail ? ` — ${reasonDetail}` : ''}`} />
+          {/* Left column */}
+          <div>
+            <ReasonRow>
+              بدل مواصلات شهر {DOTS_MED}/{DOTS_MED} 20 م
+            </ReasonRow>
+            <ReasonRow>
+              بدل تحمل عجز مخزون شهر {DOTS_MED}/{DOTS_MED} 20 م
+            </ReasonRow>
           </div>
         </div>
 
-        <div style={{ marginTop: 18, backgroundColor: '#f5f5f5', border: `1px solid ${PDF_PRINT_C.border}`, padding: 12, borderRadius: 3 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textAlign: 'right', marginBottom: 12 }}>و على ذلك جرى التوقيع ،،،</div>
-          <LabeledField label="الاسم :" value={employeeNameAr} />
-          <LabeledField label="التوقيع :" value="" />
-          <LabeledField label="التاريخ :" value={fmtPrintDate(date)} dir="ltr" />
+        {/* Other — full width */}
+        <div style={{ marginBottom: 8 }}>
+          <ReasonRow>
+           اخرى      حدد البيان : {DOTS}
+          </ReasonRow>
+          <div style={{ fontSize: 15, lineHeight: 2.2, textAlign: 'right', paddingInlineStart: 22, ...font }}>
+            {DOTS}
+            {DOTS}
+          </div>
+          <div style={{ fontSize: 15, lineHeight: 2.2, textAlign: 'right', paddingInlineStart: 22, ...font }}>
+            {DOTS}
+            {DOTS}
+          </div>
         </div>
 
-        <div style={{ marginTop: 18, display: 'flex', flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
-          {['مسؤول الفرع', 'إدارة شؤون الموظفين', 'المشرف العام', 'المدير المالي'].map((l) => (
-            <div key={l} style={{ flex: 1, borderTop: `0.5px solid ${PDF_PRINT_C.muted}`, paddingTop: 6 }}>
-              <div style={{ fontSize: 8, color: PDF_PRINT_C.muted, textAlign: 'center' }}>{sanitizePdfText(l)}</div>
+        <div
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            textAlign: 'right',
+            marginTop: 28,
+            marginBottom: 16,
+            ...font,
+          }}
+        >
+          وعلى ذلك جرى التوقيع ،،،،
+        </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <DottedField label="الاسم :" />
+          <DottedField label="التوقيع :" />
+          <DottedField label="التاريخ :" />
+        </div>
+
+        {/* Approval footer — RTL: right to left = branch → HR → supervisor → finance */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 12,
+            marginTop: 40,
+          }}
+        >
+          {[
+            'توقيع مسئول الفرع',
+            'توقيع ادارة شؤون الموظفين',
+            'توقيع المشرف العام',
+            'توقيع المدير المالي',
+          ].map((label) => (
+            <div key={label} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 28, ...font }}>{label}</div>
+              <div
+                style={{
+                  borderBottom: '1px dotted #333',
+                  width: '85%',
+                  margin: '0 auto',
+                  minHeight: 1,
+                }}
+              />
             </div>
           ))}
+        </div>
         </div>
       </div>
     );
   },
 );
-
