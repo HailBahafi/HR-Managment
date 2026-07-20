@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/shared/utils';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { EmployeeExperienceCertificatesPanel } from '@/features/hr/organization/employees/components/sections/employee-experience-certificates-panel';
+import { EmployeeClearancesPanel } from '@/features/hr/organization/employees/components/sections/employee-clearances-panel';
 
 type FormTabKey = 'resignation' | 'clearance' | 'settlement' | 'experience' | 'cash-receipt';
 
@@ -143,6 +144,11 @@ export function EmployeeRoseFormsSection({ model }: { model: EmployeeProfileMode
               <EmployeeExperienceCertificatesPanel
                 employee={employee}
                 onOpenPdfPrep={() => openHrPdfPrep('experience')}
+              />
+            ) : activeTab === 'clearance' ? (
+              <EmployeeClearancesPanel
+                employee={employee}
+                onOpenPdfPrep={() => openHrPdfPrep('clearance')}
               />
             ) : (
               <div className="space-y-4">
