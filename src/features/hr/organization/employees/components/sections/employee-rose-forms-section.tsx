@@ -15,6 +15,8 @@ import { cn } from '@/shared/utils';
 import type { EmployeeProfileModel } from '@/features/hr/organization/employees/hooks/useEmployeeProfileModel';
 import { EmployeeExperienceCertificatesPanel } from '@/features/hr/organization/employees/components/sections/employee-experience-certificates-panel';
 import { EmployeeClearancesPanel } from '@/features/hr/organization/employees/components/sections/employee-clearances-panel';
+import { EmployeeResignationsPanel } from '@/features/hr/organization/employees/components/sections/employee-resignations-panel';
+import { EmployeeCashReceiptVouchersPanel } from '@/features/hr/organization/employees/components/sections/employee-cash-receipt-vouchers-panel';
 
 type FormTabKey = 'resignation' | 'clearance' | 'settlement' | 'experience' | 'cash-receipt';
 
@@ -149,6 +151,16 @@ export function EmployeeRoseFormsSection({ model }: { model: EmployeeProfileMode
               <EmployeeClearancesPanel
                 employee={employee}
                 onOpenPdfPrep={() => openHrPdfPrep('clearance')}
+              />
+            ) : activeTab === 'resignation' ? (
+              <EmployeeResignationsPanel
+                employee={employee}
+                onOpenPdfPrep={() => openHrPdfPrep('resignation')}
+              />
+            ) : activeTab === 'cash-receipt' ? (
+              <EmployeeCashReceiptVouchersPanel
+                employee={employee}
+                onOpenPdfPrep={() => openHrPdfPrep('cash-receipt')}
               />
             ) : (
               <div className="space-y-4">
