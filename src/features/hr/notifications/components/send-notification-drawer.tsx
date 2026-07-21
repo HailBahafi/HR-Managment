@@ -1,12 +1,14 @@
 'use client';
 
 import * as React from 'react';
+import { Bell, FileSignature, Layers2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmployeePicker } from '@/components/ui/employee-picker';
 import { FILTER_PERMISSIONS } from '@/features/auth/permissions/filter-permissions';
 import { FormField, HRSettingsFormDrawer, MinimalDropdown } from '@/components/ui/shared-dialogs';
+import { cn } from '@/shared/utils';
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import {
   NOTIFICATION_CATEGORY_FILTER_ORDER,
@@ -67,17 +69,34 @@ const BASE_FORM: SendForm = {
   requiresAcknowledgment: false,
   actionUrl: '',
   actionLabelAr: 'عرض التفاصيل',
-  payrollDeliveryMode: 'notify_only',
+  payrollDeliveryMode: 'both',
   payrollPeriodId: '',
 };
 
 const PAYROLL_DELIVERY_OPTIONS: {
   value: PayrollNotifyDeliveryMode;
-  label: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { value: 'notify_only', label: 'إشعار فقط (موافقة القسيمة)' },
-  { value: 'pdf_sign', label: 'سند PDF للتوقيع فقط' },
-  { value: 'both', label: 'الإثنان معاً' },
+  {
+    value: 'notify_only',
+    title: 'إشعار فقط',
+    description: 'إشعار بمراجعة قسيمة الراتب والموافقة عليها.',
+    icon: Bell,
+  },
+  {
+    value: 'pdf_sign',
+    title: 'سند PDF للتوقيع',
+    description: 'ترقية سند الاستلام وإرسال إشعار لفتحه والتوقيع.',
+    icon: FileSignature,
+  },
+  {
+    value: 'both',
+    title: 'الإثنان معاً',
+    description: 'إشعار القسيمة + سند الاستلام للتوقيع في خطوة واحدة.',
+    icon: Layers2,
+  },
 ];
 
 function resolveAudience(
@@ -135,6 +154,7 @@ export function SendNotificationDrawer({
   const [form, setForm] = React.useState<SendForm>(BASE_FORM);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [periodsLoading, setPeriodsLoading] = React.useState(false);
   const [periodOptions, setPeriodOptions] = React.useState<
     { value: string; label: string; nameAr: string }[]
   >([]);
@@ -142,7 +162,9 @@ export function SendNotificationDrawer({
   const mustSelectEmployees = requireSelection || lockAudienceToEmployees;
   const isPayrollCategory = form.category === 'payroll';
   const needsPayrollPeriod =
-    isPayrollCategory && deliveryIncludesPdfSign(form.payrollDeliveryMode);
+    isPayrollCategory
+    && (deliveryIncludesPdfSign(form.payrollDeliveryMode)
+      || deliveryIncludesPayslipNotify(form.payrollDeliveryMode));
 
   React.useEffect(() => {
     if (!open) return;
@@ -156,7 +178,7 @@ export function SendNotificationDrawer({
       requiresAcknowledgment: defaults?.requiresAcknowledgment ?? false,
       actionUrl: defaults?.actionUrl ?? '',
       actionLabelAr: defaults?.actionLabelAr ?? 'عرض التفاصيل',
-      payrollDeliveryMode: 'notify_only',
+      payrollDeliveryMode: 'both',
       payrollPeriodId: defaults?.sourceId ?? '',
     });
     setFormError(null);
@@ -166,6 +188,7 @@ export function SendNotificationDrawer({
     if (!open || !companyId || !isPayrollCategory) return;
     let cancelled = false;
     void (async () => {
+      setPeriodsLoading(true);
       try {
         const result = await payrollPeriodsApi.list({ companyId, limit: 50 });
         if (cancelled) return;
@@ -185,6 +208,8 @@ export function SendNotificationDrawer({
         );
       } catch {
         if (!cancelled) setPeriodOptions([]);
+      } finally {
+        if (!cancelled) setPeriodsLoading(false);
       }
     })();
     return () => {
@@ -205,8 +230,8 @@ export function SendNotificationDrawer({
       setFormError('اختر موظفاً واحداً على الأقل');
       return;
     }
-    if (needsPayrollPeriod && !form.payrollPeriodId) {
-      setFormError('اختر فترة الرواتب لإرسال سند التوقيع');
+    if (isPayrollCategory && needsPayrollPeriod && !form.payrollPeriodId) {
+      setFormError('اختر فترة الرواتب');
       return;
     }
 
@@ -219,7 +244,7 @@ export function SendNotificationDrawer({
     setSaving(true);
     setFormError(null);
     try {
-      if (isPayrollCategory && (needsPayrollPeriod || deliveryIncludesPayslipNotify(form.payrollDeliveryMode))) {
+      if (isPayrollCategory) {
         const periodMeta = periodOptions.find((p) => p.value === form.payrollPeriodId);
         const periodNameAr = periodMeta?.nameAr ?? form.titleAr.trim();
 
@@ -359,41 +384,80 @@ export function SendNotificationDrawer({
       </div>
 
       {isPayrollCategory ? (
-        <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-          <FormField label="نوع إشعار الراتب">
-            <MinimalDropdown
-              value={form.payrollDeliveryMode}
-              options={PAYROLL_DELIVERY_OPTIONS.map((o) => ({
-                value: o.value,
-                label: o.label,
-              }))}
-              onChange={(v) =>
-                setForm((f) => ({
-                  ...f,
-                  payrollDeliveryMode: v as PayrollNotifyDeliveryMode,
-                }))
-              }
-            />
+        <div className="space-y-3 rounded-2xl border border-primary/15 bg-linear-to-b from-primary/8 via-primary/4 to-transparent p-3.5">
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold text-foreground">طريقة الإرسال — رواتب</p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              اختر ماذا يصل للموظف بعد الإرسال. سند التوقيع يعتمد على سندات الاستلام المُولَّدة للفترة.
+            </p>
+          </div>
+
+          <div className="grid gap-2" role="radiogroup" aria-label="طريقة إرسال إشعار الراتب">
+            {PAYROLL_DELIVERY_OPTIONS.map((opt) => {
+              const selected = form.payrollDeliveryMode === opt.value;
+              const Icon = opt.icon;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={saving}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, payrollDeliveryMode: opt.value }))
+                  }
+                  className={cn(
+                    'flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-right transition-all duration-200',
+                    selected
+                      ? 'border-primary/45 bg-primary/10 shadow-soft'
+                      : 'border-border/70 bg-background/80 hover:border-primary/25 hover:bg-muted/30',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                      selected ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 space-y-0.5">
+                    <span className="block text-sm font-medium text-foreground">{opt.title}</span>
+                    <span className="block text-[11px] leading-relaxed text-muted-foreground">
+                      {opt.description}
+                    </span>
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-1 h-4 w-4 shrink-0 rounded-full border-2',
+                      selected
+                        ? 'border-primary bg-primary shadow-[inset_0_0_0_3px_hsl(var(--background))]'
+                        : 'border-muted-foreground/35',
+                    )}
+                    aria-hidden
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          <FormField label="فترة الرواتب *">
+            {periodsLoading ? (
+              <div className="flex h-10 items-center gap-2 rounded-md border border-input px-3 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                جاري تحميل الفترات...
+              </div>
+            ) : (
+              <MinimalDropdown
+                value={form.payrollPeriodId || ''}
+                options={[
+                  { value: '', label: '— اختر الفترة —' },
+                  ...periodOptions,
+                ]}
+                onChange={(v) => setForm((f) => ({ ...f, payrollPeriodId: v }))}
+              />
+            )}
           </FormField>
-          <FormField
-            label={
-              needsPayrollPeriod
-                ? 'فترة الرواتب *'
-                : 'فترة الرواتب (اختياري لإشعار القسيمة)'
-            }
-          >
-            <MinimalDropdown
-              value={form.payrollPeriodId || ''}
-              options={[
-                { value: '', label: '— اختر الفترة —' },
-                ...periodOptions,
-              ]}
-              onChange={(v) => setForm((f) => ({ ...f, payrollPeriodId: v }))}
-            />
-          </FormField>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            سند PDF للتوقيع مخصص للرواتب فقط: يُنشئ سند استلام لكل موظف ثم يرسل إشعاراً لفتحه وقراءته والتوقيع.
-          </p>
         </div>
       ) : null}
 
