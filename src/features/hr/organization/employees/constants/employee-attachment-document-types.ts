@@ -6,9 +6,13 @@ export const EMPLOYEE_ATTACHMENT_DOCUMENT_TYPES = [
   { value: 'certificate', label: 'شهادة' },
   { value: 'license', label: 'رخصة / تصريح' },
   { value: 'bank', label: 'مستند بنكي' },
+  { value: 'payslip', label: 'قسيمة راتب' },
   { value: 'medical', label: 'تقرير طبي' },
   { value: 'other', label: 'أخرى' },
 ] as const;
+
+/** Document types shown under employee salary / payslips section. */
+export const SALARY_ATTACHMENT_DOCUMENT_TYPES = ['payslip', 'bank'] as const;
 
 export type EmployeeAttachmentDocumentType =
   (typeof EMPLOYEE_ATTACHMENT_DOCUMENT_TYPES)[number]['value'];
