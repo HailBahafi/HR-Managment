@@ -6,17 +6,45 @@ import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import { sanitizePdfText } from '@/components/pdf/lib/sanitize-pdf-text';
 import { RosePdfWatermark } from '@/components/pdf/rose-trading/rose-pdf-watermark';
 
+export type RoseResignationPrintFields = {
+  applicantName: string;
+  branchName: string;
+  jobTitle: string;
+  nationality: string;
+  /** Multi-line reasons text. */
+  reasons: string;
+  effectiveDateHijri?: string | null;
+  effectiveDateGregorian: string;
+  signatureName?: string | null;
+  submissionDate: string;
+};
+
 export type RoseResignationPrintHtmlProps = {
   logoSrc?: string;
   companyNameAr: string;
   companyNameEn?: string | null;
+  /** When null/undefined, blank form for handwritten fill-in. */
+  fields?: RoseResignationPrintFields | null;
 };
 
 const BORDER = '#111111';
 const font: React.CSSProperties = { fontFamily: 'Arial, Helvetica, sans-serif' };
 
-function InfoCell({ label, showTop, showStart }: { label: string; showTop?: boolean; showStart?: boolean }) {
+function InfoCell({
+  label,
+  value,
+  blank,
+  showTop,
+  showStart,
+}: {
+  label: string;
+  value?: string | null;
+  blank?: boolean;
+  showTop?: boolean;
+  showStart?: boolean;
+}) {
   const edge = `1px solid ${BORDER}`;
+  const text = value?.trim();
   return (
     <>
       <div
@@ -44,13 +72,30 @@ function InfoCell({ label, showTop, showStart }: { label: string; showTop?: bool
           padding: '8px 10px',
           minHeight: 34,
           backgroundColor: '#fff',
+          fontSize: 14,
+          fontWeight: blank || !text ? 400 : 700,
+          textAlign: 'right',
+          ...font,
         }}
-      />
+      >
+        {blank || !text ? null : sanitizePdfText(text)}
+      </div>
     </>
   );
 }
 
-function FooterRow({ label, isFirst }: { label: string; isFirst?: boolean }) {
+function FooterRow({
+  label,
+  value,
+  blank,
+  isFirst,
+}: {
+  label: string;
+  value?: string | null;
+  blank?: boolean;
+  isFirst?: boolean;
+}) {
+  const text = value?.trim();
   return (
     <div style={{ display: 'flex', flexDirection: 'row' }}>
       <div
@@ -74,23 +119,33 @@ function FooterRow({ label, isFirst }: { label: string; isFirst?: boolean }) {
           borderTop: isFirst ? `1px solid ${BORDER}` : 'none',
           borderInlineStart: 'none',
           minHeight: 36,
+          padding: '10px 12px',
+          fontSize: 14,
+          fontWeight: blank || !text ? 400 : 700,
+          textAlign: 'right',
+          ...font,
         }}
-      />
+      >
+        {blank || !text ? null : sanitizePdfText(text)}
+      </div>
     </div>
   );
 }
 
+function parseReasonLines(reasons: string): string[] {
+  const lines = reasons
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[\d.•\-–]+\s*/, '').trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines : [reasons.trim()].filter(Boolean);
+}
+
 /**
- * Blank resignation form — matches paper layout.
- * Letterhead kept; no employee auto-fill (handwritten fields).
+ * Resignation form — blank dotted layout, or filled from a saved record.
  */
 export const RoseResignationPrintHtml = React.forwardRef<HTMLDivElement, RoseResignationPrintHtmlProps>(
   function RoseResignationPrintHtml(
-    {
-      logoSrc: logoSrcProp,
-      companyNameAr,
-      companyNameEn,
-    },
+    { logoSrc: logoSrcProp, companyNameAr, companyNameEn, fields },
     ref,
   ) {
     const [logoSrc, setLogoSrc] = React.useState<string | undefined>(logoSrcProp);
@@ -99,7 +154,11 @@ export const RoseResignationPrintHtml = React.forwardRef<HTMLDivElement, RoseRes
       else setLogoSrc(getPdfLogoSrc());
     }, [logoSrcProp]);
 
+    const blank = !fields;
     const company = sanitizePdfText(companyNameAr.trim() || '—');
+    const reasonLines = blank
+      ? [1, 2, 3].map((n) => `${n}-`)
+      : parseReasonLines(fields.reasons).map((line, i) => `${i + 1}- ${sanitizePdfText(line)}`);
 
     return (
       <div
@@ -128,7 +187,6 @@ export const RoseResignationPrintHtml = React.forwardRef<HTMLDivElement, RoseRes
             companyNameEn={companyNameEn ?? undefined}
           />
 
-          {/* الموضوع / استقالة */}
           <div
             style={{
               width: 'fit-content',
@@ -146,7 +204,6 @@ export const RoseResignationPrintHtml = React.forwardRef<HTMLDivElement, RoseRes
             الموضوع / استقالة
           </div>
 
-          {/* Info grid: الاسم | blank | الفرع | blank / الوظيفة | blank | الجنسية | blank */}
           <div
             style={{
               display: 'grid',
@@ -154,10 +211,16 @@ export const RoseResignationPrintHtml = React.forwardRef<HTMLDivElement, RoseRes
               marginBottom: 48,
             }}
           >
-            <InfoCell label="الاسم" showTop showStart />
-            <InfoCell label="الفرع" showTop />
-            <InfoCell label="الوظيفة" showStart />
-            <InfoCell label="الجنسية" />
+            <InfoCell
+              label="الاسم"
+              value={fields?.applicantName}
+              blank={blank}
+              showTop
+              showStart
+            />
+            <InfoCell label="الفرع" value={fields?.branchName} blank={blank} showTop />
+            <InfoCell label="الوظيفة" value={fields?.jobTitle} blank={blank} showStart />
+            <InfoCell label="الجنسية" value={fields?.nationality} blank={blank} />
           </div>
 
           <div style={{ fontSize: 15, lineHeight: 1.9, textAlign: 'right', marginBottom: 12, ...font }}>
@@ -168,7 +231,6 @@ export const RoseResignationPrintHtml = React.forwardRef<HTMLDivElement, RoseRes
             بعد التحية ،،،
           </div>
 
-          {/* Reasons box */}
           <div
             style={{
               border: `1.5px solid ${BORDER}`,
@@ -180,9 +242,9 @@ export const RoseResignationPrintHtml = React.forwardRef<HTMLDivElement, RoseRes
             <div style={{ fontSize: 15, fontWeight: 700, textAlign: 'right', marginBottom: 10, ...font }}>
               نظراً للأسباب التالية :
             </div>
-            {[1, 2, 3].map((n) => (
+            {reasonLines.map((line) => (
               <div
-                key={n}
+                key={line}
                 style={{
                   fontSize: 15,
                   lineHeight: 2.2,
@@ -191,23 +253,38 @@ export const RoseResignationPrintHtml = React.forwardRef<HTMLDivElement, RoseRes
                   ...font,
                 }}
               >
-                {n}-
+                {line}
               </div>
             ))}
           </div>
 
           <p style={{ fontSize: 15, lineHeight: 2, textAlign: 'right', margin: '0 0 16px', ...font }}>
-            أتقدم لسيادتكم بطلب استقالتي عن العمل اعتباراً من تاريخ :&nbsp;&nbsp;/&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;هـ
+            أتقدم لسيادتكم بطلب استقالتي عن العمل اعتباراً من تاريخ :{' '}
+            {blank || !fields.effectiveDateHijri?.trim() ? (
+              <>&nbsp;&nbsp;/&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;هـ</>
+            ) : (
+              <span style={{ fontWeight: 700 }}>{sanitizePdfText(fields.effectiveDateHijri.trim())} هـ</span>
+            )}
           </p>
           <p style={{ fontSize: 15, lineHeight: 2, textAlign: 'right', margin: '0 0 72px', ...font }}>
-            الموافق :&nbsp;&nbsp;/&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;م راجياً من سيادتكم قبول طلبي هذا متمنية لكم التوفيق .
+            الموافق :{' '}
+            {blank ? (
+              <>&nbsp;&nbsp;/&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;م</>
+            ) : (
+              <span style={{ fontWeight: 700 }}>{sanitizePdfText(fields.effectiveDateGregorian)} م</span>
+            )}{' '}
+            راجياً من سيادتكم قبول طلبي هذا متمنية لكم التوفيق .
           </p>
 
-          {/* Footer signature table */}
           <div>
-            <FooterRow label="اسم مقدمة الطلب" isFirst />
-            <FooterRow label="التوقيع" />
-            <FooterRow label="التاريخ" />
+            <FooterRow
+              label="اسم مقدمة الطلب"
+              value={fields?.applicantName || fields?.signatureName}
+              blank={blank}
+              isFirst
+            />
+            <FooterRow label="التوقيع" blank />
+            <FooterRow label="التاريخ" value={fields?.submissionDate} blank={blank} />
           </div>
         </div>
       </div>

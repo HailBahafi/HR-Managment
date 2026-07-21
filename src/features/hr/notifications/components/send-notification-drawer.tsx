@@ -19,6 +19,18 @@ import {
   type NotificationSeverity,
   type SendNotificationDto,
 } from '@/features/hr/notifications/lib/api/notifications';
+import {
+  cashReceiptVouchersApi,
+  type PayrollNotifyDeliveryMode,
+} from '@/features/hr/organization/employees/lib/api/cash-receipt-vouchers';
+import { payrollPeriodsApi } from '@/features/hr/payroll/lib/api/payroll-periods';
+import { hrPayrollSalaryApprovalsQueryHref } from '@/features/hr/payroll/constants/routes';
+import {
+  deliveryIncludesPayslipNotify,
+  deliveryIncludesPdfSign,
+  sendCashReceiptSignatureNotification,
+  sendPayslipGeneratedNotification,
+} from '@/features/hr/payroll/compensation/services/payslip-notification.service';
 
 type SendForm = {
   titleAr: string;
@@ -29,6 +41,8 @@ type SendForm = {
   requiresAcknowledgment: boolean;
   actionUrl: string;
   actionLabelAr: string;
+  payrollDeliveryMode: PayrollNotifyDeliveryMode;
+  payrollPeriodId: string;
 };
 
 export type SendNotificationDrawerDefaults = {
@@ -53,7 +67,18 @@ const BASE_FORM: SendForm = {
   requiresAcknowledgment: false,
   actionUrl: '',
   actionLabelAr: 'عرض التفاصيل',
+  payrollDeliveryMode: 'notify_only',
+  payrollPeriodId: '',
 };
+
+const PAYROLL_DELIVERY_OPTIONS: {
+  value: PayrollNotifyDeliveryMode;
+  label: string;
+}[] = [
+  { value: 'notify_only', label: 'إشعار فقط (موافقة القسيمة)' },
+  { value: 'pdf_sign', label: 'سند PDF للتوقيع فقط' },
+  { value: 'both', label: 'الإثنان معاً' },
+];
 
 function resolveAudience(
   employeeIds: Set<string>,
@@ -110,8 +135,14 @@ export function SendNotificationDrawer({
   const [form, setForm] = React.useState<SendForm>(BASE_FORM);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [periodOptions, setPeriodOptions] = React.useState<
+    { value: string; label: string; nameAr: string }[]
+  >([]);
 
   const mustSelectEmployees = requireSelection || lockAudienceToEmployees;
+  const isPayrollCategory = form.category === 'payroll';
+  const needsPayrollPeriod =
+    isPayrollCategory && deliveryIncludesPdfSign(form.payrollDeliveryMode);
 
   React.useEffect(() => {
     if (!open) return;
@@ -125,9 +156,41 @@ export function SendNotificationDrawer({
       requiresAcknowledgment: defaults?.requiresAcknowledgment ?? false,
       actionUrl: defaults?.actionUrl ?? '',
       actionLabelAr: defaults?.actionLabelAr ?? 'عرض التفاصيل',
+      payrollDeliveryMode: 'notify_only',
+      payrollPeriodId: defaults?.sourceId ?? '',
     });
     setFormError(null);
   }, [open, defaults, initialEmployeeIds]);
+
+  React.useEffect(() => {
+    if (!open || !companyId || !isPayrollCategory) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await payrollPeriodsApi.list({ companyId, limit: 50 });
+        if (cancelled) return;
+        const MONTH_NAMES_AR = [
+          'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+          'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+        ];
+        setPeriodOptions(
+          (result.items ?? []).map((p) => {
+            const nameAr = `${MONTH_NAMES_AR[p.periodMonth - 1] ?? p.periodMonth} ${p.periodYear}`;
+            return {
+              value: p.id,
+              label: nameAr,
+              nameAr,
+            };
+          }),
+        );
+      } catch {
+        if (!cancelled) setPeriodOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, companyId, isPayrollCategory]);
 
   const submitSend = async () => {
     if (!companyId) {
@@ -142,32 +205,100 @@ export function SendNotificationDrawer({
       setFormError('اختر موظفاً واحداً على الأقل');
       return;
     }
+    if (needsPayrollPeriod && !form.payrollPeriodId) {
+      setFormError('اختر فترة الرواتب لإرسال سند التوقيع');
+      return;
+    }
 
     const allEmployeeIds = employeeOptions.map((e) => e.id);
     const audience = resolveAudience(form.employeeIds, allEmployeeIds, mustSelectEmployees);
-
-    const dto: SendNotificationDto = {
-      companyId,
-      category: form.category,
-      severity: form.severity,
-      titleAr: form.titleAr.trim(),
-      bodyAr: form.bodyAr.trim() || null,
-      audienceKind: audience.audienceKind,
-      employeeIds: audience.employeeIds,
-      deliveryChannel: 'in_app',
-      sourceKind: defaults?.sourceKind ?? 'manual',
-      sourceTable: defaults?.sourceTable,
-      sourceId: defaults?.sourceId,
-      requiresAcknowledgment: form.requiresAcknowledgment,
-      actionUrl: form.actionUrl.trim() || undefined,
-      actionLabelAr: form.actionLabelAr.trim() || undefined,
-      createdBy: createdBy ?? undefined,
-    };
+    const targetEmployeeIds =
+      audience.employeeIds ??
+      (audience.audienceKind === 'company' ? allEmployeeIds : []);
 
     setSaving(true);
     setFormError(null);
     try {
-      await notificationsApi.send(dto);
+      if (isPayrollCategory && (needsPayrollPeriod || deliveryIncludesPayslipNotify(form.payrollDeliveryMode))) {
+        const periodMeta = periodOptions.find((p) => p.value === form.payrollPeriodId);
+        const periodNameAr = periodMeta?.nameAr ?? form.titleAr.trim();
+
+        if (deliveryIncludesPdfSign(form.payrollDeliveryMode)) {
+          if (targetEmployeeIds.length === 0) {
+            setFormError('لا يوجد موظفون لإصدار سندات الاستلام');
+            setSaving(false);
+            return;
+          }
+          await cashReceiptVouchersApi.bulkIssueForPayroll({
+            companyId,
+            payrollPeriodId: form.payrollPeriodId,
+            employeeIds: targetEmployeeIds,
+            createdBy: createdBy ?? undefined,
+          });
+          await sendCashReceiptSignatureNotification({
+            companyId,
+            periodId: form.payrollPeriodId,
+            periodNameAr,
+            employeeIds: targetEmployeeIds,
+            createdBy: createdBy ?? undefined,
+          });
+        }
+
+        if (deliveryIncludesPayslipNotify(form.payrollDeliveryMode)) {
+          if (form.payrollPeriodId && targetEmployeeIds.length > 0) {
+            await sendPayslipGeneratedNotification({
+              companyId,
+              periodId: form.payrollPeriodId,
+              periodNameAr,
+              employeeIds: targetEmployeeIds,
+              createdBy: createdBy ?? undefined,
+            });
+          } else {
+            const dto: SendNotificationDto = {
+              companyId,
+              category: form.category,
+              severity: form.severity,
+              titleAr: form.titleAr.trim(),
+              bodyAr: form.bodyAr.trim() || null,
+              audienceKind: audience.audienceKind,
+              employeeIds: audience.employeeIds,
+              deliveryChannel: 'in_app',
+              sourceKind: defaults?.sourceKind ?? 'payroll_payslip',
+              sourceTable: defaults?.sourceTable ?? (form.payrollPeriodId ? 'hr_payroll_periods' : undefined),
+              sourceId: defaults?.sourceId ?? (form.payrollPeriodId || undefined),
+              requiresAcknowledgment: form.requiresAcknowledgment,
+              actionUrl:
+                form.actionUrl.trim() ||
+                (form.payrollPeriodId
+                  ? hrPayrollSalaryApprovalsQueryHref(form.payrollPeriodId)
+                  : undefined),
+              actionLabelAr: form.actionLabelAr.trim() || undefined,
+              createdBy: createdBy ?? undefined,
+            };
+            await notificationsApi.send(dto);
+          }
+        }
+      } else {
+        const dto: SendNotificationDto = {
+          companyId,
+          category: form.category,
+          severity: form.severity,
+          titleAr: form.titleAr.trim(),
+          bodyAr: form.bodyAr.trim() || null,
+          audienceKind: audience.audienceKind,
+          employeeIds: audience.employeeIds,
+          deliveryChannel: 'in_app',
+          sourceKind: defaults?.sourceKind ?? 'manual',
+          sourceTable: defaults?.sourceTable,
+          sourceId: defaults?.sourceId,
+          requiresAcknowledgment: form.requiresAcknowledgment,
+          actionUrl: form.actionUrl.trim() || undefined,
+          actionLabelAr: form.actionLabelAr.trim() || undefined,
+          createdBy: createdBy ?? undefined,
+        };
+        await notificationsApi.send(dto);
+      }
+
       toast.success('تم إرسال الإشعار');
       onOpenChange(false);
       await onSent?.();
@@ -226,6 +357,46 @@ export function SendNotificationDrawer({
           />
         </FormField>
       </div>
+
+      {isPayrollCategory ? (
+        <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+          <FormField label="نوع إشعار الراتب">
+            <MinimalDropdown
+              value={form.payrollDeliveryMode}
+              options={PAYROLL_DELIVERY_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              }))}
+              onChange={(v) =>
+                setForm((f) => ({
+                  ...f,
+                  payrollDeliveryMode: v as PayrollNotifyDeliveryMode,
+                }))
+              }
+            />
+          </FormField>
+          <FormField
+            label={
+              needsPayrollPeriod
+                ? 'فترة الرواتب *'
+                : 'فترة الرواتب (اختياري لإشعار القسيمة)'
+            }
+          >
+            <MinimalDropdown
+              value={form.payrollPeriodId || ''}
+              options={[
+                { value: '', label: '— اختر الفترة —' },
+                ...periodOptions,
+              ]}
+              onChange={(v) => setForm((f) => ({ ...f, payrollPeriodId: v }))}
+            />
+          </FormField>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            سند PDF للتوقيع مخصص للرواتب فقط: يُنشئ سند استلام لكل موظف ثم يرسل إشعاراً لفتحه وقراءته والتوقيع.
+          </p>
+        </div>
+      ) : null}
+
       <FormField label={`الموظفون${form.employeeIds.size > 0 ? ` (${form.employeeIds.size})` : ''}`}>
         <EmployeePicker
           variant="form"

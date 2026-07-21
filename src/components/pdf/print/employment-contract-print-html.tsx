@@ -380,7 +380,7 @@ export const EmploymentContractPrintHtml = React.forwardRef<HTMLDivElement, Empl
               <div
                 style={{
                   fontSize: 17,
-                  fontWeight: 700,
+                  fontWeight: 700, 
                   textAlign: 'center',
                   marginTop: 4,
                   marginBottom: 14,

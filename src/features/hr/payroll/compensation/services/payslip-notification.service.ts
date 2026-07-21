@@ -3,8 +3,17 @@ import {
   notificationsApi,
   type SendNotificationDto,
 } from '@/features/hr/notifications/lib/api/notifications';
+import type { PayrollNotifyDeliveryMode } from '@/features/hr/organization/employees/lib/api/cash-receipt-vouchers';
 
 export type PayslipGeneratedNotificationInput = {
+  companyId: string;
+  periodId: string;
+  periodNameAr: string;
+  employeeIds: string[];
+  createdBy?: string | null;
+};
+
+export type CashReceiptSignatureNotificationInput = {
   companyId: string;
   periodId: string;
   periodNameAr: string;
@@ -35,4 +44,38 @@ export async function sendPayslipGeneratedNotification(input: PayslipGeneratedNo
   };
 
   return notificationsApi.send(dto);
+}
+
+export async function sendCashReceiptSignatureNotification(
+  input: CashReceiptSignatureNotificationInput,
+) {
+  const uniqueEmployeeIds = [...new Set(input.employeeIds.filter(Boolean))];
+  if (uniqueEmployeeIds.length === 0) return null;
+
+  const dto: SendNotificationDto = {
+    companyId: input.companyId,
+    category: 'payroll',
+    severity: 'info',
+    titleAr: `سند استلام راتب — ${input.periodNameAr}`,
+    bodyAr: `يرجى فتح سند استلام الراتب لفترة ${input.periodNameAr}، قراءته بالكامل، ثم التوقيع عليه (رسم التوقيع أو رفع ملف موقّع).`,
+    audienceKind: 'employee',
+    employeeIds: uniqueEmployeeIds,
+    deliveryChannel: 'in_app',
+    sourceKind: 'cash_receipt_signature',
+    sourceTable: 'hr_payroll_periods',
+    sourceId: input.periodId,
+    actionLabelAr: 'فتح السند والتوقيع',
+    requiresAcknowledgment: true,
+    createdBy: input.createdBy ?? null,
+  };
+
+  return notificationsApi.send(dto);
+}
+
+export function deliveryIncludesPayslipNotify(mode: PayrollNotifyDeliveryMode): boolean {
+  return mode === 'notify_only' || mode === 'both';
+}
+
+export function deliveryIncludesPdfSign(mode: PayrollNotifyDeliveryMode): boolean {
+  return mode === 'pdf_sign' || mode === 'both';
 }

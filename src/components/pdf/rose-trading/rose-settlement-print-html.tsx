@@ -13,6 +13,8 @@ export type RoseSettlementPrintFields = {
   nationalId: string;
   /** Gregorian end/settlement date — shown in الموافق slot when filled */
   endDateGregorian: string;
+  /** Optional Hijri date for تاريخ : … هـ */
+  endDateHijri?: string | null;
   companyName: string;
 };
 
@@ -137,10 +139,18 @@ export const RoseSettlementPrintHtml = React.forwardRef<HTMLDivElement, RoseSett
               </>
             ) : (
               <>
-                <DateBlank />
-                14هـ الموافق :{' '}
+                {fields.endDateHijri?.trim() ? (
+                  <>
+                    <Value text={fields.endDateHijri} blank={false} /> هـ الموافق :{' '}
+                  </>
+                ) : (
+                  <>
+                    <DateBlank />
+                    14هـ الموافق :{' '}
+                  </>
+                )}
                 <Value
-                  text={fields?.endDateGregorian || formatGregorianDateAr(new Date().toISOString().slice(0, 10))}
+                  text={fields.endDateGregorian || formatGregorianDateAr(new Date().toISOString().slice(0, 10))}
                   blank={false}
                 />{' '}
                 م

@@ -6,23 +6,37 @@ import { getPdfLogoSrc } from '@/components/pdf/lib/pdf-logo-url';
 import { sanitizePdfText } from '@/components/pdf/lib/sanitize-pdf-text';
 import { RosePdfWatermark } from '@/components/pdf/rose-trading/rose-pdf-watermark';
 
+export type RoseClearancePrintFields = {
+  employeeName: string;
+  nationalId: string;
+  /** Multi-line reasons text. */
+  reasons: string;
+  signatureName?: string | null;
+  clearanceDate: string;
+};
+
 export type RoseClearancePrintHtmlProps = {
   logoSrc?: string;
   companyNameAr: string;
   companyNameEn?: string | null;
+  /** When null/undefined, blank form for handwritten fill-in. */
+  fields?: RoseClearancePrintFields | null;
 };
 
+function parseReasonLines(reasons: string): string[] {
+  const lines = reasons
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[•\-–.\d]+\s*/, '').trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines : [reasons.trim()].filter(Boolean);
+}
+
 /**
- * Blank clearance form for print/download — user fills fields by hand.
- * No underlines; blank space after labels (paper style).
+ * Clearance form — blank paper layout, or filled from a saved record.
  */
 export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClearancePrintHtmlProps>(
   function RoseClearancePrintHtml(
-    {
-      logoSrc: logoSrcProp,
-      companyNameAr,
-      companyNameEn,
-    },
+    { logoSrc: logoSrcProp, companyNameAr, companyNameEn, fields },
     ref,
   ) {
     const [logoSrc, setLogoSrc] = React.useState<string | undefined>(logoSrcProp);
@@ -31,8 +45,12 @@ export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClear
       else setLogoSrc(getPdfLogoSrc());
     }, [logoSrcProp]);
 
+    const blank = !fields;
     const company = sanitizePdfText(companyNameAr.trim() || '—');
     const font: React.CSSProperties = { fontFamily: 'Arial, Helvetica, sans-serif' };
+    const reasonLines = blank
+      ? [0, 1, 2, 3].map(() => '.')
+      : parseReasonLines(fields.reasons).map((line) => `• ${sanitizePdfText(line)}`);
 
     return (
       <div
@@ -82,10 +100,18 @@ export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClear
             <div>
               <span style={{ fontWeight: 700 }}>الموظفة</span>
               <span> : </span>
+              {!blank && fields.employeeName.trim() ? (
+                <span style={{ fontWeight: 700 }}>{sanitizePdfText(fields.employeeName.trim())}</span>
+              ) : null}
             </div>
             <div>
               <span style={{ fontWeight: 700 }}>هوية رقم</span>
               <span> : </span>
+              {!blank && fields.nationalId.trim() ? (
+                <span style={{ fontWeight: 700 }} dir="ltr">
+                  {sanitizePdfText(fields.nationalId.trim())}
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -94,9 +120,9 @@ export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClear
           </p>
 
           <div style={{ marginBottom: 24, paddingInlineStart: 8 }}>
-            {[0, 1, 2, 3].map((i) => (
+            {reasonLines.map((line, i) => (
               <div
-                key={i}
+                key={`${i}-${line}`}
                 style={{
                   fontSize: 16,
                   lineHeight: 2.4,
@@ -105,7 +131,7 @@ export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClear
                   ...font,
                 }}
               >
-                .
+                {line}
               </div>
             ))}
           </div>
@@ -127,10 +153,18 @@ export const RoseClearancePrintHtml = React.forwardRef<HTMLDivElement, RoseClear
             <div>
               <span style={{ fontWeight: 700 }}>الاسم</span>
               <span> : </span>
+              {!blank ? (
+                <span style={{ fontWeight: 700 }}>
+                  {sanitizePdfText((fields.signatureName || fields.employeeName).trim() || '—')}
+                </span>
+              ) : null}
             </div>
             <div>
               <span style={{ fontWeight: 700 }}>التاريخ</span>
               <span> : </span>
+              {!blank ? (
+                <span style={{ fontWeight: 700 }}>{sanitizePdfText(fields.clearanceDate)}</span>
+              ) : null}
             </div>
             <div>
               <span style={{ fontWeight: 700 }}>التوقيع</span>

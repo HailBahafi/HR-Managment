@@ -77,7 +77,16 @@ export function useEmployeeProfileRosePdf(draft: EmployeeProfileDraft) {
         });
         break;
       case 'settlement':
-        setSettlementPrepOpen(true);
+        setPreview({
+          printable: (
+            <RoseSettlementPrintHtml
+              companyNameAr={companyNames.nameAr}
+              companyNameEn={companyNames.nameEn}
+            />
+          ),
+          title: 'معاينة — مخالصة نهائية',
+          fileName: 'rose-settlement-blank.pdf',
+        });
         break;
       case 'experience':
         setExperiencePrepOpen(true);
