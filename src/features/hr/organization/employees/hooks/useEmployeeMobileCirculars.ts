@@ -7,16 +7,24 @@ import { useDefaultCompanyId } from '@/features/hr/organization/lib/default-comp
 import { handleApiError } from '@/features/hr/lib/api/global-error-handler';
 import type { Employee } from '@/features/hr/organization/employees/types';
 import {
-  cashReceiptVouchersApi,
-  type CashReceiptVoucherDto,
-  type CreateCashReceiptVoucherDto,
-} from '@/features/hr/organization/employees/lib/api/cash-receipt-vouchers';
+  employeeMobileCircularsApi,
+  type CreateEmployeeMobileCircularDto,
+  type EmployeeMobileCircularDto,
+} from '@/features/hr/organization/employees/lib/api/employee-mobile-circulars';
 
-export function useEmployeeCashReceiptVouchers(employee: Employee, enabled: boolean) {
+function localTodayIso(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function useEmployeeMobileCirculars(employee: Employee, enabled: boolean) {
   const companyId = useDefaultCompanyId() ?? '';
   const createdBy = useAuthStore((s) => s.user?.email ?? s.accessProfile?.email ?? null);
 
-  const [items, setItems] = React.useState<CashReceiptVoucherDto[]>([]);
+  const [items, setItems] = React.useState<EmployeeMobileCircularDto[]>([]);
   const [total, setTotal] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -32,7 +40,7 @@ export function useEmployeeCashReceiptVouchers(employee: Employee, enabled: bool
     setLoading(true);
     setError(null);
     try {
-      const res = await cashReceiptVouchersApi.getAll({
+      const res = await employeeMobileCircularsApi.getAll({
         companyId,
         employeeId: employee.id,
         page: 1,
@@ -41,7 +49,7 @@ export function useEmployeeCashReceiptVouchers(employee: Employee, enabled: bool
       setItems(res.items);
       setTotal(res.pagination.total);
     } catch (err) {
-      const { displayMessage } = handleApiError(err, 'cash-receipt-vouchers.load');
+      const { displayMessage } = handleApiError(err, 'employee-mobile-circulars.load');
       setError(displayMessage);
       setItems([]);
       setTotal(0);
@@ -55,37 +63,43 @@ export function useEmployeeCashReceiptVouchers(employee: Employee, enabled: bool
   }, [reload]);
 
   const create = React.useCallback(
-    async (input: Omit<CreateCashReceiptVoucherDto, 'companyId' | 'employeeId' | 'createdBy'>) => {
+    async (
+      input?: Partial<
+        Omit<CreateEmployeeMobileCircularDto, 'companyId' | 'employeeId' | 'createdBy'>
+      >,
+    ) => {
       if (!companyId) {
         toast.error('لم يتم تحديد الشركة');
         return null;
       }
       setSaving(true);
       try {
-        const created = await cashReceiptVouchersApi.create({
-          ...input,
+        const created = await employeeMobileCircularsApi.create({
           companyId,
           employeeId: employee.id,
+          circularDate: input?.circularDate ?? localTodayIso(),
+          nationalId: input?.nationalId ?? employee.nationalId ?? null,
+          notes: input?.notes ?? null,
           createdBy: createdBy ?? undefined,
         });
-        toast.success('تم إنشاء سند الراتب كمسودة');
+        toast.success('تم إنشاء تعميم الجوال كمسودة');
         await reload();
         return created;
       } catch (err) {
-        handleApiError(err, 'cash-receipt-vouchers.create');
+        handleApiError(err, 'employee-mobile-circulars.create');
         return null;
       } finally {
         setSaving(false);
       }
     },
-    [companyId, createdBy, employee.id, reload],
+    [companyId, createdBy, employee.id, employee.nationalId, reload],
   );
 
   const getById = React.useCallback(async (id: string) => {
     try {
-      return await cashReceiptVouchersApi.getById(id);
+      return await employeeMobileCircularsApi.getById(id);
     } catch (err) {
-      handleApiError(err, 'cash-receipt-vouchers.get');
+      handleApiError(err, 'employee-mobile-circulars.get');
       return null;
     }
   }, []);
@@ -94,14 +108,14 @@ export function useEmployeeCashReceiptVouchers(employee: Employee, enabled: bool
     async (id: string) => {
       setSaving(true);
       try {
-        const updated = await cashReceiptVouchersApi.sendToEmployee(id, {
+        const updated = await employeeMobileCircularsApi.sendToEmployee(id, {
           updatedBy: createdBy,
         });
-        toast.success('تم إرسال سند الراتب للموظف للتوقيع');
+        toast.success('تم إرسال تعميم الجوال للموظف');
         await reload();
         return updated;
       } catch (err) {
-        handleApiError(err, 'cash-receipt-vouchers.send');
+        handleApiError(err, 'employee-mobile-circulars.send');
         return null;
       } finally {
         setSaving(false);
