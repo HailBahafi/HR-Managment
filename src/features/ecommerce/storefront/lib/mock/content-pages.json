@@ -2,12 +2,12 @@
   "companyId": "demo-company",
   "about": {
     "headline": {
-      "ar": "سوق النخبة — بقالة استهلاكية تثق بها عائلتك",
-      "en": "Elite Market — A Grocery Store Your Family Can Trust"
+      "ar": "نضارة — متجر تجميل وعناية بالبشرة",
+      "en": "Nadara Beauty — Cosmetics & Skincare You Can Trust"
     },
     "intro": {
-      "ar": "منذ تأسيسنا، نؤمن بأن كل منزل يستحق منتجات استهلاكية طازجة وموثوقة بأسعار عادلة. في سوق النخبة نختار موردينا بعناية ونوصّل مشترياتك من الباب إلى باب.",
-      "en": "Since our founding, we believe every home deserves fresh, reliable consumables at fair prices. At Elite Market we carefully select suppliers and deliver groceries straight to your door."
+      "ar": "منذ تأسيسنا، نؤمن بأن كل منزل يستحق منتجات تجميل أصلية وموثوقة بأسعار عادلة. في نضارة نختار موردينا بعناية ونوصّل مشترياتك من الباب إلى باب.",
+      "en": "Since our founding, we believe every home deserves authentic, reliable beauty products at fair prices. At Nadara Beauty we carefully select suppliers and deliver beauty essentials straight to your door."
     },
     "sections": [
       {
@@ -17,8 +17,8 @@
           "en": "Our Mission"
         },
         "body": {
-          "ar": "تقديم منتجات بقالة ومشروبات عالية الجودة بأسعار تنافسية، مع تجربة تسوق سلسة من الاختيار حتى التوصيل.",
-          "en": "To deliver high-quality groceries and beverages at competitive prices, with a seamless shopping experience from selection to delivery."
+          "ar": "تقديم منتجات تجميل وعناية عالية الجودة بأسعار تنافسية، مع تجربة تسوق سلسة من الاختيار حتى التوصيل.",
+          "en": "To deliver high-quality cosmetics and skincare at competitive prices, with a seamless shopping experience from selection to delivery."
         }
       },
       {
@@ -28,8 +28,8 @@
           "en": "Our Quality"
         },
         "body": {
-          "ar": "نعمل مع موردين معتمدين لضمان منتجات أصلية وتواريخ صلاحية واضحة في كل طلب من سوق النخبة.",
-          "en": "We partner with certified suppliers to ensure authentic products and clear expiry dates on every Elite Market order."
+          "ar": "نعمل مع موردين معتمدين لضمان منتجات أصلية ومكونات واضحة في كل طلب من نضارة.",
+          "en": "We partner with certified suppliers to ensure authentic products and clear ingredient lists on every Nadara Beauty order."
         }
       },
       {
@@ -39,8 +39,8 @@
           "en": "Our Sustainability"
         },
         "body": {
-          "ar": "نفضّل التغليف القابل لإعادة التدوير ونقلّل الهدر في سلسلة التبريد والشحن قدر الإمكان.",
-          "en": "We prefer recyclable packaging and minimize waste in our cold chain and delivery operations wherever possible."
+          "ar": "نفضّل التغليف القابل لإعادة التدوير ونقلّل الهدر في التغليف والشحن قدر الإمكان.",
+          "en": "We prefer recyclable packaging and minimize waste in our packaging and delivery operations wherever possible."
         }
       }
     ],
@@ -85,8 +85,8 @@
       "en": "We're Here to Help"
     },
     "intro": {
-      "ar": "لديك سؤال عن منتج، طلب خاص، أو استفسار عن التوصيل من سوق النخبة؟ تواصل معنا وسنرد في أقرب وقت.",
-      "en": "Have a question about a product, a special request, or delivery from Elite Market? Contact us and we'll respond as soon as possible."
+      "ar": "لديك سؤال عن منتج، طلب خاص، أو استفسار عن التوصيل من نضارة؟ تواصل معنا وسنرد في أقرب وقت.",
+      "en": "Have a question about a product, a special request, or delivery from Nadara Beauty? Contact us and we'll respond as soon as possible."
     },
     "hours": {
       "ar": "الأحد – الخميس: ٩ ص – ١١ م | الجمعة – السبت: ١٠ ص – ١٢ م",
@@ -158,17 +158,17 @@
         "en": "Privacy Policy"
       },
       "body": {
-        "ar": "نحترم خصوصيتك. تجمع سوق النخبة البيانات الضرورية فقط لمعالجة الطلبات وتحسين تجربتك. لا نبيع بياناتك لأطراف ثالثة.\n\nقد نستخدم ملفات تعريف الارتباط لتحسين الأداء وتحليل الاستخدام. يمكنك إدارة تفضيلات المتصفح في أي وقت.\n\nللاستفسارات حول البيانات، راسلنا على support@elite-market.example.",
-        "en": "We respect your privacy. Elite Market collects only the data necessary to process orders and improve your experience. We do not sell your data to third parties.\n\nWe may use cookies to improve performance and analyze usage. You can manage browser preferences at any time.\n\nFor data inquiries, email us at support@elite-market.example."
+        "ar": "نحترم خصوصيتك. تجمع نضارة البيانات الضرورية فقط لمعالجة الطلبات وتحسين تجربتك. لا نبيع بياناتك لأطراف ثالثة.\n\nقد نستخدم ملفات تعريف الارتباط لتحسين الأداء وتحليل الاستخدام. يمكنك إدارة تفضيلات المتصفح في أي وقت.\n\nللاستفسارات حول البيانات، راسلنا على support@nadara-beauty.example.",
+        "en": "We respect your privacy. Nadara Beauty collects only the data necessary to process orders and improve your experience. We do not sell your data to third parties.\n\nWe may use cookies to improve performance and analyze usage. You can manage browser preferences at any time.\n\nFor data inquiries, email us at support@nadara-beauty.example."
       },
       "seo": {
         "metaTitle": {
-          "ar": "سياسة الخصوصية — سوق النخبة",
-          "en": "Privacy Policy — Elite Market"
+          "ar": "سياسة الخصوصية — نضارة",
+          "en": "Privacy Policy — Nadara Beauty"
         },
         "metaDescription": {
-          "ar": "تعرف على كيفية تعامل سوق النخبة مع بياناتك الشخصية.",
-          "en": "Learn how Elite Market handles your personal data."
+          "ar": "تعرف على كيفية تعامل نضارة مع بياناتك الشخصية.",
+          "en": "Learn how Nadara Beauty handles your personal data."
         }
       },
       "updatedAt": "2026-01-15T00:00:00.000Z"
@@ -180,17 +180,17 @@
         "en": "Terms & Conditions"
       },
       "body": {
-        "ar": "باستخدامك لموقع سوق النخبة، فإنك توافق على هذه الشروط. الأسعار المعروضة قابلة للتغيير دون إشعار مسبق.\n\nالطلبات تخضع للتوفر والمخزون. نحتفظ بحق رفض أو إلغاء أي طلب في حالات الاشتباه بالاحتيال أو نقص المخزون.\n\nجميع المحتويات والصور محمية بحقوق الملكية الفكرية لسوق النخبة.",
-        "en": "By using the Elite Market website, you agree to these terms. Displayed prices are subject to change without prior notice.\n\nOrders are subject to availability and stock. We reserve the right to refuse or cancel any order in cases of suspected fraud or stock shortages.\n\nAll content and images are protected by Elite Market intellectual property rights."
+        "ar": "باستخدامك لموقع نضارة، فإنك توافق على هذه الشروط. الأسعار المعروضة قابلة للتغيير دون إشعار مسبق.\n\nالطلبات تخضع للتوفر والمخزون. نحتفظ بحق رفض أو إلغاء أي طلب في حالات الاشتباه بالاحتيال أو نقص المخزون.\n\nجميع المحتويات والصور محمية بحقوق الملكية الفكرية لنضارة.",
+        "en": "By using the Nadara Beauty website, you agree to these terms. Displayed prices are subject to change without prior notice.\n\nOrders are subject to availability and stock. We reserve the right to refuse or cancel any order in cases of suspected fraud or stock shortages.\n\nAll content and images are protected by Nadara Beauty intellectual property rights."
       },
       "seo": {
         "metaTitle": {
-          "ar": "الشروط والأحكام — سوق النخبة",
-          "en": "Terms & Conditions — Elite Market"
+          "ar": "الشروط والأحكام — نضارة",
+          "en": "Terms & Conditions — Nadara Beauty"
         },
         "metaDescription": {
-          "ar": "شروط استخدام متجر سوق النخبة الإلكتروني.",
-          "en": "Terms of use for the Elite Market online store."
+          "ar": "شروط استخدام متجر نضارة الإلكتروني.",
+          "en": "Terms of use for the Nadara Beauty online store."
         }
       },
       "updatedAt": "2026-01-15T00:00:00.000Z"
@@ -207,12 +207,12 @@
       },
       "seo": {
         "metaTitle": {
-          "ar": "سياسة الإرجاع — سوق النخبة",
-          "en": "Returns Policy — Elite Market"
+          "ar": "سياسة الإرجاع — نضارة",
+          "en": "Returns Policy — Nadara Beauty"
         },
         "metaDescription": {
-          "ar": "تفاصيل إرجاع المنتجات واسترداد المبالغ في سوق النخبة.",
-          "en": "Details on product returns and refunds at Elite Market."
+          "ar": "تفاصيل إرجاع المنتجات واسترداد المبالغ في نضارة.",
+          "en": "Details on product returns and refunds at Nadara Beauty."
         }
       },
       "updatedAt": "2026-01-15T00:00:00.000Z"

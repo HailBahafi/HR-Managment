@@ -14,14 +14,14 @@ describe('storefrontSearchRepository', () => {
   });
 
   it('finds products by Arabic name', async () => {
-    const result = await storefrontSearchRepository.search(COMPANY_ID, LOCALE, 'بيبسي');
+    const result = await storefrontSearchRepository.search(COMPANY_ID, LOCALE, 'سيرافي');
     expect(result.products.items.length).toBeGreaterThan(0);
-    expect(result.products.items[0]?.name).toContain('بيبسي');
+    expect(result.products.items[0]?.name).toContain('سيرافي');
   });
 
   it('finds brands by slug-related name', async () => {
-    const result = await storefrontSearchRepository.search(COMPANY_ID, LOCALE, 'المراعي');
-    expect(result.brands.items.some((brand) => brand.slug === 'almarai')).toBe(true);
+    const result = await storefrontSearchRepository.search(COMPANY_ID, LOCALE, 'ذا أوردينري');
+    expect(result.brands.items.some((brand) => brand.slug === 'the-ordinary')).toBe(true);
   });
 });
 

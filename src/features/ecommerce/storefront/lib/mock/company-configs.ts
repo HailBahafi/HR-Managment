@@ -3,39 +3,39 @@ import type { CompanyConfigRecord } from '@/features/ecommerce/storefront/domain
 const COMPANY_CONFIGS: Record<string, CompanyConfigRecord> = {
   'demo-company': {
     id: 'demo-company',
-    name: { ar: 'سوق النخبة', en: 'Elite Market' },
+    name: { ar: 'نضارة', en: 'Nadara Beauty' },
     logoUrl: null,
     faviconUrl: null,
     seo: {
       homeTitle: {
-        ar: 'تسوّق البقالة والمشروبات والوجبات الخفيفة أونلاين',
-        en: 'Shop groceries, beverages & snacks online',
+        ar: 'تسوّق أدوات التجميل والعناية بالبشرة أونلاين',
+        en: 'Shop cosmetics & skincare online',
       },
       homeDescription: {
-        ar: 'سوق النخبة — مشروبات، بقالة، مخبوزات، ألبان، مجمدات، وتنظيف بتوصيل سريع داخل السعودية.',
-        en: 'Elite Market — beverages, grocery, bakery, dairy, frozen foods & cleaning with fast delivery across Saudi Arabia.',
+        ar: 'نضارة — مكياج، عناية بالبشرة، شعر، وأدوات تجميل بتوصيل سريع داخل السعودية.',
+        en: 'Nadara Beauty — makeup, skincare, haircare & beauty tools with fast delivery across Saudi Arabia.',
       },
       productsTitle: { ar: 'كل المنتجات', en: 'All products' },
       productsDescription: {
-        ar: 'تصفّح آلاف المنتجات من البقالة والمشروبات والعناية الشخصية.',
-        en: 'Browse thousands of grocery, beverage, and personal care products.',
+        ar: 'تصفّح منتجات التجميل والعناية بالبشرة والشعر من أشهر العلامات.',
+        en: 'Browse cosmetics, skincare, and haircare from top beauty brands.',
       },
-      defaultOgImage: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1200&q=80',
+      defaultOgImage: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1200&q=80',
     },
     contact: {
       phone: '+966 50 000 0000',
-      email: 'support@elite-market.example',
+      email: 'support@nadara-beauty.example',
       address: 'Riyadh, Saudi Arabia',
     },
     social: {
-      instagram: 'https://instagram.com/elitemarket',
-      twitter: 'https://twitter.com/elitemarket',
+      instagram: 'https://instagram.com/nadarabeauty',
+      twitter: 'https://twitter.com/nadarabeauty',
       whatsapp: 'https://wa.me/966500000000',
     },
     theme: {
-      primary: '175 55% 22%',
-      secondary: '38 75% 55%',
-      accent: '175 30% 92%',
+      primary: '340 42% 32%',
+      secondary: '18 45% 68%',
+      accent: '340 28% 94%',
     },
     navigation: [
       { label: { ar: 'الرئيسية', en: 'Home' }, href: '/store' },
@@ -47,7 +47,7 @@ const COMPANY_CONFIGS: Record<string, CompanyConfigRecord> = {
     ],
     secondaryNavigation: [],
     footer: {
-      copyrightOwnerName: { ar: 'سوق النخبة', en: 'Elite Market' },
+      copyrightOwnerName: { ar: 'نضارة', en: 'Nadara Beauty' },
       commercialRegistration: '7014367010',
       linkGroups: [
         {

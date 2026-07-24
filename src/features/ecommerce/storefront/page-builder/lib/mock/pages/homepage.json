@@ -31,33 +31,33 @@
         "slides": [
           {
             "id": "8e3b5a70-1f2c-4d5e-9f0a-1b2c3d4e5f60",
-            "imageUrl": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=1400&q=80",
-            "title": { "ar": "عروض سوق النخبة الأسبوعية", "en": "Elite Market Weekly Deals" },
+            "imageUrl": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1400&q=80",
+            "title": { "ar": "عروض نضارة الأسبوعية", "en": "Nadara Weekly Beauty Deals" },
             "alt": {
-              "ar": "رفوف بقالة مليئة بمنتجات طازجة في سوق النخبة",
-              "en": "Grocery shelves stocked with fresh products at Elite Market"
+              "ar": "منتجات تجميل وعناية بالبشرة من نضارة",
+              "en": "Beauty and skincare products from Nadara"
             },
             "href": "/store/products?tag=deals"
           },
           {
             "id": "9f4c6b81-2a3d-4e5f-8a1b-2c3d4e5f6a71",
-            "imageUrl": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1400&q=80",
-            "title": { "ar": "مشروبات منعشة بأسعار مميزة", "en": "Refreshing Drinks at Great Prices" },
+            "imageUrl": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1400&q=80",
+            "title": { "ar": "عناية بالبشرة تثقين بها", "en": "Skincare You Can Trust" },
             "alt": {
-              "ar": "مشروبات غازية وعصائر معروضة في سوق النخبة",
-              "en": "Soft drinks and juices on display at Elite Market"
+              "ar": "سيرومات وكريمات عناية بالبشرة",
+              "en": "Skincare serums and creams on display"
             },
-            "href": "/store/categories/beverages"
+            "href": "/store/categories/skincare"
           },
           {
             "id": "af5d7c92-3b4e-5f6a-9b2c-3d4e5f6a7b82",
-            "imageUrl": "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=1400&q=80",
-            "title": { "ar": "مخبوزات طازجة كل يوم", "en": "Fresh Bakery Every Day" },
+            "imageUrl": "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=1400&q=80",
+            "title": { "ar": "مكياج يومي بألوان عصرية", "en": "Everyday Makeup, Fresh Looks" },
             "alt": {
-              "ar": "خبز ومعجنات طازجة من قسم المخبوزات في سوق النخبة",
-              "en": "Fresh bread and pastries from Elite Market bakery section"
+              "ar": "منتجات مكياج وألوان من نضارة",
+              "en": "Makeup and color products from Nadara"
             },
-            "href": "/store/categories/bakery"
+            "href": "/store/categories/makeup"
           }
         ]
       },

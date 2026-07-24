@@ -11,7 +11,7 @@
     "items": [
       {
         "productId": "prod-1",
-        "productNameAr": "بيبسي كولا 330 مل",
+        "productNameAr": "سيروم سيرافي المرطب 30 مل",
         "quantity": 2,
         "unitPrice": { "amount": 2.5, "currency": "SAR" },
         "allocations": [
@@ -41,7 +41,7 @@
     "items": [
       {
         "productId": "prod-2",
-        "productNameAr": "عصير برتقال طازج 1 لتر",
+        "productNameAr": "كريم نيوتروجينا هايدرو بوست 50 مل",
         "quantity": 1,
         "unitPrice": { "amount": 12, "currency": "SAR" },
         "allocations": [
@@ -56,7 +56,7 @@
       },
       {
         "productId": "prod-3",
-        "productNameAr": "ليز كلاسيك 170 جرام",
+        "productNameAr": "أحمر شفاه ميبيلين مات",
         "quantity": 1,
         "unitPrice": { "amount": 8, "currency": "SAR" },
         "allocations": [],
@@ -79,7 +79,7 @@
     "items": [
       {
         "productId": "prod-1",
-        "productNameAr": "بيبسي كولا 330 مل",
+        "productNameAr": "سيروم سيرافي المرطب 30 مل",
         "quantity": 5,
         "unitPrice": { "amount": 2.5, "currency": "SAR" },
         "allocations": [],

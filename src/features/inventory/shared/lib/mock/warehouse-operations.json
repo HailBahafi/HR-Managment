@@ -7,14 +7,14 @@
     "reference": "WH/RPL/00012",
     "status": "draft",
     "occurredAt": "2026-07-18T08:20:00.000Z",
-    "partnerName": "شركة بيبسيكو",
+    "partnerName": "موزّع سيرافي",
     "sourceDocument": "تجديد المخزون يدويًا",
     "notes": "طلب تجديد للمشروبات الغازية",
     "lines": [
       {
         "id": "opl-rpl-1a",
         "productId": "prod-1",
-        "productName": "بيبسي كولا 330 مل",
+        "productName": "سيروم سيرافي المرطب 30 مل",
         "sku": "BEV-001",
         "demandQuantity": 200,
         "quantity": 200,
@@ -39,7 +39,7 @@
       {
         "id": "opl-rpl-2a",
         "productId": "prod-2",
-        "productName": "عصير برتقال طازج 1 لتر",
+        "productName": "كريم نيوتروجينا هايدرو بوست 50 مل",
         "sku": "BEV-002",
         "demandQuantity": 80,
         "quantity": 80,
@@ -64,7 +64,7 @@
       {
         "id": "opl-rpl-3a",
         "productId": "prod-5",
-        "productName": "حليب المراعي طازج 2 لتر",
+        "productName": "تونر ذا أوردينري جليكوليك 240 مل",
         "sku": "DRY-001",
         "demandQuantity": 60,
         "quantity": 60,
@@ -82,14 +82,14 @@
     "reference": "WH/RPL/00010",
     "status": "cancelled",
     "occurredAt": "2026-07-05T07:40:00.000Z",
-    "partnerName": "مورد الأرز",
+    "partnerName": "مورد أدوات التجميل",
     "sourceDocument": "تجديد المخزون يدويًا",
     "notes": "أُلغي لعدم توفر الكمية لدى المورد",
     "lines": [
       {
         "id": "opl-rpl-4a",
         "productId": "prod-7",
-        "productName": "أرز بسمتي 5 كجم",
+        "productName": "طقم فرش مكياج احترافي",
         "sku": "GRC-001",
         "demandQuantity": 40,
         "quantity": 0,
@@ -114,7 +114,7 @@
       {
         "id": "opl-po-1a",
         "productId": "prod-3",
-        "productName": "ليز كلاسيك 170 جرام",
+        "productName": "أحمر شفاه ميبيلين مات",
         "sku": "SNK-001",
         "demandQuantity": 100,
         "quantity": 100,
@@ -123,7 +123,7 @@
       {
         "id": "opl-po-1b",
         "productId": "prod-11",
-        "productName": "شوكولاتة بالحليب 100 جرام",
+        "productName": "باليت ظلال عيون 12 لون",
         "sku": "SNK-002",
         "demandQuantity": 50,
         "quantity": 48,
@@ -141,14 +141,14 @@
     "reference": "WH/PO/00022",
     "status": "ready",
     "occurredAt": "2026-07-16T13:20:00.000Z",
-    "partnerName": "تايد للتوزيع",
+    "partnerName": "لوريال باريس للتوزيع",
     "sourceDocument": "PO-2026-102",
     "notes": "بانتظار التصديق",
     "lines": [
       {
         "id": "opl-po-2a",
         "productId": "prod-8",
-        "productName": "مسحوق غسيل تايد 3 كجم",
+        "productName": "غسول وجه لوريال اللطيف 200 مل",
         "sku": "CLN-001",
         "demandQuantity": 36,
         "quantity": 36,
@@ -197,7 +197,7 @@
       {
         "id": "opl-tr-1a",
         "productId": "prod-1",
-        "productName": "بيبسي كولا 330 مل",
+        "productName": "سيروم سيرافي المرطب 30 مل",
         "sku": "BEV-001",
         "demandQuantity": 40,
         "quantity": 40,
@@ -223,7 +223,7 @@
       {
         "id": "opl-tr-2a",
         "productId": "prod-10",
-        "productName": "مياه معدنية 6 عبوات",
+        "productName": "ماء ميسيلار منظّف 400 مل",
         "sku": "BEV-003",
         "demandQuantity": 24,
         "quantity": 24,
@@ -248,7 +248,7 @@
       {
         "id": "opl-tr-3a",
         "productId": "prod-3",
-        "productName": "ليز كلاسيك 170 جرام",
+        "productName": "أحمر شفاه ميبيلين مات",
         "sku": "SNK-001",
         "demandQuantity": 15,
         "quantity": 15,
@@ -273,7 +273,7 @@
       {
         "id": "opl-adj-1a",
         "productId": "prod-4",
-        "productName": "خبز توست طازج",
+        "productName": "زيت شعر مغذّي 100 مل",
         "sku": "BAK-001",
         "demandQuantity": 10,
         "quantity": 8,
@@ -296,7 +296,7 @@
       {
         "id": "opl-adj-2a",
         "productId": "prod-6",
-        "productName": "خضار مشكلة مجمدة 400 جرام",
+        "productName": "ماسك طين للوجه 100 جرام",
         "sku": "FRZ-001",
         "demandQuantity": 20,
         "quantity": 18,
@@ -320,7 +320,7 @@
       {
         "id": "opl-inv-1a",
         "productId": "prod-1",
-        "productName": "بيبسي كولا 330 مل",
+        "productName": "سيروم سيرافي المرطب 30 مل",
         "sku": "BEV-001",
         "demandQuantity": 45,
         "quantity": 42,
@@ -344,7 +344,7 @@
       {
         "id": "opl-inv-2a",
         "productId": "prod-7",
-        "productName": "أرز بسمتي 5 كجم",
+        "productName": "طقم فرش مكياج احترافي",
         "sku": "GRC-001",
         "demandQuantity": 30,
         "quantity": 0,
@@ -369,7 +369,7 @@
       {
         "id": "opl-scr-1a",
         "productId": "prod-12",
-        "productName": "لبن زبادي فراولة 6 قطع",
+        "productName": "سيروم عين كافيين ذا أوردينري",
         "sku": "DRY-002",
         "demandQuantity": 6,
         "quantity": 6,
@@ -392,7 +392,7 @@
       {
         "id": "opl-scr-2a",
         "productId": "prod-2",
-        "productName": "عصير برتقال طازج 1 لتر",
+        "productName": "كريم نيوتروجينا هايدرو بوست 50 مل",
         "sku": "BEV-002",
         "demandQuantity": 4,
         "quantity": 4,
@@ -410,14 +410,14 @@
     "reference": "WH/IN/00031",
     "status": "done",
     "occurredAt": "2026-07-06T10:00:00.000Z",
-    "partnerName": "شركة بيبسيكو",
+    "partnerName": "موزّع سيرافي",
     "sourceDocument": "ASN-4401",
     "notes": "استلام توريد مشروبات",
     "lines": [
       {
         "id": "opl-in-1a",
         "productId": "prod-1",
-        "productName": "بيبسي كولا 330 مل",
+        "productName": "سيروم سيرافي المرطب 30 مل",
         "sku": "BEV-001",
         "demandQuantity": 120,
         "quantity": 120,
@@ -441,7 +441,7 @@
       {
         "id": "opl-in-2a",
         "productId": "prod-4",
-        "productName": "خبز توست طازج",
+        "productName": "زيت شعر مغذّي 100 مل",
         "sku": "BAK-001",
         "demandQuantity": 50,
         "quantity": 50,
@@ -464,7 +464,7 @@
       {
         "id": "opl-in-3a",
         "productId": "prod-10",
-        "productName": "مياه معدنية 6 عبوات",
+        "productName": "ماء ميسيلار منظّف 400 مل",
         "sku": "BEV-003",
         "demandQuantity": 60,
         "quantity": 60,
@@ -489,7 +489,7 @@
       {
         "id": "opl-out-1a",
         "productId": "prod-1",
-        "productName": "بيبسي كولا 330 مل",
+        "productName": "سيروم سيرافي المرطب 30 مل",
         "sku": "BEV-001",
         "demandQuantity": 36,
         "quantity": 36,
@@ -513,7 +513,7 @@
       {
         "id": "opl-out-2a",
         "productId": "prod-3",
-        "productName": "ليز كلاسيك 170 جرام",
+        "productName": "أحمر شفاه ميبيلين مات",
         "sku": "SNK-001",
         "demandQuantity": 20,
         "quantity": 20,
@@ -522,7 +522,7 @@
       {
         "id": "opl-out-2b",
         "productId": "prod-11",
-        "productName": "شوكولاتة بالحليب 100 جرام",
+        "productName": "باليت ظلال عيون 12 لون",
         "sku": "SNK-002",
         "demandQuantity": 12,
         "quantity": 12,
@@ -545,7 +545,7 @@
       {
         "id": "opl-out-3a",
         "productId": "prod-2",
-        "productName": "عصير برتقال طازج 1 لتر",
+        "productName": "كريم نيوتروجينا هايدرو بوست 50 مل",
         "sku": "BEV-002",
         "demandQuantity": 10,
         "quantity": 10,
@@ -569,7 +569,7 @@
       {
         "id": "opl-int-1a",
         "productId": "prod-1",
-        "productName": "بيبسي كولا 330 مل",
+        "productName": "سيروم سيرافي المرطب 30 مل",
         "sku": "BEV-001",
         "demandQuantity": 50,
         "quantity": 50,
@@ -593,7 +593,7 @@
       {
         "id": "opl-int-2a",
         "productId": "prod-8",
-        "productName": "مسحوق غسيل تايد 3 كجم",
+        "productName": "غسول وجه لوريال اللطيف 200 مل",
         "sku": "CLN-001",
         "demandQuantity": 12,
         "quantity": 12,
@@ -616,7 +616,7 @@
       {
         "id": "opl-int-3a",
         "productId": "prod-5",
-        "productName": "حليب المراعي طازج 2 لتر",
+        "productName": "تونر ذا أوردينري جليكوليك 240 مل",
         "sku": "DRY-001",
         "demandQuantity": 20,
         "quantity": 20,
